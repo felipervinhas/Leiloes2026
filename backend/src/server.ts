@@ -10,15 +10,19 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8500;
 
-// Configurar CORS para aceitar requisições do frontend
-const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map(o => o.trim());
+
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origem não permitida — ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-};
-
-app.use(cors(corsOptions));
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
