@@ -14,6 +14,7 @@ frontend/.next/
 .env.*.local
 backend/.env
 frontend/.env
+frontend/.env.production
 
 # Logs
 *.log
