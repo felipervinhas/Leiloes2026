@@ -14,6 +14,7 @@ import { getConfiguracoes } from '../controllers/configController';
 import * as upload from '../controllers/uploadController';
 import * as lance from '../controllers/lanceController';
 import * as consultaVendas from '../controllers/consultaVendasController';
+import * as venda from '../controllers/vendaController';
 import * as cotacao from '../controllers/cotacaoController';
 import * as notificacao from '../controllers/notificacaoController';
 import * as despesa from '../controllers/despesaController';
@@ -91,6 +92,24 @@ bancoRouter.delete('/lotes/:id/imagens/:num', upload.deletarLoteImagem);
 bancoRouter.get('/consulta-vendas', consultaVendas.consultar);
 bancoRouter.get('/consulta-vendas/racas/:idLeilao', consultaVendas.racas);
 bancoRouter.get('/consulta-vendas/lotes/:idLeilao', consultaVendas.lotes);
+
+// Vendas (registro)
+bancoRouter.get('/vendas', venda.listar);
+bancoRouter.post('/vendas', venda.criar);
+bancoRouter.get('/vendas/lotes-disponiveis/:idLeilao', venda.lotesDisponiveis);
+bancoRouter.get('/vendas/:id', venda.buscar);
+bancoRouter.put('/vendas/:id', venda.atualizar);
+bancoRouter.delete('/vendas/:id', venda.excluir);
+bancoRouter.get('/vendas/:id/lote', venda.buscarLote);
+bancoRouter.post('/vendas/:id/lote', venda.salvarLote);
+bancoRouter.get('/vendas/:id/compradores', venda.listarCompradores);
+bancoRouter.post('/vendas/:id/compradores', venda.adicionarComprador);
+bancoRouter.delete('/vendas/:id/compradores/:idComp', venda.excluirComprador);
+bancoRouter.get('/vendas/:id/parcelas', venda.listarParcelas);
+bancoRouter.put('/vendas/:id/parcelas/:idParc', venda.atualizarParcela);
+bancoRouter.post('/vendas/:id/compradores/:idComp/parcelas', venda.gerarParcelas);
+bancoRouter.get('/clientes/:idCli/propriedades', venda.listarPropriedades);
+bancoRouter.post('/vendas/:id/compradores/:idComp/propriedade', venda.salvarPropriedade);
 
 bancoRouter.get('/lances', lance.listar);
 bancoRouter.get('/lances/resumo/:idLeilao', lance.resumo);

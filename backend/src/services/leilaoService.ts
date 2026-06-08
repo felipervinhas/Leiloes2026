@@ -4,7 +4,7 @@ import { Leilao } from '../models/leilao';
 function mapRow(c: any): Leilao {
   return {
     id: c.ID, leilao: c.LEILAO, endere: c.ENDERE, codcid: c.CODCID,
-    datlei: c.DATLEI, leiloe: c.LEILOE, condic: c.CONDIC,
+    datlei: c.DATLEI, leiloe: c.LEILOE, condic: c.CONDIC, qtdpar: c.QTDPAR,
     comven: c.COMVEN, comcom: c.COMCOM, ativox: c.ATIVOX,
     urlcatalogo: c.URLCATALOGO, linktransmissao1: c.LINKTRANSMISSAO1, linktransmissao2: c.LINKTRANSMISSAO2,
     tipoLeilao: c.TIPO_LEILAO, transmissao: c.TRANSMISSAO,
@@ -23,7 +23,7 @@ export async function listarLeiloes(busca?: string, ativo?: string): Promise<Lei
   if (ativo) { req.input('ativo', sql.VarChar, ativo); filtros.push(`L.ATIVOX = @ativo`); }
   const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
   const r = await req.query(`
-    SELECT L.*, CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO, CP.DESFIN
+    SELECT L.*, CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO, CP.DESFIN, CP.QTDPAR
     FROM Leiloes L
     LEFT JOIN Cidades CID ON CID.ID = TRY_CAST(L.CODCID AS INT)
     LEFT JOIN CondicaoPagtos CP ON CP.ID = L.CONDIC
@@ -34,7 +34,7 @@ export async function listarLeiloes(busca?: string, ativo?: string): Promise<Lei
 export async function buscarLeilaoPorId(id: number): Promise<Leilao | null> {
   const pool = await getPool();
   const r = await pool.request().input('id', sql.Int, id).query(`
-    SELECT L.*, CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO, CP.DESFIN
+    SELECT L.*, CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO, CP.DESFIN, CP.QTDPAR
     FROM Leiloes L
     LEFT JOIN Cidades CID ON CID.ID = TRY_CAST(L.CODCID AS INT)
     LEFT JOIN CondicaoPagtos CP ON CP.ID = L.CONDIC

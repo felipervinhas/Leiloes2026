@@ -6,6 +6,7 @@ export interface Leilao {
   datlei?: Date | string;
   leiloe?: string;
   condic?: number;
+  qtdpar?: number;
   comven?: number;
   comcom?: number;
   ativox?: string;
