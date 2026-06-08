@@ -10,7 +10,15 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8500;
 
-app.use(cors());
+// Configurar CORS para aceitar requisições do frontend
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
