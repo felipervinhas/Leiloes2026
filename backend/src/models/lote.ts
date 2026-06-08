@@ -1,0 +1,30 @@
+export interface Lote {
+  id: number;
+  lotexx: string;
+  deslot?: string;
+  rpxxx?: string;
+  sbbxxx?: string;
+  pesoxx?: number;
+  tatxxx?: string;
+  racaxx?: number;
+  idleilao?: number;
+  codven?: number;
+  ordem?: string;
+  catego: string;
+  vlrins?: number;
+  pelage?: string;
+  datnas?: Date | string;
+  obslot?: string;
+  filiacao?: string;
+  lanmax?: number;
+  urlvideo?: string;
+  comentario?: string;
+  multiplo?: number;
+  vendido?: string;
+  publica?: string;
+  tipoSecao?: string;
+  condic?: number;
+  nomeRaca?: string;
+  nomeVendedor?: string;
+  nomeLeilao?: string;
+}
