@@ -3,6 +3,7 @@ module.exports = {
     {
       name: 'leiloes2026-api',
       script: './dist/server.js',
+      cwd: 'C:\\FRVSOFTWARE\\Leiloes2026\\backend',
       instances: 1,
       autorestart: true,
       watch: false,
