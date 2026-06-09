@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Select, DatePicker, Space, Popconfirm,
   Typography, Row, Col, message, Tag, Tabs, Divider } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined,
+  CheckCircleFilled, FileTextOutlined, FileExcelOutlined, CloseOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api from '../services/api';
+import { BotaoBaixarPDF, ClienteCompleto } from '../relatorios/RelatorioClientes';
+import { exportarClientesExcel } from '../relatorios/exportarExcel';
 
 const { Title } = Typography;
 
@@ -26,6 +29,11 @@ export default function Clientes() {
   const [cidades, setCidades] = useState<{ value: number; label: string }[]>([]);
   const [cepLoading, setCepLoading] = useState(false);
   const [form] = Form.useForm();
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [selectedRows, setSelectedRows] = useState<Cliente[]>([]);
+  const [relatorioOpen, setRelatorioOpen] = useState(false);
+  const [clientesCompletos, setClientesCompletos] = useState<ClienteCompleto[]>([]);
+  const [carregandoRelatorio, setCarregandoRelatorio] = useState(false);
 
   const carregar = async (b = '') => {
     setLoading(true);
@@ -100,6 +108,39 @@ export default function Clientes() {
     try { await api.delete(`/clientes/${id}`); message.success('Excluído'); carregar(busca); }
     catch { message.error('Erro ao excluir'); }
   };
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (keys: React.Key[], rows: Cliente[]) => {
+      setSelectedRowKeys(keys);
+      setSelectedRows(rows);
+    },
+    preserveSelectedRowKeys: true,
+  };
+
+  const limparSelecao = () => { setSelectedRowKeys([]); setSelectedRows([]); setClientesCompletos([]); };
+
+  const gerarRelatorio = async () => {
+    setCarregandoRelatorio(true);
+    try {
+      const resultados = await Promise.all(selectedRows.map(r => api.get(`/clientes/${r.id}`)));
+      setClientesCompletos(resultados.map(r => r.data as ClienteCompleto));
+      setRelatorioOpen(true);
+    } catch {
+      message.error('Erro ao carregar dados dos clientes');
+    } finally {
+      setCarregandoRelatorio(false);
+    }
+  };
+
+  const colunasRelatorio = [
+    { title: 'ID', dataIndex: 'id', width: 70 },
+    { title: 'Nome', dataIndex: 'nomexx', ellipsis: true },
+    { title: 'CPF/CNPJ', width: 160, render: (_: any, r: Cliente) => r.cpfxxx || r.cnpjxx },
+    { title: 'E-mail', dataIndex: 'emailx', ellipsis: true },
+    { title: 'Celular', dataIndex: 'celu1', width: 140 },
+    { title: 'Ativo', dataIndex: 'ativox', width: 70, render: (v: string) => <Tag color={STATUS_COLOR[v] || 'default'}>{v}</Tag> },
+  ];
 
   const colunas = [
     { title: 'ID', dataIndex: 'id', width: 80 },
@@ -219,8 +260,71 @@ export default function Clientes() {
           <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()}>Novo Cliente</Button>
         </Col>
       </Row>
-      <Table rowKey="id" columns={colunas} dataSource={dados} loading={loading}
-        pagination={{ pageSize: 15, showTotal: t => `${t} registros` }} size="small" scroll={{ x: 900 }} />
+      <div style={{ paddingBottom: selectedRowKeys.length > 0 ? 64 : 0 }}>
+        <Table rowKey="id" columns={colunas} dataSource={dados} loading={loading}
+          rowSelection={rowSelection}
+          pagination={{ pageSize: 15, showTotal: t => `${t} registros` }} size="small" scroll={{ x: 900 }} />
+      </div>
+
+      {selectedRowKeys.length > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          background: '#001529', color: 'white',
+          padding: '10px 24px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          zIndex: 1000, boxShadow: '0 -4px 16px rgba(0,0,0,0.4)',
+        }}>
+          <Space size={10}>
+            <CheckCircleFilled style={{ color: '#52c41a', fontSize: 18 }} />
+            <span style={{ fontSize: 15 }}>
+              <strong>{selectedRowKeys.length}</strong> cliente{selectedRowKeys.length !== 1 ? 's' : ''} selecionado{selectedRowKeys.length !== 1 ? 's' : ''}
+            </span>
+          </Space>
+          <Space>
+            <Button icon={<CloseOutlined />} onClick={limparSelecao} style={{ borderColor: '#aaa', color: '#fff', background: 'transparent' }}>
+              Limpar seleção
+            </Button>
+            <Button type="primary" icon={<FileTextOutlined />} onClick={gerarRelatorio} loading={carregandoRelatorio}>
+              Gerar Relatório
+            </Button>
+          </Space>
+        </div>
+      )}
+
+      <Modal
+        title={
+          <Space>
+            <FileTextOutlined />
+            {`Relatório de Clientes — ${clientesCompletos.length} selecionado${clientesCompletos.length !== 1 ? 's' : ''}`}
+          </Space>
+        }
+        open={relatorioOpen}
+        onCancel={() => setRelatorioOpen(false)}
+        width={900}
+        footer={[
+          <Button key="fechar" onClick={() => setRelatorioOpen(false)}>Fechar</Button>,
+          <Button key="excel" icon={<FileExcelOutlined />} style={{ color: '#237804', borderColor: '#237804' }}
+            onClick={() => exportarClientesExcel(clientesCompletos)}>
+            Exportar Excel
+          </Button>,
+          <BotaoBaixarPDF key="pdf" clientes={clientesCompletos} />,
+        ]}
+      >
+        <Table
+          rowKey="id"
+          dataSource={clientesCompletos}
+          columns={colunasRelatorio}
+          size="small"
+          pagination={false}
+          summary={() => (
+            <Table.Summary.Row>
+              <Table.Summary.Cell index={0} colSpan={6} align="right">
+                <strong>Total: {clientesCompletos.length} cliente{clientesCompletos.length !== 1 ? 's' : ''}</strong>
+              </Table.Summary.Cell>
+            </Table.Summary.Row>
+          )}
+        />
+      </Modal>
 
       <Modal title={editando ? `Editar Cliente — ${editando.nomexx}` : 'Novo Cliente'}
         open={modalOpen} onOk={form.submit} onCancel={() => setModalOpen(false)}
