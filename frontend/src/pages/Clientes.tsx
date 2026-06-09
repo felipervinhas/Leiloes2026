@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, Select, DatePicker, Space, Popconfirm,
+import { Table, Button, Modal, Drawer, Form, Input, Select, DatePicker, Space, Popconfirm,
   Typography, Row, Col, message, Tag, Tabs, Divider } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined,
   CheckCircleFilled, FileTextOutlined, FileExcelOutlined, CloseOutlined,
@@ -433,9 +433,20 @@ export default function Clientes() {
         />
       </Modal>
 
-      <Modal title={editando ? `Editar Cliente — ${editando.nomexx}` : 'Novo Cliente'}
-        open={modalOpen} onOk={form.submit} onCancel={() => setModalOpen(false)}
-        destroyOnClose width={820}>
+      <Drawer
+        title={editando ? `Editar Cliente — ${editando.nomexx}` : 'Novo Cliente'}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        size="large"
+        styles={{ wrapper: { width: 860 } }}
+        destroyOnClose
+        extra={
+          <Space>
+            <Button onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button type="primary" onClick={() => form.submit()}>Salvar</Button>
+          </Space>
+        }
+      >
         <Form form={form} layout="vertical" onFinish={salvar}>
           <Tabs items={[
             { key: '1', label: 'Dados Pessoais', children: tabPessoal },
@@ -445,7 +456,7 @@ export default function Clientes() {
             { key: '5', label: 'Sistema', children: tabSistema },
           ]} />
         </Form>
-      </Modal>
+      </Drawer>
     </>
   );
 }

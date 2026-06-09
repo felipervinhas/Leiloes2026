@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { Layout, Menu, Dropdown, Avatar, Space, ConfigProvider } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Layout, Menu, Dropdown, Avatar, Space, ConfigProvider, Tabs } from 'antd';
 import {
   DashboardOutlined, TeamOutlined, ShoppingOutlined, CalendarOutlined,
   UserOutlined, LogoutOutlined, EnvironmentOutlined, BranchesOutlined,
   CreditCardOutlined, SafetyOutlined, SettingOutlined, MenuFoldOutlined,
   MenuUnfoldOutlined, TrophyOutlined, BellOutlined, LineChartOutlined,
-  DollarOutlined, SearchOutlined, WalletOutlined, FileSearchOutlined,
+  DollarOutlined, WalletOutlined, FileSearchOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -14,7 +14,6 @@ import { useConfig } from '../../context/ConfigContext';
 
 const { Header, Sider, Content } = Layout;
 
-// controle: undefined = sempre visível; string = exige esse valor em usuario.controles
 const ALL_MENU_ITEMS = [
   { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard', controle: undefined },
   {
@@ -58,9 +57,27 @@ const ALL_MENU_ITEMS = [
   },
 ];
 
+const ROUTE_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
+  '/dashboard': { label: 'Dashboard', icon: <DashboardOutlined /> },
+  '/leiloes': { label: 'Leilões', icon: <CalendarOutlined /> },
+  '/lotes': { label: 'Lotes', icon: <ShoppingOutlined /> },
+  '/lances': { label: 'Lances', icon: <TrophyOutlined /> },
+  '/vendas': { label: 'Vendas', icon: <DollarOutlined /> },
+  '/consulta-vendas': { label: 'Consulta Vendas', icon: <FileSearchOutlined /> },
+  '/cotacoes': { label: 'Cotações', icon: <LineChartOutlined /> },
+  '/despesas': { label: 'Despesas', icon: <WalletOutlined /> },
+  '/clientes': { label: 'Clientes', icon: <TeamOutlined /> },
+  '/notificacoes': { label: 'Notificações', icon: <BellOutlined /> },
+  '/cidades': { label: 'Cidades', icon: <EnvironmentOutlined /> },
+  '/racas': { label: 'Raças', icon: <BranchesOutlined /> },
+  '/condicoes-pagamento': { label: 'Cond. Pagto.', icon: <CreditCardOutlined /> },
+  '/perfis': { label: 'Perfis', icon: <SafetyOutlined /> },
+  '/usuarios': { label: 'Usuários', icon: <UserOutlined /> },
+};
+
 function temAcesso(controle: string | undefined, controles: string[]): boolean {
-  if (!controles || controles.length === 0) return true; // acesso total
-  if (controle === undefined) return true; // sempre visível
+  if (!controles || controles.length === 0) return true;
+  if (controle === undefined) return true;
   return controles.includes(controle);
 }
 
@@ -97,10 +114,38 @@ export default function MainLayout() {
 
   const relativePath = '/' + location.pathname.split('/').slice(2).join('/');
   const selectedKey = relativePath || '/dashboard';
+  const activeTabKey = ROUTE_MAP[relativePath] ? relativePath : '/dashboard';
 
   const defaultOpenKeys = ALL_MENU_ITEMS
     .filter(m => (m as any).children?.some((c: any) => c.key === selectedKey))
     .map(m => m.key);
+
+  const [openTabs, setOpenTabs] = useState<string[]>(() => {
+    if (!ROUTE_MAP[relativePath] || relativePath === '/dashboard') return ['/dashboard'];
+    return ['/dashboard', relativePath];
+  });
+
+  useEffect(() => {
+    if (ROUTE_MAP[relativePath]) {
+      setOpenTabs(prev => prev.includes(relativePath) ? prev : [...prev, relativePath]);
+    }
+  }, [relativePath]);
+
+  const openTab = (key: string) => {
+    setOpenTabs(prev => prev.includes(key) ? prev : [...prev, key]);
+    navigate(`/${banco}${key}`);
+  };
+
+  const closeTab = (targetKey: string) => {
+    if (targetKey === '/dashboard') return;
+    const next = openTabs.filter(k => k !== targetKey);
+    setOpenTabs(next);
+    if (activeTabKey === targetKey) {
+      const idx = openTabs.indexOf(targetKey);
+      const fallback = next[Math.min(idx, next.length - 1)] ?? '/dashboard';
+      navigate(`/${banco}${fallback}`);
+    }
+  };
 
   const userMenu = {
     items: [{
@@ -136,6 +181,13 @@ export default function MainLayout() {
         }
         .leiloes-sider .ant-layout-sider-trigger {
           background: rgba(0,0,0,0.2) !important;
+        }
+        .sistema-tabs .ant-tabs-nav {
+          margin-bottom: 0 !important;
+        }
+        .sistema-tabs .ant-tabs-tab {
+          font-size: 12px !important;
+          padding: 6px 10px !important;
         }
       `}</style>
 
@@ -197,13 +249,13 @@ export default function MainLayout() {
             selectedKeys={[selectedKey]}
             defaultOpenKeys={defaultOpenKeys}
             items={menuItems}
-            onClick={({ key }) => navigate(`/${banco}${key}`)}
+            onClick={({ key }) => openTab(key)}
             style={{ background: cor2, paddingTop: 8 }}
           />
         </Sider>
       </ConfigProvider>
 
-      <Layout>
+      <Layout style={{ display: 'flex', flexDirection: 'column' }}>
         <Header style={{
           padding: '0 20px',
           background: cor1,
@@ -213,6 +265,7 @@ export default function MainLayout() {
           height: 56,
           lineHeight: '56px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          flexShrink: 0,
         }}>
           <span style={{ fontWeight: 600, fontSize: 16, color: corLetra }}>
             {config.empresa || 'Sistema Administrativo'}
@@ -230,12 +283,43 @@ export default function MainLayout() {
           </Dropdown>
         </Header>
 
+        {/* Barra de abas */}
+        <div style={{
+          background: '#f0f2f5',
+          borderBottom: '1px solid #e0e0e0',
+          paddingLeft: 12,
+          paddingRight: 12,
+          flexShrink: 0,
+        }}>
+          <Tabs
+            className="sistema-tabs"
+            type="editable-card"
+            hideAdd
+            size="small"
+            activeKey={activeTabKey}
+            onChange={(key) => navigate(`/${banco}${key}`)}
+            onEdit={(targetKey, action) => action === 'remove' && closeTab(targetKey as string)}
+            items={openTabs.map(key => ({
+              key,
+              label: (
+                <Space size={4}>
+                  <span style={{ fontSize: 11, lineHeight: 1 }}>{ROUTE_MAP[key]?.icon}</span>
+                  <span>{ROUTE_MAP[key]?.label}</span>
+                </Space>
+              ),
+              closable: key !== '/dashboard',
+            }))}
+          />
+        </div>
+
         <Content style={{
-          margin: 20,
-          padding: 24,
+          margin: 16,
+          padding: 20,
           background: '#ffffff',
           borderRadius: 8,
-          minHeight: 'calc(100vh - 96px)',
+          flex: 1,
+          minHeight: 0,
+          overflow: 'auto',
           boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
         }}>
           <Outlet />
