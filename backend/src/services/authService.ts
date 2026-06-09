@@ -4,13 +4,15 @@ import { UsuarioComPerfil } from '../models/usuario';
 export async function buscarUsuarioPorLogin(cpf: string, senha: string): Promise<UsuarioComPerfil | null> {
   const pool = await getPool();
 
+  const cpfLimpo = cpf.replace(/\D/g, '');
+
   const result = await pool.request()
-    .input('cpf', sql.VarChar, cpf)
+    .input('cpf', sql.VarChar, cpfLimpo)
     .input('senha', sql.VarChar, senha)
     .query(`
       SELECT ID, NOMEXX, EMAILX, ATIVOX, BLOCLI, ADM
       FROM Clientes
-      WHERE CPFXXX = @cpf
+      WHERE REPLACE(REPLACE(CPFXXX, '.', ''), '-', '') = @cpf
         AND SENHAX = @senha
         AND ADM = 'S'
     `);
