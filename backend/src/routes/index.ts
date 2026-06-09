@@ -43,6 +43,7 @@ bancoRouter.get('/configuracoes/logo-imagem', getLogoImagem);
 bancoRouter.use(authMiddleware);
 
 bancoRouter.get('/dashboard', dash.dashboard);
+bancoRouter.get('/dashboard/tops-categoria', dash.topsPorCategoria);
 
 // Contratos
 bancoRouter.get('/contratos/variaveis',                              contrato.variaveis);

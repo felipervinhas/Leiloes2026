@@ -43,12 +43,17 @@ interface DashData {
     valorTotal: number; comissao: number; liquido: number;
     vendas: number; totalLotes: number;
   }[];
-  topCompradores: { pos: number; nome: string; compras: number; valorTotal: number; valorLiq: number }[];
+  categorias: { id: number | null; nome: string; vendas: number; valorTotal: number }[];
   topRacas: { raca: string; vendas: number; valorTotal: number }[];
   vencimentos: {
     comprador: string; ordxxx: string; vencimento: string;
     valor: number; lotexx: string; deslot: string; leilao: string;
   }[];
+}
+
+interface TopsPorCategoria {
+  topCompradores: { pos: number; id: number; nome: string; compras: number; valorTotal: number; valorLiq: number }[];
+  topVendedores: { pos: number; id: number; nome: string; vendas: number; valorTotal: number; valorLiq: number }[];
 }
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
@@ -145,6 +150,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [pieActive, setPieActive] = useState(0);
 
+  const [selectedCategoria, setSelectedCategoria] = useState<number | undefined>(undefined);
+  const [topsPorCategoria, setTopsPorCategoria] = useState<TopsPorCategoria | null>(null);
+  const [topsCategoryLoading, setTopsCategoryLoading] = useState(false);
+
   const [pendentesCount, setPendentesCount] = useState(0);
   const [pendentes, setPendentes]           = useState<any[]>([]);
   const [drawerOpen, setDrawerOpen]         = useState(false);
@@ -171,6 +180,26 @@ export default function Dashboard() {
     const timer = setInterval(poll, 60_000);
     return () => clearInterval(timer);
   }, [banco]);
+
+  useEffect(() => {
+    if (!banco || !data || data.categorias.length === 0) return;
+    
+    // Define categoria padrão como primeira categoria se não houver selecionada
+    if (!selectedCategoria) {
+      setSelectedCategoria(data.categorias[0].id ?? undefined);
+      return;
+    }
+  }, [data, banco, selectedCategoria]);
+
+  useEffect(() => {
+    if (!banco || !selectedCategoria) return;
+    
+    setTopsCategoryLoading(true);
+    api.get(`/${banco}/dashboard/tops-categoria`, { params: { categoria: selectedCategoria } })
+      .then(r => setTopsPorCategoria(r.data))
+      .catch(() => setTopsPorCategoria(null))
+      .finally(() => setTopsCategoryLoading(false));
+  }, [banco, selectedCategoria]);
 
   const abrirDrawer = async () => {
     setDrawerOpen(true);
@@ -442,7 +471,7 @@ export default function Dashboard() {
               <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Spin />
               </div>
-            ) : !data?.topRacas.length ? (
+            ) : !data || !data.topRacas || data.topRacas.length === 0 ? (
               <Empty description="Sem dados" />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -454,9 +483,9 @@ export default function Dashboard() {
                     cx="50%" cy="50%"
                     innerRadius={52} outerRadius={80}
                     paddingAngle={2}
-                    onMouseEnter={(_, i) => setPieActive(i)}
+                    onMouseEnter={(_: any, i: number) => setPieActive(i)}
                   >
-                    {data.topRacas.map((entry, i) => (
+                    {data.topRacas.map((entry: any, i: number) => (
                       <Cell
                         key={i}
                         fill={CHART_COLORS[i % CHART_COLORS.length]}
@@ -469,8 +498,8 @@ export default function Dashboard() {
                   <RTooltip content={<PieTooltip />} />
                 </PieChart>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-                  {data.topRacas.map((r, i) => {
-                    const total = data.topRacas.reduce((s, x) => s + x.valorTotal, 0);
+                  {data.topRacas.map((r: any, i: number) => {
+                    const total = data.topRacas.reduce((s: number, x: any) => s + x.valorTotal, 0);
                     const pct   = total > 0 ? Math.round((r.valorTotal / total) * 100) : 0;
                     return (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}
@@ -490,20 +519,47 @@ export default function Dashboard() {
 
       {/* ── Listas ──────────────────────────────────────────────────────── */}
       <Row gutter={[14, 14]}>
-        {/* Top compradores */}
+        {/* Selector de Categorias */}
+        {data?.categorias && data.categorias.length > 0 && (
+          <Col xs={24}>
+            <Card
+              style={{ borderRadius: 12 }}
+              styles={{ body: { padding: '12px 16px' } }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 600, fontSize: 13, color: '#001529' }}>Filtrar por Categoria:</span>
+                {data.categorias.map((cat) => (
+                  <Button
+                    key={cat.id}
+                    type={selectedCategoria === cat.id ? 'primary' : 'default'}
+                    size="small"
+                    onClick={() => setSelectedCategoria(cat.id ?? undefined)}
+                    style={{
+                      borderRadius: 6,
+                    }}
+                  >
+                    {cat.nome}
+                  </Button>
+                ))}
+              </div>
+            </Card>
+          </Col>
+        )}
+
+        {/* Top Compradores */}
         <Col xs={24} lg={12}>
           <Card
             title={<span><TrophyOutlined style={{ marginRight: 6, color: '#ffc53d' }} />Top Compradores</span>}
             style={{ borderRadius: 12 }}
             styles={{ body: { padding: '8px 16px 16px' } }}
           >
-            {loading ? <Spin style={{ margin: '20px auto', display: 'block' }} />
-              : !data?.topCompradores.length ? <Empty description="Sem dados" />
-              : data.topCompradores.map((c, i) => {
-                const maxVal = data.topCompradores[0].valorTotal;
+            {topsCategoryLoading ? <Spin style={{ margin: '20px auto', display: 'block' }} />
+              : !topsPorCategoria?.topCompradores.length ? <Empty description="Sem dados" />
+              : topsPorCategoria.topCompradores.map((c, i) => {
+                const maxVal = topsPorCategoria.topCompradores[0].valorTotal;
                 const pct = maxVal > 0 ? (c.valorTotal / maxVal) * 100 : 0;
                 return (
-                  <div key={i} style={{ padding: '10px 0', borderBottom: i < data.topCompradores.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+                  <div key={i} style={{ padding: '10px 0', borderBottom: i < topsPorCategoria.topCompradores.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
                       <span style={{ fontSize: 18, width: 28, textAlign: 'center', flexShrink: 0 }}>
                         {MEDAL[i]}
@@ -536,8 +592,54 @@ export default function Dashboard() {
           </Card>
         </Col>
 
-        {/* Próximos vencimentos */}
+        {/* Top Vendedores */}
         <Col xs={24} lg={12}>
+          <Card
+            title={<span><TrophyOutlined style={{ marginRight: 6, color: '#13c2c2' }} />Top Vendedores</span>}
+            style={{ borderRadius: 12 }}
+            styles={{ body: { padding: '8px 16px 16px' } }}
+          >
+            {topsCategoryLoading ? <Spin style={{ margin: '20px auto', display: 'block' }} />
+              : !topsPorCategoria?.topVendedores.length ? <Empty description="Sem dados" />
+              : topsPorCategoria.topVendedores.map((v, i) => {
+                const maxVal = topsPorCategoria.topVendedores[0].valorTotal;
+                const pct = maxVal > 0 ? (v.valorTotal / maxVal) * 100 : 0;
+                return (
+                  <div key={i} style={{ padding: '10px 0', borderBottom: i < topsPorCategoria.topVendedores.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
+                      <span style={{ fontSize: 18, width: 28, textAlign: 'center', flexShrink: 0 }}>
+                        {MEDAL[i]}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {v.nome}
+                        </div>
+                        <Text style={{ fontSize: 11, color: '#8c8c8c' }}>
+                          {v.vendas} venda{v.vendas !== 1 ? 's' : ''}
+                        </Text>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: '#13c2c2' }}>
+                          {fmtR(v.valorTotal)}
+                        </div>
+                        <Text style={{ fontSize: 10, color: '#8c8c8c' }}>liq. {fmtR(v.valorLiq)}</Text>
+                      </div>
+                    </div>
+                    <Progress
+                      percent={Math.round(pct)}
+                      showInfo={false}
+                      strokeColor="#13c2c2"
+                      trailColor="#f5f5f5"
+                      size="small"
+                    />
+                  </div>
+                );
+              })}
+          </Card>
+        </Col>
+
+        {/* Próximos vencimentos */}
+        <Col xs={24} lg={24}>
           <Card
             title={<span><CalendarOutlined style={{ marginRight: 6, color: '#fa8c16' }} />Próximos Vencimentos</span>}
             style={{ borderRadius: 12 }}

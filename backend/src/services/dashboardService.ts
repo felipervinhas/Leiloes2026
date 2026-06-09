@@ -1,9 +1,9 @@
-import { getPool } from '../config/database';
+import { getPool, sql } from '../config/database';
 
 export async function getDashboardData() {
   const pool = await getPool();
 
-  const [rLeiloes, rCompradores, rRacas, rVencimentos, rKpis] = await Promise.all([
+  const [rLeiloes, rCategorias, rVencimentos, rKpis] = await Promise.all([
 
     // Leilões do mês atual + 5 meses anteriores (garante mês atual sempre presente)
     pool.request().query(`
@@ -27,33 +27,20 @@ export async function getDashboardData() {
       ORDER BY L.DATLEI DESC
     `),
 
-    // Top 5 compradores (all time)
+    // Categorias (Raças) com top compradores e vendedores
     pool.request().query(`
-      SELECT TOP 5
-        C.NOMEXX                        AS NOME,
-        COUNT(DISTINCT MC.IDMOV)        AS COMPRAS,
-        SUM(MC.VALORORIGINAL)           AS VALOR_TOTAL,
-        SUM(MC.VALORPAGAR)              AS VALOR_LIQUIDO
+      SELECT
+        R.ID,
+        ISNULL(R.DESCRICAO, 'Outras') AS NOME,
+        COUNT(DISTINCT MC.IDMOV) AS TOTAL_VENDAS,
+        SUM(MC.VALORORIGINAL) AS TOTAL_VALOR
       FROM MOVIMENTO_COMPRADOR MC
-      INNER JOIN CLIENTES C ON C.ID = MC.IDCLI
+      INNER JOIN MOVIMENTO_LOTE ML ON ML.IDMOV = MC.IDMOV
+      INNER JOIN LOTES LO ON LO.ID = ML.IDLOTE
+      LEFT JOIN RACAS R ON R.ID = LO.RACAXX
       WHERE MC.VALORORIGINAL > 0
-      GROUP BY MC.IDCLI, C.NOMEXX
-      ORDER BY VALOR_TOTAL DESC
-    `),
-
-    // Top 6 raças por valor
-    pool.request().query(`
-      SELECT TOP 6
-        ISNULL(R.DESCRICAO, 'Outras')  AS RACA,
-        COUNT(DISTINCT MC.IDMOV)       AS VENDAS,
-        SUM(MC.VALORORIGINAL)          AS VALOR_TOTAL
-      FROM MOVIMENTO_COMPRADOR MC
-      INNER JOIN MOVIMENTO_LOTE ML ON ML.IDMOV  = MC.IDMOV
-      INNER JOIN LOTES           LO ON LO.ID    = ML.IDLOTE
-      LEFT  JOIN RACAS           R  ON R.ID     = LO.RACAXX
-      WHERE MC.VALORORIGINAL > 0
-      GROUP BY LO.RACAXX, R.DESCRICAO
-      ORDER BY VALOR_TOTAL DESC
+      GROUP BY R.ID, R.DESCRICAO
+      ORDER BY TOTAL_VALOR DESC
     `),
 
     // Próximos vencimentos (45 dias)
@@ -148,17 +135,16 @@ export async function getDashboardData() {
       vendas:     Number(r.VENDAS),
       totalLotes: Number(r.TOTAL_LOTES),
     })),
-    topCompradores: rCompradores.recordset.map((r: any, i: number) => ({
-      pos:        i + 1,
+    categorias: rCategorias.recordset.map((r: any) => ({
+      id:         r.ID,
       nome:       r.NOME,
-      compras:    Number(r.COMPRAS),
-      valorTotal: Number(r.VALOR_TOTAL),
-      valorLiq:   Number(r.VALOR_LIQUIDO),
+      vendas:     Number(r.TOTAL_VENDAS),
+      valorTotal: Number(r.TOTAL_VALOR),
     })),
-    topRacas: rRacas.recordset.map((r: any) => ({
-      raca:       r.RACA,
-      vendas:     Number(r.VENDAS),
-      valorTotal: Number(r.VALOR_TOTAL),
+    topRacas: rCategorias.recordset.slice(0, 6).map((r: any) => ({
+      raca:       r.NOME,
+      vendas:     Number(r.TOTAL_VENDAS),
+      valorTotal: Number(r.TOTAL_VALOR),
     })),
     vencimentos: rVencimentos.recordset.map((r: any) => ({
       comprador:  r.COMPRADOR,
@@ -168,6 +154,72 @@ export async function getDashboardData() {
       lotexx:     r.LOTEXX,
       deslot:     r.DESLOT,
       leilao:     r.LEILAO,
+    })),
+  };
+}
+
+export async function getTopsPorCategoria(idCategoria?: number) {
+  const pool = await getPool();
+
+  const [rCompradores, rVendedores] = await Promise.all([
+    // Top 5 compradores por categoria
+    pool.request()
+      .input('idCategoria', sql.Int, idCategoria ?? null)
+      .query(`
+        SELECT TOP 5
+          C.ID,
+          C.NOMEXX AS NOME,
+          COUNT(DISTINCT MC.IDMOV) AS COMPRAS,
+          SUM(MC.VALORORIGINAL) AS VALOR_TOTAL,
+          SUM(MC.VALORPAGAR) AS VALOR_LIQUIDO
+        FROM MOVIMENTO_COMPRADOR MC
+        INNER JOIN CLIENTES C ON C.ID = MC.IDCLI
+        INNER JOIN MOVIMENTO_LOTE ML ON ML.IDMOV = MC.IDMOV
+        INNER JOIN LOTES LO ON LO.ID = ML.IDLOTE
+        WHERE MC.VALORORIGINAL > 0
+          AND (LO.RACAXX = @idCategoria OR @idCategoria IS NULL)
+        GROUP BY MC.IDCLI, C.NOMEXX, C.ID
+        ORDER BY VALOR_TOTAL DESC
+      `),
+
+    // Top 5 vendedores por categoria
+    pool.request()
+      .input('idCategoria', sql.Int, idCategoria ?? null)
+      .query(`
+        SELECT TOP 5
+          V.ID,
+          V.NOMEXX AS NOME,
+          COUNT(DISTINCT M.ID) AS VENDAS,
+          SUM(MC.VALORORIGINAL) AS VALOR_TOTAL,
+          SUM(MC.VALORPAGAR) AS VALOR_LIQUIDO
+        FROM LOTES LO
+        INNER JOIN MOVIMENTO M ON M.IDLEILAO = LO.IDLEILAO
+        INNER JOIN MOVIMENTO_LOTE ML ON ML.IDMOV = M.ID AND ML.IDLOTE = LO.ID
+        INNER JOIN MOVIMENTO_COMPRADOR MC ON MC.IDMOV = M.ID
+        INNER JOIN CLIENTES V ON V.ID = LO.CODVEN
+        WHERE MC.VALORORIGINAL > 0 AND LO.CODVEN IS NOT NULL
+          AND (LO.RACAXX = @idCategoria OR @idCategoria IS NULL)
+        GROUP BY LO.CODVEN, V.NOMEXX, V.ID
+        ORDER BY VALOR_TOTAL DESC
+      `),
+  ]);
+
+  return {
+    topCompradores: rCompradores.recordset.map((r: any, i: number) => ({
+      pos: i + 1,
+      id: r.ID,
+      nome: r.NOME,
+      compras: Number(r.COMPRAS),
+      valorTotal: Number(r.VALOR_TOTAL),
+      valorLiq: Number(r.VALOR_LIQUIDO),
+    })),
+    topVendedores: rVendedores.recordset.map((r: any, i: number) => ({
+      pos: i + 1,
+      id: r.ID,
+      nome: r.NOME,
+      vendas: Number(r.VENDAS),
+      valorTotal: Number(r.VALOR_TOTAL),
+      valorLiq: Number(r.VALOR_LIQUIDO),
     })),
   };
 }
