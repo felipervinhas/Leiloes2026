@@ -109,11 +109,6 @@ export default function Clientes() {
 
   useEffect(() => { carregar(); carregarCidades(); }, []);
 
-  useEffect(() => {
-    api.get('/configuracoes/logo')
-      .then(r => r.data.logo && setLogoBase64(r.data.logo))
-      .catch(() => {});
-  }, []);
 
   const abrirModal = async (item?: Cliente) => {
     if (item) {
@@ -159,8 +154,12 @@ export default function Clientes() {
   const gerarRelatorio = async () => {
     setCarregandoRelatorio(true);
     try {
-      const resultados = await Promise.all(selectedRows.map(r => api.get(`/clientes/${r.id}`)));
+      const [resultados, logoResp] = await Promise.all([
+        Promise.all(selectedRows.map(r => api.get(`/clientes/${r.id}`))),
+        api.get('/configuracoes/logo').catch(() => ({ data: { logo: null } })),
+      ]);
       setClientesCompletos(resultados.map(r => r.data as ClienteCompleto));
+      setLogoBase64(logoResp.data.logo || undefined);
       setRelatorioOpen(true);
     } catch {
       message.error('Erro ao carregar dados dos clientes');
