@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Dropdown, Avatar, Space, ConfigProvider, Tabs } from 'antd';
+import { Layout, Menu, Dropdown, Avatar, Space, ConfigProvider, Tabs, Drawer, Button, Grid } from 'antd';
 import {
   DashboardOutlined, TeamOutlined, ShoppingOutlined, CalendarOutlined,
   UserOutlined, LogoutOutlined, EnvironmentOutlined, BranchesOutlined,
   CreditCardOutlined, SafetyOutlined, SettingOutlined, MenuFoldOutlined,
   MenuUnfoldOutlined, TrophyOutlined, BellOutlined, LineChartOutlined,
   DollarOutlined, WalletOutlined, FileSearchOutlined, OrderedListOutlined,
-  FileTextOutlined,
+  FileTextOutlined, MenuOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -103,7 +103,13 @@ function filtrarMenu(items: any[], controles: string[]): any[] {
 }
 
 export default function MainLayout() {
+  const screens = Grid.useBreakpoint();
+  // md === false significa tela < 768px (mobile/tablet pequeno)
+  const isMobile = screens.md === false;
+
   const [collapsed, setCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   const navigate = useNavigate();
   const location = useLocation();
   const { usuario, logout } = useAuth();
@@ -139,6 +145,7 @@ export default function MainLayout() {
   const openTab = (key: string) => {
     setOpenTabs(prev => prev.includes(key) ? prev : [...prev, key]);
     navigate(`/${banco}${key}`);
+    if (isMobile) setDrawerOpen(false);
   };
 
   const closeTab = (targetKey: string) => {
@@ -158,6 +165,54 @@ export default function MainLayout() {
       onClick: () => { logout(); navigate(`/${banco}/login`); },
     }],
   };
+
+  const menuContent = (
+    <>
+      <div style={{
+        height: 64,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: cor1,
+        padding: collapsed && !isMobile ? '8px 4px' : '8px 16px',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}>
+        {config.logoUrl ? (
+          <img
+            src={config.logoUrl}
+            alt={config.empresa}
+            style={{
+              maxHeight: 48,
+              maxWidth: collapsed && !isMobile ? 44 : 170,
+              objectFit: 'contain',
+            }}
+          />
+        ) : (
+          <span style={{
+            color: corLetra,
+            fontWeight: 700,
+            fontSize: collapsed && !isMobile ? 13 : 16,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>
+            {collapsed && !isMobile ? '🐄' : config.empresa || 'Leilões 2026'}
+          </span>
+        )}
+      </div>
+
+      <Menu
+        theme="dark"
+        mode="inline"
+        selectedKeys={[selectedKey]}
+        defaultOpenKeys={defaultOpenKeys}
+        items={menuItems}
+        onClick={({ key }) => openTab(key)}
+        style={{ background: cor2, paddingTop: 8, flex: 1, overflowY: 'auto' }}
+      />
+    </>
+  );
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -194,75 +249,90 @@ export default function MainLayout() {
           font-size: 12px !important;
           padding: 6px 10px !important;
         }
+        .menu-drawer .ant-drawer-body {
+          padding: 0 !important;
+          background: ${cor2} !important;
+          display: flex;
+          flex-direction: column;
+        }
+        .menu-drawer .ant-drawer-header {
+          display: none !important;
+        }
+        .menu-drawer .ant-menu {
+          border-inline-end: none !important;
+        }
+        .menu-drawer .ant-menu-item-selected {
+          border-left: 3px solid ${cor1} !important;
+          background: rgba(255,255,255,0.08) !important;
+          border-radius: 0 !important;
+        }
+        .menu-drawer .ant-menu-item-selected .ant-menu-title-content,
+        .menu-drawer .ant-menu-item-selected .anticon {
+          color: ${cor1} !important;
+        }
+        .menu-drawer .ant-menu-item {
+          border-left: 3px solid transparent;
+          border-radius: 0 !important;
+          margin: 0 !important;
+          width: 100% !important;
+        }
+        .menu-drawer .ant-menu-sub .ant-menu-item-selected {
+          border-left: 3px solid ${cor1} !important;
+          background: rgba(255,255,255,0.08) !important;
+        }
       `}</style>
 
-      <ConfigProvider theme={{
-        components: {
-          Menu: {
-            darkItemBg: cor2,
-            darkSubMenuItemBg: 'rgba(0,0,0,0.15)',
-            darkItemHoverBg: 'rgba(255,255,255,0.05)',
-            darkItemSelectedBg: 'transparent',
-            darkItemColor: 'rgba(255,255,255,0.75)',
-            darkItemHoverColor: '#ffffff',
-            darkItemSelectedColor: cor1,
-          },
-        },
-      }}>
-        <Sider
-          className="leiloes-sider"
-          collapsible
-          collapsed={collapsed}
-          onCollapse={setCollapsed}
-          width={220}
-          style={{ background: cor2 }}
-          trigger={
-            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 16 }}>
-              {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            </div>
-          }
+      {/* Menu mobile: Drawer */}
+      {isMobile && (
+        <Drawer
+          className="menu-drawer"
+          placement="left"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          width={260}
+          styles={{ body: { padding: 0, background: cor2 } }}
+          closeIcon={null}
         >
-          <div style={{
-            height: 64,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: cor1,
-            padding: collapsed ? '8px 4px' : '8px 16px',
-            overflow: 'hidden',
-          }}>
-            {config.logoUrl ? (
-              <img
-                src={config.logoUrl}
-                alt={config.empresa}
-                style={{ maxHeight: 48, maxWidth: collapsed ? 44 : 170, objectFit: 'contain' }}
-              />
-            ) : (
-              <span style={{
-                color: corLetra, fontWeight: 700,
-                fontSize: collapsed ? 13 : 16,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>
-                {collapsed ? '🐄' : config.empresa || 'Leilões 2026'}
-              </span>
-            )}
-          </div>
+          {menuContent}
+        </Drawer>
+      )}
 
-          <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={[selectedKey]}
-            defaultOpenKeys={defaultOpenKeys}
-            items={menuItems}
-            onClick={({ key }) => openTab(key)}
-            style={{ background: cor2, paddingTop: 8 }}
-          />
-        </Sider>
-      </ConfigProvider>
+      {/* Menu desktop: Sider fixo */}
+      {!isMobile && (
+        <ConfigProvider theme={{
+          components: {
+            Menu: {
+              darkItemBg: cor2,
+              darkSubMenuItemBg: 'rgba(0,0,0,0.15)',
+              darkItemHoverBg: 'rgba(255,255,255,0.05)',
+              darkItemSelectedBg: 'transparent',
+              darkItemColor: 'rgba(255,255,255,0.75)',
+              darkItemHoverColor: '#ffffff',
+              darkItemSelectedColor: cor1,
+            },
+          },
+        }}>
+          <Sider
+            className="leiloes-sider"
+            collapsible
+            collapsed={collapsed}
+            onCollapse={setCollapsed}
+            width={220}
+            style={{ background: cor2 }}
+            trigger={
+              <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 16 }}>
+                {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              </div>
+            }
+          >
+            {menuContent}
+          </Sider>
+        </ConfigProvider>
+      )}
 
-      <Layout style={{ display: 'flex', flexDirection: 'column' }}>
+      <Layout style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <Header style={{
-          padding: '0 20px',
+          padding: isMobile ? '0 12px' : '0 20px',
           background: cor1,
           display: 'flex',
           alignItems: 'center',
@@ -271,57 +341,84 @@ export default function MainLayout() {
           lineHeight: '56px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
           flexShrink: 0,
+          gap: 8,
         }}>
-          <span style={{ fontWeight: 600, fontSize: 16, color: corLetra }}>
-            {config.empresa || 'Sistema Administrativo'}
+          {/* Botão hambúrguer no mobile */}
+          {isMobile && (
+            <Button
+              type="text"
+              icon={<MenuOutlined style={{ fontSize: 18 }} />}
+              onClick={() => setDrawerOpen(true)}
+              style={{ color: corLetra, padding: '0 8px', height: 40, flexShrink: 0 }}
+            />
+          )}
+
+          {/* Título: página atual no mobile, nome da empresa no desktop */}
+          <span style={{
+            fontWeight: 600,
+            fontSize: isMobile ? 15 : 16,
+            color: corLetra,
+            flex: 1,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {isMobile
+              ? (ROUTE_MAP[activeTabKey]?.label || config.empresa || 'Sistema')
+              : (config.empresa || 'Sistema Administrativo')
+            }
           </span>
 
           <Dropdown menu={userMenu} placement="bottomRight" trigger={['click']}>
-            <Space style={{ cursor: 'pointer', color: corLetra }} size={8}>
+            <Space style={{ cursor: 'pointer', color: corLetra, flexShrink: 0 }} size={8}>
               <Avatar
                 size={32}
                 icon={<UserOutlined />}
                 style={{ background: 'rgba(0,0,0,0.2)', cursor: 'pointer' }}
               />
-              <span style={{ fontWeight: 500, fontSize: 14 }}>{usuario?.nome}</span>
+              {!isMobile && (
+                <span style={{ fontWeight: 500, fontSize: 14 }}>{usuario?.nome}</span>
+              )}
             </Space>
           </Dropdown>
         </Header>
 
-        {/* Barra de abas */}
-        <div style={{
-          background: '#f0f2f5',
-          borderBottom: '1px solid #e0e0e0',
-          paddingLeft: 12,
-          paddingRight: 12,
-          flexShrink: 0,
-        }}>
-          <Tabs
-            className="sistema-tabs"
-            type="editable-card"
-            hideAdd
-            size="small"
-            activeKey={activeTabKey}
-            onChange={(key) => navigate(`/${banco}${key}`)}
-            onEdit={(targetKey, action) => action === 'remove' && closeTab(targetKey as string)}
-            items={openTabs.map(key => ({
-              key,
-              label: (
-                <Space size={4}>
-                  <span style={{ fontSize: 11, lineHeight: 1 }}>{ROUTE_MAP[key]?.icon}</span>
-                  <span>{ROUTE_MAP[key]?.label}</span>
-                </Space>
-              ),
-              closable: key !== '/dashboard',
-            }))}
-          />
-        </div>
+        {/* Barra de abas: só no desktop */}
+        {!isMobile && (
+          <div style={{
+            background: '#f0f2f5',
+            borderBottom: '1px solid #e0e0e0',
+            paddingLeft: 12,
+            paddingRight: 12,
+            flexShrink: 0,
+          }}>
+            <Tabs
+              className="sistema-tabs"
+              type="editable-card"
+              hideAdd
+              size="small"
+              activeKey={activeTabKey}
+              onChange={(key) => navigate(`/${banco}${key}`)}
+              onEdit={(targetKey, action) => action === 'remove' && closeTab(targetKey as string)}
+              items={openTabs.map(key => ({
+                key,
+                label: (
+                  <Space size={4}>
+                    <span style={{ fontSize: 11, lineHeight: 1 }}>{ROUTE_MAP[key]?.icon}</span>
+                    <span>{ROUTE_MAP[key]?.label}</span>
+                  </Space>
+                ),
+                closable: key !== '/dashboard',
+              }))}
+            />
+          </div>
+        )}
 
         <Content style={{
-          margin: 16,
-          padding: 20,
+          margin: isMobile ? 8 : 16,
+          padding: isMobile ? 12 : 20,
           background: '#ffffff',
-          borderRadius: 8,
+          borderRadius: isMobile ? 6 : 8,
           flex: 1,
           minHeight: 0,
           overflow: 'auto',

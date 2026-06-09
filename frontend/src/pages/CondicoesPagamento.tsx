@@ -85,31 +85,32 @@ export default function CondicoesPagamento() {
         </Col>
       </Row>
       <Table rowKey="id" columns={colunas} dataSource={dados} loading={loading}
-        pagination={{ pageSize: 15, showTotal: t => `${t} registros` }} size="small" />
+        pagination={{ pageSize: 15, showTotal: t => `${t} registros` }} size="small"
+        scroll={{ x: 'max-content' }} />
 
       <Modal title={editando ? 'Editar Condição' : 'Nova Condição'} open={modalOpen}
-        onOk={form.submit} onCancel={() => setModalOpen(false)} destroyOnClose width={600}>
+        onOk={form.submit} onCancel={() => setModalOpen(false)} width={600}>
         <Form form={form} layout="vertical" onFinish={salvar}>
           <Form.Item name="desfin" label="Descrição" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
           <Row gutter={12}>
-            <Col span={8}><Form.Item name="qtdpar" label="Qtd. Parcelas"><Input /></Form.Item></Col>
-            <Col span={8}><Form.Item name="przmed" label="Prazo Médio (dias)"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={8}><Form.Item name="descon" label="Desconto (%)"><Input /></Form.Item></Col>
+            <Col xs={24} sm={8}><Form.Item name="qtdpar" label="Qtd. Parcelas"><Input /></Form.Item></Col>
+            <Col xs={24} sm={8}><Form.Item name="przmed" label="Prazo Médio (dias)"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={24} sm={8}><Form.Item name="descon" label="Desconto (%)"><Input /></Form.Item></Col>
           </Row>
           <Row gutter={12}>
-            <Col span={8}>
+            <Col xs={24} sm={8}>
               <Form.Item name="avista" label="À Vista">
                 <Select options={[{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }]} />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col xs={24} sm={8}>
               <Form.Item name="entrad" label="Entrada">
                 <Select options={[{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }]} />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col xs={24} sm={8}>
               <Form.Item name="invert" label="Inverter Qtd.">
                 <Select options={[{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }]} />
               </Form.Item>
@@ -118,7 +119,7 @@ export default function CondicoesPagamento() {
           <Divider plain>Vencimentos das Parcelas (dias)</Divider>
           <Row gutter={12}>
             {parcFields.map((f, i) => (
-              <Col span={4} key={f}>
+              <Col xs={8} sm={4} key={f}>
                 <Form.Item name={f} label={`Parc. ${i + 1}`}><Input /></Form.Item>
               </Col>
             ))}

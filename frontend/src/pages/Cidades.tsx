@@ -76,7 +76,8 @@ export default function Cidades() {
         </Col>
       </Row>
       <Table rowKey="id" columns={colunas} dataSource={dados} loading={loading}
-        pagination={{ pageSize: 15, showTotal: t => `${t} registros` }} size="small" />
+        pagination={{ pageSize: 15, showTotal: t => `${t} registros` }} size="small"
+        scroll={{ x: 'max-content' }} />
 
       <Modal title={editando ? 'Editar Cidade' : 'Nova Cidade'} open={modalOpen}
         onOk={form.submit} onCancel={() => setModalOpen(false)} destroyOnClose>

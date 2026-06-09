@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker,
-  Space, Popconfirm, Typography, Row, Col, message, Tag, Tabs, Divider, Image } from 'antd';
+  Space, Popconfirm, Typography, Row, Col, message, Tag, Tabs, Divider, Image, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api from '../services/api';
@@ -13,6 +13,9 @@ const { TextArea } = Input;
 interface Imagens { desktop: string; mobile: string; media: string; }
 
 export default function Leiloes() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = screens.md === false;
+
   const [dados, setDados] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -119,32 +122,32 @@ export default function Leiloes() {
       children: (
         <Form form={form} layout="vertical" onFinish={salvar}>
           <Row gutter={12}>
-            <Col span={16}><Form.Item name="leilao" label="Nome do Leilão" rules={[{ required: true }]}><Input /></Form.Item></Col>
-            <Col span={8}><Form.Item name="ativox" label="Ativo"><Select options={[{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }]} /></Form.Item></Col>
-            <Col span={8}><Form.Item name="datlei" label="Data do Leilão"><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
-            <Col span={8}><Form.Item name="horaInicio" label="Hora Início"><Input placeholder="HH:MM" /></Form.Item></Col>
-            <Col span={8}><Form.Item name="horaFechamentoPre" label="Hora Fechamento"><Input placeholder="HH:MM" /></Form.Item></Col>
-            <Col span={12}><Form.Item name="leiloe" label="Leiloeiro"><Input /></Form.Item></Col>
-            <Col span={12}><Form.Item name="endere" label="Endereço"><Input /></Form.Item></Col>
-            <Col span={12}>
+            <Col xs={24} md={16}><Form.Item name="leilao" label="Nome do Leilão" rules={[{ required: true }]}><Input /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name="ativox" label="Ativo"><Select options={[{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }]} /></Form.Item></Col>
+            <Col xs={24} sm={12} md={8}><Form.Item name="datlei" label="Data do Leilão"><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
+            <Col xs={24} sm={12} md={8}><Form.Item name="horaInicio" label="Hora Início"><Input placeholder="HH:MM" /></Form.Item></Col>
+            <Col xs={24} sm={12} md={8}><Form.Item name="horaFechamentoPre" label="Hora Fechamento"><Input placeholder="HH:MM" /></Form.Item></Col>
+            <Col xs={24} sm={12}><Form.Item name="leiloe" label="Leiloeiro"><Input /></Form.Item></Col>
+            <Col xs={24} sm={12}><Form.Item name="endere" label="Endereço"><Input /></Form.Item></Col>
+            <Col xs={24} sm={12}>
               <Form.Item name="codcid" label="Cidade">
                 <Select showSearch options={cidades} filterOption={(input, opt) => (opt?.label as string)?.toLowerCase().includes(input.toLowerCase())} />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="condic" label="Condição de Pagamento">
                 <Select showSearch options={condicoes} filterOption={(input, opt) => (opt?.label as string)?.toLowerCase().includes(input.toLowerCase())} />
               </Form.Item>
             </Col>
-            <Col span={6}><Form.Item name="comven" label="Comissão Vendedor (%)"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={6}><Form.Item name="comcom" label="Comissão Comprador (%)"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={6}><Form.Item name="multiplo" label="Múltiplo"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={6}><Form.Item name="dataSaldo" label="Data Saldo"><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
-            <Col span={8}><Form.Item name="tipoLeilao" label="Tipo de Leilão"><Input /></Form.Item></Col>
-            <Col span={8}><Form.Item name="transmissao" label="Transmissão"><Input /></Form.Item></Col>
+            <Col xs={24} sm={12} md={6}><Form.Item name="comven" label="Comissão Vendedor (%)"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={24} sm={12} md={6}><Form.Item name="comcom" label="Comissão Comprador (%)"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={24} sm={12} md={6}><Form.Item name="multiplo" label="Múltiplo"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={24} sm={12} md={6}><Form.Item name="dataSaldo" label="Data Saldo"><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
+            <Col xs={24} sm={12} md={8}><Form.Item name="tipoLeilao" label="Tipo de Leilão"><Input /></Form.Item></Col>
+            <Col xs={24} sm={12} md={8}><Form.Item name="transmissao" label="Transmissão"><Input /></Form.Item></Col>
             <Col span={24}><Form.Item name="urlcatalogo" label="URL Catálogo"><Input /></Form.Item></Col>
-            <Col span={12}><Form.Item name="linktransmissao1" label="Link Transmissão 1"><Input /></Form.Item></Col>
-            <Col span={12}><Form.Item name="linktransmissao2" label="Link Transmissão 2"><Input /></Form.Item></Col>
+            <Col xs={24} sm={12}><Form.Item name="linktransmissao1" label="Link Transmissão 1"><Input /></Form.Item></Col>
+            <Col xs={24} sm={12}><Form.Item name="linktransmissao2" label="Link Transmissão 2"><Input /></Form.Item></Col>
             <Col span={24}><Form.Item name="regulamento" label="Regulamento"><TextArea rows={3} /></Form.Item></Col>
             <Col span={24}><Form.Item name="observacoes" label="Observações"><TextArea rows={3} /></Form.Item></Col>
           </Row>
@@ -158,7 +161,7 @@ export default function Leiloes() {
         <div>
           <Divider plain style={{ marginTop: 0 }}>Banners do Leilão</Divider>
           <Row gutter={16}>
-            <Col span={8}>
+            <Col xs={24} sm={8}>
               <ImageUpload
                 label="Desktop (ex: 1200×400px)"
                 uploadUrl={`/leiloes/${editando.id}/imagens/desktop`}
@@ -167,7 +170,7 @@ export default function Leiloes() {
                 accept=".png,.jpg,.jpeg"
               />
             </Col>
-            <Col span={8}>
+            <Col xs={24} sm={8}>
               <ImageUpload
                 label="Mobile (ex: 600×300px)"
                 uploadUrl={`/leiloes/${editando.id}/imagens/mobile`}
@@ -176,7 +179,7 @@ export default function Leiloes() {
                 accept=".png,.jpg,.jpeg"
               />
             </Col>
-            <Col span={8}>
+            <Col xs={24} sm={8}>
               <ImageUpload
                 label="Mídia / Thumbnail"
                 uploadUrl={`/leiloes/${editando.id}/imagens/media`}
@@ -204,11 +207,12 @@ export default function Leiloes() {
         </Col>
       </Row>
       <Table rowKey="id" columns={colunas} dataSource={dados} loading={loading}
-        pagination={{ pageSize: 15, showTotal: t => `${t} registros` }} size="small" />
+        pagination={{ pageSize: 15, showTotal: t => `${t} registros`, simple: isMobile }}
+        size="small" scroll={{ x: 'max-content' }} />
 
       <Modal title={editando ? `Editar Leilão — ${editando.leilao}` : 'Novo Leilão'}
         open={modalOpen} onOk={form.submit} onCancel={() => setModalOpen(false)}
-        destroyOnClose width={860} styles={{ body: { paddingTop: 0 } }}>
+        width={isMobile ? '95vw' : 860} styles={{ body: { paddingTop: 0 } }}>
         <Tabs items={tabItens} size="small" />
       </Modal>
     </>

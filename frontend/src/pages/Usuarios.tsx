@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Space, Popconfirm,
-  Typography, Row, Col, message, Tag } from 'antd';
+  Typography, Row, Col, message, Tag, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import api from '../services/api';
 
@@ -10,6 +10,9 @@ const BLOCLI  = [{ value: 'Não', label: 'Não' }, { value: 'Sim', label: 'Sim' 
 const ACESSO  = ['1 - Liberado', '2 - Bloqueado', '3 - Pendente', '4 - Reprovado'].map(v => ({ value: v, label: v }));
 
 export default function Usuarios() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = screens.md === false;
+
   const [dados, setDados] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -84,14 +87,16 @@ export default function Usuarios() {
         </Col>
       </Row>
       <Table rowKey="id" columns={colunas} dataSource={dados} loading={loading}
-        pagination={{ pageSize: 15, showTotal: t => `${t} registros` }} size="small" />
+        pagination={{ pageSize: 15, showTotal: t => `${t} registros`, simple: isMobile }}
+        size="small" scroll={{ x: 'max-content' }} />
 
       <Modal title={editando ? `Editar — ${editando.nomexx}` : 'Novo Usuário do Sistema'}
-        open={modalOpen} onOk={form.submit} onCancel={() => setModalOpen(false)} destroyOnClose width={540}>
+        open={modalOpen} onOk={form.submit} onCancel={() => setModalOpen(false)}
+        width={isMobile ? '95vw' : 540}>
         <Form form={form} layout="vertical" onFinish={salvar}>
           <Row gutter={12}>
-            <Col span={14}><Form.Item name="nomexx" label="Nome" rules={[{ required: true }]}><Input /></Form.Item></Col>
-            <Col span={10}><Form.Item name="cpfxxx" label="CPF"><Input /></Form.Item></Col>
+            <Col xs={24} sm={14}><Form.Item name="nomexx" label="Nome" rules={[{ required: true }]}><Input /></Form.Item></Col>
+            <Col xs={24} sm={10}><Form.Item name="cpfxxx" label="CPF"><Input /></Form.Item></Col>
             <Col span={24}><Form.Item name="emailx" label="E-mail" rules={[{ type: 'email', message: 'E-mail inválido' }]}><Input /></Form.Item></Col>
             <Col span={24}>
               <Form.Item name="senhax" label={editando ? 'Nova Senha (deixe em branco para manter)' : 'Senha'}
@@ -99,9 +104,9 @@ export default function Usuarios() {
                 <Input.Password />
               </Form.Item>
             </Col>
-            <Col span={8}><Form.Item name="ativox" label="Ativo"><Select options={SN} /></Form.Item></Col>
-            <Col span={8}><Form.Item name="blocli" label="Bloqueado"><Select options={BLOCLI} /></Form.Item></Col>
-            <Col span={8}><Form.Item name="acessoApp" label="Acesso App"><Select options={ACESSO} allowClear /></Form.Item></Col>
+            <Col xs={24} sm={8}><Form.Item name="ativox" label="Ativo"><Select options={SN} /></Form.Item></Col>
+            <Col xs={24} sm={8}><Form.Item name="blocli" label="Bloqueado"><Select options={BLOCLI} /></Form.Item></Col>
+            <Col xs={24} sm={8}><Form.Item name="acessoApp" label="Acesso App"><Select options={ACESSO} allowClear /></Form.Item></Col>
           </Row>
         </Form>
       </Modal>

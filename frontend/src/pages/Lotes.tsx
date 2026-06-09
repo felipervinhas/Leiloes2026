@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker,
-  Space, Popconfirm, Typography, Row, Col, message, Tag, Switch, Tabs, Divider, Image } from 'antd';
+  Space, Popconfirm, Typography, Row, Col, message, Tag, Switch, Tabs, Divider, Image, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CopyOutlined } from '@ant-design/icons';
 import { useConfig } from '../context/ConfigContext';
 import dayjs from 'dayjs';
@@ -14,6 +14,9 @@ const CATEGO = ['M', 'F', 'N'].map(v => ({ value: v, label: v === 'M' ? 'Macho' 
 interface LoteImagem { num: number; url: string; key: string; }
 
 export default function Lotes() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = screens.md === false;
+
   const [dados, setDados] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -151,42 +154,42 @@ export default function Lotes() {
       children: (
         <Form form={form} layout="vertical" onFinish={salvar}>
           <Row gutter={12}>
-            <Col span={6}><Form.Item name="lotexx" label="Nº Lote" rules={[{ required: true }]}><Input /></Form.Item></Col>
-            <Col span={6}><Form.Item name="catego" label="Categoria"><Select options={CATEGO} /></Form.Item></Col>
-            <Col span={6}><Form.Item name="ordem" label="Ordem"><Input /></Form.Item></Col>
-            <Col span={6}><Form.Item name="datnas" label="Data Nasc."><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="lotexx" label="Nº Lote" rules={[{ required: true }]}><Input /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="catego" label="Categoria"><Select options={CATEGO} /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="ordem" label="Ordem"><Input /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="datnas" label="Data Nasc."><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
             <Col span={24}><Form.Item name="deslot" label="Descrição"><Input /></Form.Item></Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="idleilao" label="Leilão" rules={[{ required: true }]}>
                 <Select showSearch options={leiloes} filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="racaxx" label="Raça">
                 <Select showSearch options={racas} filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="codven" label="Vendedor">
                 <Select showSearch options={clientes} filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="condic" label="Condição de Pagamento">
                 <Select showSearch options={condicoes} filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} allowClear />
               </Form.Item>
             </Col>
-            <Col span={6}><Form.Item name="rpxxx" label="RP"><Input /></Form.Item></Col>
-            <Col span={6}><Form.Item name="sbbxxx" label="SBB"><Input /></Form.Item></Col>
-            <Col span={6}><Form.Item name="tatxxx" label="TAT"><Input /></Form.Item></Col>
-            <Col span={6}><Form.Item name="pesoxx" label="Peso"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="pelage" label="Pelagem"><Input /></Form.Item></Col>
-            <Col span={12}><Form.Item name="filiacao" label="Filiação"><Input /></Form.Item></Col>
-            <Col span={6}><Form.Item name="vlrins" label="Valor Inscrição"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={6}><Form.Item name="lanmax" label="Lance Máximo"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={6}><Form.Item name="multiplo" label="Múltiplo"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={3}><Form.Item name="publica" label="Público" valuePropName="checked"><Switch /></Form.Item></Col>
-            <Col span={3}><Form.Item name="vendido" label="Vendido" valuePropName="checked"><Switch /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="rpxxx" label="RP"><Input /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="sbbxxx" label="SBB"><Input /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="tatxxx" label="TAT"><Input /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="pesoxx" label="Peso"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={24} sm={12}><Form.Item name="pelage" label="Pelagem"><Input /></Form.Item></Col>
+            <Col xs={24} sm={12}><Form.Item name="filiacao" label="Filiação"><Input /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="vlrins" label="Valor Inscrição"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="lanmax" label="Lance Máximo"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="multiplo" label="Múltiplo"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={6} md={3}><Form.Item name="publica" label="Público" valuePropName="checked"><Switch /></Form.Item></Col>
+            <Col xs={6} md={3}><Form.Item name="vendido" label="Vendido" valuePropName="checked"><Switch /></Form.Item></Col>
             <Col span={24}><Form.Item name="urlvideo" label="URL Vídeo"><Input /></Form.Item></Col>
             <Col span={24}><Form.Item name="obslot" label="Observações"><TextArea rows={2} /></Form.Item></Col>
             <Col span={24}><Form.Item name="comentario" label="Comentário"><TextArea rows={2} /></Form.Item></Col>
@@ -221,26 +224,27 @@ export default function Lotes() {
   return (
     <>
       <Title level={4}>Lotes</Title>
-      <Row gutter={8} style={{ marginBottom: 16 }}>
-        <Col style={{ width: 220 }}>
+      <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
+        <Col xs={24} sm={{ flex: '0 0 220px' }}>
           <Select placeholder="Filtrar por leilão" allowClear style={{ width: '100%' }}
             options={leiloes} onChange={v => setLeilaoFiltro(v)}
             showSearch filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
         </Col>
-        <Col flex="auto">
+        <Col xs={24} sm={{ flex: 'auto' }}>
           <Input.Search placeholder="Buscar lote..." value={busca} onChange={e => setBusca(e.target.value)}
             onSearch={() => carregar(busca)} enterButton={<SearchOutlined />} allowClear onClear={() => carregar('')} />
         </Col>
-        <Col>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()}>Novo Lote</Button>
+        <Col xs={24} sm="auto">
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()} block={isMobile}>Novo Lote</Button>
         </Col>
       </Row>
       <Table rowKey="id" columns={colunas} dataSource={dados} loading={loading}
-        pagination={{ pageSize: 15, showTotal: t => `${t} registros` }} size="small" scroll={{ x: 1000 }} />
+        pagination={{ pageSize: 15, showTotal: t => `${t} registros`, simple: isMobile }}
+        size="small" scroll={{ x: 'max-content' }} />
 
       <Modal title={editando ? `Editar Lote ${editando.lotexx}` : 'Novo Lote'}
         open={modalOpen} onOk={form.submit} onCancel={() => setModalOpen(false)}
-        destroyOnClose width={860} styles={{ body: { paddingTop: 0 } }}>
+        width={isMobile ? '95vw' : 860} styles={{ body: { paddingTop: 0 } }}>
         <Tabs items={tabItens} size="small" />
       </Modal>
     </>

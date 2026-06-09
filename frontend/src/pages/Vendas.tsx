@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert, Badge, Button, Card, Col, DatePicker, Divider, Form, Input,
+  Alert, Badge, Button, Card, Col, DatePicker, Divider, Form, Grid, Input,
   InputNumber, message, Modal, Popconfirm, Row, Select, Space, Spin,
   Steps, Table, Tag, Tooltip, Typography,
 } from 'antd';
@@ -40,6 +40,9 @@ const TIPO_BUSCA = [
 ];
 
 function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: number) => void }) {
+  const screens = Grid.useBreakpoint();
+  const isMobile = screens.md === false;
+
   const config = useConfig();
   const [faturaLoading, setFaturaLoading] = useState<number | null>(null);
   const [faturaData, setFaturaData]       = useState<FaturaData | null>(null);
@@ -329,14 +332,14 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
       </Row>
 
       <Card size="small" style={{ marginBottom: 16 }}>
-        <Row gutter={8} align="bottom">
-          <Col span={5}>
+        <Row gutter={[8, 8]} align="bottom">
+          <Col xs={24} sm={8} md={5}>
             <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Tipo de busca</div>
             <Select style={{ width: '100%' }} value={tipoBusca} options={TIPO_BUSCA}
               onChange={v => { setTipoBusca(v); setBusca(''); setIdLeilao(undefined); }} />
           </Col>
           {tipoBusca !== 'todos' && tipoBusca !== 'leilao' && (
-            <Col span={8}>
+            <Col xs={24} sm={12} md={8}>
               <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Pesquisa</div>
               <Input placeholder="Digite..." value={busca}
                 onChange={e => setBusca(e.target.value)}
@@ -344,18 +347,18 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
             </Col>
           )}
           {tipoBusca === 'leilao' && (
-            <Col span={10}>
+            <Col xs={24} sm={14} md={10}>
               <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Leilão</div>
               <Select style={{ width: '100%' }} allowClear showSearch value={idLeilao}
                 options={leiloes} onChange={setIdLeilao}
                 filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
             </Col>
           )}
-          <Col>
-            <Button icon={<SearchOutlined />} onClick={carregar} loading={loading}>Buscar</Button>
+          <Col xs={12} sm="auto">
+            <Button icon={<SearchOutlined />} onClick={carregar} loading={loading} block={isMobile}>Buscar</Button>
           </Col>
-          <Col>
-            <Button icon={<ReloadOutlined />} onClick={() => {
+          <Col xs={12} sm="auto">
+            <Button icon={<ReloadOutlined />} block={isMobile} onClick={() => {
               setTipoBusca('todos'); setBusca(''); setIdLeilao(undefined);
               setTimeout(carregar, 0);
             }}>Limpar</Button>
@@ -366,7 +369,7 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
       <Table
         rowKey="id" columns={colunas} dataSource={dados} loading={loading}
         size="small" scroll={{ x: 1600 }}
-        pagination={{ pageSize: 20, showTotal: t => `${t} registros`, showSizeChanger: true }}
+        pagination={{ pageSize: 20, showTotal: t => `${t} registros`, showSizeChanger: !isMobile, simple: isMobile }}
         locale={{ emptyText: 'Nenhuma venda encontrada' }}
       />
     </>
@@ -384,6 +387,9 @@ function Wizard({ editId, onConcluir, onCancelar }: {
   onConcluir: () => void;
   onCancelar: () => void;
 }) {
+  const screens = Grid.useBreakpoint();
+  const isMobile = screens.md === false;
+
   const [step, setStep]     = useState(0);
   const [movId, setMovId]   = useState<number | undefined>(editId);
   const [loteId, setLoteId] = useState<number | undefined>();
@@ -752,6 +758,8 @@ function Wizard({ editId, onConcluir, onCancelar }: {
 
       <Steps
         current={step}
+        direction={isMobile ? 'vertical' : 'horizontal'}
+        size={isMobile ? 'small' : 'default'}
         style={{ marginBottom: 28 }}
         items={[
           { title: 'Leilão & Boleto',  icon: <FileSearchOutlined /> },
@@ -799,24 +807,24 @@ function Wizard({ editId, onConcluir, onCancelar }: {
               size="small"
               style={{ marginBottom: 16, background: '#f0f9ff', border: '1px solid #91caff' }}
             >
-              <Row gutter={16}>
-                <Col span={8}>
+              <Row gutter={[16, 8]}>
+                <Col xs={24} sm={8}>
                   <Text type="secondary">Lote</Text>
                   <div><Text strong>{loteDetalhes.lotexx} — {loteDetalhes.deslot}</Text></div>
                 </Col>
-                <Col span={4}>
+                <Col xs={12} sm={4}>
                   <Text type="secondary">Raça</Text>
                   <div>{loteDetalhes.descricaoRaca || '—'}</div>
                 </Col>
-                <Col span={4}>
+                <Col xs={12} sm={4}>
                   <Text type="secondary">SBB / RP</Text>
                   <div>{loteDetalhes.sbbxxx || '—'} / {loteDetalhes.rpxxx || '—'}</div>
                 </Col>
-                <Col span={4}>
+                <Col xs={12} sm={4}>
                   <Text type="secondary">Pelagem / Nasc.</Text>
                   <div>{loteDetalhes.pelagem || '—'} · {fmtData(loteDetalhes.datnas)}</div>
                 </Col>
-                <Col span={4}>
+                <Col xs={12} sm={4}>
                   <Text type="secondary">Vendedor</Text>
                   <div>{loteDetalhes.nomeVendedor || '—'}</div>
                 </Col>
@@ -840,14 +848,14 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                 </Form.Item>
               </Col>
 
-              <Col span={4}>
+              <Col xs={12} sm={4}>
                 <Form.Item name="qtdxxx" label="Qtd. Animais"
                   rules={[{ required: true }]}>
                   <InputNumber min={0.01} step={0.5} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
 
-              <Col span={4}>
+              <Col xs={24} sm={12} md={4}>
                 <Form.Item
                   name="vlrpar"
                   label={
@@ -872,7 +880,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                 </Form.Item>
               </Col>
 
-              <Col span={4}>
+              <Col xs={24} sm={12} md={4}>
                 <Form.Item
                   name="vlrtot"
                   label={
@@ -897,7 +905,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                 </Form.Item>
               </Col>
 
-              <Col span={4}>
+              <Col xs={24} sm={12} md={4}>
                 <Form.Item name="vlrdes" label="Desconto (R$)">
                   <InputNumber<number> min={0} step={100} style={{ width: '100%' }}
                     formatter={v => v != null ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
@@ -905,14 +913,14 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                 </Form.Item>
               </Col>
 
-              <Col span={4}>
+              <Col xs={24} sm={12} md={4}>
                 <Form.Item name="_comiss" label="Comissão Leiloeiro">
                   <InputNumber<number> disabled style={{ width: '100%' }}
                     formatter={v => v != null ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''} />
                 </Form.Item>
               </Col>
 
-              <Col span={4}>
+              <Col xs={24} sm={12} md={4}>
                 <Form.Item name="_comissVend" label="Comissão Vendedor">
                   <InputNumber<number> disabled style={{ width: '100%' }}
                     formatter={v => v != null ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''} />
@@ -951,8 +959,8 @@ function Wizard({ editId, onConcluir, onCancelar }: {
           {/* formulário add comprador */}
           <Card size="small" title="Adicionar comprador" style={{ marginBottom: 16 }}>
             <Form form={form2} layout="vertical">
-              <Row gutter={12}>
-                <Col span={8}>
+              <Row gutter={[12, 0]}>
+                <Col xs={24} md={8}>
                   <Form.Item name="idCli" label="Comprador"
                     rules={[{ required: true, message: 'Selecione o comprador' }]}>
                     <Select
@@ -970,7 +978,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                     />
                   </Form.Item>
                 </Col>
-                <Col span={6}>
+                <Col xs={24} sm={12} md={6}>
                   <Form.Item name="idCondPagto" label="Condição de Pagamento"
                     rules={[{ required: true, message: 'Selecione a condição' }]}>
                     <Select showSearch placeholder="Condição..."
@@ -979,20 +987,20 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                       filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
                   </Form.Item>
                 </Col>
-                <Col span={3}>
+                <Col xs={12} sm={6} md={3}>
                   <Form.Item name="percen" label="% do Lote"
                     tooltip="100% = comprador único. Divida para múltiplos compradores.">
                     <InputNumber min={1} max={100} step={1} style={{ width: '100%' }}
                       defaultValue={100} formatter={v => `${v}%`} />
                   </Form.Item>
                 </Col>
-                <Col span={4}>
+                <Col xs={12} sm={6} md={4}>
                   <Form.Item name="formaPagamento" label="Forma de Pagamento"
                     rules={[{ required: true }]} initialValue="PROMISSORIA">
                     <Select options={FORMAS_PAGAMENTO.map(f => ({ value: f, label: f }))} />
                   </Form.Item>
                 </Col>
-                <Col span={3} style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <Col xs={24} sm={6} md={3} style={{ display: 'flex', alignItems: 'flex-end' }}>
                   <Form.Item style={{ marginBottom: 0, width: '100%' }}>
                     <Button type="primary" icon={<PlusOutlined />} block
                       loading={salvando} onClick={adicionarComprador}>
@@ -1081,29 +1089,30 @@ function Wizard({ editId, onConcluir, onCancelar }: {
       {/* ── STEP 3 ── */}
       {step === 3 && (
         <Card title="Parcelamento">
-          <Row gutter={16} align="middle" style={{ marginBottom: 16 }}>
-            <Col>
+          <Row gutter={[16, 8]} align="bottom" style={{ marginBottom: 16 }}>
+            <Col xs={24} sm="auto">
               <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Data base de vencimento</div>
-              <DatePicker format="DD/MM/YYYY" value={dataBase} onChange={setDataBase} />
+              <DatePicker format="DD/MM/YYYY" value={dataBase} onChange={setDataBase} style={{ width: '100%' }} />
             </Col>
-            <Col>
+            <Col xs={24} sm="auto">
               <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Gerar para</div>
               <Select
-                style={{ width: 220 }} placeholder="Escolha o comprador..."
+                style={{ width: isMobile ? '100%' : 220 }} placeholder="Escolha o comprador..."
                 value={compParc} onChange={setCompParc}
                 options={compradores.map(c => ({ value: c.id, label: c.nomexx }))}
               />
             </Col>
-            <Col style={{ paddingTop: 20 }}>
+            <Col xs={12} sm="auto">
               <Button type="primary" icon={<ReloadOutlined />}
                 loading={loadingParc}
                 disabled={!compParc}
+                block={isMobile}
                 onClick={() => compParc && gerarParcelas(compParc)}>
                 Gerar Parcelamento
               </Button>
             </Col>
-            <Col style={{ paddingTop: 20 }}>
-              <Button icon={<ReloadOutlined />} onClick={recarregarParcelas}>
+            <Col xs={12} sm="auto">
+              <Button icon={<ReloadOutlined />} onClick={recarregarParcelas} block={isMobile}>
                 Atualizar
               </Button>
             </Col>

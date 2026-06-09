@@ -126,6 +126,7 @@ export default function Notificacoes() {
         loading={loading}
         size="small"
         pagination={{ pageSize: 15, showTotal: t => `${t} registros` }}
+        scroll={{ x: 'max-content' }}
       />
 
       <Modal
