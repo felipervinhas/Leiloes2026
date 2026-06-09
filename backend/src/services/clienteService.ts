@@ -17,6 +17,10 @@ function mapRow(c: any): Cliente {
     ativox: c.ATIVOX, blocli: c.BLOCLI, adm: c.ADM, acessoApp: c.ACESSO_APP,
     senhax: c.SENHAX, limcre: c.LIMCRE, classificacao: c.CLASSIFICACAO,
     estciv: c.ESTCIV, datcad: c.DATCAD, datalt: c.DATALT,
+    // Permissões de Dashboard
+    verComissoes: c.VER_COMISSOES, verValoresLiquidos: c.VER_VALORES_LIQUIDOS,
+    verInfoFinanceira: c.VER_INFO_FINANCEIRA, verTopCompradores: c.VER_TOP_COMPRADORES,
+    verTopVendedores: c.VER_TOP_VENDEDORES, verVencimentos: c.VER_VENCIMENTOS,
   };
 }
 

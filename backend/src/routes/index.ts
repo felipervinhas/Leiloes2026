@@ -19,6 +19,7 @@ import * as cotacao from '../controllers/cotacaoController';
 import * as notificacao from '../controllers/notificacaoController';
 import * as despesa from '../controllers/despesaController';
 import * as dash     from '../controllers/dashboardController';
+import * as permissaoDash from '../controllers/permissaoDashboardController';
 import * as contrato  from '../controllers/contratoController';
 import multer from 'multer';
 
@@ -159,5 +160,9 @@ bancoRouter.patch('/clientes/:id/senha', cliente.alterarSenha);
 bancoRouter.patch('/clientes/:id/aprovar', cliente.aprovar);
 bancoRouter.patch('/clientes/:id/recusar', cliente.recusar);
 bancoRouter.patch('/clientes/:id/analisar', cliente.analisar);
+
+// Permissões de Dashboard
+bancoRouter.get('/usuarios/:id/permissoes-dashboard', permissaoDash.obter);
+bancoRouter.put('/usuarios/:id/permissoes-dashboard', permissaoDash.atualizar);
 
 export default router;

@@ -41,4 +41,11 @@ export interface Cliente {
   estciv?: string;
   datcad?: Date | string;
   datalt?: Date | string;
+  // Permissões de Dashboard (para ADMs)
+  verComissoes?: string;
+  verValoresLiquidos?: string;
+  verInfoFinanceira?: string;
+  verTopCompradores?: string;
+  verTopVendedores?: string;
+  verVencimentos?: string;
 }

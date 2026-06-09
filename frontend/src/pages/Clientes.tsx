@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Drawer, Form, Input, Select, DatePicker, Space, Popconfirm,
-  Typography, Row, Col, message, Tag, Tabs, Divider, Grid } from 'antd';
+  Typography, Row, Col, message, Tag, Tabs, Divider, Grid, Checkbox, Card } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined,
   CheckCircleFilled, FileTextOutlined, FileExcelOutlined, CloseOutlined,
   TrophyOutlined, ShoppingCartOutlined, TagOutlined, AuditOutlined } from '@ant-design/icons';
@@ -110,18 +110,49 @@ export default function Clientes() {
     if (item) {
       const r = await api.get(`/clientes/${item.id}`);
       const d = r.data;
-      form.setFieldsValue({ ...d, datnas: d.datnas ? dayjs(d.datnas) : null });
+      form.setFieldsValue({ 
+        ...d, 
+        datnas: d.datnas ? dayjs(d.datnas) : null,
+        // Converter S/N para true/false para checkboxes
+        verComissoes: d.verComissoes === 'S',
+        verValoresLiquidos: d.verValoresLiquidos === 'S',
+        verInfoFinanceira: d.verInfoFinanceira === 'S',
+        verTopCompradores: d.verTopCompradores === 'S',
+        verTopVendedores: d.verTopVendedores === 'S',
+        verVencimentos: d.verVencimentos === 'S',
+      });
       setEditando(d);
     } else {
       form.resetFields();
-      form.setFieldsValue({ ativox: 'S', blocli: 'Não', adm: 'N' });
+      form.setFieldsValue({ 
+        ativox: 'S', 
+        blocli: 'Não', 
+        adm: 'N',
+        // Defaults para novos usuários: todos com acesso
+        verComissoes: true,
+        verValoresLiquidos: true,
+        verInfoFinanceira: true,
+        verTopCompradores: true,
+        verTopVendedores: true,
+        verVencimentos: true,
+      });
       setEditando(null);
     }
     setDrawerOpen(true);
   };
 
   const salvar = async (values: any) => {
-    const payload = { ...values, datnas: values.datnas ? values.datnas.format('YYYY-MM-DD') : null };
+    const payload = { 
+      ...values, 
+      datnas: values.datnas ? values.datnas.format('YYYY-MM-DD') : null,
+      // Converter boolean para S/N para permissões
+      verComissoes: values.verComissoes ? 'S' : 'N',
+      verValoresLiquidos: values.verValoresLiquidos ? 'S' : 'N',
+      verInfoFinanceira: values.verInfoFinanceira ? 'S' : 'N',
+      verTopCompradores: values.verTopCompradores ? 'S' : 'N',
+      verTopVendedores: values.verTopVendedores ? 'S' : 'N',
+      verVencimentos: values.verVencimentos ? 'S' : 'N',
+    };
     try {
       if (editando) await api.put(`/clientes/${editando.id}`, payload);
       else await api.post('/clientes', payload);
@@ -344,6 +375,48 @@ export default function Clientes() {
     </Row>
   );
 
+  const tabPermissoes = (
+    <Card style={{ background: '#fafafa', borderRadius: 8 }}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24}>
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, fontSize: 12, color: '#8c8c8c' }}>
+            Permissões de Visualização no Dashboard (Para ADMs)
+          </Typography.Text>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Form.Item name="verComissoes" valuePropName="checked" noStyle>
+            <Checkbox>Ver Comissões</Checkbox>
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Form.Item name="verValoresLiquidos" valuePropName="checked" noStyle>
+            <Checkbox>Ver Valores Líquidos</Checkbox>
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Form.Item name="verInfoFinanceira" valuePropName="checked" noStyle>
+            <Checkbox>Ver Informações Financeiras</Checkbox>
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Form.Item name="verTopCompradores" valuePropName="checked" noStyle>
+            <Checkbox>Ver Top Compradores</Checkbox>
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Form.Item name="verTopVendedores" valuePropName="checked" noStyle>
+            <Checkbox>Ver Top Vendedores</Checkbox>
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Form.Item name="verVencimentos" valuePropName="checked" noStyle>
+            <Checkbox>Ver Vencimentos</Checkbox>
+          </Form.Item>
+        </Col>
+      </Row>
+    </Card>
+  );
+
   return (
     <>
       <Title level={4}>Clientes</Title>
@@ -499,6 +572,7 @@ export default function Clientes() {
               { key: '3', label: 'Contatos', children: tabContatos },
               { key: '4', label: 'Bancário', children: tabBancario },
               { key: '5', label: 'Sistema', children: tabSistema },
+              { key: '6', label: 'Permissões', children: tabPermissoes },
             ]}
           />
         </Form>
