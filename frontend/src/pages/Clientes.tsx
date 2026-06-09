@@ -572,7 +572,7 @@ export default function Clientes() {
               { key: '3', label: 'Contatos', children: tabContatos },
               { key: '4', label: 'Bancário', children: tabBancario },
               { key: '5', label: 'Sistema', children: tabSistema },
-              { key: '6', label: 'Permissões', children: tabPermissoes },
+              ...(editando?.adm === 'S' || form.getFieldValue('adm') === 'S' ? [{ key: '6', label: 'Permissões', children: tabPermissoes }] : []),
             ]}
           />
         </Form>
