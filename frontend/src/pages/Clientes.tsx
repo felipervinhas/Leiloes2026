@@ -8,6 +8,7 @@ import { Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
+import { useAuth } from '../context/AuthContext';
 import { BotaoBaixarPDF, ClienteCompleto } from '../relatorios/RelatorioClientes';
 import { exportarClientesExcel } from '../relatorios/exportarExcel';
 
@@ -32,9 +33,13 @@ const FILTROS = [{ value: 'nome', label: 'Nome' }, { value: 'cpf', label: 'CPF' 
 
 export default function Clientes() {
   const config = useConfig();
+  const { usuario: usuarioLogado } = useAuth();
   const screens = Grid.useBreakpoint();
   const sm = !!screens.sm;  // ≥ 576px
   const md = !!screens.md;  // ≥ 768px
+  
+  // Verifica se o usuário logado é ADM com perfil 1
+  const podeEditarPermissoes = usuarioLogado?.perfis?.some(p => p.id === 1) && usuarioLogado?.perfis?.some(p => p.perfil?.includes('ADM') || p.perfil?.includes('adm'));
 
   const [dados, setDados] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(false);
@@ -377,6 +382,13 @@ export default function Clientes() {
 
   const tabPermissoes = (
     <Card style={{ background: '#fafafa', borderRadius: 8 }}>
+      {!podeEditarPermissoes && (
+        <Row gutter={[12, 12]} style={{ marginBottom: 16, padding: '12px', background: '#fff7e6', borderRadius: 6 }}>
+          <Col xs={24}>
+            <Typography.Text type="warning">Apenas ADMs com perfil 1 podem editar permissões</Typography.Text>
+          </Col>
+        </Row>
+      )}
       <Row gutter={[16, 16]}>
         <Col xs={24}>
           <Typography.Text strong style={{ display: 'block', marginBottom: 12, fontSize: 12, color: '#8c8c8c' }}>
@@ -385,32 +397,32 @@ export default function Clientes() {
         </Col>
         <Col xs={24} sm={12}>
           <Form.Item name="verComissoes" valuePropName="checked" noStyle>
-            <Checkbox>Ver Comissões</Checkbox>
+            <Checkbox disabled={!podeEditarPermissoes}>Ver Comissões</Checkbox>
           </Form.Item>
         </Col>
         <Col xs={24} sm={12}>
           <Form.Item name="verValoresLiquidos" valuePropName="checked" noStyle>
-            <Checkbox>Ver Valores Líquidos</Checkbox>
+            <Checkbox disabled={!podeEditarPermissoes}>Ver Valores Líquidos</Checkbox>
           </Form.Item>
         </Col>
         <Col xs={24} sm={12}>
           <Form.Item name="verInfoFinanceira" valuePropName="checked" noStyle>
-            <Checkbox>Ver Informações Financeiras</Checkbox>
+            <Checkbox disabled={!podeEditarPermissoes}>Ver Informações Financeiras</Checkbox>
           </Form.Item>
         </Col>
         <Col xs={24} sm={12}>
           <Form.Item name="verTopCompradores" valuePropName="checked" noStyle>
-            <Checkbox>Ver Top Compradores</Checkbox>
+            <Checkbox disabled={!podeEditarPermissoes}>Ver Top Compradores</Checkbox>
           </Form.Item>
         </Col>
         <Col xs={24} sm={12}>
           <Form.Item name="verTopVendedores" valuePropName="checked" noStyle>
-            <Checkbox>Ver Top Vendedores</Checkbox>
+            <Checkbox disabled={!podeEditarPermissoes}>Ver Top Vendedores</Checkbox>
           </Form.Item>
         </Col>
         <Col xs={24} sm={12}>
           <Form.Item name="verVencimentos" valuePropName="checked" noStyle>
-            <Checkbox>Ver Vencimentos</Checkbox>
+            <Checkbox disabled={!podeEditarPermissoes}>Ver Vencimentos</Checkbox>
           </Form.Item>
         </Col>
       </Row>

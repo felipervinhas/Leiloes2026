@@ -12,6 +12,12 @@ export const obter = async (req: Request, res: Response) => {
 
 export const atualizar = async (req: Request, res: Response) => {
   try {
+    // Verifica se o usuário logado tem perfil 1
+    const usuarioLogado = (req as any).usuario;
+    if (!usuarioLogado || !usuarioLogado.perfis || !usuarioLogado.perfis.some((p: any) => p.id === 1)) {
+      return res.status(403).json({ erro: 'Apenas ADMs com perfil 1 podem atualizar permissões' });
+    }
+    
     await svc.atualizarPermissoes(Number(req.params.id), req.body);
     res.json({ ok: true });
   } catch (err: any) {
