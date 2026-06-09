@@ -8,10 +8,11 @@ import {
   ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined,
   DeleteOutlined, DollarOutlined, EditOutlined, FileSearchOutlined,
   FileDoneOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UserOutlined,
-  PrinterOutlined, FileTextOutlined,
+  PrinterOutlined, FileTextOutlined, AuditOutlined,
 } from '@ant-design/icons';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import FaturaCompraPDF, { FaturaData } from '../relatorios/RelatorioFaturaCompra';
+import PromissoriaPDF from '../relatorios/RelatorioPromissoria';
 import { useConfig } from '../context/ConfigContext';
 import ContratoEditor from '../components/ContratoEditor';
 import api from '../services/api';
@@ -44,9 +45,12 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
   const isMobile = screens.md === false;
 
   const config = useConfig();
-  const [faturaLoading, setFaturaLoading] = useState<number | null>(null);
-  const [faturaData, setFaturaData]       = useState<FaturaData | null>(null);
-  const [faturaModal, setFaturaModal]     = useState(false);
+  const [faturaLoading, setFaturaLoading]           = useState<number | null>(null);
+  const [faturaData, setFaturaData]                 = useState<FaturaData | null>(null);
+  const [faturaModal, setFaturaModal]               = useState(false);
+  const [promissoriaLoading, setPromissoriaLoading] = useState<number | null>(null);
+  const [promissoriaData, setPromissoriaData]       = useState<FaturaData | null>(null);
+  const [promissoriaModal, setPromissoriaModal]     = useState(false);
 
   // Contrato
   const [contratoModal, setContratoModal]           = useState(false);
@@ -65,6 +69,16 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
       setFaturaModal(true);
     } catch { message.error('Erro ao carregar fatura'); }
     finally { setFaturaLoading(null); }
+  };
+
+  const abrirPromissoria = async (id: number) => {
+    setPromissoriaLoading(id);
+    try {
+      const r = await api.get(`/vendas/${id}/fatura`);
+      setPromissoriaData(r.data);
+      setPromissoriaModal(true);
+    } catch { message.error('Erro ao carregar promissórias'); }
+    finally { setPromissoriaLoading(null); }
   };
 
   const abrirContrato = async (row: any) => {
@@ -164,7 +178,7 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
       ),
     },
     {
-      title: '', width: 150, fixed: 'right' as const,
+      title: '', width: 180, fixed: 'right' as const,
       render: (_: any, row: any) => (
         <Space>
           <Tooltip title="Fatura de Compras">
@@ -173,6 +187,14 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
               icon={<FileDoneOutlined />}
               loading={faturaLoading === row.id}
               onClick={() => abrirFatura(row.id)}
+            />
+          </Tooltip>
+          <Tooltip title="Promissórias">
+            <Button
+              size="small"
+              icon={<AuditOutlined />}
+              loading={promissoriaLoading === row.id}
+              onClick={() => abrirPromissoria(row.id)}
             />
           </Tooltip>
           <Tooltip title="Contrato">
@@ -238,6 +260,55 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
                   style={{ width: '100%' }}
                 >
                   {loading ? 'Gerando PDF...' : 'Baixar Fatura PDF'}
+                </Button>
+              )}
+            </PDFDownloadLink>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal Promissórias */}
+      <Modal
+        open={promissoriaModal}
+        onCancel={() => { setPromissoriaModal(false); setPromissoriaData(null); }}
+        footer={null}
+        title={
+          <Space>
+            <AuditOutlined />
+            <span>Promissórias {promissoriaData ? `— Boleto ${promissoriaData.codnot || promissoriaData.id}` : ''}</span>
+          </Space>
+        }
+        width={480}
+      >
+        {promissoriaData && (
+          <div style={{ padding: '16px 0', textAlign: 'center' }}>
+            <div style={{ marginBottom: 16, textAlign: 'left', lineHeight: 1.8 }}>
+              <div><strong>Leilão:</strong> {promissoriaData.leilao || '—'}</div>
+              <div><strong>Lote:</strong> {promissoriaData.lote?.lotexx} — {promissoriaData.lote?.deslot}</div>
+              <div><strong>Vendedor (Credor):</strong> {promissoriaData.lote?.nomeVendedor || '—'}</div>
+              <div>
+                <strong>Compradores:</strong>{' '}
+                {promissoriaData.compradores.map(c => c.nomexx).filter(Boolean).join(', ')}
+              </div>
+              <div>
+                <strong>Total de promissórias:</strong>{' '}
+                {promissoriaData.compradores.reduce((t, c) => t + c.parcelas.length, 0)} parcelas
+              </div>
+            </div>
+            <PDFDownloadLink
+              document={<PromissoriaPDF dados={promissoriaData} empresa={config.empresa} />}
+              fileName={`promissorias-${promissoriaData.codnot || promissoriaData.id}.pdf`}
+              style={{ textDecoration: 'none' }}
+            >
+              {({ loading }) => (
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<PrinterOutlined />}
+                  loading={loading}
+                  style={{ width: '100%' }}
+                >
+                  {loading ? 'Gerando PDF...' : 'Baixar Promissórias PDF'}
                 </Button>
               )}
             </PDFDownloadLink>
