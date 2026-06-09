@@ -3,7 +3,7 @@ import { Card, Col, Row, Spin, Typography, Tag, Progress, Empty, Badge, Drawer, 
 import {
   DollarOutlined, TrophyOutlined, TeamOutlined, CalendarOutlined,
   RiseOutlined, BarChartOutlined, FieldTimeOutlined, TagsOutlined,
-  UserAddOutlined, CheckOutlined, CloseOutlined,
+  UserAddOutlined, CheckOutlined, CloseOutlined, EditOutlined,
 } from '@ant-design/icons';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
@@ -211,6 +211,21 @@ export default function Dashboard() {
       setPendentesCount(novos.length);
     } catch {
       message.error('Erro ao recusar cliente');
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const analisar = async (id: number) => {
+    setActionId(id);
+    try {
+      await api.patch(`/${banco}/clientes/${id}/analisar`);
+      message.info('Cadastro marcado como "Em Análise"');
+      const novos = pendentes.filter(c => c.id !== id);
+      setPendentes(novos);
+      setPendentesCount(novos.length);
+    } catch {
+      message.error('Erro ao analisar cliente');
     } finally {
       setActionId(null);
     }
@@ -587,7 +602,7 @@ export default function Dashboard() {
         }
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        width={500}
+        width={700}
         styles={{ body: { padding: 0 } }}
       >
         {drawerLoading ? (
@@ -619,6 +634,24 @@ export default function Dashboard() {
                       style={{ background: '#52c41a', borderColor: '#52c41a' }}
                     >
                       Aprovar
+                    </Button>
+                  </Popconfirm>,
+                  <Popconfirm
+                    key="analisar"
+                    title="Marcar como em análise?"
+                    description="O cadastro será revisado posteriormente."
+                    onConfirm={() => analisar(c.id)}
+                    okText="Confirmar"
+                    cancelText="Cancelar"
+                  >
+                    <Button
+                      type="dashed"
+                      size="small"
+                      icon={<EditOutlined />}
+                      loading={actionId === c.id}
+                      style={{ color: '#1677ff', borderColor: '#1677ff' }}
+                    >
+                      Em Análise
                     </Button>
                   </Popconfirm>,
                   <Popconfirm

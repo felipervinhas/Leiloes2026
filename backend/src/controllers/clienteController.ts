@@ -41,3 +41,7 @@ export const recusar = async (req: Request, res: Response) => {
   await svc.recusarCliente(Number(req.params.id));
   res.json({ ok: true });
 };
+export const analisar = async (req: Request, res: Response) => {
+  await svc.analisarCliente(Number(req.params.id));
+  res.json({ ok: true });
+};

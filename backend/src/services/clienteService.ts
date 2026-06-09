@@ -223,3 +223,11 @@ export async function recusarCliente(id: number): Promise<void> {
     .input('datalt', sql.DateTime, new Date())
     .query(`UPDATE Clientes SET ACESSO_APP='4 - Reprovado', DATALT=@datalt WHERE ID=@id`);
 }
+
+export async function analisarCliente(id: number): Promise<void> {
+  const pool = await getPool();
+  await pool.request()
+    .input('id', sql.Int, id)
+    .input('datalt', sql.DateTime, new Date())
+    .query(`UPDATE Clientes SET ACESSO_APP='2 - Em Análise', DATALT=@datalt WHERE ID=@id`);
+}

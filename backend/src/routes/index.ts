@@ -157,5 +157,6 @@ bancoRouter.delete('/clientes/:id', cliente.deletar);
 bancoRouter.patch('/clientes/:id/senha', cliente.alterarSenha);
 bancoRouter.patch('/clientes/:id/aprovar', cliente.aprovar);
 bancoRouter.patch('/clientes/:id/recusar', cliente.recusar);
+bancoRouter.patch('/clientes/:id/analisar', cliente.analisar);
 
 export default router;
