@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Drawer, Form, Input, Select, DatePicker, Space, Popconfirm,
-  Typography, Row, Col, message, Tag, Tabs, Divider } from 'antd';
+  Typography, Row, Col, message, Tag, Tabs, Divider, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined,
   CheckCircleFilled, FileTextOutlined, FileExcelOutlined, CloseOutlined,
   TrophyOutlined, ShoppingCartOutlined, TagOutlined, AuditOutlined } from '@ant-design/icons';
@@ -32,9 +32,13 @@ const FILTROS = [{ value: 'nome', label: 'Nome' }, { value: 'cpf', label: 'CPF' 
 
 export default function Clientes() {
   const config = useConfig();
+  const screens = Grid.useBreakpoint();
+  const sm = !!screens.sm;  // ≥ 576px
+  const md = !!screens.md;  // ≥ 768px
+
   const [dados, setDados] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [editando, setEditando] = useState<any | null>(null);
   const [busca, setBusca] = useState('');
   const [filtroCampo, setFiltroCampo] = useState('nome');
@@ -85,15 +89,9 @@ export default function Clientes() {
       const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
       const data = await r.json();
       if (data.erro) { message.error('CEP não encontrado'); return; }
-      form.setFieldsValue({
-        endere: data.logradouro || '',
-        comple: data.complemento || '',
-        bairro: data.bairro || '',
-      });
+      form.setFieldsValue({ endere: data.logradouro || '', comple: data.complemento || '', bairro: data.bairro || '' });
       const label = `${data.localidade} - ${data.uf}`;
-      const cidadeEncontrada = cidades.find(c =>
-        (c.label as string).toLowerCase() === label.toLowerCase()
-      );
+      const cidadeEncontrada = cidades.find(c => (c.label as string).toLowerCase() === label.toLowerCase());
       if (cidadeEncontrada) {
         form.setFieldValue('cidade', cidadeEncontrada.value);
       } else {
@@ -108,8 +106,7 @@ export default function Clientes() {
 
   useEffect(() => { carregar(); carregarCidades(); }, []);
 
-
-  const abrirModal = async (item?: Cliente) => {
+  const abrirDrawer = async (item?: Cliente) => {
     if (item) {
       const r = await api.get(`/clientes/${item.id}`);
       const d = r.data;
@@ -120,7 +117,7 @@ export default function Clientes() {
       form.setFieldsValue({ ativox: 'S', blocli: 'Não', adm: 'N' });
       setEditando(null);
     }
-    setModalOpen(true);
+    setDrawerOpen(true);
   };
 
   const salvar = async (values: any) => {
@@ -129,7 +126,7 @@ export default function Clientes() {
       if (editando) await api.put(`/clientes/${editando.id}`, payload);
       else await api.post('/clientes', payload);
       message.success('Salvo com sucesso');
-      setModalOpen(false);
+      setDrawerOpen(false);
       carregar(busca);
     } catch { message.error('Erro ao salvar'); }
   };
@@ -141,10 +138,7 @@ export default function Clientes() {
 
   const rowSelection = {
     selectedRowKeys,
-    onChange: (keys: React.Key[], rows: Cliente[]) => {
-      setSelectedRowKeys(keys);
-      setSelectedRows(rows);
-    },
+    onChange: (keys: React.Key[], rows: Cliente[]) => { setSelectedRowKeys(keys); setSelectedRows(rows); },
     preserveSelectedRowKeys: true,
   };
 
@@ -163,30 +157,35 @@ export default function Clientes() {
     }
   };
 
-  const colunasRelatorio = [
-    { title: 'ID', dataIndex: 'id', width: 70 },
-    { title: 'Nome', dataIndex: 'nomexx', ellipsis: true },
-    { title: 'CPF/CNPJ', width: 160, render: (_: any, r: Cliente) => r.cpfxxx || r.cnpjxx },
-    { title: 'E-mail', dataIndex: 'emailx', ellipsis: true },
-    { title: 'Celular', dataIndex: 'celu1', width: 140 },
-    { title: 'Ativo', dataIndex: 'ativox', width: 70, render: (v: string) => <Tag color={STATUS_COLOR[v] || 'default'}>{v}</Tag> },
-  ];
-
+  // ---- Colunas da tabela principal (responsivas) ----
   const colunas = [
-    { title: 'ID', dataIndex: 'id', width: 80 },
-    { title: 'Nome', dataIndex: 'nomexx', ellipsis: true },
-    { title: 'CPF/CNPJ', width: 160, render: (_: any, r: Cliente) => r.cpfxxx || r.cnpjxx },
-    { title: 'E-mail', dataIndex: 'emailx', ellipsis: true },
-    { title: 'Celular', dataIndex: 'celu1', width: 140 },
-    { title: 'Ativo', dataIndex: 'ativox', width: 80, render: (v: string) => <Tag color={STATUS_COLOR[v] || 'default'}>{v}</Tag> },
-    { title: 'ADM', dataIndex: 'adm', width: 70, render: (v: string) => v === 'S' ? <Tag color="blue">Sim</Tag> : '—' },
+    ...(md ? [{ title: 'ID', dataIndex: 'id', width: 70 }] : []),
     {
-      title: 'Ações', width: 100,
+      title: 'Nome', dataIndex: 'nomexx', ellipsis: true,
+      render: (nome: string, r: Cliente) => !sm ? (
+        <div>
+          <div style={{ fontWeight: 500 }}>{nome}</div>
+          <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+            {[r.cpfxxx || r.cnpjxx, r.celu1].filter(Boolean).join(' · ')}
+          </div>
+        </div>
+      ) : nome,
+    },
+    ...(sm ? [{ title: 'CPF/CNPJ', width: 150, render: (_: any, r: Cliente) => r.cpfxxx || r.cnpjxx }] : []),
+    ...(md ? [{ title: 'E-mail', dataIndex: 'emailx', ellipsis: true }] : []),
+    ...(sm ? [{ title: 'Celular', dataIndex: 'celu1', width: 140 }] : []),
+    {
+      title: 'Ativo', dataIndex: 'ativox', width: 70,
+      render: (v: string) => <Tag color={STATUS_COLOR[v] || 'default'}>{v}</Tag>,
+    },
+    ...(md ? [{ title: 'ADM', dataIndex: 'adm', width: 70, render: (v: string) => v === 'S' ? <Tag color="blue">Sim</Tag> : '—' }] : []),
+    {
+      title: 'Ações', width: sm ? 90 : 70,
       render: (_: any, r: Cliente) => (
-        <Space>
-          <Button size="small" icon={<EditOutlined />} onClick={() => abrirModal(r)} />
+        <Space size={4}>
+          <Button size="small" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); abrirDrawer(r); }} />
           <Popconfirm title="Confirma exclusão?" onConfirm={() => deletar(r.id)}>
-            <Button size="small" danger icon={<DeleteOutlined />} />
+            <Button size="small" danger icon={<DeleteOutlined />} onClick={e => e.stopPropagation()} />
           </Popconfirm>
         </Space>
       ),
@@ -196,51 +195,61 @@ export default function Clientes() {
   const MEDALHAS = ['🥇', '🥈', '🥉'];
   const colunasRanking = [
     {
-      title: '#', width: 52,
+      title: '#', width: 44,
       render: (_: any, __: ClienteRanking, i: number) =>
         i < 3
-          ? <span style={{ fontSize: 18 }}>{MEDALHAS[i]}</span>
-          : <span style={{ color: '#999', paddingLeft: 6 }}>{i + 1}º</span>,
+          ? <span style={{ fontSize: 16 }}>{MEDALHAS[i]}</span>
+          : <span style={{ color: '#999', paddingLeft: 4 }}>{i + 1}º</span>,
     },
-    { title: 'Nome', dataIndex: 'nomexx', ellipsis: true },
-    { title: 'CPF/CNPJ', width: 150, render: (_: any, r: ClienteRanking) => r.cpfxxx || r.cnpjxx },
     {
-      title: <Tooltip title="Total comprado (R$)"><Space size={4}><ShoppingCartOutlined style={{ color: '#1677ff' }} />Compras</Space></Tooltip>,
+      title: 'Nome', dataIndex: 'nomexx', ellipsis: true,
+      render: (nome: string, r: ClienteRanking) => !sm ? (
+        <div>
+          <div style={{ fontWeight: 500 }}>{nome}</div>
+          <div style={{ fontSize: 11, color: '#1677ff' }}>{fmt(r.vlrCompras)}</div>
+        </div>
+      ) : nome,
+    },
+    ...(sm ? [{ title: 'CPF/CNPJ', width: 140, render: (_: any, r: ClienteRanking) => r.cpfxxx || r.cnpjxx }] : []),
+    {
+      title: <Tooltip title="Total comprado (R$)"><Space size={4}><ShoppingCartOutlined style={{ color: '#1677ff' }} />{sm ? 'Compras' : ''}</Space></Tooltip>,
       sorter: (a: ClienteRanking, b: ClienteRanking) => a.vlrCompras - b.vlrCompras,
       defaultSortOrder: 'descend' as const,
-      width: 150,
+      width: sm ? 140 : 90,
       render: (_: any, r: ClienteRanking) => r.qtdCompras > 0 ? (
-        <div><div style={{ fontWeight: 600, color: '#1677ff' }}>{fmt(r.vlrCompras)}</div>
-          <div style={{ fontSize: 11, color: '#888' }}>{r.qtdCompras} lote{r.qtdCompras !== 1 ? 's' : ''}</div></div>
+        <div>
+          <div style={{ fontWeight: 600, color: '#1677ff' }}>{fmt(r.vlrCompras)}</div>
+          {sm && <div style={{ fontSize: 11, color: '#888' }}>{r.qtdCompras} lote{r.qtdCompras !== 1 ? 's' : ''}</div>}
+        </div>
       ) : <span style={{ color: '#ccc' }}>—</span>,
     },
-    {
+    ...(md ? [{
       title: <Tooltip title="Total vendido (R$)"><Space size={4}><TagOutlined style={{ color: '#52c41a' }} />Vendas</Space></Tooltip>,
       sorter: (a: ClienteRanking, b: ClienteRanking) => a.vlrVendas - b.vlrVendas,
-      width: 150,
+      width: 140,
       render: (_: any, r: ClienteRanking) => r.qtdVendas > 0 ? (
-        <div><div style={{ fontWeight: 600, color: '#52c41a' }}>{fmt(r.vlrVendas)}</div>
-          <div style={{ fontSize: 11, color: '#888' }}>{r.qtdVendas} lote{r.qtdVendas !== 1 ? 's' : ''}</div></div>
+        <div>
+          <div style={{ fontWeight: 600, color: '#52c41a' }}>{fmt(r.vlrVendas)}</div>
+          <div style={{ fontSize: 11, color: '#888' }}>{r.qtdVendas} lote{r.qtdVendas !== 1 ? 's' : ''}</div>
+        </div>
       ) : <span style={{ color: '#ccc' }}>—</span>,
-    },
+    }] : []),
     {
-      title: <Tooltip title="Quantidade de lances dados"><Space size={4}><AuditOutlined style={{ color: '#722ed1' }} />Lances</Space></Tooltip>,
+      title: <Tooltip title="Lances"><Space size={4}><AuditOutlined style={{ color: '#722ed1' }} />{sm ? 'Lances' : ''}</Space></Tooltip>,
       sorter: (a: ClienteRanking, b: ClienteRanking) => a.qtdLances - b.qtdLances,
-      width: 130,
+      width: sm ? 120 : 70,
       render: (_: any, r: ClienteRanking) => r.qtdLances > 0 ? (
-        <div><div style={{ fontWeight: 600, color: '#722ed1' }}>{r.qtdLances} lance{r.qtdLances !== 1 ? 's' : ''}</div>
-          <div style={{ fontSize: 11, color: '#888' }}>{fmt(r.vlrLances)}</div></div>
+        <div>
+          <div style={{ fontWeight: 600, color: '#722ed1' }}>{r.qtdLances}</div>
+          {sm && <div style={{ fontSize: 11, color: '#888' }}>{fmt(r.vlrLances)}</div>}
+        </div>
       ) : <span style={{ color: '#ccc' }}>—</span>,
     },
     {
-      title: 'Ativo', dataIndex: 'ativox', width: 70,
-      render: (v: string) => <Tag color={STATUS_COLOR[v] || 'default'}>{v}</Tag>,
-    },
-    {
-      title: 'Ações', width: 100,
+      title: 'Ações', width: 70,
       render: (_: any, r: ClienteRanking) => (
-        <Space>
-          <Button size="small" icon={<EditOutlined />} onClick={() => abrirModal(r as any)} />
+        <Space size={4}>
+          <Button size="small" icon={<EditOutlined />} onClick={() => abrirDrawer(r as any)} />
           <Popconfirm title="Confirma exclusão?" onConfirm={() => deletar(r.id)}>
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
@@ -249,39 +258,43 @@ export default function Clientes() {
     },
   ];
 
+  const colunasRelatorio = [
+    { title: 'ID', dataIndex: 'id', width: 70 },
+    { title: 'Nome', dataIndex: 'nomexx', ellipsis: true },
+    { title: 'CPF/CNPJ', width: 160, render: (_: any, r: Cliente) => r.cpfxxx || r.cnpjxx },
+    { title: 'E-mail', dataIndex: 'emailx', ellipsis: true },
+    { title: 'Celular', dataIndex: 'celu1', width: 140 },
+    { title: 'Ativo', dataIndex: 'ativox', width: 70, render: (v: string) => <Tag color={STATUS_COLOR[v] || 'default'}>{v}</Tag> },
+  ];
+
+  // ---- Tabs do formulário (grid responsiva) ----
   const tabPessoal = (
-    <Row gutter={12}>
-      <Col span={12}><Form.Item name="nomexx" label="Nome" rules={[{ required: true }]}><Input /></Form.Item></Col>
-      <Col span={6}><Form.Item name="cpfxxx" label="CPF"><Input /></Form.Item></Col>
-      <Col span={6}><Form.Item name="cnpjxx" label="CNPJ"><Input /></Form.Item></Col>
-      <Col span={6}><Form.Item name="rgxxxx" label="RG"><Input /></Form.Item></Col>
-      <Col span={6}><Form.Item name="datnas" label="Data Nasc."><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
-      <Col span={6}><Form.Item name="estciv" label="Estado Civil"><Select options={ESTADO_CIVIL} allowClear /></Form.Item></Col>
-      <Col span={6}><Form.Item name="emailx" label="E-mail"><Input /></Form.Item></Col>
-      <Col span={6}><Form.Item name="email2" label="E-mail 2"><Input /></Form.Item></Col>
-      <Col span={6}><Form.Item name="profiss" label="Profissão"><Input /></Form.Item></Col>
-      <Col span={6}><Form.Item name="empres" label="Empresa"><Input /></Form.Item></Col>
-      <Col span={12}><Form.Item name="rendax" label="Renda"><Input /></Form.Item></Col>
+    <Row gutter={[12, 0]}>
+      <Col xs={24} md={12}><Form.Item name="nomexx" label="Nome" rules={[{ required: true }]}><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="cpfxxx" label="CPF"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="cnpjxx" label="CNPJ"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="rgxxxx" label="RG"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="datnas" label="Data Nasc."><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="estciv" label="Estado Civil"><Select options={ESTADO_CIVIL} allowClear /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="emailx" label="E-mail"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="email2" label="E-mail 2"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="profiss" label="Profissão"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="empres" label="Empresa"><Input /></Form.Item></Col>
+      <Col xs={24} md={12}><Form.Item name="rendax" label="Renda"><Input /></Form.Item></Col>
     </Row>
   );
 
   const tabEndereco = (
-    <Row gutter={12}>
-      <Col span={6}>
+    <Row gutter={[12, 0]}>
+      <Col xs={24} sm={8} md={6}>
         <Form.Item name="cepxxx" label="CEP">
-          <Input.Search
-            placeholder="00000-000"
-            maxLength={9}
-            enterButton={<AimOutlined />}
-            loading={cepLoading}
-            onSearch={buscarCep}
-          />
+          <Input.Search placeholder="00000-000" maxLength={9} enterButton={<AimOutlined />} loading={cepLoading} onSearch={buscarCep} />
         </Form.Item>
       </Col>
-      <Col span={12}><Form.Item name="endere" label="Endereço"><Input /></Form.Item></Col>
-      <Col span={6}><Form.Item name="comple" label="Complemento"><Input /></Form.Item></Col>
-      <Col span={8}><Form.Item name="bairro" label="Bairro"><Input /></Form.Item></Col>
-      <Col span={16}>
+      <Col xs={24} sm={16} md={12}><Form.Item name="endere" label="Endereço"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="comple" label="Complemento"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={8}><Form.Item name="bairro" label="Bairro"><Input /></Form.Item></Col>
+      <Col xs={24} md={16}>
         <Form.Item name="cidade" label="Cidade">
           <Select showSearch options={cidades} filterOption={(input, opt) => (opt?.label as string)?.toLowerCase().includes(input.toLowerCase())} />
         </Form.Item>
@@ -290,62 +303,70 @@ export default function Clientes() {
   );
 
   const tabContatos = (
-    <Row gutter={12}>
-      <Col span={8}><Form.Item name="telres" label="Tel. Residencial"><Input /></Form.Item></Col>
-      <Col span={8}><Form.Item name="telcom" label="Tel. Comercial"><Input /></Form.Item></Col>
-      <Col span={8}><Form.Item name="celu1" label="Celular 1"><Input /></Form.Item></Col>
-      <Col span={8}><Form.Item name="celu2" label="Celular 2"><Input /></Form.Item></Col>
+    <Row gutter={[12, 0]}>
+      <Col xs={24} sm={12} md={8}><Form.Item name="telres" label="Tel. Residencial"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={8}><Form.Item name="telcom" label="Tel. Comercial"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={8}><Form.Item name="celu1" label="Celular 1"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={8}><Form.Item name="celu2" label="Celular 2"><Input /></Form.Item></Col>
       <Divider plain>Referências</Divider>
-      <Col span={14}><Form.Item name="refer1" label="Referência 1"><Input /></Form.Item></Col>
-      <Col span={10}><Form.Item name="telrefere1" label="Telefone"><Input /></Form.Item></Col>
-      <Col span={14}><Form.Item name="refer2" label="Referência 2"><Input /></Form.Item></Col>
-      <Col span={10}><Form.Item name="telrefere2" label="Telefone"><Input /></Form.Item></Col>
+      <Col xs={24} sm={14}><Form.Item name="refer1" label="Referência 1"><Input /></Form.Item></Col>
+      <Col xs={24} sm={10}><Form.Item name="telrefere1" label="Telefone"><Input /></Form.Item></Col>
+      <Col xs={24} sm={14}><Form.Item name="refer2" label="Referência 2"><Input /></Form.Item></Col>
+      <Col xs={24} sm={10}><Form.Item name="telrefere2" label="Telefone"><Input /></Form.Item></Col>
     </Row>
   );
 
   const tabBancario = (
-    <Row gutter={12}>
+    <Row gutter={[12, 0]}>
       <Divider plain>Conta 1</Divider>
-      <Col span={8}><Form.Item name="bancox" label="Banco"><Input /></Form.Item></Col>
-      <Col span={6}><Form.Item name="agenci" label="Agência"><Input /></Form.Item></Col>
-      <Col span={6}><Form.Item name="contax" label="Conta"><Input /></Form.Item></Col>
-      <Col span={4}><Form.Item name="pix" label="PIX"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={8}><Form.Item name="bancox" label="Banco"><Input /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="agenci" label="Agência"><Input /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="contax" label="Conta"><Input /></Form.Item></Col>
+      <Col xs={24} sm={8} md={4}><Form.Item name="pix" label="PIX"><Input /></Form.Item></Col>
       <Divider plain>Conta 2</Divider>
-      <Col span={8}><Form.Item name="banco1" label="Banco"><Input /></Form.Item></Col>
-      <Col span={6}><Form.Item name="agencia1" label="Agência"><Input /></Form.Item></Col>
-      <Col span={6}><Form.Item name="conta1" label="Conta"><Input /></Form.Item></Col>
-      <Col span={4}><Form.Item name="pix1" label="PIX"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={8}><Form.Item name="banco1" label="Banco"><Input /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="agencia1" label="Agência"><Input /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="conta1" label="Conta"><Input /></Form.Item></Col>
+      <Col xs={24} sm={8} md={4}><Form.Item name="pix1" label="PIX"><Input /></Form.Item></Col>
     </Row>
   );
 
   const tabSistema = (
-    <Row gutter={12}>
-      <Col span={6}><Form.Item name="ativox" label="Ativo"><Select options={SN} /></Form.Item></Col>
-      <Col span={6}><Form.Item name="blocli" label="Bloqueado"><Select options={[{ value: 'Não', label: 'Não' }, { value: 'Sim', label: 'Sim' }]} /></Form.Item></Col>
-      <Col span={6}><Form.Item name="adm" label="Administrador"><Select options={SN} /></Form.Item></Col>
-      <Col span={6}><Form.Item name="acessoApp" label="Acesso App"><Select options={ACESSO} allowClear /></Form.Item></Col>
-      <Col span={6}><Form.Item name="limcre" label="Limite de Crédito"><Input /></Form.Item></Col>
-      <Col span={6}><Form.Item name="classificacao" label="Classificação"><Input type="number" /></Form.Item></Col>
-      <Col span={12}><Form.Item name="senhax" label={editando ? 'Senha (deixe em branco para manter)' : 'Senha'}><Input.Password /></Form.Item></Col>
-      <Col span={24}><Form.Item name="obsxxx" label="Observações"><Input.TextArea rows={3} /></Form.Item></Col>
+    <Row gutter={[12, 0]}>
+      <Col xs={12} sm={8} md={6}><Form.Item name="ativox" label="Ativo"><Select options={SN} /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="blocli" label="Bloqueado"><Select options={[{ value: 'Não', label: 'Não' }, { value: 'Sim', label: 'Sim' }]} /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="adm" label="Administrador"><Select options={SN} /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="acessoApp" label="Acesso App"><Select options={ACESSO} allowClear /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="limcre" label="Limite de Crédito"><Input /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="classificacao" label="Classificação"><Input type="number" /></Form.Item></Col>
+      <Col xs={24} md={12}><Form.Item name="senhax" label={editando ? 'Senha (deixe em branco para manter)' : 'Senha'}><Input.Password /></Form.Item></Col>
+      <Col xs={24}><Form.Item name="obsxxx" label="Observações"><Input.TextArea rows={3} /></Form.Item></Col>
     </Row>
   );
 
   return (
     <>
       <Title level={4}>Clientes</Title>
-      <Row gutter={8} style={{ marginBottom: 16 }}>
-        <Col style={{ width: 140 }}>
+
+      {/* Barra de busca e ações */}
+      <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
+        <Col xs={24} sm="auto" style={{ minWidth: 130 }}>
           <Select value={filtroCampo} onChange={setFiltroCampo} options={FILTROS} style={{ width: '100%' }} />
         </Col>
-        <Col flex="auto">
-          <Input.Search placeholder="Buscar..." value={busca} onChange={e => setBusca(e.target.value)}
+        <Col xs={24} sm={undefined} flex="auto">
+          <Input.Search
+            placeholder="Buscar..."
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
             onSearch={b => rankingMode ? carregarRanking(b) : carregar(b)}
-            enterButton={<SearchOutlined />} allowClear
-            onClear={() => rankingMode ? carregarRanking('') : carregar('')} />
+            enterButton={<SearchOutlined />}
+            allowClear
+            onClear={() => rankingMode ? carregarRanking('') : carregar('')}
+          />
         </Col>
-        <Col>
+        <Col xs={12} sm="auto">
           <Button
+            block={!sm}
             icon={<TrophyOutlined />}
             type={rankingMode ? 'primary' : 'default'}
             onClick={alternarRanking}
@@ -353,66 +374,88 @@ export default function Clientes() {
             Ranking
           </Button>
         </Col>
-        <Col>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()}>Novo Cliente</Button>
+        <Col xs={12} sm="auto">
+          <Button block={!sm} type="primary" icon={<PlusOutlined />} onClick={() => abrirDrawer()}>
+            {sm ? 'Novo Cliente' : 'Novo'}
+          </Button>
         </Col>
       </Row>
-      <div style={{ paddingBottom: selectedRowKeys.length > 0 ? 64 : 0 }}>
+
+      <div style={{ paddingBottom: selectedRowKeys.length > 0 ? 72 : 0 }}>
         <Table
           rowKey="id"
           columns={(rankingMode ? colunasRanking : colunas) as any}
           dataSource={rankingMode ? dadosRanking : dados}
           loading={loading}
           rowSelection={rankingMode ? undefined : rowSelection}
-          onRow={rankingMode ? (_, i) => ({
-            style: i === 0 ? { background: '#fffbe6' } : i === 1 ? { background: '#fafafa' } : i === 2 ? { background: '#fff7e6' } : {},
-          }) : undefined}
-          pagination={{ pageSize: 20, showTotal: t => `${t} registros` }}
+          onRow={rankingMode
+            ? (_, i) => ({ style: i === 0 ? { background: '#fffbe6' } : i === 1 ? { background: '#fafafa' } : i === 2 ? { background: '#fff7e6' } : {} })
+            : (r) => ({ onDoubleClick: () => abrirDrawer(r as Cliente) })
+          }
+          pagination={{ pageSize: 20, showTotal: t => `${t} registros`, simple: !sm }}
           size="small"
-          scroll={{ x: rankingMode ? 1000 : 900 }}
+          scroll={{ x: rankingMode ? (md ? 1000 : 600) : (md ? 900 : 400) }}
         />
       </div>
 
+      {/* Barra flutuante de seleção */}
       {selectedRowKeys.length > 0 && (
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
           background: '#001529', color: 'white',
-          padding: '10px 24px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: sm ? '10px 24px' : '10px 12px',
+          display: 'flex',
+          flexDirection: sm ? 'row' : 'column',
+          alignItems: sm ? 'center' : 'stretch',
+          gap: 8,
+          justifyContent: 'space-between',
           zIndex: 1000, boxShadow: '0 -4px 16px rgba(0,0,0,0.4)',
         }}>
-          <Space size={10}>
-            <CheckCircleFilled style={{ color: '#52c41a', fontSize: 18 }} />
-            <span style={{ fontSize: 15 }}>
+          <Space size={8}>
+            <CheckCircleFilled style={{ color: '#52c41a', fontSize: 16 }} />
+            <span style={{ fontSize: sm ? 15 : 13 }}>
               <strong>{selectedRowKeys.length}</strong> cliente{selectedRowKeys.length !== 1 ? 's' : ''} selecionado{selectedRowKeys.length !== 1 ? 's' : ''}
             </span>
           </Space>
-          <Space>
-            <Button icon={<CloseOutlined />} onClick={limparSelecao} style={{ borderColor: '#aaa', color: '#fff', background: 'transparent' }}>
-              Limpar seleção
+          <Space size={8}>
+            <Button
+              icon={<CloseOutlined />}
+              onClick={limparSelecao}
+              size={sm ? 'middle' : 'small'}
+              style={{ borderColor: '#aaa', color: '#fff', background: 'transparent' }}
+            >
+              Limpar
             </Button>
-            <Button type="primary" icon={<FileTextOutlined />} onClick={gerarRelatorio} loading={carregandoRelatorio}>
-              Gerar Relatório
+            <Button
+              type="primary"
+              icon={<FileTextOutlined />}
+              onClick={gerarRelatorio}
+              loading={carregandoRelatorio}
+              size={sm ? 'middle' : 'small'}
+            >
+              {sm ? 'Gerar Relatório' : 'Relatório'}
             </Button>
           </Space>
         </div>
       )}
 
+      {/* Modal de relatório */}
       <Modal
         title={
           <Space>
             <FileTextOutlined />
-            {`Relatório de Clientes — ${clientesCompletos.length} selecionado${clientesCompletos.length !== 1 ? 's' : ''}`}
+            {`Relatório — ${clientesCompletos.length} cliente${clientesCompletos.length !== 1 ? 's' : ''}`}
           </Space>
         }
         open={relatorioOpen}
         onCancel={() => setRelatorioOpen(false)}
-        width={900}
+        width={sm ? 900 : '100%'}
+        style={!sm ? { top: 0, margin: 0, padding: 0, maxWidth: '100vw' } : undefined}
         footer={[
           <Button key="fechar" onClick={() => setRelatorioOpen(false)}>Fechar</Button>,
           <Button key="excel" icon={<FileExcelOutlined />} style={{ color: '#237804', borderColor: '#237804' }}
             onClick={() => exportarClientesExcel(clientesCompletos)}>
-            Exportar Excel
+            Excel
           </Button>,
           <BotaoBaixarPDF key="pdf" clientes={clientesCompletos} empresa={config.empresa} />,
         ]}
@@ -423,6 +466,7 @@ export default function Clientes() {
           columns={colunasRelatorio}
           size="small"
           pagination={false}
+          scroll={{ x: 600 }}
           summary={() => (
             <Table.Summary.Row>
               <Table.Summary.Cell index={0} colSpan={6} align="right">
@@ -433,28 +477,31 @@ export default function Clientes() {
         />
       </Modal>
 
+      {/* Drawer de cadastro */}
       <Drawer
-        title={editando ? `Editar Cliente — ${editando.nomexx}` : 'Novo Cliente'}
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        size="large"
-        styles={{ wrapper: { width: 860 } }}
+        title={editando ? `Editar — ${editando.nomexx}` : 'Novo Cliente'}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        styles={{ wrapper: { width: 'min(860px, 100vw)' } }}
         destroyOnClose
         extra={
           <Space>
-            <Button onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button onClick={() => setDrawerOpen(false)}>Cancelar</Button>
             <Button type="primary" onClick={() => form.submit()}>Salvar</Button>
           </Space>
         }
       >
         <Form form={form} layout="vertical" onFinish={salvar}>
-          <Tabs items={[
-            { key: '1', label: 'Dados Pessoais', children: tabPessoal },
-            { key: '2', label: 'Endereço', children: tabEndereco },
-            { key: '3', label: 'Contatos', children: tabContatos },
-            { key: '4', label: 'Bancário', children: tabBancario },
-            { key: '5', label: 'Sistema', children: tabSistema },
-          ]} />
+          <Tabs
+            size="small"
+            items={[
+              { key: '1', label: 'Pessoal', children: tabPessoal },
+              { key: '2', label: 'Endereço', children: tabEndereco },
+              { key: '3', label: 'Contatos', children: tabContatos },
+              { key: '4', label: 'Bancário', children: tabBancario },
+              { key: '5', label: 'Sistema', children: tabSistema },
+            ]}
+          />
         </Form>
       </Drawer>
     </>
