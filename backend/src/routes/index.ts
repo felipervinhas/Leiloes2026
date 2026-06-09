@@ -130,6 +130,7 @@ bancoRouter.put('/despesas/:id', despesa.atualizar);
 bancoRouter.delete('/despesas/:id', despesa.deletar);
 
 bancoRouter.get('/clientes', cliente.listar);
+bancoRouter.get('/clientes/faturamento', cliente.listarFaturamento);
 bancoRouter.get('/clientes/:id', cliente.buscar);
 bancoRouter.post('/clientes', cliente.criar);
 bancoRouter.put('/clientes/:id', cliente.atualizar);

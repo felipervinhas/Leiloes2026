@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Select, DatePicker, Space, Popconfirm,
   Typography, Row, Col, message, Tag, Tabs, Divider } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined,
-  CheckCircleFilled, FileTextOutlined, FileExcelOutlined, CloseOutlined } from '@ant-design/icons';
+  CheckCircleFilled, FileTextOutlined, FileExcelOutlined, CloseOutlined,
+  TrophyOutlined, ShoppingCartOutlined, TagOutlined, AuditOutlined } from '@ant-design/icons';
+import { Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import api from '../services/api';
 import { BotaoBaixarPDF, ClienteCompleto } from '../relatorios/RelatorioClientes';
@@ -12,6 +14,14 @@ const { Title } = Typography;
 
 interface Cliente { id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string; emailx?: string;
   celu1?: string; ativox?: string; blocli?: string; adm?: string; acessoApp?: string; datcad?: string; }
+
+interface ClienteRanking { id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string;
+  emailx?: string; celu1?: string; ativox?: string;
+  qtdCompras: number; vlrCompras: number;
+  qtdVendas: number;  vlrVendas: number;
+  qtdLances: number;  vlrLances: number; }
+
+const fmt = (v: number) => v > 0 ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) : '—';
 
 const STATUS_COLOR: Record<string, string> = { S: 'green', N: 'red' };
 const SN = [{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }];
@@ -34,6 +44,8 @@ export default function Clientes() {
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [clientesCompletos, setClientesCompletos] = useState<ClienteCompleto[]>([]);
   const [carregandoRelatorio, setCarregandoRelatorio] = useState(false);
+  const [rankingMode, setRankingMode] = useState(false);
+  const [dadosRanking, setDadosRanking] = useState<ClienteRanking[]>([]);
 
   const carregar = async (b = '') => {
     setLoading(true);
@@ -41,6 +53,21 @@ export default function Clientes() {
       const r = await api.get('/clientes', { params: { busca: b, filtro: filtroCampo } });
       setDados(r.data);
     } finally { setLoading(false); }
+  };
+
+  const carregarRanking = async (b = '') => {
+    setLoading(true);
+    try {
+      const r = await api.get('/clientes/faturamento', { params: { busca: b, filtro: filtroCampo } });
+      setDadosRanking(r.data);
+    } finally { setLoading(false); }
+  };
+
+  const alternarRanking = () => {
+    const proximo = !rankingMode;
+    setRankingMode(proximo);
+    if (proximo) carregarRanking(busca);
+    else carregar(busca);
   };
 
   const carregarCidades = async () => {
@@ -163,6 +190,62 @@ export default function Clientes() {
     },
   ];
 
+  const MEDALHAS = ['🥇', '🥈', '🥉'];
+  const colunasRanking = [
+    {
+      title: '#', width: 52,
+      render: (_: any, __: ClienteRanking, i: number) =>
+        i < 3
+          ? <span style={{ fontSize: 18 }}>{MEDALHAS[i]}</span>
+          : <span style={{ color: '#999', paddingLeft: 6 }}>{i + 1}º</span>,
+    },
+    { title: 'Nome', dataIndex: 'nomexx', ellipsis: true },
+    { title: 'CPF/CNPJ', width: 150, render: (_: any, r: ClienteRanking) => r.cpfxxx || r.cnpjxx },
+    {
+      title: <Tooltip title="Total comprado (R$)"><Space size={4}><ShoppingCartOutlined style={{ color: '#1677ff' }} />Compras</Space></Tooltip>,
+      sorter: (a: ClienteRanking, b: ClienteRanking) => a.vlrCompras - b.vlrCompras,
+      defaultSortOrder: 'descend' as const,
+      width: 150,
+      render: (_: any, r: ClienteRanking) => r.qtdCompras > 0 ? (
+        <div><div style={{ fontWeight: 600, color: '#1677ff' }}>{fmt(r.vlrCompras)}</div>
+          <div style={{ fontSize: 11, color: '#888' }}>{r.qtdCompras} lote{r.qtdCompras !== 1 ? 's' : ''}</div></div>
+      ) : <span style={{ color: '#ccc' }}>—</span>,
+    },
+    {
+      title: <Tooltip title="Total vendido (R$)"><Space size={4}><TagOutlined style={{ color: '#52c41a' }} />Vendas</Space></Tooltip>,
+      sorter: (a: ClienteRanking, b: ClienteRanking) => a.vlrVendas - b.vlrVendas,
+      width: 150,
+      render: (_: any, r: ClienteRanking) => r.qtdVendas > 0 ? (
+        <div><div style={{ fontWeight: 600, color: '#52c41a' }}>{fmt(r.vlrVendas)}</div>
+          <div style={{ fontSize: 11, color: '#888' }}>{r.qtdVendas} lote{r.qtdVendas !== 1 ? 's' : ''}</div></div>
+      ) : <span style={{ color: '#ccc' }}>—</span>,
+    },
+    {
+      title: <Tooltip title="Quantidade de lances dados"><Space size={4}><AuditOutlined style={{ color: '#722ed1' }} />Lances</Space></Tooltip>,
+      sorter: (a: ClienteRanking, b: ClienteRanking) => a.qtdLances - b.qtdLances,
+      width: 130,
+      render: (_: any, r: ClienteRanking) => r.qtdLances > 0 ? (
+        <div><div style={{ fontWeight: 600, color: '#722ed1' }}>{r.qtdLances} lance{r.qtdLances !== 1 ? 's' : ''}</div>
+          <div style={{ fontSize: 11, color: '#888' }}>{fmt(r.vlrLances)}</div></div>
+      ) : <span style={{ color: '#ccc' }}>—</span>,
+    },
+    {
+      title: 'Ativo', dataIndex: 'ativox', width: 70,
+      render: (v: string) => <Tag color={STATUS_COLOR[v] || 'default'}>{v}</Tag>,
+    },
+    {
+      title: 'Ações', width: 100,
+      render: (_: any, r: ClienteRanking) => (
+        <Space>
+          <Button size="small" icon={<EditOutlined />} onClick={() => abrirModal(r as any)} />
+          <Popconfirm title="Confirma exclusão?" onConfirm={() => deletar(r.id)}>
+            <Button size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
   const tabPessoal = (
     <Row gutter={12}>
       <Col span={12}><Form.Item name="nomexx" label="Nome" rules={[{ required: true }]}><Input /></Form.Item></Col>
@@ -254,16 +337,37 @@ export default function Clientes() {
         </Col>
         <Col flex="auto">
           <Input.Search placeholder="Buscar..." value={busca} onChange={e => setBusca(e.target.value)}
-            onSearch={() => carregar(busca)} enterButton={<SearchOutlined />} allowClear onClear={() => carregar('')} />
+            onSearch={b => rankingMode ? carregarRanking(b) : carregar(b)}
+            enterButton={<SearchOutlined />} allowClear
+            onClear={() => rankingMode ? carregarRanking('') : carregar('')} />
+        </Col>
+        <Col>
+          <Button
+            icon={<TrophyOutlined />}
+            type={rankingMode ? 'primary' : 'default'}
+            onClick={alternarRanking}
+          >
+            Ranking
+          </Button>
         </Col>
         <Col>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()}>Novo Cliente</Button>
         </Col>
       </Row>
       <div style={{ paddingBottom: selectedRowKeys.length > 0 ? 64 : 0 }}>
-        <Table rowKey="id" columns={colunas} dataSource={dados} loading={loading}
-          rowSelection={rowSelection}
-          pagination={{ pageSize: 15, showTotal: t => `${t} registros` }} size="small" scroll={{ x: 900 }} />
+        <Table
+          rowKey="id"
+          columns={(rankingMode ? colunasRanking : colunas) as any}
+          dataSource={rankingMode ? dadosRanking : dados}
+          loading={loading}
+          rowSelection={rankingMode ? undefined : rowSelection}
+          onRow={rankingMode ? (_, i) => ({
+            style: i === 0 ? { background: '#fffbe6' } : i === 1 ? { background: '#fafafa' } : i === 2 ? { background: '#fff7e6' } : {},
+          }) : undefined}
+          pagination={{ pageSize: 20, showTotal: t => `${t} registros` }}
+          size="small"
+          scroll={{ x: rankingMode ? 1000 : 900 }}
+        />
       </div>
 
       {selectedRowKeys.length > 0 && (

@@ -4,6 +4,9 @@ import * as svc from '../services/clienteService';
 export const listar = async (req: Request, res: Response) => {
   res.json(await svc.listarClientes(req.query.busca as string, req.query.filtro as string));
 };
+export const listarFaturamento = async (req: Request, res: Response) => {
+  res.json(await svc.listarClientesFaturamento(req.query.busca as string, req.query.filtro as string));
+};
 export const buscar = async (req: Request, res: Response) => {
   const data = await svc.buscarClientePorId(Number(req.params.id));
   if (!data) return res.status(404).json({ error: 'Não encontrado' });

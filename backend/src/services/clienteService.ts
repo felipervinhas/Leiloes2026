@@ -20,6 +20,66 @@ function mapRow(c: any): Cliente {
   };
 }
 
+export async function listarClientesFaturamento(busca?: string, filtro?: string) {
+  const pool = await getPool();
+  const req = pool.request();
+  let where = '';
+  if (busca && filtro) {
+    req.input('busca', sql.VarChar, `%${busca}%`);
+    const col: Record<string, string> = {
+      nome: 'C.NOMEXX', cpf: 'C.CPFXXX', cnpj: 'C.CNPJXX', email: 'C.EMAILX',
+    };
+    where = `WHERE ${col[filtro] || 'C.NOMEXX'} LIKE @busca`;
+  }
+  const r = await req.query(`
+    SELECT TOP 500
+      C.ID, C.NOMEXX, C.CPFXXX, C.CNPJXX, C.EMAILX, C.CELU_1, C.ATIVOX, C.DATCAD,
+      CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO,
+      ISNULL(COMP.QTD,   0) AS QTD_COMPRAS,
+      ISNULL(COMP.TOTAL, 0) AS VLR_COMPRAS,
+      ISNULL(VEN.QTD,    0) AS QTD_VENDAS,
+      ISNULL(VEN.TOTAL,  0) AS VLR_VENDAS,
+      ISNULL(LAN.QTD,    0) AS QTD_LANCES,
+      ISNULL(LAN.VLR,    0) AS VLR_LANCES
+    FROM Clientes C
+    LEFT JOIN Cidades CID ON CID.ID = C.CIDADE
+    LEFT JOIN (
+      SELECT TRY_CAST(IDCLI AS INT) AS IDCLI,
+             COUNT(*)                           AS QTD,
+             SUM(ISNULL(VALORPAGAR, 0))         AS TOTAL
+      FROM MOVIMENTO_COMPRADOR
+      WHERE TRY_CAST(IDCLI AS INT) IS NOT NULL
+      GROUP BY TRY_CAST(IDCLI AS INT)
+    ) COMP ON COMP.IDCLI = C.ID
+    LEFT JOIN (
+      SELECT CODVEN,
+             COUNT(*)                    AS QTD,
+             SUM(ISNULL(VLRTOT, 0))      AS TOTAL
+      FROM MOVIMENTO_LOTE
+      WHERE CODVEN IS NOT NULL
+      GROUP BY CODVEN
+    ) VEN ON VEN.CODVEN = C.ID
+    LEFT JOIN (
+      SELECT IDCLIENTE,
+             COUNT(*)                    AS QTD,
+             SUM(ISNULL(VALOR, 0))       AS VLR
+      FROM LOTES_LANCES
+      WHERE IDCLIENTE IS NOT NULL
+      GROUP BY IDCLIENTE
+    ) LAN ON LAN.IDCLIENTE = C.ID
+    ${where}
+    ORDER BY ISNULL(COMP.TOTAL, 0) DESC, C.NOMEXX
+  `);
+  return r.recordset.map((c: any) => ({
+    id: c.ID, nomexx: c.NOMEXX, cpfxxx: c.CPFXXX, cnpjxx: c.CNPJXX,
+    emailx: c.EMAILX, celu1: c.CELU_1, ativox: c.ATIVOX, datcad: c.DATCAD,
+    nomeCidade: c.NOMECIDADE, nomeEstado: c.NOMEESTADO,
+    qtdCompras: c.QTD_COMPRAS, vlrCompras: c.VLR_COMPRAS,
+    qtdVendas:  c.QTD_VENDAS,  vlrVendas:  c.VLR_VENDAS,
+    qtdLances:  c.QTD_LANCES,  vlrLances:  c.VLR_LANCES,
+  }));
+}
+
 export async function listarClientes(busca?: string, filtro?: string): Promise<Cliente[]> {
   const pool = await getPool();
   const req = pool.request();
