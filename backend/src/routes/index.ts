@@ -10,7 +10,7 @@ import * as usuario from '../controllers/usuarioController';
 import * as leilao from '../controllers/leilaoController';
 import * as lote from '../controllers/loteController';
 import * as cliente from '../controllers/clienteController';
-import { getConfiguracoes, getLogoBase64 } from '../controllers/configController';
+import { getConfiguracoes, getLogoBase64, getLogoImagem } from '../controllers/configController';
 import * as upload from '../controllers/uploadController';
 import * as lance from '../controllers/lanceController';
 import * as consultaVendas from '../controllers/consultaVendasController';
@@ -35,6 +35,7 @@ router.use('/:banco', bancoMiddleware, bancoRouter);
 bancoRouter.use('/auth', authRoutes);
 bancoRouter.get('/configuracoes', getConfiguracoes);
 bancoRouter.get('/configuracoes/logo', getLogoBase64);
+bancoRouter.get('/configuracoes/logo-imagem', getLogoImagem);
 
 // Rotas protegidas
 bancoRouter.use(authMiddleware);
