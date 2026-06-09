@@ -15,6 +15,13 @@ import { useConfig } from '../context/ConfigContext';
 
 type Orientacao = 'retrato' | 'paisagem';
 type TipoRelatorio = 'vendas' | 'partes';
+type MediaCategoria = {
+  key: string;
+  categoria: string;
+  qtd: number;
+  valor: number;
+  media: number;
+};
 
 const { Title, Text } = Typography;
 
@@ -164,6 +171,17 @@ export default function ConsultaVendas() {
   const totalDesconto   = dados.reduce((a, d) => a + (d.valorDesconto  || 0), 0);
   const totalQtd        = dados.reduce((a, d) => a + (d.qtdxxx         || 0), 0);
   const mediaGeral      = totalQtd > 0 ? totalValor / totalQtd : 0;
+  const mediasCategoria: MediaCategoria[] = Array.from(
+    dados.reduce<Map<string, MediaCategoria>>((map, d) => {
+      const key = String(d.idCategoria ?? d.descricaoRaca ?? 'sem-categoria');
+      const categoria = [d.descricaoRaca, d.especies].filter(Boolean).join(' / ') || 'Sem categoria';
+      const atual = map.get(key) ?? { key, categoria, qtd: 0, valor: 0, media: 0 };
+      atual.qtd += Number(d.qtdxxx || 0);
+      atual.valor += Number(d.valorPagar || 0);
+      atual.media = atual.qtd > 0 ? atual.valor / atual.qtd : 0;
+      return map.set(key, atual);
+    }, new Map<string, MediaCategoria>()).values()
+  ).sort((a, b) => a.categoria.localeCompare(b.categoria));
 
   const colunas: any[] = [
     { title: 'Lote', dataIndex: 'lotexx', width: 70, fixed: 'left' as const,
@@ -345,6 +363,49 @@ export default function ConsultaVendas() {
       )}
 
       {/* ── Tabela ── */}
+      {consultou && mediasCategoria.length > 0 && (
+        <Card
+          size="small"
+          title="Médias por Categoria"
+          style={{ marginBottom: 16, borderRadius: 8 }}
+          styles={{ body: { padding: 12 } }}
+        >
+          <Row gutter={[12, 12]}>
+            {mediasCategoria.map(cat => (
+              <Col xs={24} sm={12} md={8} lg={6} key={cat.key}>
+                <div style={{
+                  border: '1px solid #f0f0f0',
+                  borderRadius: 8,
+                  padding: '10px 12px',
+                  background: 'linear-gradient(135deg, #fafcff 0%, #ffffff 100%)',
+                  height: '100%',
+                }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#001529', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {cat.categoria}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 8 }}>
+                    <Text style={{ fontSize: 11, color: '#8c8c8c' }}>Qtd.</Text>
+                    <Text strong style={{ fontSize: 12 }}>{cat.qtd.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</Text>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <Text style={{ fontSize: 11, color: '#8c8c8c' }}>Total</Text>
+                    <Text strong style={{ fontSize: 12, color: '#1677ff' }}>
+                      R$ {cat.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </Text>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <Text style={{ fontSize: 11, color: '#8c8c8c' }}>Média</Text>
+                    <Text strong style={{ fontSize: 13, color: '#722ed1' }}>
+                      R$ {cat.media.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </Text>
+                  </div>
+                </div>
+              </Col>
+            ))}
+          </Row>
+        </Card>
+      )}
+
       {consultou && (
         <>
           <Row justify="end" style={{ marginBottom: 8 }}>
@@ -374,7 +435,7 @@ export default function ConsultaVendas() {
                   tipoRelatorio === 'vendas'
                     ? <ConsultaVendasPDF
                         vendas={dados}
-                        totais={{ totalLotes, totalValor, totalComissao, totalDesconto, totalLiquido, totalQtd, mediaGeral }}
+                        totais={{ totalLotes, totalValor, totalComissao, totalDesconto, totalLiquido, totalQtd, mediaGeral, mediasCategoria }}
                         titulo={nomeLeilaoSel}
                         empresa={config.empresa}
                         filtrosDesc={filtrosDesc}

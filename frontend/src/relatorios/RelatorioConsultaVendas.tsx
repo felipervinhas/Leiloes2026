@@ -32,6 +32,13 @@ export interface TotaisVendas {
   totalLiquido: number;
   totalQtd: number;
   mediaGeral: number;
+  mediasCategoria?: {
+    key: string;
+    categoria: string;
+    qtd: number;
+    valor: number;
+    media: number;
+  }[];
 }
 
 interface Props {
@@ -107,6 +114,31 @@ const s = StyleSheet.create({
   resumoSep: { width: 1, backgroundColor: '#d0e0ff', marginVertical: 2 },
   resumoLabel: { fontSize: 6, color: '#888', marginBottom: 2, textAlign: 'center' as const },
   resumoValor: { fontSize: 9, fontFamily: 'Helvetica-Bold', textAlign: 'center' as const },
+  mediasBox: {
+    borderColor: '#e8f0fe',
+    borderWidth: 1,
+    borderRadius: 4,
+    marginBottom: 7,
+  },
+  mediasTitle: {
+    backgroundColor: '#f5f8ff',
+    color: AZUL,
+    fontSize: 7,
+    fontFamily: 'Helvetica-Bold',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  mediasRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderTopColor: '#e8f0fe',
+    borderTopWidth: 0.5,
+  },
+  mediaCat: { flex: 1, fontSize: 6.5 },
+  mediaQtd: { width: 45, fontSize: 6.5, textAlign: 'right' as const },
+  mediaValor: { width: 70, fontSize: 6.5, textAlign: 'right' as const },
+  mediaMedia: { width: 70, fontSize: 6.5, textAlign: 'right' as const, fontFamily: 'Helvetica-Bold', color: '#722ed1' },
 
   // Cabeçalho da tabela
   tableHeader: {
@@ -265,6 +297,26 @@ function ConsultaVendasPDF({
         </View>
 
         {/* Cabeçalho da tabela */}
+        {totais.mediasCategoria?.length ? (
+          <View style={s.mediasBox}>
+            <Text style={s.mediasTitle}>Médias por Categoria</Text>
+            <View style={[s.mediasRow, { backgroundColor: '#fbfdff' }]}>
+              <Text style={[s.mediaCat, { fontFamily: 'Helvetica-Bold' }]}>Categoria</Text>
+              <Text style={[s.mediaQtd, { fontFamily: 'Helvetica-Bold' }]}>Qtd.</Text>
+              <Text style={[s.mediaValor, { fontFamily: 'Helvetica-Bold' }]}>Total</Text>
+              <Text style={s.mediaMedia}>Média</Text>
+            </View>
+            {totais.mediasCategoria.map(cat => (
+              <View key={cat.key} style={s.mediasRow} wrap={false}>
+                <Text style={s.mediaCat}>{cat.categoria}</Text>
+                <Text style={s.mediaQtd}>{fmtN(cat.qtd)}</Text>
+                <Text style={s.mediaValor}>{fmtR(cat.valor)}</Text>
+                <Text style={s.mediaMedia}>{fmtR(cat.media)}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         <View style={s.tableHeader} fixed>
           <View style={s.cLote}><Text style={s.th}>Lote</Text></View>
           <View style={s.cDes}><Text style={s.th}>Descrição</Text></View>
