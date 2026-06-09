@@ -35,7 +35,8 @@ interface Props {
   clientes: ClienteCompleto[];
   titulo?: string;
   empresa?: string;
-  logo?: string;
+  logo?: string;    // base64 data URI (preferencial)
+  logoUrl?: string; // URL direta como fallback
 }
 
 const AZUL = '#001529';
@@ -68,7 +69,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   docHeaderEsquerda: { flexDirection: 'column', justifyContent: 'center' },
-  docHeaderLogo: { maxHeight: 44, maxWidth: 140, objectFit: 'contain', marginBottom: 2 },
+  docHeaderLogo: { width: 130, height: 40, objectFit: 'contain', marginBottom: 2 },
   docHeaderTitulo: { color: '#fff', fontSize: 13, fontFamily: 'Helvetica-Bold' },
   docHeaderSub: { color: '#a0b4c8', fontSize: 8, marginTop: 2 },
   docHeaderDireita: { alignItems: 'flex-end' },
@@ -273,9 +274,10 @@ function CardCliente({ cliente: c, index }: { cliente: ClienteCompleto; index: n
   );
 }
 
-function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', empresa, logo }: Props) {
+function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', empresa, logo, logoUrl }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
+  const imgSrc = logo || logoUrl;
 
   return (
     <Document title={titulo} author={nomeEmpresa} creator={nomeEmpresa}>
@@ -284,8 +286,8 @@ function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', emp
         {/* Cabeçalho do documento */}
         <View style={s.docHeader} fixed>
           <View style={s.docHeaderEsquerda}>
-            {logo ? (
-              <Image src={logo} style={s.docHeaderLogo} />
+            {imgSrc ? (
+              <Image src={imgSrc} style={s.docHeaderLogo} />
             ) : (
               <Text style={s.docHeaderTitulo}>{nomeEmpresa}</Text>
             )}
@@ -313,12 +315,12 @@ function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', emp
   );
 }
 
-export function BotaoBaixarPDF({ clientes, titulo, empresa, logo }: Props) {
+export function BotaoBaixarPDF({ clientes, titulo, empresa, logo, logoUrl }: Props) {
   const nomeArquivo = `relatorio-clientes-${new Date().toISOString().slice(0, 10)}.pdf`;
 
   return (
     <PDFDownloadLink
-      document={<RelatorioClientesPDF clientes={clientes} titulo={titulo} empresa={empresa} logo={logo} />}
+      document={<RelatorioClientesPDF clientes={clientes} titulo={titulo} empresa={empresa} logo={logo} logoUrl={logoUrl} />}
       fileName={nomeArquivo}
       style={{ textDecoration: 'none' }}
     >

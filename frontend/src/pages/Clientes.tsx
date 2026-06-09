@@ -420,7 +420,7 @@ export default function Clientes() {
             onClick={() => exportarClientesExcel(clientesCompletos)}>
             Exportar Excel
           </Button>,
-          <BotaoBaixarPDF key="pdf" clientes={clientesCompletos} empresa={config.empresa} logo={logoBase64} />,
+          <BotaoBaixarPDF key="pdf" clientes={clientesCompletos} empresa={config.empresa} logo={logoBase64} logoUrl={config.logoUrl || undefined} />,
         ]}
       >
         <Table
