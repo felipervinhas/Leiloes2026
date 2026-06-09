@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { getPool } from './config/database';
+import { executarMigracao } from './config/migracao';
 import routes from './routes';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -33,6 +34,7 @@ app.use(errorHandler);
 async function start() {
   try {
     await getPool();
+    await executarMigracao();
     app.listen(PORT, () => {
       console.log(`API rodando em http://localhost:${PORT}`);
     });
