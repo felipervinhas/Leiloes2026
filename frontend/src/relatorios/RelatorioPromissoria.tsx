@@ -173,7 +173,7 @@ const s = StyleSheet.create({
   acertoValGreen:  { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: VERDE },
   acertoValOrange: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#d46b08' },
 
-  // ── Tabela de parcelas ──
+  // ── Tabela de parcelas (3 grupos por linha) ──
   tabelaBox: {
     borderRadius: 3, borderWidth: 0.5, borderColor: CINZA,
     marginBottom: 10, overflow: 'hidden',
@@ -182,25 +182,29 @@ const s = StyleSheet.create({
     backgroundColor: AZUL, flexDirection: 'row',
     paddingVertical: 3, paddingHorizontal: 6,
   },
-  th: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: '#fff' },
-  thRight: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: '#fff', textAlign: 'right' },
   tabelaRow: {
-    flexDirection: 'row', paddingVertical: 3, paddingHorizontal: 6,
+    flexDirection: 'row', paddingVertical: 2, paddingHorizontal: 6,
     borderBottomWidth: 0.5, borderBottomColor: '#f0f0f0',
   },
   tabelaRowAlt: { backgroundColor: '#fafafa' },
-  td:      { fontSize: 7.5, color: '#333' },
-  tdRight: { fontSize: 7.5, color: '#333', textAlign: 'right' },
-  tdBold:  { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: VERDE },
   tabelaTotal: {
     backgroundColor: '#f0f0f0', flexDirection: 'row',
     paddingVertical: 4, paddingHorizontal: 6,
   },
 
-  cNum:  { width: 28 },
+  // grupo de 3 células dentro de uma linha
+  cGrupo:    { flex: 1, flexDirection: 'row' },
+  cGrupoSep: { borderLeftWidth: 0.5, borderLeftColor: '#d0d0d0', paddingLeft: 4 },
+  cNum:  { width: 26 },
   cData: { flex: 1 },
-  cValor:{ width: 90, textAlign: 'right' },
-  cObs:  { width: 80 },
+  cValor:{ width: 70, textAlign: 'right' },
+
+  th:      { fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: '#fff' },
+  thRight: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: '#fff', textAlign: 'right' },
+  td:      { fontSize: 7, color: '#333' },
+  tdRight: { fontSize: 7, color: '#333', textAlign: 'right' },
+  tdBold:  { fontSize: 7, fontFamily: 'Helvetica-Bold', color: VERDE },
+  tdBoldRight: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: VERDE, textAlign: 'right' },
 
   // ── Promissória única ──
   promBox: {
@@ -390,61 +394,76 @@ function PromissoriaPDF({ dados, empresa }: Props) {
               ) : null}
             </View>
 
-            {/* ── TABELA DE PARCELAS ── */}
-            <View style={s.tabelaBox}>
-              <View style={s.tabelaHeader}>
-                <View style={s.cNum}><Text style={s.th}>#</Text></View>
-                <View style={s.cData}><Text style={s.th}>Vencimento</Text></View>
-                <View style={{ ...s.cValor, width: 100 }}><Text style={s.thRight}>Valor</Text></View>
-                <View style={s.cObs}><Text style={s.th}>Obs.</Text></View>
-              </View>
+            {/* ── TABELA DE PARCELAS (3 grupos por linha) ── */}
+            {(() => {
+              const parc = comp.parcelas;
+              // agrupa em linhas de 3
+              const linhas: (typeof parc[0] | null)[][] = [];
+              for (let i = 0; i < parc.length; i += 3) {
+                linhas.push([parc[i] ?? null, parc[i + 1] ?? null, parc[i + 2] ?? null]);
+              }
+              return (
+                <View style={s.tabelaBox}>
+                  {/* Cabeçalho — 3 grupos */}
+                  <View style={s.tabelaHeader}>
+                    {[0, 1, 2].map(g => (
+                      <View key={g} style={[s.cGrupo, g > 0 ? s.cGrupoSep : {}]}>
+                        <View style={s.cNum}><Text style={s.th}>#</Text></View>
+                        <View style={s.cData}><Text style={s.th}>Vencimento</Text></View>
+                        <View style={s.cValor}><Text style={s.thRight}>Valor</Text></View>
+                      </View>
+                    ))}
+                  </View>
 
-              {comp.parcelas.length === 0 ? (
-                <Text style={{ padding: 10, textAlign: 'center', fontSize: 7.5, color: '#aaa', fontStyle: 'italic' }}>
-                  Parcelas ainda não geradas
-                </Text>
-              ) : (
-                comp.parcelas.map((p, pi) => (
-                  <View key={pi} wrap={false}
-                    style={[s.tabelaRow, pi % 2 === 1 ? s.tabelaRowAlt : {}]}>
-                    <View style={s.cNum}>
-                      <Text style={p.pripar === 'S' ? s.tdBold : s.td}>
-                        {p.ordxxx ?? String(pi + 1).padStart(2, '0')}
+                  {parc.length === 0 ? (
+                    <Text style={{ padding: 10, textAlign: 'center', fontSize: 7.5, color: '#aaa', fontStyle: 'italic' }}>
+                      Parcelas ainda não geradas
+                    </Text>
+                  ) : (
+                    linhas.map((linha, li) => (
+                      <View key={li} wrap={false}
+                        style={[s.tabelaRow, li % 2 === 1 ? s.tabelaRowAlt : {}]}>
+                        {linha.map((p, gi) => (
+                          <View key={gi} style={[s.cGrupo, gi > 0 ? s.cGrupoSep : {}]}>
+                            {p ? (
+                              <>
+                                <View style={s.cNum}>
+                                  <Text style={p.pripar === 'S' ? s.tdBold : s.td}>
+                                    {p.ordxxx ?? String(li * 3 + gi + 1).padStart(2, '0')}
+                                  </Text>
+                                </View>
+                                <View style={s.cData}>
+                                  <Text style={p.pripar === 'S' ? s.tdBold : s.td}>
+                                    {fmtData(p.datven)}
+                                  </Text>
+                                </View>
+                                <View style={s.cValor}>
+                                  <Text style={p.pripar === 'S' ? s.tdBoldRight : s.tdRight}>
+                                    {fmtR(p.vlrpar)}
+                                  </Text>
+                                </View>
+                              </>
+                            ) : null}
+                          </View>
+                        ))}
+                      </View>
+                    ))
+                  )}
+
+                  {/* Total */}
+                  {parc.length > 0 && (
+                    <View style={s.tabelaTotal}>
+                      <Text style={{ flex: 1, fontSize: 7.5, fontFamily: 'Helvetica-Bold' }}>
+                        TOTAL — {parc.length} parcela{parc.length !== 1 ? 's' : ''}
+                      </Text>
+                      <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: VERDE }}>
+                        {fmtR(totalParcelas)}
                       </Text>
                     </View>
-                    <View style={s.cData}>
-                      <Text style={p.pripar === 'S' ? s.tdBold : s.td}>{fmtData(p.datven)}</Text>
-                    </View>
-                    <View style={{ ...s.cValor, width: 100 }}>
-                      <Text style={p.pripar === 'S' ? { ...s.tdBold, textAlign: 'right' } : s.tdRight}>
-                        {fmtR(p.vlrpar)}
-                      </Text>
-                    </View>
-                    <View style={s.cObs}>
-                      <Text style={s.td}>{p.pripar === 'S' ? '1ª parcela' : ''}</Text>
-                    </View>
-                  </View>
-                ))
-              )}
-
-              {/* Total */}
-              {comp.parcelas.length > 0 && (
-                <View style={s.tabelaTotal}>
-                  <View style={s.cNum} />
-                  <View style={s.cData}>
-                    <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold' }}>
-                      TOTAL — {comp.parcelas.length} parcela{comp.parcelas.length !== 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                  <View style={{ width: 100, textAlign: 'right' }}>
-                    <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: VERDE, textAlign: 'right' }}>
-                      {fmtR(totalParcelas)}
-                    </Text>
-                  </View>
-                  <View style={s.cObs} />
+                  )}
                 </View>
-              )}
-            </View>
+              );
+            })()}
 
             {/* ── PROMISSÓRIA ÚNICA ── */}
             <View style={s.promBox} wrap={false}>
