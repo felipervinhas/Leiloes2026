@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Col, Row, Spin, Typography, Tag, Avatar, Progress, Empty } from 'antd';
+import { Card, Col, Row, Spin, Typography, Tag, Progress, Empty, Badge, Drawer, Button, message, Popconfirm, List } from 'antd';
 import {
   DollarOutlined, TrophyOutlined, TeamOutlined, CalendarOutlined,
   RiseOutlined, BarChartOutlined, FieldTimeOutlined, TagsOutlined,
+  UserAddOutlined, CheckOutlined, CloseOutlined,
 } from '@ant-design/icons';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
@@ -144,6 +145,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [pieActive, setPieActive] = useState(0);
 
+  const [pendentesCount, setPendentesCount] = useState(0);
+  const [pendentes, setPendentes]           = useState<any[]>([]);
+  const [drawerOpen, setDrawerOpen]         = useState(false);
+  const [drawerLoading, setDrawerLoading]   = useState(false);
+  const [actionId, setActionId]             = useState<number | null>(null);
+
   useEffect(() => {
     if (!banco) return;
     setLoading(true);
@@ -151,6 +158,63 @@ export default function Dashboard() {
       .then(r => setData(r.data))
       .finally(() => setLoading(false));
   }, [banco]);
+
+  useEffect(() => {
+    if (!banco) return;
+    const poll = async () => {
+      try {
+        const r = await api.get(`/${banco}/clientes/pendentes/count`);
+        setPendentesCount(r.data.total);
+      } catch {}
+    };
+    poll();
+    const timer = setInterval(poll, 60_000);
+    return () => clearInterval(timer);
+  }, [banco]);
+
+  const abrirDrawer = async () => {
+    setDrawerOpen(true);
+    setDrawerLoading(true);
+    try {
+      const r = await api.get(`/${banco}/clientes/pendentes`);
+      setPendentes(r.data);
+      setPendentesCount(r.data.length);
+    } catch {
+      message.error('Erro ao carregar cadastros pendentes');
+    } finally {
+      setDrawerLoading(false);
+    }
+  };
+
+  const aprovar = async (id: number) => {
+    setActionId(id);
+    try {
+      await api.patch(`/${banco}/clientes/${id}/aprovar`);
+      message.success('Cliente aprovado com sucesso');
+      const novos = pendentes.filter(c => c.id !== id);
+      setPendentes(novos);
+      setPendentesCount(novos.length);
+    } catch {
+      message.error('Erro ao aprovar cliente');
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const recusar = async (id: number) => {
+    setActionId(id);
+    try {
+      await api.patch(`/${banco}/clientes/${id}/recusar`);
+      message.warning('Cadastro recusado');
+      const novos = pendentes.filter(c => c.id !== id);
+      setPendentes(novos);
+      setPendentesCount(novos.length);
+    } catch {
+      message.error('Erro ao recusar cliente');
+    } finally {
+      setActionId(null);
+    }
+  };
 
   const k = data?.kpis;
   const ul = data?.ultimoLeilao;
@@ -177,6 +241,48 @@ export default function Dashboard() {
         </div>
         {loading && <Spin />}
       </div>
+
+      {/* ── Cadastros pendentes (Site/App) ──────────────────────────────── */}
+      {pendentesCount > 0 && (
+        <Card
+          style={{
+            borderRadius: 12, marginBottom: 14, cursor: 'pointer',
+            background: 'linear-gradient(135deg, #fffbe6 0%, #fff7e6 100%)',
+            borderColor: '#ffc53d',
+          }}
+          styles={{ body: { padding: '12px 20px' } }}
+          onClick={abrirDrawer}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <Badge count={pendentesCount} color="#fa8c16" offset={[-4, 4]}>
+              <div style={{
+                width: 44, height: 44, borderRadius: 10,
+                background: 'linear-gradient(135deg, #fa8c16 0%, #d46b08 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(250,140,22,0.35)',
+              }}>
+                <UserAddOutlined style={{ fontSize: 22, color: '#fff' }} />
+              </div>
+            </Badge>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#d46b08' }}>
+                {pendentesCount} cadastro{pendentesCount !== 1 ? 's' : ''} aguardando aprovação
+              </div>
+              <Text style={{ fontSize: 12, color: '#8c8c8c' }}>
+                Clientes registrados pelo Site / App — clique para revisar
+              </Text>
+            </div>
+            <Button
+              type="primary"
+              size="small"
+              style={{ background: '#fa8c16', borderColor: '#fa8c16' }}
+              onClick={e => { e.stopPropagation(); abrirDrawer(); }}
+            >
+              Revisar
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* ── KPIs principais ─────────────────────────────────────────────── */}
       <Row gutter={[14, 14]} style={{ marginBottom: 14 }}>
@@ -467,6 +573,115 @@ export default function Dashboard() {
           </Card>
         </Col>
       </Row>
+
+      {/* ── Drawer: cadastros pendentes ─────────────────────────────────── */}
+      <Drawer
+        title={
+          <span>
+            <UserAddOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
+            Cadastros Pendentes
+            {pendentes.length > 0 && (
+              <Tag color="orange" style={{ marginLeft: 8 }}>{pendentes.length}</Tag>
+            )}
+          </span>
+        }
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        width={500}
+        styles={{ body: { padding: 0 } }}
+      >
+        {drawerLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+            <Spin />
+          </div>
+        ) : pendentes.length === 0 ? (
+          <Empty description="Nenhum cadastro pendente" style={{ padding: 40 }} />
+        ) : (
+          <List
+            dataSource={pendentes}
+            renderItem={(c: any) => (
+              <List.Item
+                style={{ padding: '14px 20px', alignItems: 'flex-start' }}
+                actions={[
+                  <Popconfirm
+                    key="aprovar"
+                    title="Aprovar cadastro?"
+                    description="O cliente terá acesso liberado ao App."
+                    onConfirm={() => aprovar(c.id)}
+                    okText="Aprovar"
+                    cancelText="Cancelar"
+                  >
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<CheckOutlined />}
+                      loading={actionId === c.id}
+                      style={{ background: '#52c41a', borderColor: '#52c41a' }}
+                    >
+                      Aprovar
+                    </Button>
+                  </Popconfirm>,
+                  <Popconfirm
+                    key="recusar"
+                    title="Recusar cadastro?"
+                    description="O cliente será marcado como reprovado."
+                    onConfirm={() => recusar(c.id)}
+                    okText="Recusar"
+                    okButtonProps={{ danger: true }}
+                    cancelText="Cancelar"
+                  >
+                    <Button
+                      danger
+                      size="small"
+                      icon={<CloseOutlined />}
+                      loading={actionId === c.id}
+                    >
+                      Recusar
+                    </Button>
+                  </Popconfirm>,
+                ]}
+              >
+                <List.Item.Meta
+                  avatar={
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                      background: 'linear-gradient(135deg, #1677ff 0%, #0050b3 100%)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', fontWeight: 700, fontSize: 16,
+                    }}>
+                      {(c.nomexx || '?')[0].toUpperCase()}
+                    </div>
+                  }
+                  title={
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>
+                      {c.nomexx}
+                      {c.cpfxxx && (
+                        <Text style={{ fontSize: 11, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
+                          CPF: {c.cpfxxx}
+                        </Text>
+                      )}
+                    </span>
+                  }
+                  description={
+                    <div style={{ fontSize: 11, color: '#8c8c8c', lineHeight: 1.7 }}>
+                      {c.emailx && <div>{c.emailx}</div>}
+                      {c.celu1 && (
+                        <div>
+                          {c.celu1}
+                          {c.nomeCidade ? ` · ${c.nomeCidade}/${c.nomeEstado}` : ''}
+                        </div>
+                      )}
+                      {c.datcad && (
+                        <div>Cadastro: {new Date(c.datcad).toLocaleDateString('pt-BR')}</div>
+                      )}
+                    </div>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        )}
+      </Drawer>
     </div>
   );
 }

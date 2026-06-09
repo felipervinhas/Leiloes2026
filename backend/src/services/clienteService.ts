@@ -182,3 +182,44 @@ export async function alterarSenhaCliente(id: number, senhax: string): Promise<v
   await pool.request().input('id', sql.Int, id).input('senhax', sql.VarChar, senhax)
     .query(`UPDATE Clientes SET SENHAX=@senhax WHERE ID=@id`);
 }
+
+export async function listarClientesPendentes(): Promise<any[]> {
+  const pool = await getPool();
+  const r = await pool.request().query(`
+    SELECT C.ID, C.NOMEXX, C.CPFXXX, C.CNPJXX, C.EMAILX, C.CELU_1, C.DATCAD,
+      CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO
+    FROM Clientes C
+    LEFT JOIN Cidades CID ON CID.ID = C.CIDADE
+    WHERE C.ACESSO_APP = '3 - Pendente'
+    ORDER BY C.DATCAD DESC
+  `);
+  return r.recordset.map((c: any) => ({
+    id: c.ID, nomexx: c.NOMEXX, cpfxxx: c.CPFXXX, cnpjxx: c.CNPJXX,
+    emailx: c.EMAILX, celu1: c.CELU_1, datcad: c.DATCAD,
+    nomeCidade: c.NOMECIDADE, nomeEstado: c.NOMEESTADO,
+  }));
+}
+
+export async function contarClientesPendentes(): Promise<number> {
+  const pool = await getPool();
+  const r = await pool.request().query(
+    `SELECT COUNT(*) AS TOTAL FROM Clientes WHERE ACESSO_APP = '3 - Pendente'`
+  );
+  return r.recordset[0]?.TOTAL ?? 0;
+}
+
+export async function aprovarCliente(id: number): Promise<void> {
+  const pool = await getPool();
+  await pool.request()
+    .input('id', sql.Int, id)
+    .input('datalt', sql.DateTime, new Date())
+    .query(`UPDATE Clientes SET ACESSO_APP='1 - Liberado', ATIVOX='S', DATALT=@datalt WHERE ID=@id`);
+}
+
+export async function recusarCliente(id: number): Promise<void> {
+  const pool = await getPool();
+  await pool.request()
+    .input('id', sql.Int, id)
+    .input('datalt', sql.DateTime, new Date())
+    .query(`UPDATE Clientes SET ACESSO_APP='4 - Reprovado', DATALT=@datalt WHERE ID=@id`);
+}

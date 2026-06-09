@@ -27,3 +27,17 @@ export const alterarSenha = async (req: Request, res: Response) => {
   await svc.alterarSenhaCliente(Number(req.params.id), req.body.senhax);
   res.json({ ok: true });
 };
+export const listarPendentes = async (_req: Request, res: Response) => {
+  res.json(await svc.listarClientesPendentes());
+};
+export const contarPendentes = async (_req: Request, res: Response) => {
+  res.json({ total: await svc.contarClientesPendentes() });
+};
+export const aprovar = async (req: Request, res: Response) => {
+  await svc.aprovarCliente(Number(req.params.id));
+  res.json({ ok: true });
+};
+export const recusar = async (req: Request, res: Response) => {
+  await svc.recusarCliente(Number(req.params.id));
+  res.json({ ok: true });
+};

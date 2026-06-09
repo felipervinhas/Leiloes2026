@@ -148,10 +148,14 @@ bancoRouter.delete('/despesas/:id', despesa.deletar);
 
 bancoRouter.get('/clientes', cliente.listar);
 bancoRouter.get('/clientes/faturamento', cliente.listarFaturamento);
+bancoRouter.get('/clientes/pendentes', cliente.listarPendentes);
+bancoRouter.get('/clientes/pendentes/count', cliente.contarPendentes);
 bancoRouter.get('/clientes/:id', cliente.buscar);
 bancoRouter.post('/clientes', cliente.criar);
 bancoRouter.put('/clientes/:id', cliente.atualizar);
 bancoRouter.delete('/clientes/:id', cliente.deletar);
 bancoRouter.patch('/clientes/:id/senha', cliente.alterarSenha);
+bancoRouter.patch('/clientes/:id/aprovar', cliente.aprovar);
+bancoRouter.patch('/clientes/:id/recusar', cliente.recusar);
 
 export default router;
