@@ -70,7 +70,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   docHeaderEsquerda: { flexDirection: 'column', justifyContent: 'center' },
-  docHeaderLogo: { width: 130, height: 40, objectFit: 'contain', marginBottom: 2 },
+  docHeaderLogo: { width: 40, height: 40, objectFit: 'contain', marginBottom: 2 },
   docHeaderTitulo: { color: '#fff', fontSize: 13, fontFamily: 'Helvetica-Bold' },
   docHeaderSub: { color: '#a0b4c8', fontSize: 8, marginTop: 2 },
   docHeaderDireita: { alignItems: 'flex-end' },
