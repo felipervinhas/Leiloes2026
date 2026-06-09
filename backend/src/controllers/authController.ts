@@ -3,16 +3,16 @@ import jwt from 'jsonwebtoken';
 import { buscarUsuarioPorLogin } from '../services/authService';
 
 export async function login(req: Request, res: Response) {
-  const { email, senha } = req.body;
+  const { cpf, senha } = req.body;
 
-  if (!email || !senha) {
-    return res.status(400).json({ error: 'Email e senha são obrigatórios' });
+  if (!cpf || !senha) {
+    return res.status(400).json({ error: 'CPF e senha são obrigatórios' });
   }
 
-  const usuario = await buscarUsuarioPorLogin(email, senha);
+  const usuario = await buscarUsuarioPorLogin(cpf, senha);
 
   if (!usuario) {
-    return res.status(401).json({ error: 'Email, senha inválidos ou usuário sem acesso' });
+    return res.status(401).json({ error: 'CPF, senha inválidos ou usuário sem acesso' });
   }
 
   const token = jwt.sign(

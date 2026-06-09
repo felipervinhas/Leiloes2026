@@ -16,10 +16,10 @@ export default function Login() {
   const config = useConfig();
   const navigate = useNavigate();
 
-  async function handleLogin(values: { email: string; senha: string }) {
+  async function handleLogin(values: { cpf: string; senha: string }) {
     setLoading(true);
     try {
-      const { token, usuario } = await loginApi(values.email, values.senha);
+      const { token, usuario } = await loginApi(values.cpf, values.senha);
       login(token, usuario);
       navigate(`/${banco}/dashboard`);
     } catch (err: any) {
@@ -49,8 +49,8 @@ export default function Login() {
         </div>
 
         <Form layout="vertical" onFinish={handleLogin} autoComplete="off">
-          <Form.Item name="email" rules={[{ required: true, message: 'Informe o e-mail' }, { type: 'email', message: 'E-mail inválido' }]}>
-            <Input prefix={<UserOutlined />} placeholder="E-mail" size="large" />
+          <Form.Item name="cpf" rules={[{ required: true, message: 'Informe o CPF' }]}>
+            <Input prefix={<UserOutlined />} placeholder="CPF" size="large" />
           </Form.Item>
           <Form.Item name="senha" rules={[{ required: true, message: 'Informe a senha' }]}>
             <Input.Password prefix={<LockOutlined />} placeholder="Senha" size="large" />

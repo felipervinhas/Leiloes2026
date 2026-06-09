@@ -1,16 +1,16 @@
 import { getPool, sql } from '../config/database';
 import { UsuarioComPerfil } from '../models/usuario';
 
-export async function buscarUsuarioPorLogin(email: string, senha: string): Promise<UsuarioComPerfil | null> {
+export async function buscarUsuarioPorLogin(cpf: string, senha: string): Promise<UsuarioComPerfil | null> {
   const pool = await getPool();
 
   const result = await pool.request()
-    .input('email', sql.VarChar, email)
+    .input('cpf', sql.VarChar, cpf)
     .input('senha', sql.VarChar, senha)
     .query(`
       SELECT ID, NOMEXX, EMAILX, ATIVOX, BLOCLI, ADM
       FROM Clientes
-      WHERE EMAILX = @email
+      WHERE CPFXXX = @cpf
         AND SENHAX = @senha
         AND ADM = 'S'
     `);
