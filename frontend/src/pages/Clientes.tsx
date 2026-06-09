@@ -110,18 +110,10 @@ export default function Clientes() {
   useEffect(() => { carregar(); carregarCidades(); }, []);
 
   useEffect(() => {
-    if (!config.logoUrl) return;
-    fetch(config.logoUrl)
-      .then(r => r.blob())
-      .then(blob => new Promise<string>((res, rej) => {
-        const reader = new FileReader();
-        reader.onloadend = () => res(reader.result as string);
-        reader.onerror = rej;
-        reader.readAsDataURL(blob);
-      }))
-      .then(setLogoBase64)
+    api.get('/configuracoes/logo')
+      .then(r => r.data.logo && setLogoBase64(r.data.logo))
       .catch(() => {});
-  }, [config.logoUrl]);
+  }, []);
 
   const abrirModal = async (item?: Cliente) => {
     if (item) {
