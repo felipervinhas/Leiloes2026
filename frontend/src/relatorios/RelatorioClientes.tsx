@@ -2,6 +2,7 @@ import React from 'react';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Image } from '@react-pdf/renderer';
 import { Button } from 'antd';
 import { FilePdfOutlined } from '@ant-design/icons';
+import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 
 export interface ClienteCompleto {
   id: number;
@@ -274,10 +275,9 @@ function CardCliente({ cliente: c, index }: { cliente: ClienteCompleto; index: n
   );
 }
 
-function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', empresa, logo, logoUrl }: Props) {
+function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', empresa }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
-  const imgSrc = logo || logoUrl;
 
   return (
     <Document title={titulo} author={nomeEmpresa} creator={nomeEmpresa}>
@@ -286,11 +286,7 @@ function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', emp
         {/* Cabeçalho do documento */}
         <View style={s.docHeader} fixed>
           <View style={s.docHeaderEsquerda}>
-            {imgSrc ? (
-              <Image src={imgSrc} style={s.docHeaderLogo} />
-            ) : (
-              <Text style={s.docHeaderTitulo}>{nomeEmpresa}</Text>
-            )}
+            <Image src={logotipoLocal} style={s.docHeaderLogo} />
             <Text style={s.docHeaderSub}>{titulo}</Text>
           </View>
           <View style={s.docHeaderDireita}>

@@ -32,7 +32,6 @@ const FILTROS = [{ value: 'nome', label: 'Nome' }, { value: 'cpf', label: 'CPF' 
 
 export default function Clientes() {
   const config = useConfig();
-  const [logoBase64, setLogoBase64] = useState<string | undefined>();
   const [dados, setDados] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -154,12 +153,8 @@ export default function Clientes() {
   const gerarRelatorio = async () => {
     setCarregandoRelatorio(true);
     try {
-      const [resultados, logoResp] = await Promise.all([
-        Promise.all(selectedRows.map(r => api.get(`/clientes/${r.id}`))),
-        api.get('/configuracoes/logo').catch(() => ({ data: { logo: null } })),
-      ]);
+      const resultados = await Promise.all(selectedRows.map(r => api.get(`/clientes/${r.id}`)));
       setClientesCompletos(resultados.map(r => r.data as ClienteCompleto));
-      setLogoBase64(logoResp.data.logo ?? undefined);
       setRelatorioOpen(true);
     } catch {
       message.error('Erro ao carregar dados dos clientes');
@@ -419,7 +414,7 @@ export default function Clientes() {
             onClick={() => exportarClientesExcel(clientesCompletos)}>
             Exportar Excel
           </Button>,
-          <BotaoBaixarPDF key="pdf" clientes={clientesCompletos} empresa={config.empresa} logo={logoBase64} />,
+          <BotaoBaixarPDF key="pdf" clientes={clientesCompletos} empresa={config.empresa} />,
         ]}
       >
         <Table
