@@ -1,42 +1,472 @@
-import React from 'react';
-import { Card, Col, Row, Statistic, Typography } from 'antd';
-import { CalendarOutlined, ShoppingOutlined, TeamOutlined } from '@ant-design/icons';
+import React, { useEffect, useState } from 'react';
+import { Card, Col, Row, Spin, Typography, Tag, Avatar, Progress, Empty } from 'antd';
+import {
+  DollarOutlined, TrophyOutlined, TeamOutlined, CalendarOutlined,
+  RiseOutlined, BarChartOutlined, FieldTimeOutlined, TagsOutlined,
+} from '@ant-design/icons';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
+  Legend, ResponsiveContainer, PieChart, Pie, Cell, Sector,
+} from 'recharts';
+import { useBanco } from '../context/BancoContext';
+import api from '../services/api';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
-export default function Dashboard() {
+const fmtR = (v: number) =>
+  v >= 1_000_000
+    ? `R$ ${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}M`
+    : v >= 1_000
+    ? `R$ ${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}k`
+    : `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+const fmtFull = (v: number) =>
+  `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+const CHART_COLORS = ['#1677ff', '#52c41a', '#fa8c16', '#f759ab', '#722ed1', '#13c2c2'];
+const MEDAL = ['🥇', '🥈', '🥉', '4º', '5º'];
+
+interface DashData {
+  kpis: {
+    totalGeral: number; comissaoGeral: number; liquidoGeral: number;
+    totalCompradores: number; totalVendas: number; totalLeiloes: number;
+    totalLotesCad: number; parcProximas: number; valorParcProximas: number;
+  };
+  ultimoLeilao: {
+    id: number; nome: string; data: string;
+    valorTotal: number; comissao: number; liquido: number;
+    vendas: number; totalLotes: number;
+  } | null;
+  historico: {
+    nome: string; nomeCompleto: string; periodo: string; data: string;
+    valorTotal: number; comissao: number; liquido: number;
+    vendas: number; totalLotes: number;
+  }[];
+  topCompradores: { pos: number; nome: string; compras: number; valorTotal: number; valorLiq: number }[];
+  topRacas: { raca: string; vendas: number; valorTotal: number }[];
+  vencimentos: {
+    comprador: string; ordxxx: string; vencimento: string;
+    valor: number; lotexx: string; deslot: string; leilao: string;
+  }[];
+}
+
+// ─── KPI Card ────────────────────────────────────────────────────────────────
+function KpiCard({
+  icon, label, value, sub, color, loading,
+}: {
+  icon: React.ReactNode; label: string; value: string; sub?: string;
+  color: string; loading?: boolean;
+}) {
   return (
-    <>
-      <Title level={4} style={{ marginBottom: 24 }}>Dashboard</Title>
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title="Leilões Ativos"
-              value={0}
-              prefix={<CalendarOutlined />}
-            />
+    <Card
+      style={{
+        borderRadius: 12,
+        background: `linear-gradient(135deg, ${color}15 0%, ${color}05 100%)`,
+        borderColor: `${color}30`,
+        height: '100%',
+      }}
+      styles={{ body: { padding: '16px 20px' } }}
+    >
+      {loading ? (
+        <Spin />
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+          <div
+            style={{
+              width: 48, height: 48, borderRadius: 12,
+              background: color, display: 'flex', alignItems: 'center',
+              justifyContent: 'center', flexShrink: 0,
+              boxShadow: `0 4px 14px ${color}55`,
+            }}
+          >
+            <span style={{ fontSize: 22, color: '#fff' }}>{icon}</span>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Text style={{ fontSize: 11, color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              {label}
+            </Text>
+            <div style={{ fontSize: 22, fontWeight: 700, color: '#141414', lineHeight: 1.2, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {value}
+            </div>
+            {sub && (
+              <Text style={{ fontSize: 11, color: '#8c8c8c', marginTop: 2, display: 'block' }}>{sub}</Text>
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ─── Tooltip customizado para o BarChart ─────────────────────────────────────
+function BarTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: '#fff', border: '1px solid #f0f0f0', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
+      <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>{label}</div>
+      {payload.map((p: any) => (
+        <div key={p.dataKey} style={{ fontSize: 11, color: p.color, marginBottom: 2 }}>
+          {p.name}: {fmtFull(p.value)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Tooltip customizado para o PieChart ─────────────────────────────────────
+function PieTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0];
+  return (
+    <div style={{ background: '#fff', border: '1px solid #f0f0f0', borderRadius: 8, padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
+      <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 3 }}>{d.name}</div>
+      <div style={{ fontSize: 11, color: '#555' }}>{fmtFull(d.value)}</div>
+      <div style={{ fontSize: 11, color: '#999' }}>{d.payload.vendas} venda{d.payload.vendas !== 1 ? 's' : ''}</div>
+    </div>
+  );
+}
+
+// ─── Active shape para o donut ────────────────────────────────────────────────
+function ActiveSlice(props: any) {
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+  return (
+    <g>
+      <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 6}
+        startAngle={startAngle} endAngle={endAngle} fill={fill} />
+    </g>
+  );
+}
+
+// ─── Componente principal ────────────────────────────────────────────────────
+export default function Dashboard() {
+  const { banco } = useBanco();
+  const [data, setData]     = useState<DashData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [pieActive, setPieActive] = useState(0);
+
+  useEffect(() => {
+    if (!banco) return;
+    setLoading(true);
+    api.get(`/${banco}/dashboard`)
+      .then(r => setData(r.data))
+      .finally(() => setLoading(false));
+  }, [banco]);
+
+  const k = data?.kpis;
+  const ul = data?.ultimoLeilao;
+
+  // Calcular % vendidos do último leilão
+  const pctVendidos = ul && ul.totalLotes > 0
+    ? Math.round((ul.vendas / ul.totalLotes) * 100)
+    : 0;
+
+  return (
+    <div style={{ padding: '0 4px' }}>
+      {/* ── Título ──────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <Title level={4} style={{ margin: 0, color: '#001529' }}>
+            <BarChartOutlined style={{ marginRight: 8, color: '#1677ff' }} />
+            Dashboard
+          </Title>
+          {ul && (
+            <Text style={{ fontSize: 12, color: '#8c8c8c' }}>
+              Último leilão: <strong>{ul.nome}</strong> em {ul.data}
+            </Text>
+          )}
+        </div>
+        {loading && <Spin />}
+      </div>
+
+      {/* ── KPIs principais ─────────────────────────────────────────────── */}
+      <Row gutter={[14, 14]} style={{ marginBottom: 14 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <KpiCard
+            icon={<DollarOutlined />}
+            label="Total Arrecadado"
+            value={loading ? '...' : fmtR(k?.totalGeral ?? 0)}
+            sub={`${k?.totalVendas ?? 0} venda${(k?.totalVendas ?? 0) !== 1 ? 's' : ''}`}
+            color="#1677ff"
+            loading={loading}
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <KpiCard
+            icon={<RiseOutlined />}
+            label="Comissões Totais"
+            value={loading ? '...' : fmtR(k?.comissaoGeral ?? 0)}
+            sub={`Líquido: ${fmtR(k?.liquidoGeral ?? 0)}`}
+            color="#52c41a"
+            loading={loading}
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <KpiCard
+            icon={<TeamOutlined />}
+            label="Compradores"
+            value={loading ? '...' : String(k?.totalCompradores ?? 0)}
+            sub={`${k?.totalLeiloes ?? 0} leilões · ${k?.totalLotesCad ?? 0} lotes cad.`}
+            color="#722ed1"
+            loading={loading}
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <KpiCard
+            icon={<FieldTimeOutlined />}
+            label="Vencimentos (45 dias)"
+            value={loading ? '...' : fmtR(k?.valorParcProximas ?? 0)}
+            sub={`${k?.parcProximas ?? 0} parcela${(k?.parcProximas ?? 0) !== 1 ? 's' : ''} a vencer`}
+            color={loading ? '#fa8c16' : (k?.parcProximas ?? 0) > 0 ? '#fa8c16' : '#52c41a'}
+            loading={loading}
+          />
+        </Col>
+      </Row>
+
+      {/* ── Último leilão — barra de progresso ──────────────────────────── */}
+      {ul && (
+        <Card
+          style={{ borderRadius: 12, marginBottom: 14, background: 'linear-gradient(135deg, #001529 0%, #003a8c 100%)', border: 'none' }}
+          styles={{ body: { padding: '14px 20px' } }}
+        >
+          <Row gutter={[16, 8]} align="middle">
+            <Col flex="auto">
+              <Text style={{ color: '#a0b4c8', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Último Leilão
+              </Text>
+              <div style={{ color: '#fff', fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{ul.nome}</div>
+              <Progress
+                percent={pctVendidos}
+                strokeColor={{ '0%': '#1677ff', '100%': '#52c41a' }}
+                trailColor='rgba(255,255,255,0.15)'
+                format={p => <span style={{ color: '#fff', fontSize: 11 }}>{p}%</span>}
+              />
+              <Text style={{ color: '#a0b4c8', fontSize: 11 }}>
+                {ul.vendas} de {ul.totalLotes} lotes vendidos
+              </Text>
+            </Col>
+            <Col>
+              <div style={{ textAlign: 'right' }}>
+                <Text style={{ color: '#a0b4c8', fontSize: 10, display: 'block' }}>Total Arrecadado</Text>
+                <div style={{ color: '#ffc53d', fontSize: 20, fontWeight: 700 }}>{fmtFull(ul.valorTotal)}</div>
+              </div>
+            </Col>
+            <Col>
+              <div style={{ textAlign: 'right' }}>
+                <Text style={{ color: '#a0b4c8', fontSize: 10, display: 'block' }}>Comissão</Text>
+                <div style={{ color: '#95f560', fontSize: 16, fontWeight: 700 }}>{fmtFull(ul.comissao)}</div>
+              </div>
+            </Col>
+            <Col>
+              <div style={{ textAlign: 'right' }}>
+                <Text style={{ color: '#a0b4c8', fontSize: 10, display: 'block' }}>Líquido</Text>
+                <div style={{ color: '#40a9ff', fontSize: 16, fontWeight: 700 }}>{fmtFull(ul.liquido)}</div>
+              </div>
+            </Col>
+          </Row>
+        </Card>
+      )}
+
+      {/* ── Gráficos ────────────────────────────────────────────────────── */}
+      <Row gutter={[14, 14]} style={{ marginBottom: 14 }}>
+        {/* Bar chart — histórico */}
+        <Col xs={24} lg={15}>
+          <Card
+            title={<span><BarChartOutlined style={{ marginRight: 6, color: '#1677ff' }} />Histórico de Leilões</span>}
+            style={{ borderRadius: 12, height: '100%' }}
+            styles={{ body: { paddingTop: 8 } }}
+          >
+            {loading ? (
+              <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Spin />
+              </div>
+            ) : !data?.historico.length ? (
+              <Empty description="Sem dados" style={{ height: 260, display: 'flex', flexDirection: 'column', justifyContent: 'center' }} />
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={data.historico} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="periodo"
+                    tick={{ fontSize: 11, fill: '#8c8c8c' }}
+                    axisLine={false} tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#8c8c8c' }}
+                    axisLine={false} tickLine={false}
+                    tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
+                    width={52}
+                  />
+                  <RTooltip content={<BarTooltip />} />
+                  <Legend
+                    wrapperStyle={{ fontSize: 11 }}
+                    formatter={v => v === 'valorTotal' ? 'Total' : v === 'comissao' ? 'Comissão' : 'Líquido'}
+                  />
+                  <Bar dataKey="valorTotal" name="valorTotal" fill="#1677ff" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="comissao"   name="comissao"   fill="#52c41a" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="liquido"    name="liquido"    fill="#722ed1" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title="Lotes Cadastrados"
-              value={0}
-              prefix={<ShoppingOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title="Animais"
-              value={0}
-              prefix={<TeamOutlined />}
-            />
+
+        {/* Donut — raças */}
+        <Col xs={24} lg={9}>
+          <Card
+            title={<span><TagsOutlined style={{ marginRight: 6, color: '#fa8c16' }} />Top Raças por Valor</span>}
+            style={{ borderRadius: 12, height: '100%' }}
+            styles={{ body: { paddingTop: 8 } }}
+          >
+            {loading ? (
+              <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Spin />
+              </div>
+            ) : !data?.topRacas.length ? (
+              <Empty description="Sem dados" />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                <PieChart width={260} height={180} style={{ margin: '0 auto' }}>
+                  <Pie
+                    data={data.topRacas}
+                    dataKey="valorTotal"
+                    nameKey="raca"
+                    cx="50%" cy="50%"
+                    innerRadius={52} outerRadius={80}
+                    paddingAngle={2}
+                    onMouseEnter={(_, i) => setPieActive(i)}
+                  >
+                    {data.topRacas.map((entry, i) => (
+                      <Cell
+                        key={i}
+                        fill={CHART_COLORS[i % CHART_COLORS.length]}
+                        stroke={i === pieActive ? '#fff' : 'none'}
+                        strokeWidth={i === pieActive ? 2 : 0}
+                        style={{ filter: i === pieActive ? 'brightness(1.15)' : 'none' }}
+                      />
+                    ))}
+                  </Pie>
+                  <RTooltip content={<PieTooltip />} />
+                </PieChart>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                  {data.topRacas.map((r, i) => {
+                    const total = data.topRacas.reduce((s, x) => s + x.valorTotal, 0);
+                    const pct   = total > 0 ? Math.round((r.valorTotal / total) * 100) : 0;
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                        onMouseEnter={() => setPieActive(i)}>
+                        <div style={{ width: 10, height: 10, borderRadius: 3, background: CHART_COLORS[i % CHART_COLORS.length], flexShrink: 0 }} />
+                        <Text style={{ fontSize: 11, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.raca}</Text>
+                        <Text style={{ fontSize: 11, color: '#8c8c8c', marginLeft: 4 }}>{pct}%</Text>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </Card>
         </Col>
       </Row>
-    </>
+
+      {/* ── Listas ──────────────────────────────────────────────────────── */}
+      <Row gutter={[14, 14]}>
+        {/* Top compradores */}
+        <Col xs={24} lg={12}>
+          <Card
+            title={<span><TrophyOutlined style={{ marginRight: 6, color: '#ffc53d' }} />Top Compradores</span>}
+            style={{ borderRadius: 12 }}
+            styles={{ body: { padding: '8px 16px 16px' } }}
+          >
+            {loading ? <Spin style={{ margin: '20px auto', display: 'block' }} />
+              : !data?.topCompradores.length ? <Empty description="Sem dados" />
+              : data.topCompradores.map((c, i) => {
+                const maxVal = data.topCompradores[0].valorTotal;
+                const pct = maxVal > 0 ? (c.valorTotal / maxVal) * 100 : 0;
+                return (
+                  <div key={i} style={{ padding: '10px 0', borderBottom: i < data.topCompradores.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
+                      <span style={{ fontSize: 18, width: 28, textAlign: 'center', flexShrink: 0 }}>
+                        {MEDAL[i]}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {c.nome}
+                        </div>
+                        <Text style={{ fontSize: 11, color: '#8c8c8c' }}>
+                          {c.compras} compra{c.compras !== 1 ? 's' : ''}
+                        </Text>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: '#1677ff' }}>
+                          {fmtR(c.valorTotal)}
+                        </div>
+                        <Text style={{ fontSize: 10, color: '#8c8c8c' }}>liq. {fmtR(c.valorLiq)}</Text>
+                      </div>
+                    </div>
+                    <Progress
+                      percent={Math.round(pct)}
+                      showInfo={false}
+                      strokeColor={CHART_COLORS[i % CHART_COLORS.length]}
+                      trailColor="#f5f5f5"
+                      size="small"
+                    />
+                  </div>
+                );
+              })}
+          </Card>
+        </Col>
+
+        {/* Próximos vencimentos */}
+        <Col xs={24} lg={12}>
+          <Card
+            title={<span><CalendarOutlined style={{ marginRight: 6, color: '#fa8c16' }} />Próximos Vencimentos</span>}
+            style={{ borderRadius: 12 }}
+            styles={{ body: { padding: '8px 16px 16px' } }}
+            extra={
+              k?.parcProximas ? (
+                <Tag color="orange">{k.parcProximas} parcela{k.parcProximas !== 1 ? 's' : ''} em 45 dias</Tag>
+              ) : null
+            }
+          >
+            {loading ? <Spin style={{ margin: '20px auto', display: 'block' }} />
+              : !data?.vencimentos.length
+              ? <Empty description="Sem vencimentos nos próximos 45 dias" />
+              : data.vencimentos.map((v, i) => {
+                const [d, m] = v.vencimento.split('/');
+                return (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0',
+                    borderBottom: i < data.vencimentos.length - 1 ? '1px solid #f5f5f5' : 'none',
+                  }}>
+                    {/* Calendário mini */}
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 8, flexShrink: 0,
+                      background: 'linear-gradient(135deg, #fa8c16 0%, #d46b08 100%)',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 2px 8px rgba(250,140,22,0.4)',
+                    }}>
+                      <span style={{ color: '#fff', fontWeight: 700, fontSize: 15, lineHeight: 1 }}>{d}</span>
+                      <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 9, lineHeight: 1 }}>{m}</span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {v.comprador}
+                      </div>
+                      <Text style={{ fontSize: 10, color: '#8c8c8c' }}>
+                        Lote {v.lotexx} · {v.deslot?.substring(0, 22)}{(v.deslot?.length ?? 0) > 22 ? '…' : ''}
+                      </Text>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: '#fa8c16' }}>
+                        {fmtFull(v.valor)}
+                      </div>
+                      <Text style={{ fontSize: 10, color: '#8c8c8c' }}>{v.ordxxx}</Text>
+                    </div>
+                  </div>
+                );
+              })}
+          </Card>
+        </Col>
+      </Row>
+    </div>
   );
 }

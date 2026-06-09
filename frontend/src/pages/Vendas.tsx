@@ -7,8 +7,13 @@ import {
 import {
   ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined,
   DeleteOutlined, DollarOutlined, EditOutlined, FileSearchOutlined,
-  PlusOutlined, ReloadOutlined, SearchOutlined, UserOutlined,
+  FileDoneOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UserOutlined,
+  PrinterOutlined, FileTextOutlined,
 } from '@ant-design/icons';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import FaturaCompraPDF, { FaturaData } from '../relatorios/RelatorioFaturaCompra';
+import { useConfig } from '../context/ConfigContext';
+import ContratoEditor from '../components/ContratoEditor';
 import api from '../services/api';
 import dayjs, { Dayjs } from 'dayjs';
 
@@ -35,6 +40,53 @@ const TIPO_BUSCA = [
 ];
 
 function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: number) => void }) {
+  const config = useConfig();
+  const [faturaLoading, setFaturaLoading] = useState<number | null>(null);
+  const [faturaData, setFaturaData]       = useState<FaturaData | null>(null);
+  const [faturaModal, setFaturaModal]     = useState(false);
+
+  // Contrato
+  const [contratoModal, setContratoModal]           = useState(false);
+  const [contratoVenda, setContratoVenda]           = useState<any | null>(null);
+  const [contratoTemplates, setContratoTemplates]   = useState<any[]>([]);
+  const [contratoIdTemplate, setContratoIdTemplate] = useState<number | undefined>();
+  const [contratoHtml, setContratoHtml]             = useState('');
+  const [contratoStep, setContratoStep]             = useState<'select' | 'edit'>('select');
+  const [contratoLoading, setContratoLoading]       = useState(false);
+
+  const abrirFatura = async (id: number) => {
+    setFaturaLoading(id);
+    try {
+      const r = await api.get(`/vendas/${id}/fatura`);
+      setFaturaData(r.data);
+      setFaturaModal(true);
+    } catch { message.error('Erro ao carregar fatura'); }
+    finally { setFaturaLoading(null); }
+  };
+
+  const abrirContrato = async (row: any) => {
+    setContratoVenda(row);
+    setContratoIdTemplate(undefined);
+    setContratoHtml('');
+    setContratoStep('select');
+    const r = await api.get('/contratos/templates');
+    setContratoTemplates(r.data);
+    setContratoModal(true);
+  };
+
+  const gerarContrato = async () => {
+    if (!contratoIdTemplate || !contratoVenda) return;
+    setContratoLoading(true);
+    try {
+      const r = await api.get(
+        `/contratos/gerar/${contratoVenda.id}/${contratoVenda.idcli}/${contratoIdTemplate}`
+      );
+      setContratoHtml(r.data.html);
+      setContratoStep('edit');
+    } catch { message.error('Erro ao gerar contrato'); }
+    finally { setContratoLoading(false); }
+  };
+
   const [tipoBusca, setTipoBusca] = useState('todos');
   const [busca, setBusca]         = useState('');
   const [leiloes, setLeiloes]     = useState<any[]>([]);
@@ -109,9 +161,24 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
       ),
     },
     {
-      title: '', width: 90, fixed: 'right' as const,
+      title: '', width: 150, fixed: 'right' as const,
       render: (_: any, row: any) => (
         <Space>
+          <Tooltip title="Fatura de Compras">
+            <Button
+              size="small"
+              icon={<FileDoneOutlined />}
+              loading={faturaLoading === row.id}
+              onClick={() => abrirFatura(row.id)}
+            />
+          </Tooltip>
+          <Tooltip title="Contrato">
+            <Button
+              size="small"
+              icon={<FileTextOutlined />}
+              onClick={() => abrirContrato(row)}
+            />
+          </Tooltip>
           <Tooltip title="Editar">
             <Button size="small" icon={<EditOutlined />} onClick={() => onEditar(row.id)} />
           </Tooltip>
@@ -132,6 +199,128 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
 
   return (
     <>
+      {/* Modal Fatura de Compras */}
+      <Modal
+        open={faturaModal}
+        onCancel={() => { setFaturaModal(false); setFaturaData(null); }}
+        footer={null}
+        title={
+          <Space>
+            <FileDoneOutlined />
+            <span>Fatura de Compras {faturaData ? `#${faturaData.id}` : ''}</span>
+          </Space>
+        }
+        width={480}
+      >
+        {faturaData && (
+          <div style={{ padding: '16px 0', textAlign: 'center' }}>
+            <div style={{ marginBottom: 16, textAlign: 'left', lineHeight: 1.8 }}>
+              <div><strong>Leilão:</strong> {faturaData.leilao || '—'}</div>
+              <div><strong>Lote:</strong> {faturaData.lote?.lotexx} — {faturaData.lote?.deslot}</div>
+              <div><strong>Comprador(es):</strong> {faturaData.compradores.map(c => c.nomexx).filter(Boolean).join(', ')}</div>
+              <div><strong>Vendedor:</strong> {faturaData.lote?.nomeVendedor || '—'}</div>
+              <div><strong>Parcelas:</strong> {faturaData.compradores.reduce((t, c) => t + c.parcelas.length, 0)}</div>
+            </div>
+            <PDFDownloadLink
+              document={<FaturaCompraPDF dados={faturaData} empresa={config.empresa} />}
+              fileName={`fatura-compra-${faturaData.id}.pdf`}
+              style={{ textDecoration: 'none' }}
+            >
+              {({ loading }) => (
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<PrinterOutlined />}
+                  loading={loading}
+                  style={{ width: '100%' }}
+                >
+                  {loading ? 'Gerando PDF...' : 'Baixar Fatura PDF'}
+                </Button>
+              )}
+            </PDFDownloadLink>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal Contrato */}
+      <Modal
+        open={contratoModal}
+        onCancel={() => setContratoModal(false)}
+        footer={null}
+        title={
+          <Space>
+            <FileTextOutlined />
+            <span>
+              {contratoStep === 'select' ? 'Gerar Contrato' : `Contrato — ${contratoVenda?.deslot || ''}`}
+            </span>
+          </Space>
+        }
+        width={contratoStep === 'edit' ? '90%' : 480}
+        style={{ top: contratoStep === 'edit' ? 20 : undefined }}
+        destroyOnClose
+      >
+        {contratoStep === 'select' ? (
+          <div style={{ padding: '8px 0' }}>
+            {contratoVenda && (
+              <div style={{ marginBottom: 16, padding: '10px 12px', background: '#f5f5f5', borderRadius: 6 }}>
+                <Text strong>Venda #{contratoVenda.id}</Text>
+                <br />
+                <Text type="secondary">
+                  Lote {contratoVenda.lotexx} — {contratoVenda.deslot}
+                </Text>
+                <br />
+                <Text type="secondary">Comprador: {contratoVenda.nomexx}</Text>
+              </div>
+            )}
+            <div style={{ marginBottom: 8 }}>
+              <Text>Selecione o modelo de contrato:</Text>
+            </div>
+            {contratoTemplates.length === 0 ? (
+              <div style={{ color: '#888', textAlign: 'center', padding: 16 }}>
+                Nenhum modelo cadastrado. Vá em{' '}
+                <Text strong>Comercial → Contratos</Text> para criar um modelo.
+              </div>
+            ) : (
+              <Select
+                style={{ width: '100%', marginBottom: 16 }}
+                placeholder="Escolha um modelo..."
+                value={contratoIdTemplate}
+                onChange={setContratoIdTemplate}
+                options={contratoTemplates.map((t: any) => ({
+                  value: t.id,
+                  label: `${t.nome}${t.tipo ? ` (${t.tipo})` : ''}`,
+                }))}
+              />
+            )}
+            <div style={{ textAlign: 'right' }}>
+              <Space>
+                <Button onClick={() => setContratoModal(false)}>Cancelar</Button>
+                <Button
+                  type="primary"
+                  loading={contratoLoading}
+                  disabled={!contratoIdTemplate}
+                  onClick={gerarContrato}
+                >
+                  Gerar Contrato
+                </Button>
+              </Space>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ marginBottom: 12, textAlign: 'right' }}>
+              <Button size="small" onClick={() => setContratoStep('select')}>
+                ← Trocar modelo
+              </Button>
+            </div>
+            <ContratoEditor
+              content={contratoHtml}
+              onChange={setContratoHtml}
+            />
+          </div>
+        )}
+      </Modal>
+
       <Row align="middle" justify="space-between" style={{ marginBottom: 16 }}>
         <Col><Title level={4} style={{ margin: 0 }}><DollarOutlined style={{ marginRight: 8 }} />Vendas</Title></Col>
         <Col>

@@ -1,13 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Table, Button, Select, Form, Row, Col, Typography, Tag, Space,
-  Statistic, Card, Divider, Checkbox, Tooltip, message, Spin,
+  Table, Button, Select, Row, Col, Typography, Tag, Space,
+  Card, Divider, message, Spin, Radio,
 } from 'antd';
 import {
-  SearchOutlined, FileExcelOutlined, FileSearchOutlined, ClearOutlined,
+  SearchOutlined, FileExcelOutlined, FileSearchOutlined, ClearOutlined, PrinterOutlined,
 } from '@ant-design/icons';
+import { PDFDownloadLink } from '@react-pdf/renderer';
 import api from '../services/api';
 import dayjs from 'dayjs';
+import ConsultaVendasPDF from '../relatorios/RelatorioConsultaVendas';
+import PartesVendasPDF from '../relatorios/RelatorioPartesVendas';
+import { useConfig } from '../context/ConfigContext';
+
+type Orientacao = 'retrato' | 'paisagem';
+type TipoRelatorio = 'vendas' | 'partes';
 
 const { Title, Text } = Typography;
 
@@ -23,6 +30,9 @@ const DEFESA_OPTS = [
 ];
 
 export default function ConsultaVendas() {
+  const config = useConfig();
+  const [tipoRelatorio, setTipoRelatorio] = useState<TipoRelatorio>('vendas');
+  const [orientacaoImp, setOrientacaoImp] = useState<Orientacao>('paisagem');
   const [leiloes, setLeiloes]   = useState<{ value: number; label: string }[]>([]);
   const [lotes, setLotes]       = useState<{ value: number; label: string }[]>([]);
   const [vendedores, setVendedores] = useState<{ value: number; label: string }[]>([]);
@@ -133,6 +143,18 @@ export default function ConsultaVendas() {
     a.download = `consulta_vendas_${dayjs().format('YYYYMMDD_HHmmss')}.csv`;
     a.click(); URL.revokeObjectURL(url);
   };
+
+  // Descrição dos filtros ativos para o PDF
+  const nomeLeilaoSel    = leiloes.find(l => l.value === leilaoSel)?.label;
+  const nomeVendedorSel  = vendedores.find(v => v.value === vendedorSel)?.label;
+  const nomeCompradorSel = compradores.find(c => c.value === compradorSel)?.label;
+  const filtrosDesc = [
+    nomeLeilaoSel    && `Leilão: ${nomeLeilaoSel}`,
+    nomeVendedorSel  && `Vendedor: ${nomeVendedorSel}`,
+    nomeCompradorSel && `Comprador: ${nomeCompradorSel}`,
+    defesaSel        && `Status: ${DEFESA_OPTS.find(d => d.value === defesaSel)?.label}`,
+    racasSel.length > 0 && `Raças: ${racasSel.map(id => racas.find(r => r.id === id)?.label).filter(Boolean).join(', ')}`,
+  ].filter(Boolean).join(' | ') || undefined;
 
   // Totalizadores
   const totalLotes      = dados.length;
@@ -326,13 +348,68 @@ export default function ConsultaVendas() {
       {consultou && (
         <>
           <Row justify="end" style={{ marginBottom: 8 }}>
-            <Button
-              icon={<FileExcelOutlined />}
-              onClick={exportarCSV}
-              disabled={!dados.length}
-            >
-              Exportar CSV
-            </Button>
+            <Space wrap>
+              <Select
+                value={tipoRelatorio}
+                onChange={setTipoRelatorio}
+                style={{ width: 230 }}
+                options={[
+                  { value: 'vendas', label: 'Consulta de Vendas' },
+                  { value: 'partes', label: 'Vendedores / Compradores' },
+                ]}
+              />
+              <Radio.Group
+                value={orientacaoImp}
+                onChange={e => setOrientacaoImp(e.target.value)}
+                optionType="button"
+                buttonStyle="solid"
+                size="small"
+              >
+                <Radio.Button value="retrato">Retrato</Radio.Button>
+                <Radio.Button value="paisagem">Paisagem</Radio.Button>
+              </Radio.Group>
+              <PDFDownloadLink
+                key={`${tipoRelatorio}-${orientacaoImp}`}
+                document={
+                  tipoRelatorio === 'vendas'
+                    ? <ConsultaVendasPDF
+                        vendas={dados}
+                        totais={{ totalLotes, totalValor, totalComissao, totalDesconto, totalLiquido, totalQtd, mediaGeral }}
+                        titulo={nomeLeilaoSel}
+                        empresa={config.empresa}
+                        filtrosDesc={filtrosDesc}
+                        orientacao={orientacaoImp}
+                      />
+                    : <PartesVendasPDF
+                        vendas={dados}
+                        titulo={nomeLeilaoSel}
+                        empresa={config.empresa}
+                        filtrosDesc={filtrosDesc}
+                        orientacao={orientacaoImp}
+                      />
+                }
+                fileName={`${tipoRelatorio === 'vendas' ? 'consulta-vendas' : 'partes-vendas'}-${new Date().toISOString().slice(0, 10)}.pdf`}
+                style={{ textDecoration: 'none' }}
+              >
+                {({ loading }) => (
+                  <Button
+                    type="primary"
+                    icon={<PrinterOutlined />}
+                    loading={loading}
+                    disabled={!dados.length}
+                  >
+                    {loading ? 'Gerando PDF...' : 'Imprimir PDF'}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+              <Button
+                icon={<FileExcelOutlined />}
+                onClick={exportarCSV}
+                disabled={!dados.length}
+              >
+                Exportar CSV
+              </Button>
+            </Space>
           </Row>
 
           <Table

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Select, Button, Table, Input, Space, message, Typography, Row, Col, Tag, Grid, Tooltip } from 'antd';
 import {
   SaveOutlined, PrinterOutlined, OrderedListOutlined, ClearOutlined, CalendarOutlined,
@@ -87,6 +87,19 @@ export default function OrdemEntrada() {
       setSalvando(false);
     }
   };
+
+  const lotesOrdenados = useMemo(() => {
+    return [...lotes].sort((a, b) => {
+      const oa = ordens[a.id] || '';
+      const ob = ordens[b.id] || '';
+      if (oa && !ob) return -1;
+      if (!oa && ob) return 1;
+      if (!oa && !ob) return a.lotexx.localeCompare(b.lotexx);
+      const na = parseInt(oa) || 0;
+      const nb = parseInt(ob) || 0;
+      return na !== nb ? na - nb : a.lotexx.localeCompare(b.lotexx);
+    });
+  }, [lotes, ordens]);
 
   const comOrdem = lotes.filter(l => ordens[l.id]);
 
@@ -195,7 +208,7 @@ export default function OrdemEntrada() {
         <Table
           rowKey="id"
           columns={colunas}
-          dataSource={lotes}
+          dataSource={lotesOrdenados}
           loading={loading}
           size="small"
           pagination={false}

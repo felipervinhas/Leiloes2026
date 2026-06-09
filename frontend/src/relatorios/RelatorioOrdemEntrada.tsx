@@ -1,8 +1,10 @@
-import React from 'react';
+import { useState } from 'react';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Image } from '@react-pdf/renderer';
-import { Button } from 'antd';
+import { Button, Radio, Space } from 'antd';
 import { PrinterOutlined } from '@ant-design/icons';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
+
+type Orientacao = 'retrato' | 'paisagem';
 
 export interface LoteOrdemPDF {
   id: number;
@@ -102,14 +104,15 @@ const s = StyleSheet.create({
   footerText: { fontSize: 6.5, color: '#aaa' },
 });
 
-function OrdemEntradaPDF({ lotes, titulo, empresa }: Props) {
+function OrdemEntradaPDF({ lotes, titulo, empresa, orientacao = 'paisagem' }: Props & { orientacao?: Orientacao }) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
   const subtitulo = titulo ? `Ordem de Entrada — ${titulo}` : 'Ordem de Entrada';
+  const pageSize: any = orientacao === 'paisagem' ? [841.89, 595.28] : 'A4';
 
   return (
     <Document title={subtitulo} author={nomeEmpresa}>
-      <Page size="A4" style={s.page}>
+      <Page size={pageSize} style={s.page}>
 
         {/* Cabeçalho */}
         <View style={s.header} fixed>
@@ -157,19 +160,32 @@ function OrdemEntradaPDF({ lotes, titulo, empresa }: Props) {
 }
 
 export function BotaoBaixarPDFOrdem({ lotes, titulo, empresa }: Props) {
+  const [orientacao, setOrientacao] = useState<Orientacao>('paisagem');
   const nomeArquivo = `ordem-entrada-${new Date().toISOString().slice(0, 10)}.pdf`;
   return (
-    <PDFDownloadLink
-      document={<OrdemEntradaPDF lotes={lotes} titulo={titulo} empresa={empresa} />}
-      fileName={nomeArquivo}
-      style={{ textDecoration: 'none' }}
-    >
-      {({ loading }) => (
-        <Button icon={<PrinterOutlined />} loading={loading} disabled={lotes.length === 0}>
-          {loading ? 'Gerando PDF...' : 'Imprimir'}
-        </Button>
-      )}
-    </PDFDownloadLink>
+    <Space size={4}>
+      <Radio.Group
+        value={orientacao}
+        onChange={e => setOrientacao(e.target.value)}
+        optionType="button"
+        buttonStyle="solid"
+        size="small"
+      >
+        <Radio.Button value="retrato">Retrato</Radio.Button>
+        <Radio.Button value="paisagem">Paisagem</Radio.Button>
+      </Radio.Group>
+      <PDFDownloadLink
+        document={<OrdemEntradaPDF lotes={lotes} titulo={titulo} empresa={empresa} orientacao={orientacao} />}
+        fileName={nomeArquivo}
+        style={{ textDecoration: 'none' }}
+      >
+        {({ loading }) => (
+          <Button icon={<PrinterOutlined />} loading={loading} disabled={lotes.length === 0}>
+            {loading ? 'Gerando PDF...' : 'Imprimir'}
+          </Button>
+        )}
+      </PDFDownloadLink>
+    </Space>
   );
 }
 

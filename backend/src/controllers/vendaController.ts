@@ -165,6 +165,13 @@ export const atualizarParcela = async (req: Request, res: Response) => {
 
 // ─── propriedades ────────────────────────────────────────────────────────────
 
+export const fatura = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const dados = await svc.dadosFatura(id);
+  if (!dados) return res.status(404).json({ error: 'Não encontrado' });
+  res.json(dados);
+};
+
 export const listarPropriedades = async (req: Request, res: Response) => {
   res.json(await svc.listarPropriedades(Number(req.params.idCli)));
 };

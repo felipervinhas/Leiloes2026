@@ -18,6 +18,8 @@ import * as venda from '../controllers/vendaController';
 import * as cotacao from '../controllers/cotacaoController';
 import * as notificacao from '../controllers/notificacaoController';
 import * as despesa from '../controllers/despesaController';
+import * as dash     from '../controllers/dashboardController';
+import * as contrato  from '../controllers/contratoController';
 import multer from 'multer';
 
 const memStorage = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -39,6 +41,17 @@ bancoRouter.get('/configuracoes/logo-imagem', getLogoImagem);
 
 // Rotas protegidas
 bancoRouter.use(authMiddleware);
+
+bancoRouter.get('/dashboard', dash.dashboard);
+
+// Contratos
+bancoRouter.get('/contratos/variaveis',                              contrato.variaveis);
+bancoRouter.get('/contratos/templates',                              contrato.listar);
+bancoRouter.post('/contratos/templates',                             contrato.criar);
+bancoRouter.get('/contratos/templates/:id',                          contrato.buscar);
+bancoRouter.put('/contratos/templates/:id',                          contrato.atualizar);
+bancoRouter.delete('/contratos/templates/:id',                       contrato.deletar);
+bancoRouter.get('/contratos/gerar/:idMov/:idCli/:idTemplate',        contrato.gerar);
 
 bancoRouter.get('/cidades', cidade.listar);
 bancoRouter.get('/cidades/:id', cidade.buscar);
@@ -100,6 +113,7 @@ bancoRouter.get('/consulta-vendas/lotes/:idLeilao', consultaVendas.lotes);
 bancoRouter.get('/vendas', venda.listar);
 bancoRouter.post('/vendas', venda.criar);
 bancoRouter.get('/vendas/lotes-disponiveis/:idLeilao', venda.lotesDisponiveis);
+bancoRouter.get('/vendas/:id/fatura', venda.fatura);
 bancoRouter.get('/vendas/:id', venda.buscar);
 bancoRouter.put('/vendas/:id', venda.atualizar);
 bancoRouter.delete('/vendas/:id', venda.excluir);

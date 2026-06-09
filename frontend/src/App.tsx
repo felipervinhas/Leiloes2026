@@ -23,6 +23,7 @@ import Cotacoes from './pages/Cotacoes';
 import Notificacoes from './pages/Notificacoes';
 import Vendas from './pages/Vendas';
 import ConsultaVendas from './pages/ConsultaVendas';
+import Contratos from './pages/Contratos';
 import Despesas from './pages/Despesas';
 import { BANCOS_PERMITIDOS } from './config/bancos';
 
@@ -85,6 +86,7 @@ function App() {
                 <Route path="notificacoes" element={<Notificacoes />} />
                 <Route path="vendas" element={<Vendas />} />
                 <Route path="consulta-vendas" element={<ConsultaVendas />} />
+                <Route path="contratos" element={<Contratos />} />
                 <Route path="despesas" element={<Despesas />} />
               </Route>
             </Route>

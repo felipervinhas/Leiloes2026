@@ -116,6 +116,7 @@ export async function listarVendas(filtros: FiltrosListagem) {
     idLote:       row.IDLOTE,
     lotexx:       row.LOTEXX,
     deslot:       row.DESLOT,
+    idcli:        Number(row.IDCLI),
     nomexx:       row.NOMEXX,
     qtdxxx:       row.QTDXXX,
     vlrpar:       row.VLRPAR,
@@ -764,6 +765,134 @@ export async function salvarPropriedadeComprador(
     .input('idPropriedade',  sql.Int, idPropriedade)
     .query(`UPDATE MOVIMENTO_COMPRADOR SET ID_PROPRIEDADE=@idPropriedade
             WHERE IDMOV=@idMov AND IDCLI=@idCli`);
+}
+
+// ─── fatura de compras ──────────────────────────────────────────────────────
+
+export async function dadosFatura(idMov: number) {
+  const pool = await getPool();
+
+  const rMov = await pool.request().input('id', sql.Int, idMov).query(`
+    SELECT M.ID, M.IDLEILAO, M.CODNOT, M.DATLAN, M.DEFESA,
+           L.LEILAO, L.DATLEI, L.COMCOM, L.COMVEN
+    FROM MOVIMENTO M
+    LEFT JOIN LEILOES L ON L.ID = M.IDLEILAO
+    WHERE M.ID = @id
+  `);
+  if (!rMov.recordset.length) return null;
+  const mov = rMov.recordset[0];
+
+  const rLote = await pool.request().input('id', sql.Int, idMov).query(`
+    SELECT ML.QTDXXX, ML.VLRPAR, ML.VLRTOT, ML.VLRDES, ML.QTDPAR, ML.COMISS,
+           LO.LOTEXX, LO.DESLOT, LO.RPXXX, LO.SBBXXX, LO.PESOXX, LO.DATNAS,
+           LO.PELAGE, LO.FILIACAO, LO.CATEGO,
+           R.DESCRICAO AS DESCRICAORACA, R.ESPECIES,
+           VEN.NOMEXX  AS NOME_VENDEDOR,  VEN.CPFXXX  AS CPF_VENDEDOR,
+           VEN.ENDERE  AS ENDERE_VENDEDOR, VEN.BAIRRO AS BAIRRO_VENDEDOR,
+           VEN.CEPXXX  AS CEP_VENDEDOR,   VEN.CELU_1  AS CELULAR_VENDEDOR,
+           VEN.TELRES  AS TELRES_VENDEDOR,
+           CIDVEN.CIDADE AS CIDADE_VENDEDOR, CIDVEN.ESTADO AS ESTADO_VENDEDOR
+    FROM MOVIMENTO_LOTE ML
+    LEFT JOIN LOTES LO       ON LO.ID  = ML.IDLOTE
+    LEFT JOIN RACAS R        ON R.ID   = LO.RACAXX
+    LEFT JOIN CLIENTES VEN   ON VEN.ID = LO.CODVEN
+    LEFT JOIN CIDADES CIDVEN ON CIDVEN.ID = VEN.CIDADE
+    WHERE ML.IDMOV = @id
+  `);
+
+  const rComp = await pool.request().input('id', sql.Int, idMov).query(`
+    SELECT MC.ID, MC.IDCLI, MC.IDMOVLOTE, MC.PERCEN, MC.VALORORIGINAL, MC.VALORPAGAR,
+           MC.VALORDESCONTO, MC.VALORCOMISSAO, MC.COMISSAO, MC.FORMA_PAGAMENTO,
+           MC.IDCONDPAGTO,
+           C.NOMEXX, C.CPFXXX, C.ENDERE, C.BAIRRO, C.CEPXXX, C.CELU_1,
+           CIDC.CIDADE  AS NOMECIDADE,    CIDC.ESTADO  AS ESTADO,
+           CP.DESFIN,
+           CPR.NOME_PROPRIEDADE, CPR.CIDADE AS CIDADE_PROP, CPR.ESTADO AS ESTADO_PROP
+    FROM MOVIMENTO_COMPRADOR MC
+    LEFT JOIN CLIENTES C        ON C.ID   = MC.IDCLI
+    LEFT JOIN CIDADES CIDC      ON CIDC.ID = C.CIDADE
+    LEFT JOIN CONDICAOPAGTOS CP ON CP.ID   = MC.IDCONDPAGTO
+    LEFT JOIN CLIENTES_PROPRIEDADES CPR ON CPR.ID = MC.ID_PROPRIEDADE
+    WHERE MC.IDMOV = @id
+    ORDER BY MC.ID
+  `);
+
+  const rParc = await pool.request().input('id', sql.Int, idMov).query(`
+    SELECT IDMOVLOTE, ORDXXX, FORMAT(DATVEN,'dd/MM/yyyy') AS DATVEN_F, VLRPAR, PRIPAR
+    FROM MOVIMENTO_PARCELAMENTO
+    WHERE IDMOV = @id
+    ORDER BY IDMOVLOTE, DATVEN, ORDXXX
+  `);
+
+  const parcelasPorMovLote: Record<number, any[]> = {};
+  for (const p of rParc.recordset) {
+    const key = p.IDMOVLOTE;
+    if (!parcelasPorMovLote[key]) parcelasPorMovLote[key] = [];
+    parcelasPorMovLote[key].push({
+      ordxxx: p.ORDXXX,
+      datven: p.DATVEN_F,
+      vlrpar: p.VLRPAR,
+      pripar: p.PRIPAR,
+    });
+  }
+
+  const l = rLote.recordset[0] || null;
+
+  return {
+    id:       mov.ID,
+    codnot:   mov.CODNOT,
+    datlan:   mov.DATLAN ? new Date(mov.DATLAN).toLocaleDateString('pt-BR') : '—',
+    leilao:   mov.LEILAO,
+    datlei:   mov.DATLEI ? new Date(mov.DATLEI).toLocaleDateString('pt-BR') : '—',
+    lote: l ? {
+      lotexx:        l.LOTEXX,
+      deslot:        l.DESLOT,
+      rpxxx:         l.RPXXX,
+      sbbxxx:        l.SBBXXX,
+      pesoxx:        l.PESOXX,
+      catego:        l.CATEGO,
+      descricaoRaca: l.DESCRICAORACA,
+      especies:      l.ESPECIES,
+      qtdxxx:        l.QTDXXX,
+      vlrpar:        l.VLRPAR,
+      vlrtot:        l.VLRTOT,
+      vlrdes:        l.VLRDES,
+      comiss:        l.COMISS,
+      nomeVendedor:  l.NOME_VENDEDOR,
+      cpfVendedor:   l.CPF_VENDEDOR,
+      endereVendedor:  l.ENDERE_VENDEDOR,
+      bairroVendedor:  l.BAIRRO_VENDEDOR,
+      cepVendedor:     l.CEP_VENDEDOR,
+      celularVendedor: l.CELULAR_VENDEDOR,
+      telresVendedor:  l.TELRES_VENDEDOR,
+      cidadeVendedor:  l.CIDADE_VENDEDOR,
+      estadoVendedor:  l.ESTADO_VENDEDOR,
+    } : null,
+    compradores: rComp.recordset.map((c: any) => ({
+      id:             c.ID,
+      idCli:          c.IDCLI,
+      nomexx:         c.NOMEXX,
+      cpfxxx:         c.CPFXXX,
+      endere:         c.ENDERE,
+      bairro:         c.BAIRRO,
+      cepxxx:         c.CEPXXX,
+      celu1:          c.CELU_1,
+      nomeCidade:     c.NOMECIDADE,
+      nomeEstado:     c.ESTADO,
+      percen:         c.PERCEN,
+      valorOriginal:  c.VALORORIGINAL,
+      valorPagar:     c.VALORPAGAR,
+      valorDesconto:  c.VALORDESCONTO,
+      valorComissao:  c.VALORCOMISSAO,
+      comissao:       c.COMISSAO,
+      formaPagamento: c.FORMA_PAGAMENTO,
+      desfin:         c.DESFIN,
+      nomePropriedade: c.NOME_PROPRIEDADE,
+      cidadeProp:      c.CIDADE_PROP,
+      estadoProp:      c.ESTADO_PROP,
+      parcelas:        parcelasPorMovLote[c.IDMOVLOTE] || [],
+    })),
+  };
 }
 
 // ─── atualizar status (encaminhamentos) ─────────────────────────────────────

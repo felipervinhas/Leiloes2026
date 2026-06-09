@@ -28,10 +28,22 @@ const BASE_SQL = `
     R.RACA,
     VEN.NOMEXX  AS NOME_VENDEDOR,
     VEN.CPFXXX  AS CPF_VENDEDOR,
+    VEN.ENDERE  AS ENDERE_VENDEDOR,
+    VEN.BAIRRO  AS BAIRRO_VENDEDOR,
+    VEN.CEPXXX  AS CEP_VENDEDOR,
+    VEN.CELU_1  AS CELULAR_VENDEDOR,
+    VEN.TELRES  AS TELRES_VENDEDOR,
+    CIDVEN.CIDADE AS CIDADE_VENDEDOR,
+    CIDVEN.ESTADO AS ESTADO_VENDEDOR,
     V.IDCLI,
     COM.NOMEXX  AS NOME_COMPRADOR,
     COM.CPFXXX  AS CPF_COMPRADOR,
+    COM.ENDERE  AS ENDERE_COMPRADOR,
+    COM.BAIRRO  AS BAIRRO_COMPRADOR,
+    COM.CEPXXX  AS CEP_COMPRADOR,
     COM.CELU_1  AS CELULAR_COMPRADOR,
+    CIDCOM.CIDADE AS CIDADE_COMPRADOR,
+    CIDCOM.ESTADO AS ESTADO_COMPRADOR,
     CP.INSCRICAO,
     CP.NOME_PROPRIEDADE,
     CP.LOCALIDADE,
@@ -58,6 +70,8 @@ const BASE_SQL = `
   LEFT JOIN CondicaoPagtos PG      ON PG.ID  = V.IDCONDPAGTO
   LEFT JOIN Clientes COM           ON COM.ID = V.IDCLI
   LEFT JOIN Clientes_Propriedades CP ON CP.ID = V.ID_PROPRIEDADE
+  LEFT JOIN Cidades CIDVEN         ON CIDVEN.ID = VEN.CIDADE
+  LEFT JOIN Cidades CIDCOM         ON CIDCOM.ID = COM.CIDADE
   WHERE V.ID > 0 AND V.VALORPAGAR >= 0
 `;
 
@@ -101,10 +115,22 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
     raca:                  row.RACA,
     nomeVendedor:          row.NOME_VENDEDOR,
     cpfVendedor:           row.CPF_VENDEDOR,
+    endereVendedor:        row.ENDERE_VENDEDOR,
+    bairroVendedor:        row.BAIRRO_VENDEDOR,
+    cepVendedor:           row.CEP_VENDEDOR,
+    celularVendedor:       row.CELULAR_VENDEDOR,
+    telresVendedor:        row.TELRES_VENDEDOR,
+    cidadeVendedor:        row.CIDADE_VENDEDOR,
+    estadoVendedor:        row.ESTADO_VENDEDOR,
     idCli:                 row.IDCLI,
     nomeComprador:         row.NOME_COMPRADOR,
     cpfComprador:          row.CPF_COMPRADOR,
+    endereComprador:       row.ENDERE_COMPRADOR,
+    bairroComprador:       row.BAIRRO_COMPRADOR,
+    cepComprador:          row.CEP_COMPRADOR,
     celularComprador:      row.CELULAR_COMPRADOR,
+    cidadeComprador:       row.CIDADE_COMPRADOR,
+    estadoComprador:       row.ESTADO_COMPRADOR,
     inscricao:             row.INSCRICAO,
     nomePropriedade:       row.NOME_PROPRIEDADE,
     localidade:            row.LOCALIDADE,

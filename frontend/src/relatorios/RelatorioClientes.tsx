@@ -1,8 +1,10 @@
-import React from 'react';
+import { useState } from 'react';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Image } from '@react-pdf/renderer';
-import { Button } from 'antd';
+import { Button, Radio, Space } from 'antd';
 import { FilePdfOutlined } from '@ant-design/icons';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
+
+type Orientacao = 'retrato' | 'paisagem';
 
 export interface ClienteCompleto {
   id: number;
@@ -275,13 +277,14 @@ function CardCliente({ cliente: c, index }: { cliente: ClienteCompleto; index: n
   );
 }
 
-function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', empresa }: Props) {
+function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', empresa, orientacao = 'retrato' }: Props & { orientacao?: Orientacao }) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
+  const pageSize: any = orientacao === 'paisagem' ? [841.89, 595.28] : 'A4';
 
   return (
     <Document title={titulo} author={nomeEmpresa} creator={nomeEmpresa}>
-      <Page size="A4" style={s.page}>
+      <Page size={pageSize} style={s.page}>
 
         {/* Cabeçalho do documento */}
         <View style={s.docHeader} fixed>
@@ -312,26 +315,33 @@ function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', emp
 }
 
 export function BotaoBaixarPDF({ clientes, titulo, empresa, logo, logoUrl }: Props) {
+  const [orientacao, setOrientacao] = useState<Orientacao>('retrato');
   const nomeArquivo = `relatorio-clientes-${new Date().toISOString().slice(0, 10)}.pdf`;
 
   return (
-    <PDFDownloadLink
-      document={<RelatorioClientesPDF clientes={clientes} titulo={titulo} empresa={empresa} logo={logo} logoUrl={logoUrl} />}
-      fileName={nomeArquivo}
-      style={{ textDecoration: 'none' }}
-    >
-      {({ loading }) => (
-        <Button
-          type="primary"
-          danger
-          icon={<FilePdfOutlined />}
-          loading={loading}
-          disabled={clientes.length === 0}
-        >
-          {loading ? 'Gerando PDF...' : 'Baixar PDF'}
-        </Button>
-      )}
-    </PDFDownloadLink>
+    <Space size={4}>
+      <Radio.Group
+        value={orientacao}
+        onChange={e => setOrientacao(e.target.value)}
+        optionType="button"
+        buttonStyle="solid"
+        size="small"
+      >
+        <Radio.Button value="retrato">Retrato</Radio.Button>
+        <Radio.Button value="paisagem">Paisagem</Radio.Button>
+      </Radio.Group>
+      <PDFDownloadLink
+        document={<RelatorioClientesPDF clientes={clientes} titulo={titulo} empresa={empresa} logo={logo} logoUrl={logoUrl} orientacao={orientacao} />}
+        fileName={nomeArquivo}
+        style={{ textDecoration: 'none' }}
+      >
+        {({ loading }) => (
+          <Button type="primary" danger icon={<FilePdfOutlined />} loading={loading} disabled={clientes.length === 0}>
+            {loading ? 'Gerando...' : 'Baixar PDF'}
+          </Button>
+        )}
+      </PDFDownloadLink>
+    </Space>
   );
 }
 

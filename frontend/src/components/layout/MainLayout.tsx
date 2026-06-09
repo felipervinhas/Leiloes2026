@@ -6,6 +6,7 @@ import {
   CreditCardOutlined, SafetyOutlined, SettingOutlined, MenuFoldOutlined,
   MenuUnfoldOutlined, TrophyOutlined, BellOutlined, LineChartOutlined,
   DollarOutlined, WalletOutlined, FileSearchOutlined, OrderedListOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -30,6 +31,7 @@ const ALL_MENU_ITEMS = [
     children: [
       { key: '/vendas', icon: <DollarOutlined />, label: 'Vendas', controle: 'Vendas' },
       { key: '/consulta-vendas', icon: <FileSearchOutlined />, label: 'Consulta Vendas', controle: 'Consulta Vendas' },
+      { key: '/contratos', icon: <FileTextOutlined />, label: 'Contratos', controle: undefined },
       { key: '/cotacoes', icon: <LineChartOutlined />, label: 'Cotações', controle: 'Cotações' },
       { key: '/despesas', icon: <WalletOutlined />, label: 'Despesas', controle: undefined },
     ],
@@ -66,6 +68,7 @@ const ROUTE_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
   '/ordem-entrada': { label: 'Ordem de Entrada', icon: <OrderedListOutlined /> },
   '/vendas': { label: 'Vendas', icon: <DollarOutlined /> },
   '/consulta-vendas': { label: 'Consulta Vendas', icon: <FileSearchOutlined /> },
+  '/contratos': { label: 'Contratos', icon: <FileTextOutlined /> },
   '/cotacoes': { label: 'Cotações', icon: <LineChartOutlined /> },
   '/despesas': { label: 'Despesas', icon: <WalletOutlined /> },
   '/clientes': { label: 'Clientes', icon: <TeamOutlined /> },
