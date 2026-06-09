@@ -5,7 +5,7 @@ import {
   UserOutlined, LogoutOutlined, EnvironmentOutlined, BranchesOutlined,
   CreditCardOutlined, SafetyOutlined, SettingOutlined, MenuFoldOutlined,
   MenuUnfoldOutlined, TrophyOutlined, BellOutlined, LineChartOutlined,
-  DollarOutlined, WalletOutlined, FileSearchOutlined,
+  DollarOutlined, WalletOutlined, FileSearchOutlined, OrderedListOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -22,6 +22,7 @@ const ALL_MENU_ITEMS = [
       { key: '/leiloes', label: 'Leilões', controle: 'Leilões' },
       { key: '/lotes', icon: <ShoppingOutlined />, label: 'Lotes', controle: 'Lotes' },
       { key: '/lances', icon: <TrophyOutlined />, label: 'Lances', controle: 'Lançes' },
+      { key: '/ordem-entrada', icon: <OrderedListOutlined />, label: 'Ordem de Entrada', controle: undefined },
     ],
   },
   {
@@ -62,6 +63,7 @@ const ROUTE_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
   '/leiloes': { label: 'Leilões', icon: <CalendarOutlined /> },
   '/lotes': { label: 'Lotes', icon: <ShoppingOutlined /> },
   '/lances': { label: 'Lances', icon: <TrophyOutlined /> },
+  '/ordem-entrada': { label: 'Ordem de Entrada', icon: <OrderedListOutlined /> },
   '/vendas': { label: 'Vendas', icon: <DollarOutlined /> },
   '/consulta-vendas': { label: 'Consulta Vendas', icon: <FileSearchOutlined /> },
   '/cotacoes': { label: 'Cotações', icon: <LineChartOutlined /> },

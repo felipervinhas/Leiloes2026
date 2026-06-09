@@ -87,6 +87,25 @@ export async function atualizarLote(id: number, d: Lote): Promise<void> {
       CONDIC=@condic WHERE ID=@id`);
 }
 
+export async function salvarOrdensLotes(lotes: Array<{ id: number; ordem: string | null }>): Promise<void> {
+  if (!lotes.length) return;
+  const pool = await getPool();
+  const transaction = pool.transaction();
+  await transaction.begin();
+  try {
+    for (const l of lotes) {
+      await transaction.request()
+        .input('id', sql.Int, l.id)
+        .input('ordem', sql.VarChar(10), l.ordem || null)
+        .query(`UPDATE Lotes SET ORDEM = @ordem WHERE ID = @id`);
+    }
+    await transaction.commit();
+  } catch (e) {
+    await transaction.rollback();
+    throw e;
+  }
+}
+
 export async function deletarLote(id: number): Promise<void> {
   const pool = await getPool();
   await pool.request().input('id', sql.Int, id).query(`DELETE FROM Lotes WHERE ID=@id`);

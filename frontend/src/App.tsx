@@ -18,6 +18,7 @@ import Clientes from './pages/Clientes';
 import Lotes from './pages/Lotes';
 import Leiloes from './pages/Leiloes';
 import Lances from './pages/Lances';
+import OrdemEntrada from './pages/OrdemEntrada';
 import Cotacoes from './pages/Cotacoes';
 import Notificacoes from './pages/Notificacoes';
 import Vendas from './pages/Vendas';
@@ -79,6 +80,7 @@ function App() {
                 <Route path="perfis" element={<Perfis />} />
                 <Route path="usuarios" element={<Usuarios />} />
                 <Route path="lances" element={<Lances />} />
+                <Route path="ordem-entrada" element={<OrdemEntrada />} />
                 <Route path="cotacoes" element={<Cotacoes />} />
                 <Route path="notificacoes" element={<Notificacoes />} />
                 <Route path="vendas" element={<Vendas />} />

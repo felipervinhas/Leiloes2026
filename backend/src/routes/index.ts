@@ -82,6 +82,7 @@ bancoRouter.post('/leiloes/:id/imagens/media', memStorage.single('file'), upload
 bancoRouter.delete('/leiloes/:id/imagens/:tipo', upload.deletarLeilaoImagem);
 
 bancoRouter.get('/lotes', lote.listar);
+bancoRouter.post('/lotes/salvar-ordens', lote.salvarOrdens);
 bancoRouter.get('/lotes/:id', lote.buscar);
 bancoRouter.post('/lotes', lote.criar);
 bancoRouter.put('/lotes/:id', lote.atualizar);

@@ -21,6 +21,13 @@ export const deletar = async (req: Request, res: Response) => {
   await svc.deletarLote(Number(req.params.id));
   res.status(204).send();
 };
+export const salvarOrdens = async (req: Request, res: Response) => {
+  const { lotes } = req.body;
+  if (!Array.isArray(lotes)) return res.status(400).json({ error: 'lotes deve ser um array' });
+  await svc.salvarOrdensLotes(lotes);
+  res.json({ ok: true });
+};
+
 export const duplicar = async (req: Request, res: Response) => {
   try {
     const novoId = await svc.duplicarLote(Number(req.params.id));
