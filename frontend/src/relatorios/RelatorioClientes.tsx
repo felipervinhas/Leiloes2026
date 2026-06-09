@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, PDFDownloadLink } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Image } from '@react-pdf/renderer';
 import { Button } from 'antd';
 import { FilePdfOutlined } from '@ant-design/icons';
 
@@ -34,6 +34,8 @@ export interface ClienteCompleto {
 interface Props {
   clientes: ClienteCompleto[];
   titulo?: string;
+  empresa?: string;
+  logo?: string;
 }
 
 const AZUL = '#001529';
@@ -65,7 +67,8 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  docHeaderEsquerda: { flexDirection: 'column' },
+  docHeaderEsquerda: { flexDirection: 'column', justifyContent: 'center' },
+  docHeaderLogo: { maxHeight: 44, maxWidth: 140, objectFit: 'contain', marginBottom: 2 },
   docHeaderTitulo: { color: '#fff', fontSize: 13, fontFamily: 'Helvetica-Bold' },
   docHeaderSub: { color: '#a0b4c8', fontSize: 8, marginTop: 2 },
   docHeaderDireita: { alignItems: 'flex-end' },
@@ -270,17 +273,22 @@ function CardCliente({ cliente: c, index }: { cliente: ClienteCompleto; index: n
   );
 }
 
-function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes' }: Props) {
+function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', empresa, logo }: Props) {
+  const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
 
   return (
-    <Document title={titulo} author="Administrando Leilões" creator="Sistema Leilões 2026">
+    <Document title={titulo} author={nomeEmpresa} creator={nomeEmpresa}>
       <Page size="A4" style={s.page}>
 
         {/* Cabeçalho do documento */}
         <View style={s.docHeader} fixed>
           <View style={s.docHeaderEsquerda}>
-            <Text style={s.docHeaderTitulo}>Administrando Leilões</Text>
+            {logo ? (
+              <Image src={logo} style={s.docHeaderLogo} />
+            ) : (
+              <Text style={s.docHeaderTitulo}>{nomeEmpresa}</Text>
+            )}
             <Text style={s.docHeaderSub}>{titulo}</Text>
           </View>
           <View style={s.docHeaderDireita}>
@@ -296,7 +304,7 @@ function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes' }: P
 
         {/* Footer com paginação */}
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>Administrando Leilões — Sistema de Gestão</Text>
+          <Text style={s.footerText}>{nomeEmpresa} — Sistema de Gestão</Text>
           <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
         </View>
 
@@ -305,12 +313,12 @@ function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes' }: P
   );
 }
 
-export function BotaoBaixarPDF({ clientes, titulo }: Props) {
+export function BotaoBaixarPDF({ clientes, titulo, empresa, logo }: Props) {
   const nomeArquivo = `relatorio-clientes-${new Date().toISOString().slice(0, 10)}.pdf`;
 
   return (
     <PDFDownloadLink
-      document={<RelatorioClientesPDF clientes={clientes} titulo={titulo} />}
+      document={<RelatorioClientesPDF clientes={clientes} titulo={titulo} empresa={empresa} logo={logo} />}
       fileName={nomeArquivo}
       style={{ textDecoration: 'none' }}
     >

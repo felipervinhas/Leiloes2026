@@ -7,6 +7,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined
 import { Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import api from '../services/api';
+import { useConfig } from '../context/ConfigContext';
 import { BotaoBaixarPDF, ClienteCompleto } from '../relatorios/RelatorioClientes';
 import { exportarClientesExcel } from '../relatorios/exportarExcel';
 
@@ -30,6 +31,8 @@ const ACESSO = ['1 - Liberado', '2 - Bloqueado', '3 - Pendente', '4 - Reprovado'
 const FILTROS = [{ value: 'nome', label: 'Nome' }, { value: 'cpf', label: 'CPF' }, { value: 'cnpj', label: 'CNPJ' }, { value: 'email', label: 'E-mail' }];
 
 export default function Clientes() {
+  const config = useConfig();
+  const [logoBase64, setLogoBase64] = useState<string | undefined>();
   const [dados, setDados] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -105,6 +108,20 @@ export default function Clientes() {
   };
 
   useEffect(() => { carregar(); carregarCidades(); }, []);
+
+  useEffect(() => {
+    if (!config.logoUrl) return;
+    fetch(config.logoUrl)
+      .then(r => r.blob())
+      .then(blob => new Promise<string>((res, rej) => {
+        const reader = new FileReader();
+        reader.onloadend = () => res(reader.result as string);
+        reader.onerror = rej;
+        reader.readAsDataURL(blob);
+      }))
+      .then(setLogoBase64)
+      .catch(() => {});
+  }, [config.logoUrl]);
 
   const abrirModal = async (item?: Cliente) => {
     if (item) {
@@ -411,7 +428,7 @@ export default function Clientes() {
             onClick={() => exportarClientesExcel(clientesCompletos)}>
             Exportar Excel
           </Button>,
-          <BotaoBaixarPDF key="pdf" clientes={clientesCompletos} />,
+          <BotaoBaixarPDF key="pdf" clientes={clientesCompletos} empresa={config.empresa} logo={logoBase64} />,
         ]}
       >
         <Table
