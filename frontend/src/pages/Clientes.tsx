@@ -483,7 +483,6 @@ export default function Clientes() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         styles={{ wrapper: { width: 'min(860px, 100vw)' } }}
-        destroyOnClose
         extra={
           <Space>
             <Button onClick={() => setDrawerOpen(false)}>Cancelar</Button>
