@@ -20,7 +20,7 @@ const SIDER_BG     = '#0f172a';
 const ACCENT       = '#1677ff';
 const ACCENT_MED   = '#1d4ed8';
 const HEADER_FROM  = '#1677ff';
-const HEADER_TO    = '#7c3aed';
+const HEADER_TO    = '#0ea5e9';
 const SHELL_BG     = '#f1f5f9';
 
 const ALL_MENU_ITEMS = [
