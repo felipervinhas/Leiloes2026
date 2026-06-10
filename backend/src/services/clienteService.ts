@@ -164,7 +164,7 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
     .input('cidade', sql.Int, d.cidade||null).input('comple', sql.VarChar, d.comple||null)
     .input('profiss', sql.VarChar, d.profiss||null).input('empres', sql.VarChar, d.empres||null)
     .input('rendax', sql.VarChar, d.rendax||null).input('ativox', sql.VarChar, d.ativox||'S')
-    .input('blocli', sql.VarChar, d.blocli||'Não').input('adm', sql.Char, d.adm||'N')
+    .input('blocli', sql.VarChar, d.blocli||'Não')
     .input('acessoApp', sql.VarChar, d.acessoApp||null).input('limcre', sql.VarChar, d.limcre||null)
     .input('classificacao', sql.Int, d.classificacao||null).input('estciv', sql.VarChar, d.estciv||null)
     .input('obsxxx', sql.VarChar, d.obsxxx||null).input('datalt', sql.Date, new Date())
@@ -175,7 +175,7 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
     .query(`UPDATE Clientes SET NOMEXX=@nomexx,ENDERE=@endere,BAIRRO=@bairro,CEPXXX=@cepxxx,
       CPFXXX=@cpfxxx,CNPJXX=@cnpjxx,TELRES=@telres,TELCOM=@telcom,CELU_1=@celu1,CELU_2=@celu2,
       RGXXXX=@rgxxxx,DATNAS=@datnas,EMAILX=@emailx,EMAIL2=@email2,CIDADE=@cidade,COMPLE=@comple,
-      PROFISS=@profiss,EMPRES=@empres,RENDAX=@rendax,ATIVOX=@ativox,BLOCLI=@blocli,ADM=@adm,
+      PROFISS=@profiss,EMPRES=@empres,RENDAX=@rendax,ATIVOX=@ativox,BLOCLI=@blocli,
       ACESSO_APP=@acessoApp,LIMCRE=@limcre,CLASSIFICACAO=@classificacao,ESTCIV=@estciv,
       OBSXXX=@obsxxx,DATALT=@datalt,BANCOX=@bancox,AGENCI=@agenci,CONTAX=@contax,PIX=@pix,
       REFER1=@refer1,TELREFERE1=@telrefere1,REFER2=@refer2,TELREFERE2=@telrefere2
