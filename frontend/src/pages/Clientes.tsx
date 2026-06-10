@@ -15,7 +15,7 @@ import { exportarClientesExcel } from '../relatorios/exportarExcel';
 const { Title } = Typography;
 
 interface Cliente { id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string; emailx?: string;
-  celu1?: string; ativox?: string; blocli?: string; adm?: string; acessoApp?: string; datcad?: string; }
+  celu1?: string; ativox?: string; blocli?: string; acessoApp?: string; datcad?: string; }
 
 interface ClienteRanking { id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string;
   emailx?: string; celu1?: string; ativox?: string;
@@ -132,7 +132,6 @@ export default function Clientes() {
       form.setFieldsValue({ 
         ativox: 'S', 
         blocli: 'Não', 
-        adm: 'N',
         // Defaults para novos usuários: todos com acesso
         verComissoes: true,
         verValoresLiquidos: true,
@@ -214,7 +213,6 @@ export default function Clientes() {
       title: 'Ativo', dataIndex: 'ativox', width: 70,
       render: (v: string) => <Tag color={STATUS_COLOR[v] || 'default'}>{v}</Tag>,
     },
-    ...(md ? [{ title: 'ADM', dataIndex: 'adm', width: 70, render: (v: string) => v === 'S' ? <Tag color="blue">Sim</Tag> : '—' }] : []),
     {
       title: 'Ações', width: sm ? 90 : 70,
       render: (_: any, r: Cliente) => (
@@ -371,7 +369,6 @@ export default function Clientes() {
     <Row gutter={[12, 0]}>
       <Col xs={12} sm={8} md={6}><Form.Item name="ativox" label="Ativo"><Select options={SN} /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="blocli" label="Bloqueado"><Select options={[{ value: 'Não', label: 'Não' }, { value: 'Sim', label: 'Sim' }]} /></Form.Item></Col>
-      <Col xs={12} sm={8} md={6}><Form.Item name="adm" label="Administrador"><Select options={SN} /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="acessoApp" label="Acesso App"><Select options={ACESSO} allowClear /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="limcre" label="Limite de Crédito"><Input /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="classificacao" label="Classificação"><Input type="number" /></Form.Item></Col>
@@ -584,7 +581,7 @@ export default function Clientes() {
               { key: '3', label: 'Contatos', children: tabContatos },
               { key: '4', label: 'Bancário', children: tabBancario },
               { key: '5', label: 'Sistema', children: tabSistema },
-              ...(editando?.adm === 'S' || form.getFieldValue('adm') === 'S' ? [{ key: '6', label: 'Permissões', children: tabPermissoes }] : []),
+              ...(podeEditarPermissoes ? [{ key: '6', label: 'Permissões', children: tabPermissoes }] : []),
             ]}
           />
         </Form>
