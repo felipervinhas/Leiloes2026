@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker,
   Space, Popconfirm, Typography, Row, Col, message, Tag, Tabs, Divider, Image, Grid } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CalendarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api from '../services/api';
 import ImageUpload from '../components/ImageUpload';
@@ -196,14 +196,25 @@ export default function Leiloes() {
 
   return (
     <>
-      <Title level={4}>Leilões</Title>
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #f0f5ff' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #1677ff 0%, #1d4ed8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(22,119,255,0.35)', flexShrink: 0 }}>
+            <CalendarOutlined style={{ fontSize: 20, color: '#fff' }} />
+          </div>
+          <div>
+            <Title level={4} style={{ margin: 0, color: '#0f172a' }}>Leilões</Title>
+            <span style={{ fontSize: 12, color: '#94a3b8' }}>{dados.length} registro{dados.length !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()}>Novo Leilão</Button>
+      </div>
+
+      {/* ── Busca ── */}
       <Row gutter={8} style={{ marginBottom: 16 }}>
         <Col flex="auto">
           <Input.Search placeholder="Buscar leilão..." value={busca} onChange={e => setBusca(e.target.value)}
             onSearch={() => carregar(busca)} enterButton={<SearchOutlined />} allowClear onClear={() => carregar('')} />
-        </Col>
-        <Col>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()}>Novo Leilão</Button>
         </Col>
       </Row>
       <Table rowKey="id" columns={colunas} dataSource={dados} loading={loading}

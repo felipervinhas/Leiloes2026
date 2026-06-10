@@ -221,7 +221,13 @@ export default function ConsultaVendas() {
 
   return (
     <>
-      <Title level={4}><FileSearchOutlined style={{ marginRight: 8 }} />Consulta de Vendas</Title>
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #faf5ff' }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(124,58,237,0.35)', flexShrink: 0 }}>
+          <FileSearchOutlined style={{ fontSize: 20, color: '#fff' }} />
+        </div>
+        <Title level={4} style={{ margin: 0, color: '#0f172a' }}>Consulta de Vendas</Title>
+      </div>
 
       {/* ── Filtros ── */}
       <div style={{ background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 8, padding: '16px 20px', marginBottom: 16 }}>

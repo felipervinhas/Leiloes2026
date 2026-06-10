@@ -428,9 +428,35 @@ export default function Clientes() {
 
   return (
     <>
-      <Title level={4}>Clientes</Title>
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #ecfeff' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(8,145,178,0.35)', flexShrink: 0 }}>
+            <TeamOutlined style={{ fontSize: 20, color: '#fff' }} />
+          </div>
+          <div>
+            <Title level={4} style={{ margin: 0, color: '#0f172a' }}>Clientes</Title>
+            <span style={{ fontSize: 12, color: '#94a3b8' }}>
+              {(rankingMode ? dadosRanking : dados).length} registro{(rankingMode ? dadosRanking : dados).length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+        <Space size={8} wrap>
+          <Button
+            icon={<TrophyOutlined />}
+            type={rankingMode ? 'primary' : 'default'}
+            onClick={alternarRanking}
+            style={rankingMode ? { background: '#0891b2', borderColor: '#0891b2' } : {}}
+          >
+            {sm ? 'Ranking' : ''}
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirDrawer()}>
+            {sm ? 'Novo Cliente' : 'Novo'}
+          </Button>
+        </Space>
+      </div>
 
-      {/* Barra de busca e ações */}
+      {/* ── Busca ── */}
       <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
         <Col xs={24} sm="auto" style={{ minWidth: 130 }}>
           <Select value={filtroCampo} onChange={setFiltroCampo} options={FILTROS} style={{ width: '100%' }} />
@@ -445,21 +471,6 @@ export default function Clientes() {
             allowClear
             onClear={() => rankingMode ? carregarRanking('') : carregar('')}
           />
-        </Col>
-        <Col xs={12} sm="auto">
-          <Button
-            block={!sm}
-            icon={<TrophyOutlined />}
-            type={rankingMode ? 'primary' : 'default'}
-            onClick={alternarRanking}
-          >
-            Ranking
-          </Button>
-        </Col>
-        <Col xs={12} sm="auto">
-          <Button block={!sm} type="primary" icon={<PlusOutlined />} onClick={() => abrirDrawer()}>
-            {sm ? 'Novo Cliente' : 'Novo'}
-          </Button>
         </Col>
       </Row>
 

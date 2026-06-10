@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker,
   Space, Popconfirm, Typography, Row, Col, message, Tag, Switch, Tabs, Divider, Image, Grid } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CopyOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CopyOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { useConfig } from '../context/ConfigContext';
 import dayjs from 'dayjs';
 import api from '../services/api';
@@ -223,7 +223,21 @@ export default function Lotes() {
 
   return (
     <>
-      <Title level={4}>Lotes</Title>
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #f0fff4' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(22,163,74,0.35)', flexShrink: 0 }}>
+            <AppstoreOutlined style={{ fontSize: 20, color: '#fff' }} />
+          </div>
+          <div>
+            <Title level={4} style={{ margin: 0, color: '#0f172a' }}>Lotes</Title>
+            <span style={{ fontSize: 12, color: '#94a3b8' }}>{dados.length} registro{dados.length !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()} style={{ background: '#16a34a', borderColor: '#16a34a' }}>Novo Lote</Button>
+      </div>
+
+      {/* ── Filtros ── */}
       <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={{ flex: '0 0 220px' }}>
           <Select placeholder="Filtrar por leilão" allowClear style={{ width: '100%' }}
@@ -233,9 +247,6 @@ export default function Lotes() {
         <Col xs={24} sm={{ flex: 'auto' }}>
           <Input.Search placeholder="Buscar lote..." value={busca} onChange={e => setBusca(e.target.value)}
             onSearch={() => carregar(busca)} enterButton={<SearchOutlined />} allowClear onClear={() => carregar('')} />
-        </Col>
-        <Col xs={24} sm="auto">
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()} block={isMobile}>Novo Lote</Button>
         </Col>
       </Row>
       <Table rowKey="id" columns={colunas} dataSource={dados} loading={loading}

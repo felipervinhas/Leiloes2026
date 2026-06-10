@@ -395,12 +395,16 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
         )}
       </Modal>
 
-      <Row align="middle" justify="space-between" style={{ marginBottom: 16 }}>
-        <Col><Title level={4} style={{ margin: 0 }}><DollarOutlined style={{ marginRight: 8 }} />Vendas</Title></Col>
-        <Col>
-          <Button type="primary" icon={<PlusOutlined />} onClick={onNova}>Nova Venda</Button>
-        </Col>
-      </Row>
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #fffbeb' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(217,119,6,0.35)', flexShrink: 0 }}>
+            <DollarOutlined style={{ fontSize: 20, color: '#fff' }} />
+          </div>
+          <Title level={4} style={{ margin: 0, color: '#0f172a' }}>Vendas</Title>
+        </div>
+        <Button type="primary" icon={<PlusOutlined />} onClick={onNova} style={{ background: '#d97706', borderColor: '#d97706' }}>Nova Venda</Button>
+      </div>
 
       <Card size="small" style={{ marginBottom: 16 }}>
         <Row gutter={[8, 8]} align="bottom">
