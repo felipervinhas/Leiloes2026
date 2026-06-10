@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getDashboardData, getTopsPorCategoria } from '../services/dashboardService';
+import { getDashboardData, getTopsPorCategoria, getCadastrosIncompletos } from '../services/dashboardService';
 import * as permSvc from '../services/permissaoDashboardService';
 
 export const dashboard = async (req: Request, res: Response) => {
@@ -27,6 +27,15 @@ export const dashboard = async (req: Request, res: Response) => {
     }
     
     res.json({ ...data, permissoes });
+  } catch (err: any) {
+    res.status(500).json({ erro: err.message });
+  }
+};
+
+export const cadastrosIncompletos = async (req: Request, res: Response) => {
+  try {
+    const data = await getCadastrosIncompletos();
+    res.json(data);
   } catch (err: any) {
     res.status(500).json({ erro: err.message });
   }

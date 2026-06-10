@@ -45,6 +45,7 @@ bancoRouter.use(authMiddleware);
 
 bancoRouter.get('/dashboard', dash.dashboard);
 bancoRouter.get('/dashboard/tops-categoria', dash.topsPorCategoria);
+bancoRouter.get('/dashboard/cadastros-incompletos', dash.cadastrosIncompletos);
 
 // Contratos
 bancoRouter.get('/contratos/variaveis',                              contrato.variaveis);

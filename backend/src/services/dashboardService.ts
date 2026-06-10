@@ -158,6 +158,80 @@ export async function getDashboardData() {
   };
 }
 
+export async function getCadastrosIncompletos() {
+  const pool = await getPool();
+
+  const r = await pool.request().query(`
+    WITH CTE AS (
+      SELECT
+        ID,
+        NOMEXX,
+        CPFXXX,
+        EMAILX,
+        CELU_1,
+        (
+          CASE WHEN ISNULL(NOMEXX, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(CPFXXX, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(RGXXXX, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN DATNAS IS NULL THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(EMAILX, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(ESTCIV, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(PROFISS, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(EMPRES, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(RENDAX, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(CEPXXX, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(ENDERE, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(BAIRRO, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(CAST(CIDADE AS VARCHAR), '') = '' OR CIDADE = 0 THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(TELRES, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(CELU_1, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(CELU_2, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(BANCOX, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(AGENCI, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(CONTAX, '') = '' THEN 1 ELSE 0 END +
+          CASE WHEN ISNULL(PIX, '') = '' THEN 1 ELSE 0 END
+        ) AS CAMPOS_VAZIOS
+      FROM CLIENTES
+      WHERE ATIVOX = 'S'
+    )
+    SELECT
+      C.ID, C.NOMEXX, C.CPFXXX, C.EMAILX, C.CELU_1,
+      C.CAMPOS_VAZIOS,
+      20 AS TOTAL_CAMPOS,
+      CAST(C.CAMPOS_VAZIOS * 100.0 / 20 AS INT) AS PCT_VAZIO,
+      ISNULL(COMP.TOTAL_COMPRAS, 0) AS TOTAL_COMPRAS,
+      ISNULL(VEND.TOTAL_VENDAS,  0) AS TOTAL_VENDAS
+    FROM CTE C
+    LEFT JOIN (
+      SELECT IDCLI, COUNT(DISTINCT IDMOV) AS TOTAL_COMPRAS
+      FROM MOVIMENTO_COMPRADOR
+      WHERE VALORORIGINAL > 0
+      GROUP BY IDCLI
+    ) COMP ON COMP.IDCLI = C.ID
+    LEFT JOIN (
+      SELECT CODVEN, COUNT(*) AS TOTAL_VENDAS
+      FROM LOTES
+      WHERE CODVEN IS NOT NULL
+      GROUP BY CODVEN
+    ) VEND ON VEND.CODVEN = C.ID
+    WHERE C.CAMPOS_VAZIOS * 100.0 / 20 > 70
+    ORDER BY C.CAMPOS_VAZIOS DESC, C.NOMEXX
+  `);
+
+  return r.recordset.map((row: any) => ({
+    id: row.ID,
+    nome: row.NOMEXX,
+    cpf: row.CPFXXX,
+    email: row.EMAILX,
+    celular: row.CELU_1,
+    camposVazios: Number(row.CAMPOS_VAZIOS),
+    totalCampos: Number(row.TOTAL_CAMPOS),
+    pctVazio: Number(row.PCT_VAZIO),
+    totalCompras: Number(row.TOTAL_COMPRAS),
+    totalVendas: Number(row.TOTAL_VENDAS),
+  }));
+}
+
 export async function getTopsPorCategoria(idCategoria?: number) {
   const pool = await getPool();
 

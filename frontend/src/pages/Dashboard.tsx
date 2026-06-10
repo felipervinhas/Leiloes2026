@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Col, Row, Spin, Typography, Tag, Progress, Empty, Badge, Drawer, Button, message, Popconfirm, List } from 'antd';
+import { Card, Col, Row, Spin, Typography, Tag, Progress, Empty, Badge, Drawer, Button, message, Popconfirm, List, Collapse, Tooltip } from 'antd';
 import {
   DollarOutlined, TrophyOutlined, TeamOutlined, CalendarOutlined,
   RiseOutlined, BarChartOutlined, FieldTimeOutlined, TagsOutlined,
   UserAddOutlined, CheckOutlined, CloseOutlined, EditOutlined,
+  WarningOutlined, DeleteOutlined, ShoppingCartOutlined, TagOutlined,
 } from '@ant-design/icons';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
   Legend, ResponsiveContainer, PieChart, Pie, Cell, Sector,
 } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import { useBanco } from '../context/BancoContext';
 import api from '../services/api';
 
@@ -63,6 +65,19 @@ interface DashData {
 interface TopsPorCategoria {
   topCompradores: { pos: number; id: number; nome: string; compras: number; valorTotal: number; valorLiq: number }[];
   topVendedores: { pos: number; id: number; nome: string; vendas: number; valorTotal: number; valorLiq: number }[];
+}
+
+interface CadastroIncompleto {
+  id: number;
+  nome: string;
+  cpf: string;
+  email: string;
+  celular: string;
+  camposVazios: number;
+  totalCampos: number;
+  pctVazio: number;
+  totalCompras: number;
+  totalVendas: number;
 }
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
@@ -168,6 +183,7 @@ function ActiveSlice(props: any) {
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function Dashboard() {
   const { banco } = useBanco();
+  const navigate = useNavigate();
   const [data, setData]     = useState<DashData | null>(null);
   const [loading, setLoading] = useState(true);
   const [pieActive, setPieActive] = useState(0);
@@ -177,6 +193,10 @@ export default function Dashboard() {
   const [topsCategoryLoading, setTopsCategoryLoading] = useState(false);
 
   const [pendentesCount, setPendentesCount] = useState(0);
+
+  const [cadastrosIncompletos, setCadastrosIncompletos] = useState<CadastroIncompleto[]>([]);
+  const [incompletosLoading, setIncompletosLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [pendentes, setPendentes]           = useState<any[]>([]);
   const [drawerOpen, setDrawerOpen]         = useState(false);
   const [drawerLoading, setDrawerLoading]   = useState(false);
@@ -202,6 +222,28 @@ export default function Dashboard() {
     const timer = setInterval(poll, 60_000);
     return () => clearInterval(timer);
   }, [banco]);
+
+  useEffect(() => {
+    if (!banco) return;
+    setIncompletosLoading(true);
+    api.get(`/${banco}/dashboard/cadastros-incompletos`)
+      .then(r => setCadastrosIncompletos(r.data))
+      .catch(() => setCadastrosIncompletos([]))
+      .finally(() => setIncompletosLoading(false));
+  }, [banco]);
+
+  const excluirClienteIncompleto = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await api.delete(`/${banco}/clientes/${id}`);
+      message.success('Cliente excluído com sucesso');
+      setCadastrosIncompletos(prev => prev.filter(c => c.id !== id));
+    } catch {
+      message.error('Erro ao excluir cliente');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   useEffect(() => {
     if (!banco || !data || data.categorias.length === 0) return;
@@ -725,6 +767,126 @@ export default function Dashboard() {
           </Card>
         </Col>
       </Row>
+
+      {/* ── Cadastros incompletos (>70% vazio) ─────────────────────────── */}
+      <Collapse
+        style={{ borderRadius: 12, marginBottom: 14, borderColor: '#ff7875' }}
+        items={[{
+          key: '1',
+          label: (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <WarningOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />
+              <span style={{ fontWeight: 700, color: '#cf1322', fontSize: 14 }}>
+                Cadastros Incompletos
+              </span>
+              {incompletosLoading ? (
+                <Spin size="small" />
+              ) : (
+                <Tag color="red">{cadastrosIncompletos.length}</Tag>
+              )}
+              <span style={{ fontSize: 12, color: '#8c8c8c', fontWeight: 400 }}>
+                — clientes ativos com mais de 70% dos campos não preenchidos
+              </span>
+            </div>
+          ),
+          children: incompletosLoading ? (
+            <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
+          ) : cadastrosIncompletos.length === 0 ? (
+            <Empty description="Nenhum cadastro com mais de 70% incompleto" style={{ padding: 16 }} />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {cadastrosIncompletos.map(c => {
+                const pctPreenchido = 100 - c.pctVazio;
+                const cor = pctPreenchido <= 20 ? '#ff4d4f' : pctPreenchido <= 40 ? '#fa8c16' : '#fadb14';
+                return (
+                  <div
+                    key={c.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14,
+                      padding: '10px 14px', borderRadius: 8,
+                      background: '#fff7f7', border: '1px solid #ffd6d6',
+                    }}
+                  >
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                      background: 'linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', fontWeight: 700, fontSize: 15,
+                    }}>
+                      {(c.nome || '?')[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {c.nome}
+                        {c.cpf && (
+                          <Text style={{ fontSize: 11, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
+                            {c.cpf}
+                          </Text>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>
+                        {c.email || c.celular || 'Sem contato cadastrado'}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <Tag
+                          icon={<ShoppingCartOutlined />}
+                          color={c.totalCompras > 0 ? 'blue' : 'default'}
+                          style={{ fontSize: 10, margin: 0 }}
+                        >
+                          {c.totalCompras > 0 ? `${c.totalCompras} compra${c.totalCompras !== 1 ? 's' : ''}` : 'Sem compras'}
+                        </Tag>
+                        <Tag
+                          icon={<TagOutlined />}
+                          color={c.totalVendas > 0 ? 'green' : 'default'}
+                          style={{ fontSize: 10, margin: 0 }}
+                        >
+                          {c.totalVendas > 0 ? `${c.totalVendas} venda${c.totalVendas !== 1 ? 's' : ''}` : 'Sem vendas'}
+                        </Tag>
+                      </div>
+                      <Tooltip title={`${c.camposVazios} de ${c.totalCampos} campos vazios`}>
+                        <Progress
+                          percent={pctPreenchido}
+                          size="small"
+                          strokeColor={cor}
+                          format={p => <span style={{ fontSize: 10 }}>{p}% preenchido</span>}
+                        />
+                      </Tooltip>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                      <Button
+                        size="small"
+                        icon={<EditOutlined />}
+                        onClick={() => navigate(`/${banco}/clientes`)}
+                      >
+                        Editar
+                      </Button>
+                      {c.totalCompras === 0 && c.totalVendas === 0 && (
+                        <Popconfirm
+                          title="Excluir cliente?"
+                          description="Este cliente não possui compras nem vendas e será removido permanentemente."
+                          onConfirm={() => excluirClienteIncompleto(c.id)}
+                          okText="Excluir"
+                          okButtonProps={{ danger: true }}
+                          cancelText="Cancelar"
+                        >
+                          <Button
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            loading={deletingId === c.id}
+                          >
+                            Excluir
+                          </Button>
+                        </Popconfirm>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ),
+        }]}
+      />
 
       {/* ── Drawer: cadastros pendentes ─────────────────────────────────── */}
       <Drawer
