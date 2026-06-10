@@ -16,10 +16,12 @@ import { useConfig } from '../../context/ConfigContext';
 const { Header, Sider, Content } = Layout;
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
-const SIDER_BG   = '#0f172a';
-const ACCENT     = '#1677ff';
-const ACCENT_MED = '#1d4ed8';
-const SHELL_BG   = '#f1f5f9';
+const SIDER_BG     = '#0f172a';
+const ACCENT       = '#1677ff';
+const ACCENT_MED   = '#1d4ed8';
+const HEADER_FROM  = '#1677ff';
+const HEADER_TO    = '#7c3aed';
+const SHELL_BG     = '#f1f5f9';
 
 const ALL_MENU_ITEMS = [
   { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard', controle: undefined },
@@ -307,20 +309,20 @@ export default function MainLayout() {
           font-size: 12px !important;
           padding: 6px 12px !important;
           border-radius: 8px 8px 0 0 !important;
-          border-color: #e2e8f0 !important;
-          background: rgba(255,255,255,0.7) !important;
+          border-color: #dde4f5 !important;
+          background: rgba(255,255,255,0.65) !important;
           color: #64748b !important;
         }
         .sistema-tabs .ant-tabs-tab-active {
           background: #ffffff !important;
-          color: ${ACCENT} !important;
-          box-shadow: 0 -2px 8px rgba(15,23,42,0.06);
+          box-shadow: 0 -2px 8px rgba(22,119,255,0.10);
         }
         .sistema-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
-          color: ${ACCENT} !important;
+          color: ${HEADER_FROM} !important;
+          font-weight: 600;
         }
         .sistema-tabs .ant-tabs-nav::before {
-          border-color: #e2e8f0 !important;
+          border-color: #dde4f5 !important;
         }
         /* ── Drawer menu (mobile) ── */
         .menu-drawer .ant-drawer-body {
@@ -365,7 +367,7 @@ export default function MainLayout() {
         }
         /* ── User trigger ── */
         .layout-user-trigger:hover {
-          background: rgba(22,119,255,0.10) !important;
+          background: rgba(255,255,255,0.28) !important;
         }
       `}</style>
 
@@ -421,13 +423,13 @@ export default function MainLayout() {
         {/* ── Header ── */}
         <Header style={{
           padding: isMobile ? '0 12px' : '0 24px',
-          background: '#ffffff',
+          background: `linear-gradient(135deg, ${HEADER_FROM} 0%, ${HEADER_TO} 100%)`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           height: isMobile ? 56 : 62,
           lineHeight: isMobile ? '56px' : '62px',
-          boxShadow: '0 1px 0 #e2e8f0, 0 4px 12px rgba(15,23,42,0.05)',
+          boxShadow: `0 4px 20px rgba(22,119,255,0.30)`,
           flexShrink: 0,
           gap: 12,
           position: 'sticky',
@@ -440,20 +442,22 @@ export default function MainLayout() {
               icon={<MenuOutlined style={{ fontSize: 18 }} />}
               onClick={() => setDrawerOpen(true)}
               style={{
-                color: '#475569', padding: '0 8px', height: 38, flexShrink: 0,
-                borderRadius: 8, background: '#f1f5f9', border: '1px solid #e2e8f0',
+                color: '#fff', padding: '0 8px', height: 38, flexShrink: 0,
+                borderRadius: 8, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)',
               }}
             />
           )}
 
           <span style={{
             fontWeight: 700,
-            fontSize: isMobile ? 15 : 17,
-            color: '#0f172a',
+            fontSize: isMobile ? 15 : 18,
+            color: '#ffffff',
             flex: 1,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
+            textShadow: '0 1px 8px rgba(0,0,0,0.15)',
+            letterSpacing: 0.2,
           }}>
             {isMobile
               ? (ROUTE_MAP[activeTabKey]?.label || config.empresa || 'Sistema')
@@ -467,8 +471,8 @@ export default function MainLayout() {
               style={{
                 cursor: 'pointer',
                 flexShrink: 0,
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
+                background: 'rgba(255,255,255,0.18)',
+                border: '1px solid rgba(255,255,255,0.30)',
                 borderRadius: 999,
                 padding: isMobile ? '4px' : '4px 12px 4px 4px',
                 lineHeight: 1,
@@ -479,10 +483,10 @@ export default function MainLayout() {
               <Avatar
                 size={30}
                 icon={<UserOutlined />}
-                style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, ${ACCENT_MED} 100%)`, cursor: 'pointer' }}
+                style={{ background: 'rgba(255,255,255,0.25)', color: '#fff', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.18)' }}
               />
               {!isMobile && (
-                <span style={{ fontWeight: 500, fontSize: 13, color: '#334155' }}>
+                <span style={{ fontWeight: 600, fontSize: 13, color: '#ffffff' }}>
                   {usuario?.nome}
                 </span>
               )}
@@ -493,8 +497,8 @@ export default function MainLayout() {
         {/* ── Barra de abas (desktop only) ── */}
         {!isMobile && (
           <div style={{
-            background: '#eef2f7',
-            borderBottom: '1px solid #e2e8f0',
+            background: '#f0f4ff',
+            borderBottom: '1px solid #dde4f5',
             paddingLeft: 16,
             paddingRight: 16,
             paddingTop: 8,
