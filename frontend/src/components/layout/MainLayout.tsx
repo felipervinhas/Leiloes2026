@@ -16,9 +16,9 @@ import { useConfig } from '../../context/ConfigContext';
 const { Header, Sider, Content } = Layout;
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
-const SIDER_BG     = '#0f172a';
+const SIDER_BG     = '#0c1e4a';
 const ACCENT       = '#1677ff';
-const ACCENT_MED   = '#1d4ed8';
+const ACCENT_MED   = '#0ea5e9';
 const HEADER_FROM  = '#1677ff';
 const HEADER_TO    = '#0ea5e9';
 const SHELL_BG     = '#f1f5f9';
@@ -178,11 +178,11 @@ export default function MainLayout() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: `linear-gradient(135deg, ${ACCENT} 0%, ${ACCENT_MED} 100%)`,
+        background: `linear-gradient(135deg, ${HEADER_FROM} 0%, ${HEADER_TO} 100%)`,
         padding: collapsed && !isMobile ? '12px 8px' : '14px 16px',
         overflow: 'hidden',
         flexShrink: 0,
-        boxShadow: `0 10px 28px rgba(22,119,255,0.30)`,
+        boxShadow: `0 8px 24px rgba(14,165,233,0.25)`,
         margin: isMobile ? 0 : 10,
         borderRadius: isMobile ? 0 : 14,
       }}>
