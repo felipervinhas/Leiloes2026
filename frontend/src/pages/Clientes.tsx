@@ -3,7 +3,7 @@ import { Table, Button, Modal, Drawer, Form, Input, Select, DatePicker, Space, P
   Typography, Row, Col, message, Tag, Tabs, Divider, Grid, Checkbox, Card } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined,
   CheckCircleFilled, FileTextOutlined, FileExcelOutlined, CloseOutlined,
-  TrophyOutlined, ShoppingCartOutlined, TagOutlined, AuditOutlined } from '@ant-design/icons';
+  TrophyOutlined, ShoppingCartOutlined, TagOutlined, AuditOutlined, TeamOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import api from '../services/api';
