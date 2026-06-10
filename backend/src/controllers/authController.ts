@@ -16,7 +16,14 @@ export async function login(req: Request, res: Response) {
   }
 
   const token = jwt.sign(
-    { id: usuario.id, nome: usuario.nome, email: usuario.email, perfis: usuario.perfis, controles: usuario.controles },
+    { 
+      id: usuario.id, 
+      nome: usuario.nome, 
+      email: usuario.email, 
+      adm: usuario.adm,
+      perfis: usuario.perfis, 
+      controles: usuario.controles 
+    },
     process.env.JWT_SECRET!,
     { expiresIn: '8h' }
   );
@@ -27,6 +34,7 @@ export async function login(req: Request, res: Response) {
       id: usuario.id,
       nome: usuario.nome,
       email: usuario.email,
+      adm: usuario.adm,
       perfis: usuario.perfis,
       controles: usuario.controles,
     },
