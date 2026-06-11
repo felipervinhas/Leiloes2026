@@ -5,8 +5,12 @@ function mapRow(c: any): Cliente {
   return {
     id: c.ID, nomexx: c.NOMEXX, endere: c.ENDERE, bairro: c.BAIRRO, cepxxx: c.CEPXXX,
     cpfxxx: c.CPFXXX, cnpjxx: c.CNPJXX, telres: c.TELRES, telcom: c.TELCOM,
-    celu1: c.CELU_1, celu2: c.CELU_2, rgxxxx: c.RGXXXX, datnas: c.DATNAS,
-    emailx: c.EMAILX, email2: c.EMAIL2, cidade: c.CIDADE,
+    celu1: c.CELU_1, celu2: c.CELU_2, rgxxxx: c.RGXXXX,
+    orgem: c.ORG_EM, emissa: c.EMISSA,
+    datnas: c.DATNAS,
+    emailx: c.EMAILX, email2: c.EMAIL2,
+    paixxx: c.PAIXXX, maexxx: c.MAEXXX,
+    cidade: c.CIDADE,
     nomeCidade: c.NOMECIDADE, nomeEstado: c.NOMEESTADO,
     comple: c.COMPLE, profiss: c.PROFISS, empres: c.EMPRES, rendax: c.RENDAX,
     bancox: c.BANCOX, agenci: c.AGENCI, contax: c.CONTAX, pix: c.PIX,
@@ -17,6 +21,7 @@ function mapRow(c: any): Cliente {
     ativox: c.ATIVOX, blocli: c.BLOCLI, adm: c.ADM, acessoApp: c.ACESSO_APP,
     senhax: c.SENHAX, limcre: c.LIMCRE, classificacao: c.CLASSIFICACAO,
     estciv: c.ESTCIV, datcad: c.DATCAD, datalt: c.DATALT,
+    comprovante1: c.COMPROVANTE1, comprovante2: c.COMPROVANTE2, comprovante3: c.COMPROVANTE3,
     // Permissões de Dashboard
     verComissoes: c.VER_COMISSOES, verValoresLiquidos: c.VER_VALORES_LIQUIDOS,
     verInfoFinanceira: c.VER_INFO_FINANCEIRA, verTopCompradores: c.VER_TOP_COMPRADORES,
@@ -142,11 +147,15 @@ export async function criarCliente(d: Cliente): Promise<number> {
     .input('datcad', sql.Date, new Date())
     .input('bancox', sql.VarChar, d.bancox||null).input('agenci', sql.VarChar, d.agenci||null)
     .input('contax', sql.VarChar, d.contax||null).input('pix', sql.VarChar, d.pix||null)
+    .input('banco1', sql.VarChar, d.banco1||null).input('agencia1', sql.VarChar, d.agencia1||null)
+    .input('conta1', sql.VarChar, d.conta1||null).input('pix1', sql.VarChar, d.pix1||null)
+    .input('banco2', sql.VarChar, d.banco2||null).input('agencia2', sql.VarChar, d.agencia2||null)
+    .input('conta2', sql.VarChar, d.conta2||null).input('pix2', sql.VarChar, d.pix2||null)
     .input('refer1', sql.VarChar, d.refer1||null).input('telrefere1', sql.VarChar, d.telrefere1||null)
     .input('refer2', sql.VarChar, d.refer2||null).input('telrefere2', sql.VarChar, d.telrefere2||null)
-    .query(`INSERT INTO Clientes (NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,ESTCIV,OBSXXX,DATCAD,BANCOX,AGENCI,CONTAX,PIX,REFER1,TELREFERE1,REFER2,TELREFERE2)
+    .query(`INSERT INTO Clientes (NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,ESTCIV,OBSXXX,DATCAD,BANCOX,AGENCI,CONTAX,PIX,BANCO1,AGENCIA1,CONTA1,PIX1,BANCO2,AGENCIA2,CONTA2,PIX2,REFER1,TELREFERE1,REFER2,TELREFERE2)
       OUTPUT INSERTED.ID
-      VALUES (@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@estciv,@obsxxx,@datcad,@bancox,@agenci,@contax,@pix,@refer1,@telrefere1,@refer2,@telrefere2)`);
+      VALUES (@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@estciv,@obsxxx,@datcad,@bancox,@agenci,@contax,@pix,@banco1,@agencia1,@conta1,@pix1,@banco2,@agencia2,@conta2,@pix2,@refer1,@telrefere1,@refer2,@telrefere2)`);
   return r.recordset[0].ID;
 }
 
@@ -170,6 +179,10 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
     .input('obsxxx', sql.VarChar, d.obsxxx||null).input('datalt', sql.Date, new Date())
     .input('bancox', sql.VarChar, d.bancox||null).input('agenci', sql.VarChar, d.agenci||null)
     .input('contax', sql.VarChar, d.contax||null).input('pix', sql.VarChar, d.pix||null)
+    .input('banco1', sql.VarChar, d.banco1||null).input('agencia1', sql.VarChar, d.agencia1||null)
+    .input('conta1', sql.VarChar, d.conta1||null).input('pix1', sql.VarChar, d.pix1||null)
+    .input('banco2', sql.VarChar, d.banco2||null).input('agencia2', sql.VarChar, d.agencia2||null)
+    .input('conta2', sql.VarChar, d.conta2||null).input('pix2', sql.VarChar, d.pix2||null)
     .input('refer1', sql.VarChar, d.refer1||null).input('telrefere1', sql.VarChar, d.telrefere1||null)
     .input('refer2', sql.VarChar, d.refer2||null).input('telrefere2', sql.VarChar, d.telrefere2||null)
     .query(`UPDATE Clientes SET NOMEXX=@nomexx,ENDERE=@endere,BAIRRO=@bairro,CEPXXX=@cepxxx,
@@ -178,6 +191,8 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
       PROFISS=@profiss,EMPRES=@empres,RENDAX=@rendax,ATIVOX=@ativox,BLOCLI=@blocli,
       ACESSO_APP=@acessoApp,LIMCRE=@limcre,CLASSIFICACAO=@classificacao,ESTCIV=@estciv,
       OBSXXX=@obsxxx,DATALT=@datalt,BANCOX=@bancox,AGENCI=@agenci,CONTAX=@contax,PIX=@pix,
+      BANCO1=@banco1,AGENCIA1=@agencia1,CONTA1=@conta1,PIX1=@pix1,
+      BANCO2=@banco2,AGENCIA2=@agencia2,CONTA2=@conta2,PIX2=@pix2,
       REFER1=@refer1,TELREFERE1=@telrefere1,REFER2=@refer2,TELREFERE2=@telrefere2
       WHERE ID=@id`);
 }

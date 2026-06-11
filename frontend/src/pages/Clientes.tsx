@@ -308,8 +308,12 @@ export default function Clientes() {
       <Col xs={24} sm={12} md={6}><Form.Item name="cpfxxx" label="CPF"><Input /></Form.Item></Col>
       <Col xs={24} sm={12} md={6}><Form.Item name="cnpjxx" label="CNPJ"><Input /></Form.Item></Col>
       <Col xs={24} sm={12} md={6}><Form.Item name="rgxxxx" label="RG"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="orgem" label="Órgão Emissor"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="emissa" label="Data Emissão RG"><Input /></Form.Item></Col>
       <Col xs={24} sm={12} md={6}><Form.Item name="datnas" label="Data Nasc."><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
       <Col xs={24} sm={12} md={6}><Form.Item name="estciv" label="Estado Civil"><Select options={ESTADO_CIVIL} allowClear /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="paixxx" label="Pai"><Input /></Form.Item></Col>
+      <Col xs={24} sm={12} md={6}><Form.Item name="maexxx" label="Mãe"><Input /></Form.Item></Col>
       <Col xs={24} sm={12} md={6}><Form.Item name="emailx" label="E-mail"><Input /></Form.Item></Col>
       <Col xs={24} sm={12} md={6}><Form.Item name="email2" label="E-mail 2"><Input /></Form.Item></Col>
       <Col xs={24} sm={12} md={6}><Form.Item name="profiss" label="Profissão"><Input /></Form.Item></Col>
@@ -362,6 +366,11 @@ export default function Clientes() {
       <Col xs={12} sm={8} md={6}><Form.Item name="agencia1" label="Agência"><Input /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="conta1" label="Conta"><Input /></Form.Item></Col>
       <Col xs={24} sm={8} md={4}><Form.Item name="pix1" label="PIX"><Input /></Form.Item></Col>
+      <Divider plain>Conta 3</Divider>
+      <Col xs={24} sm={12} md={8}><Form.Item name="banco2" label="Banco"><Input /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="agencia2" label="Agência"><Input /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="conta2" label="Conta"><Input /></Form.Item></Col>
+      <Col xs={24} sm={8} md={4}><Form.Item name="pix2" label="PIX"><Input /></Form.Item></Col>
     </Row>
   );
 
@@ -425,6 +434,34 @@ export default function Clientes() {
       </Row>
     </Card>
   );
+
+  const tabDocumentos = editando ? (() => {
+    const base = `https://${config.bucket}.s3.us-east-2.amazonaws.com`;
+    const docs = [
+      { key: 'documento',  label: 'Documento de Identidade' },
+      { key: 'residencia', label: 'Comprovante de Residência' },
+      { key: 'renda',      label: 'Comprovante de Renda' },
+      { key: 'analise',    label: 'Análise' },
+    ];
+    return (
+      <Space direction="vertical" style={{ width: '100%' }} size={16}>
+        {docs.map(d => (
+          <Card key={d.key} size="small" title={d.label} style={{ borderRadius: 8 }}>
+            <Space>
+              <Button icon={<FileTextOutlined />}
+                onClick={() => window.open(`${base}/${d.key}_user_${editando.id}.jpg`, '_blank')}>
+                Abrir JPG
+              </Button>
+              <Button icon={<AuditOutlined />}
+                onClick={() => window.open(`${base}/${d.key}_user_${editando.id}.pdf`, '_blank')}>
+                Abrir PDF
+              </Button>
+            </Space>
+          </Card>
+        ))}
+      </Space>
+    );
+  })() : <Typography.Text type="secondary">Disponível apenas ao editar um cliente existente.</Typography.Text>;
 
   return (
     <>
@@ -592,7 +629,8 @@ export default function Clientes() {
               { key: '3', label: 'Contatos', children: tabContatos },
               { key: '4', label: 'Bancário', children: tabBancario },
               { key: '5', label: 'Sistema', children: tabSistema },
-              ...(podeEditarPermissoes ? [{ key: '6', label: 'Permissões', children: tabPermissoes }] : []),
+              { key: '6', label: 'Documentos', children: tabDocumentos },
+              ...(podeEditarPermissoes ? [{ key: '7', label: 'Permissões', children: tabPermissoes }] : []),
             ]}
           />
         </Form>

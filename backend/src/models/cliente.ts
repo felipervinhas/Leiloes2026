@@ -11,9 +11,13 @@ export interface Cliente {
   celu1?: string;
   celu2?: string;
   rgxxxx?: string;
+  orgem?: string;
+  emissa?: string;
   datnas?: Date | string;
   emailx?: string;
   email2?: string;
+  paixxx?: string;
+  maexxx?: string;
   cidade?: number;
   nomeCidade?: string;
   nomeEstado?: string;
@@ -41,6 +45,9 @@ export interface Cliente {
   estciv?: string;
   datcad?: Date | string;
   datalt?: Date | string;
+  comprovante1?: string;
+  comprovante2?: string;
+  comprovante3?: string;
   // Permissões de Dashboard (para ADMs)
   verComissoes?: string;
   verValoresLiquidos?: string;
