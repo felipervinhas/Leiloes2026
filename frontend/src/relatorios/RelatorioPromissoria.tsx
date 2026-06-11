@@ -509,11 +509,6 @@ function PromissoriaPDF({ dados, empresa }: Props) {
                   {cpfCredor ? <Text style={s.promAssinRole}>CPF: {cpfCredor}</Text> : null}
                   <Text style={s.promAssinRole}>Credor / Vendedor</Text>
                 </View>
-                <View style={s.promAssinItem}>
-                  <View style={s.promAssinLinha} />
-                  <Text style={s.promAssinNome}>{nomeEmpresa}</Text>
-                  <Text style={s.promAssinRole}>Leiloeiro / Testemunha</Text>
-                </View>
               </View>
             </View>
 

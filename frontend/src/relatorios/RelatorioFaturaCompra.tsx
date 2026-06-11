@@ -544,11 +544,6 @@ function FaturaCompraPDF({ dados, empresa }: Props) {
             <Text style={s.assinaturaNome}>{dados.lote?.nomeVendedor || 'Vendedor'}</Text>
             <Text style={s.assinaturaRole}>Vendedor</Text>
           </View>
-          <View style={s.assinaturaItem}>
-            <View style={s.assinaturaLinha} />
-            <Text style={s.assinaturaNome}>{nomeEmpresa}</Text>
-            <Text style={s.assinaturaRole}>Leiloeiro</Text>
-          </View>
         </View>
 
         {/* Rodapé */}
