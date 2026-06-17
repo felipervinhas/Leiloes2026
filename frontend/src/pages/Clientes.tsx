@@ -5,12 +5,18 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined
   CheckCircleFilled, FileTextOutlined, FileExcelOutlined, CloseOutlined,
   TrophyOutlined, ShoppingCartOutlined, TagOutlined, AuditOutlined, TeamOutlined,
   UserOutlined, EnvironmentOutlined, PhoneOutlined, BankOutlined, SettingOutlined,
-  FolderOpenOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+  FolderOpenOutlined, SafetyCertificateOutlined,
+  FileDoneOutlined, PrinterOutlined, ExportOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
 import { useAuth } from '../context/AuthContext';
+import { useBanco } from '../context/BancoContext';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import FaturaCompraPDF, { FaturaData } from '../relatorios/RelatorioFaturaCompra';
+import PromissoriaPDF from '../relatorios/RelatorioPromissoria';
 import { BotaoBaixarPDF, ClienteCompleto } from '../relatorios/RelatorioClientes';
 import { exportarClientesExcel } from '../relatorios/exportarExcel';
 
@@ -36,6 +42,8 @@ const FILTROS = [{ value: 'nome', label: 'Nome' }, { value: 'cpf', label: 'CPF' 
 export default function Clientes() {
   const config = useConfig();
   const { usuario: usuarioLogado } = useAuth();
+  const navigate = useNavigate();
+  const { banco } = useBanco();
   const screens = Grid.useBreakpoint();
   const sm = !!screens.sm;  // ≥ 576px
   const md = !!screens.md;  // ≥ 768px
@@ -64,6 +72,12 @@ export default function Clientes() {
   const [historicoLoading, setHistoricoLoading] = useState(false);
   const [historicoCarregado, setHistoricoCarregado] = useState(false);
   const [drawerActiveTab, setDrawerActiveTab] = useState('1');
+  const [faturaLoading, setFaturaLoading] = useState<number | null>(null);
+  const [faturaData, setFaturaData] = useState<FaturaData | null>(null);
+  const [faturaModal, setFaturaModal] = useState(false);
+  const [promissoriaLoading, setPromissoriaLoading] = useState<number | null>(null);
+  const [promissoriaData, setPromissoriaData] = useState<FaturaData | null>(null);
+  const [promissoriaModal, setPromissoriaModal] = useState(false);
 
   const carregar = async (b = '') => {
     setLoading(true);
@@ -93,6 +107,26 @@ export default function Clientes() {
     } finally {
       setHistoricoLoading(false);
     }
+  };
+
+  const abrirFatura = async (id: number) => {
+    setFaturaLoading(id);
+    try {
+      const r = await api.get(`/vendas/${id}/fatura`);
+      setFaturaData(r.data);
+      setFaturaModal(true);
+    } catch { message.error('Erro ao carregar fatura'); }
+    finally { setFaturaLoading(null); }
+  };
+
+  const abrirPromissoria = async (id: number) => {
+    setPromissoriaLoading(id);
+    try {
+      const r = await api.get(`/vendas/${id}/fatura`);
+      setPromissoriaData(r.data);
+      setPromissoriaModal(true);
+    } catch { message.error('Erro ao carregar promissórias'); }
+    finally { setPromissoriaLoading(null); }
   };
 
   const onDrawerTabChange = (key: string) => {
@@ -505,6 +539,22 @@ export default function Clientes() {
     { title: 'Vlr. Líquido', dataIndex: 'valorLiquido', width: 110, align: 'right' as const, render: (v: number) => <span style={{ fontWeight: 600, color: '#52c41a' }}>{fmt(v)}</span> },
     { title: '1ª Parcela', dataIndex: 'primeiroVencimentoData', width: 100 },
     { title: 'Status', dataIndex: 'defesa', width: 80, render: (v: string) => <Tag color={v === 'S' ? 'green' : 'default'}>{v === 'S' ? 'Vendido' : 'N/V'}</Tag> },
+    {
+      title: '', width: 120, fixed: 'right' as const,
+      render: (_: any, row: any) => (
+        <Space size={4}>
+          <Tooltip title="Fatura de Compras">
+            <Button size="small" icon={<FileDoneOutlined />} loading={faturaLoading === row.id} onClick={() => abrirFatura(row.id)} />
+          </Tooltip>
+          <Tooltip title="Promissórias">
+            <Button size="small" icon={<AuditOutlined />} loading={promissoriaLoading === row.id} onClick={() => abrirPromissoria(row.id)} />
+          </Tooltip>
+          <Tooltip title="Abrir em Vendas">
+            <Button size="small" icon={<ExportOutlined />} onClick={() => { setDrawerOpen(false); navigate(`/${banco}/vendas`, { state: { abrirVendaId: row.id } }); }} />
+          </Tooltip>
+        </Space>
+      ),
+    },
   ];
 
   const colunasHistVendas = [
@@ -517,6 +567,14 @@ export default function Clientes() {
     { title: 'Vlr. Total', dataIndex: 'valorPagar', width: 110, align: 'right' as const, render: (v: number) => fmt(v) },
     { title: 'Comissão', dataIndex: 'valorComissaoVendedor', width: 100, align: 'right' as const, render: (v: number) => v > 0 ? <span style={{ color: '#fa8c16' }}>{fmt(v)}</span> : '—' },
     { title: 'Status', dataIndex: 'defesa', width: 80, render: (v: string) => <Tag color={v === 'S' ? 'green' : 'default'}>{v === 'S' ? 'Vendido' : 'N/V'}</Tag> },
+    {
+      title: '', width: 40,
+      render: (_: any, row: any) => (
+        <Tooltip title="Abrir em Vendas">
+          <Button size="small" icon={<ExportOutlined />} onClick={() => { setDrawerOpen(false); navigate(`/${banco}/vendas`, { state: { abrirVendaId: row.id } }); }} />
+        </Tooltip>
+      ),
+    },
   ];
 
   const tabHistorico = (
@@ -734,6 +792,70 @@ export default function Clientes() {
             </Table.Summary.Row>
           )}
         />
+      </Modal>
+
+      {/* Modal Fatura de Compras */}
+      <Modal
+        open={faturaModal}
+        onCancel={() => { setFaturaModal(false); setFaturaData(null); }}
+        footer={null}
+        title={<Space><FileDoneOutlined /><span>Fatura de Compras {faturaData ? `#${faturaData.id}` : ''}</span></Space>}
+        width={480}
+      >
+        {faturaData && (
+          <div style={{ padding: '16px 0', textAlign: 'center' }}>
+            <div style={{ marginBottom: 16, textAlign: 'left', lineHeight: 1.8 }}>
+              <div><strong>Leilão:</strong> {faturaData.leilao || '—'}</div>
+              <div><strong>Lote:</strong> {faturaData.lote?.lotexx} — {faturaData.lote?.deslot}</div>
+              <div><strong>Comprador(es):</strong> {faturaData.compradores.map((c: any) => c.nomexx).filter(Boolean).join(', ')}</div>
+              <div><strong>Vendedor:</strong> {faturaData.lote?.nomeVendedor || '—'}</div>
+              <div><strong>Parcelas:</strong> {faturaData.compradores.reduce((t: number, c: any) => t + c.parcelas.length, 0)}</div>
+            </div>
+            <PDFDownloadLink
+              document={<FaturaCompraPDF dados={faturaData} empresa={config.empresa} />}
+              fileName={`fatura-compra-${faturaData.id}.pdf`}
+              style={{ textDecoration: 'none' }}
+            >
+              {({ loading }: { loading: boolean }) => (
+                <Button type="primary" size="large" icon={<PrinterOutlined />} loading={loading} style={{ width: '100%' }}>
+                  {loading ? 'Gerando PDF...' : 'Baixar Fatura PDF'}
+                </Button>
+              )}
+            </PDFDownloadLink>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal Promissórias */}
+      <Modal
+        open={promissoriaModal}
+        onCancel={() => { setPromissoriaModal(false); setPromissoriaData(null); }}
+        footer={null}
+        title={<Space><AuditOutlined /><span>Promissórias {promissoriaData ? `— Boleto ${(promissoriaData as any).codnot || promissoriaData.id}` : ''}</span></Space>}
+        width={480}
+      >
+        {promissoriaData && (
+          <div style={{ padding: '16px 0', textAlign: 'center' }}>
+            <div style={{ marginBottom: 16, textAlign: 'left', lineHeight: 1.8 }}>
+              <div><strong>Leilão:</strong> {promissoriaData.leilao || '—'}</div>
+              <div><strong>Lote:</strong> {promissoriaData.lote?.lotexx} — {promissoriaData.lote?.deslot}</div>
+              <div><strong>Vendedor (Credor):</strong> {promissoriaData.lote?.nomeVendedor || '—'}</div>
+              <div><strong>Compradores:</strong> {promissoriaData.compradores.map((c: any) => c.nomexx).filter(Boolean).join(', ')}</div>
+              <div><strong>Total de promissórias:</strong> {promissoriaData.compradores.reduce((t: number, c: any) => t + c.parcelas.length, 0)} parcelas</div>
+            </div>
+            <PDFDownloadLink
+              document={<PromissoriaPDF dados={promissoriaData} empresa={config.empresa} />}
+              fileName={`promissorias-${(promissoriaData as any).codnot || promissoriaData.id}.pdf`}
+              style={{ textDecoration: 'none' }}
+            >
+              {({ loading }: { loading: boolean }) => (
+                <Button type="primary" size="large" icon={<PrinterOutlined />} loading={loading} style={{ width: '100%' }}>
+                  {loading ? 'Gerando PDF...' : 'Baixar Promissórias PDF'}
+                </Button>
+              )}
+            </PDFDownloadLink>
+          </div>
+        )}
       </Modal>
 
       {/* Drawer de cadastro */}

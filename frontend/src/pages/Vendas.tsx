@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Alert, Badge, Button, Card, Col, DatePicker, Divider, Form, Grid, Input,
   InputNumber, message, Modal, Popconfirm, Row, Select, Space, Spin,
@@ -1313,6 +1314,16 @@ export default function Vendas() {
   const [modo, setModo]   = useState<'listagem' | 'wizard'>('listagem');
   const [editId, setEditId] = useState<number | undefined>();
   const [reloadKey, setReloadKey] = useState(0);
+  const location = useLocation();
+
+  useEffect(() => {
+    const id = (location.state as any)?.abrirVendaId;
+    if (id) {
+      setEditId(id);
+      setModo('wizard');
+      window.history.replaceState({}, document.title);
+    }
+  }, []);
 
   const abrirNova = () => { setEditId(undefined); setModo('wizard'); };
   const abrirEdit = (id: number) => { setEditId(id); setModo('wizard'); };
