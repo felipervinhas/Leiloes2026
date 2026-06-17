@@ -19,7 +19,7 @@ function mapRow(c: any): Cliente {
     refer1: c.REFER1, telrefere1: c.TELREFERE1, refer2: c.REFER2, telrefere2: c.TELREFERE2,
     obsxxx: c.OBSXXX, ocorrencias: c.OCORRENCIAS,
     ativox: c.ATIVOX, blocli: c.BLOCLI, adm: c.ADM, acessoApp: c.ACESSO_APP,
-    senhax: c.SENHAX, limcre: c.LIMCRE, classificacao: c.CLASSIFICACAO,
+    senhax: c.SENHAX, limcre: c.LIMCRE, classificacao: c.CLASSIFICACAO, codcla: c.CODCLA,
     estciv: c.ESTCIV, datcad: c.DATCAD, datalt: c.DATALT,
     comprovante1: c.COMPROVANTE1, comprovante2: c.COMPROVANTE2, comprovante3: c.COMPROVANTE3,
     // Permissões de Dashboard
@@ -143,6 +143,7 @@ export async function criarCliente(d: Cliente): Promise<number> {
     .input('ativox', sql.VarChar, d.ativox||'S').input('blocli', sql.VarChar, d.blocli||'Não')
     .input('adm', sql.Char, d.adm||'N').input('acessoApp', sql.VarChar, d.acessoApp||null)
     .input('limcre', sql.VarChar, d.limcre||null).input('classificacao', sql.Int, d.classificacao||null)
+    .input('codcla', sql.Char, d.codcla||'F')
     .input('estciv', sql.VarChar, d.estciv||null).input('obsxxx', sql.VarChar, d.obsxxx||null)
     .input('datcad', sql.Date, new Date())
     .input('bancox', sql.VarChar, d.bancox||null).input('agenci', sql.VarChar, d.agenci||null)
@@ -153,9 +154,9 @@ export async function criarCliente(d: Cliente): Promise<number> {
     .input('conta2', sql.VarChar, d.conta2||null).input('pix2', sql.VarChar, d.pix2||null)
     .input('refer1', sql.VarChar, d.refer1||null).input('telrefere1', sql.VarChar, d.telrefere1||null)
     .input('refer2', sql.VarChar, d.refer2||null).input('telrefere2', sql.VarChar, d.telrefere2||null)
-    .query(`INSERT INTO Clientes (NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,ESTCIV,OBSXXX,DATCAD,BANCOX,AGENCI,CONTAX,PIX,BANCO1,AGENCIA1,CONTA1,PIX1,BANCO2,AGENCIA2,CONTA2,PIX2,REFER1,TELREFERE1,REFER2,TELREFERE2)
+    .query(`INSERT INTO Clientes (NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,CODCLA,ESTCIV,OBSXXX,DATCAD,BANCOX,AGENCI,CONTAX,PIX,BANCO1,AGENCIA1,CONTA1,PIX1,BANCO2,AGENCIA2,CONTA2,PIX2,REFER1,TELREFERE1,REFER2,TELREFERE2)
       OUTPUT INSERTED.ID
-      VALUES (@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@estciv,@obsxxx,@datcad,@bancox,@agenci,@contax,@pix,@banco1,@agencia1,@conta1,@pix1,@banco2,@agencia2,@conta2,@pix2,@refer1,@telrefere1,@refer2,@telrefere2)`);
+      VALUES (@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@codcla,@estciv,@obsxxx,@datcad,@bancox,@agenci,@contax,@pix,@banco1,@agencia1,@conta1,@pix1,@banco2,@agencia2,@conta2,@pix2,@refer1,@telrefere1,@refer2,@telrefere2)`);
   return r.recordset[0].ID;
 }
 
@@ -175,7 +176,8 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
     .input('rendax', sql.VarChar, d.rendax||null).input('ativox', sql.VarChar, d.ativox||'S')
     .input('blocli', sql.VarChar, d.blocli||'Não')
     .input('acessoApp', sql.VarChar, d.acessoApp||null).input('limcre', sql.VarChar, d.limcre||null)
-    .input('classificacao', sql.Int, d.classificacao||null).input('estciv', sql.VarChar, d.estciv||null)
+    .input('classificacao', sql.Int, d.classificacao||null).input('codcla', sql.Char, d.codcla||'F')
+    .input('estciv', sql.VarChar, d.estciv||null)
     .input('obsxxx', sql.VarChar, d.obsxxx||null).input('datalt', sql.Date, new Date())
     .input('bancox', sql.VarChar, d.bancox||null).input('agenci', sql.VarChar, d.agenci||null)
     .input('contax', sql.VarChar, d.contax||null).input('pix', sql.VarChar, d.pix||null)
@@ -189,7 +191,7 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
       CPFXXX=@cpfxxx,CNPJXX=@cnpjxx,TELRES=@telres,TELCOM=@telcom,CELU_1=@celu1,CELU_2=@celu2,
       RGXXXX=@rgxxxx,DATNAS=@datnas,EMAILX=@emailx,EMAIL2=@email2,CIDADE=@cidade,COMPLE=@comple,
       PROFISS=@profiss,EMPRES=@empres,RENDAX=@rendax,ATIVOX=@ativox,BLOCLI=@blocli,
-      ACESSO_APP=@acessoApp,LIMCRE=@limcre,CLASSIFICACAO=@classificacao,ESTCIV=@estciv,
+      ACESSO_APP=@acessoApp,LIMCRE=@limcre,CLASSIFICACAO=@classificacao,CODCLA=@codcla,ESTCIV=@estciv,
       OBSXXX=@obsxxx,DATALT=@datalt,BANCOX=@bancox,AGENCI=@agenci,CONTAX=@contax,PIX=@pix,
       BANCO1=@banco1,AGENCIA1=@agencia1,CONTA1=@conta1,PIX1=@pix1,
       BANCO2=@banco2,AGENCIA2=@agencia2,CONTA2=@conta2,PIX2=@pix2,

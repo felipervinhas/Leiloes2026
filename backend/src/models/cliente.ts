@@ -42,6 +42,7 @@ export interface Cliente {
   senhax?: string;
   limcre?: string;
   classificacao?: number;
+  codcla?: string;
   estciv?: string;
   datcad?: Date | string;
   datalt?: Date | string;

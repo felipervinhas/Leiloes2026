@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useBanco } from '../context/BancoContext';
+import ResizableTitle from '../components/ResizableTitle';
+import { useColumnWidths } from '../hooks/useColumnWidths';
 import {
   Alert, Badge, Button, Card, Col, DatePicker, Divider, Form, Grid, Input,
   InputNumber, message, Modal, Popconfirm, Row, Select, Space, Spin,
@@ -44,6 +47,11 @@ const TIPO_BUSCA = [
 function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: number) => void }) {
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false;
+
+  const { rz: rzV } = useColumnWidths('vendas', {
+    id: 70, defesa: 100, codnot: 100, leilao: 200, datlan: 110,
+    lotexx: 70, deslot: 200, nomexx: 180, qtdxxx: 70, vlrpar: 120, vlrtot: 120,
+  });
 
   const config = useConfig();
   const [faturaLoading, setFaturaLoading]           = useState<number | null>(null);
@@ -137,34 +145,34 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
 
   const colunas: any[] = [
     {
-      title: 'Cód', dataIndex: 'id', width: 70, fixed: 'left' as const,
+      title: 'Cód', dataIndex: 'id', ...rzV('id'), fixed: 'left' as const,
       render: (v: number) => <Text strong>#{v}</Text>,
     },
     {
-      title: 'Status', dataIndex: 'defesa', width: 100,
+      title: 'Status', dataIndex: 'defesa', ...rzV('defesa'),
       render: (v: string) => v === 'S'
         ? <Tag color="green">Vendido</Tag>
         : <Tag color="orange">Pendente</Tag>,
     },
-    { title: 'Boleto', dataIndex: 'codnot', width: 100 },
-    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 200 },
+    { title: 'Boleto', dataIndex: 'codnot', ...rzV('codnot') },
+    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, ...rzV('leilao') },
     {
-      title: 'Data', dataIndex: 'datlan', width: 110,
+      title: 'Data', dataIndex: 'datlan', ...rzV('datlan'),
       render: fmtData,
     },
-    { title: 'Lote', dataIndex: 'lotexx', width: 70 },
-    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, width: 200 },
-    { title: 'Comprador', dataIndex: 'nomexx', ellipsis: true, width: 180 },
+    { title: 'Lote', dataIndex: 'lotexx', ...rzV('lotexx') },
+    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzV('deslot') },
+    { title: 'Comprador', dataIndex: 'nomexx', ellipsis: true, ...rzV('nomexx') },
     {
-      title: 'Qtd', dataIndex: 'qtdxxx', width: 70, align: 'right' as const,
+      title: 'Qtd', dataIndex: 'qtdxxx', ...rzV('qtdxxx'), align: 'right' as const,
       render: (v: number) => v ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '—',
     },
     {
-      title: 'Vlr. Parcela', dataIndex: 'vlrpar', width: 120, align: 'right' as const,
+      title: 'Vlr. Parcela', dataIndex: 'vlrpar', ...rzV('vlrpar'), align: 'right' as const,
       render: fmt,
     },
     {
-      title: 'Vlr. Total', dataIndex: 'vlrtot', width: 120, align: 'right' as const,
+      title: 'Vlr. Total', dataIndex: 'vlrtot', ...rzV('vlrtot'), align: 'right' as const,
       render: (v: number) => <Text strong>{fmt(v)}</Text>,
     },
     {
@@ -444,6 +452,7 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
 
       <Table
         rowKey="id" columns={colunas} dataSource={dados} loading={loading}
+        components={{ header: { cell: ResizableTitle } }}
         size="small" scroll={{ x: 1600 }}
         pagination={{ pageSize: 20, showTotal: t => `${t} registros`, showSizeChanger: !isMobile, simple: isMobile }}
         locale={{ emptyText: 'Nenhuma venda encontrada' }}
@@ -1314,20 +1323,31 @@ export default function Vendas() {
   const [modo, setModo]   = useState<'listagem' | 'wizard'>('listagem');
   const [editId, setEditId] = useState<number | undefined>();
   const [reloadKey, setReloadKey] = useState(0);
+  const [origemClienteId, setOrigemClienteId] = useState<number | undefined>();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { banco } = useBanco();
 
   useEffect(() => {
     const id = (location.state as any)?.abrirVendaId;
+    const clienteId = (location.state as any)?.origemClienteId;
     if (id) {
       setEditId(id);
       setModo('wizard');
+      if (clienteId) setOrigemClienteId(clienteId);
       window.history.replaceState({}, document.title);
     }
   }, []);
 
   const abrirNova = () => { setEditId(undefined); setModo('wizard'); };
   const abrirEdit = (id: number) => { setEditId(id); setModo('wizard'); };
-  const voltar    = () => { setModo('listagem'); setEditId(undefined); setReloadKey(k => k + 1); };
+  const voltar = () => {
+    if (origemClienteId) {
+      navigate(`/${banco}/clientes`, { state: { abrirClienteId: origemClienteId } });
+      return;
+    }
+    setModo('listagem'); setEditId(undefined); setReloadKey(k => k + 1);
+  };
 
   if (modo === 'wizard') {
     return (

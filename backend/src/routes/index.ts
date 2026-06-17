@@ -21,6 +21,7 @@ import * as despesa from '../controllers/despesaController';
 import * as dash     from '../controllers/dashboardController';
 import * as permissaoDash from '../controllers/permissaoDashboardController';
 import * as contrato  from '../controllers/contratoController';
+import * as preferencia from '../controllers/preferenciaController';
 import multer from 'multer';
 
 const memStorage = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -164,6 +165,10 @@ bancoRouter.patch('/clientes/:id/senha', cliente.alterarSenha);
 bancoRouter.patch('/clientes/:id/aprovar', cliente.aprovar);
 bancoRouter.patch('/clientes/:id/recusar', cliente.recusar);
 bancoRouter.patch('/clientes/:id/analisar', cliente.analisar);
+
+// Preferências do usuário
+bancoRouter.get('/preferencias/:chave', preferencia.get);
+bancoRouter.put('/preferencias/:chave', preferencia.set);
 
 // Permissões de Dashboard
 bancoRouter.get('/usuarios/:id/permissoes-dashboard', permissaoDash.obter);

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Select, Typography, Row, Col, Tag, Statistic, Card, Space, Button, Modal } from 'antd';
+import ResizableTitle from '../components/ResizableTitle';
+import { useColumnWidths } from '../hooks/useColumnWidths';
 import { TrophyOutlined, FileDoneOutlined } from '@ant-design/icons';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
@@ -24,6 +26,9 @@ export default function Lances() {
   const [relatorioModal, setRelatorioModal]     = useState(false);
   const [lancesRelatorio, setLancesRelatorio]   = useState<LancePDF[]>([]);
   const [loadingRelatorio, setLoadingRelatorio] = useState(false);
+
+  const { rz: rzR } = useColumnWidths('lances_resumo', { lotexx: 80, deslot: 200, qtdLances: 110, maiorLance: 130, menorLance: 130 });
+  const { rz: rzL } = useColumnWidths('lances_detalhes', { data: 150, lotexx: 80, deslot: 180, nomeCliente: 200, celu1: 130, valor: 130, origemLance: 100 });
 
   useEffect(() => {
     api.get('/leiloes').then(r => setLeiloes(r.data.map((l: any) => ({ value: l.id, label: l.leilao }))));
@@ -65,26 +70,26 @@ export default function Lances() {
   };
 
   const colsResumo = [
-    { title: 'Lote', dataIndex: 'lotexx', width: 80 },
-    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true },
-    { title: 'Qtd. Lances', dataIndex: 'qtdLances', width: 110, align: 'center' as const,
+    { title: 'Lote', dataIndex: 'lotexx', ...rzR('lotexx') },
+    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzR('deslot') },
+    { title: 'Qtd. Lances', dataIndex: 'qtdLances', ...rzR('qtdLances'), align: 'center' as const,
       render: (v: number) => <Tag color={v > 0 ? 'blue' : 'default'}>{v}</Tag> },
-    { title: 'Maior Lance', dataIndex: 'maiorLance', width: 130, align: 'right' as const,
+    { title: 'Maior Lance', dataIndex: 'maiorLance', ...rzR('maiorLance'), align: 'right' as const,
       render: (v: number) => v ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—' },
-    { title: 'Menor Lance', dataIndex: 'menorLance', width: 130, align: 'right' as const,
+    { title: 'Menor Lance', dataIndex: 'menorLance', ...rzR('menorLance'), align: 'right' as const,
       render: (v: number) => v ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—' },
   ];
 
   const colsLances = [
-    { title: 'Data/Hora', dataIndex: 'data', width: 150,
+    { title: 'Data/Hora', dataIndex: 'data', ...rzL('data'),
       render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—' },
-    { title: 'Lote', dataIndex: 'lotexx', width: 80 },
-    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true },
-    { title: 'Cliente', dataIndex: 'nomeCliente', ellipsis: true },
-    { title: 'Telefone', dataIndex: 'celu1', width: 130 },
-    { title: 'Valor', dataIndex: 'valor', width: 130, align: 'right' as const,
+    { title: 'Lote', dataIndex: 'lotexx', ...rzL('lotexx') },
+    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzL('deslot') },
+    { title: 'Cliente', dataIndex: 'nomeCliente', ellipsis: true, ...rzL('nomeCliente') },
+    { title: 'Telefone', dataIndex: 'celu1', ...rzL('celu1') },
+    { title: 'Valor', dataIndex: 'valor', ...rzL('valor'), align: 'right' as const,
       render: (v: number) => <strong style={{ color: '#52c41a' }}>R$ {Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> },
-    { title: 'Origem', dataIndex: 'origemLance', width: 100 },
+    { title: 'Origem', dataIndex: 'origemLance', ...rzL('origemLance') },
   ];
 
   const totalLances = resumo.reduce((a, r) => a + (r.qtdLances || 0), 0);
@@ -146,6 +151,7 @@ export default function Lances() {
       {tab === 'resumo' && (
         <Table
           rowKey="idLote"
+          components={{ header: { cell: ResizableTitle } }}
           columns={colsResumo}
           dataSource={resumo}
           loading={loading}
@@ -163,6 +169,7 @@ export default function Lances() {
           </Space>
           <Table
             rowKey="id"
+            components={{ header: { cell: ResizableTitle } }}
             columns={colsLances}
             dataSource={dados}
             loading={loading}

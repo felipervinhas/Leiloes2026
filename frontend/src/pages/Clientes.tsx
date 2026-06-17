@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Drawer, Form, Input, Select, DatePicker, Space, Popconfirm,
-  Typography, Row, Col, message, Tag, Tabs, Divider, Grid, Checkbox, Card } from 'antd';
+  Typography, Row, Col, message, Tag, Tabs, Divider, Grid, Checkbox, Card, Radio } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined,
   CheckCircleFilled, FileTextOutlined, FileExcelOutlined, CloseOutlined,
   TrophyOutlined, ShoppingCartOutlined, TagOutlined, AuditOutlined, TeamOutlined,
@@ -8,7 +8,9 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined
   FolderOpenOutlined, SafetyCertificateOutlined,
   FileDoneOutlined, PrinterOutlined, ExportOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import ResizableTitle from '../components/ResizableTitle';
+import { useColumnWidths } from '../hooks/useColumnWidths';
 import dayjs from 'dayjs';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
@@ -43,8 +45,10 @@ export default function Clientes() {
   const config = useConfig();
   const { usuario: usuarioLogado } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { banco } = useBanco();
   const screens = Grid.useBreakpoint();
+  const { rz: rzC } = useColumnWidths('clientes', { id: 70, nomexx: 220, cpfcnpj: 150, emailx: 180, celu1: 140 });
   const sm = !!screens.sm;  // ≥ 576px
   const md = !!screens.md;  // ≥ 768px
   
@@ -173,6 +177,14 @@ export default function Clientes() {
 
   useEffect(() => { carregar(); carregarCidades(); }, []);
 
+  useEffect(() => {
+    const clienteId = (location.state as any)?.abrirClienteId;
+    if (clienteId) {
+      window.history.replaceState({}, document.title);
+      abrirDrawer({ id: clienteId } as any);
+    }
+  }, []);
+
   const abrirDrawer = async (item?: Cliente) => {
     if (item) {
       const r = await api.get(`/clientes/${item.id}`);
@@ -191,9 +203,10 @@ export default function Clientes() {
       setEditando(d);
     } else {
       form.resetFields();
-      form.setFieldsValue({ 
-        ativox: 'S', 
-        blocli: 'Não', 
+      form.setFieldsValue({
+        ativox: 'S',
+        blocli: 'Não',
+        codcla: 'F',
         // Defaults para novos usuários: todos com acesso
         verComissoes: true,
         verValoresLiquidos: true,
@@ -260,9 +273,9 @@ export default function Clientes() {
 
   // ---- Colunas da tabela principal (responsivas) ----
   const colunas = [
-    ...(md ? [{ title: 'ID', dataIndex: 'id', width: 70 }] : []),
+    ...(md ? [{ title: 'ID', dataIndex: 'id', ...rzC('id') }] : []),
     {
-      title: 'Nome', dataIndex: 'nomexx', ellipsis: true,
+      title: 'Nome', dataIndex: 'nomexx', ellipsis: true, ...rzC('nomexx'),
       render: (nome: string, r: Cliente) => !sm ? (
         <div>
           <div style={{ fontWeight: 500 }}>{nome}</div>
@@ -272,9 +285,9 @@ export default function Clientes() {
         </div>
       ) : nome,
     },
-    ...(sm ? [{ title: 'CPF/CNPJ', width: 150, render: (_: any, r: Cliente) => r.cpfxxx || r.cnpjxx }] : []),
-    ...(md ? [{ title: 'E-mail', dataIndex: 'emailx', ellipsis: true }] : []),
-    ...(sm ? [{ title: 'Celular', dataIndex: 'celu1', width: 140 }] : []),
+    ...(sm ? [{ title: 'CPF/CNPJ', ...rzC('cpfcnpj'), render: (_: any, r: Cliente) => r.cpfxxx || r.cnpjxx }] : []),
+    ...(md ? [{ title: 'E-mail', dataIndex: 'emailx', ellipsis: true, ...rzC('emailx') }] : []),
+    ...(sm ? [{ title: 'Celular', dataIndex: 'celu1', ...rzC('celu1') }] : []),
     {
       title: 'Ativo', dataIndex: 'ativox', width: 70,
       render: (v: string) => <Tag color={STATUS_COLOR[v] || 'default'}>{v}</Tag>,
@@ -370,6 +383,14 @@ export default function Clientes() {
   // ---- Tabs do formulário (grid responsiva) ----
   const tabPessoal = (
     <Row gutter={[12, 0]}>
+      <Col xs={24}>
+        <Form.Item name="codcla" label="Tipo de Pessoa">
+          <Radio.Group>
+            <Radio value="F">Pessoa Física</Radio>
+            <Radio value="J">Pessoa Jurídica</Radio>
+          </Radio.Group>
+        </Form.Item>
+      </Col>
       <Col xs={24} md={12}><Form.Item name="nomexx" label="Nome" rules={[{ required: true }]}><Input /></Form.Item></Col>
       <Col xs={24} sm={12} md={6}><Form.Item name="cpfxxx" label="CPF"><Input /></Form.Item></Col>
       <Col xs={24} sm={12} md={6}><Form.Item name="cnpjxx" label="CNPJ"><Input /></Form.Item></Col>
@@ -550,7 +571,7 @@ export default function Clientes() {
             <Button size="small" icon={<AuditOutlined />} loading={promissoriaLoading === row.id} onClick={() => abrirPromissoria(row.id)} />
           </Tooltip>
           <Tooltip title="Abrir em Vendas">
-            <Button size="small" icon={<ExportOutlined />} onClick={() => { setDrawerOpen(false); navigate(`/${banco}/vendas`, { state: { abrirVendaId: row.id } }); }} />
+            <Button size="small" icon={<ExportOutlined />} onClick={() => { setDrawerOpen(false); navigate(`/${banco}/vendas`, { state: { abrirVendaId: row.id, origemClienteId: editando?.id } }); }} />
           </Tooltip>
         </Space>
       ),
@@ -571,7 +592,7 @@ export default function Clientes() {
       title: '', width: 40,
       render: (_: any, row: any) => (
         <Tooltip title="Abrir em Vendas">
-          <Button size="small" icon={<ExportOutlined />} onClick={() => { setDrawerOpen(false); navigate(`/${banco}/vendas`, { state: { abrirVendaId: row.id } }); }} />
+          <Button size="small" icon={<ExportOutlined />} onClick={() => { setDrawerOpen(false); navigate(`/${banco}/vendas`, { state: { abrirVendaId: row.id, origemClienteId: editando?.id } }); }} />
         </Tooltip>
       ),
     },
@@ -701,6 +722,7 @@ export default function Clientes() {
       <div style={{ paddingBottom: selectedRowKeys.length > 0 ? 72 : 0 }}>
         <Table
           rowKey="id"
+          components={{ header: { cell: ResizableTitle } }}
           columns={(rankingMode ? colunasRanking : colunas) as any}
           dataSource={rankingMode ? dadosRanking : dados}
           loading={loading}
