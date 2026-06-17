@@ -3,7 +3,9 @@ import { Table, Button, Modal, Drawer, Form, Input, Select, DatePicker, Space, P
   Typography, Row, Col, message, Tag, Tabs, Divider, Grid, Checkbox, Card } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined,
   CheckCircleFilled, FileTextOutlined, FileExcelOutlined, CloseOutlined,
-  TrophyOutlined, ShoppingCartOutlined, TagOutlined, AuditOutlined, TeamOutlined } from '@ant-design/icons';
+  TrophyOutlined, ShoppingCartOutlined, TagOutlined, AuditOutlined, TeamOutlined,
+  UserOutlined, EnvironmentOutlined, PhoneOutlined, BankOutlined, SettingOutlined,
+  FolderOpenOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import api from '../services/api';
@@ -753,13 +755,13 @@ export default function Clientes() {
             activeKey={drawerActiveTab}
             onChange={onDrawerTabChange}
             items={[
-              { key: '1', label: 'Pessoal', children: tabPessoal },
-              { key: '2', label: 'Endereço', children: tabEndereco },
-              { key: '3', label: 'Contatos', children: tabContatos },
-              { key: '4', label: 'Bancário', children: tabBancario },
-              { key: '5', label: 'Sistema', children: tabSistema },
-              { key: '6', label: 'Documentos', children: tabDocumentos },
-              ...(podeEditarPermissoes ? [{ key: '7', label: 'Permissões', children: tabPermissoes }] : []),
+              { key: '1', label: <><UserOutlined /> Pessoal</>, children: tabPessoal },
+              { key: '2', label: <><EnvironmentOutlined /> Endereço</>, children: tabEndereco },
+              { key: '3', label: <><PhoneOutlined /> Contatos</>, children: tabContatos },
+              { key: '4', label: <><BankOutlined /> Bancário</>, children: tabBancario },
+              { key: '5', label: <><SettingOutlined /> Sistema</>, children: tabSistema },
+              { key: '6', label: <><FolderOpenOutlined /> Documentos</>, children: tabDocumentos },
+              ...(podeEditarPermissoes ? [{ key: '7', label: <><SafetyCertificateOutlined /> Permissões</>, children: tabPermissoes }] : []),
               ...(editando ? [{ key: 'historico', label: <><ShoppingCartOutlined /> Compras/Vendas</>, children: tabHistorico }] : []),
             ]}
           />
