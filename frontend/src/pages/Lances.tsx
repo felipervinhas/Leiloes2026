@@ -1,20 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Select, Typography, Row, Col, Tag, Statistic, Card, Space } from 'antd';
-import { TrophyOutlined } from '@ant-design/icons';
+import { Table, Select, Typography, Row, Col, Tag, Statistic, Card, Space, Button, Modal } from 'antd';
+import { TrophyOutlined, FileDoneOutlined } from '@ant-design/icons';
 import api from '../services/api';
+import { useConfig } from '../context/ConfigContext';
 import dayjs from 'dayjs';
+import BotaoBaixarLancesPDF, { LancePDF } from '../relatorios/RelatorioLances';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export default function Lances() {
+  const config = useConfig();
+
   const [leiloes, setLeiloes] = useState<{ value: number; label: string }[]>([]);
   const [lotes, setLotes]     = useState<{ value: number; label: string }[]>([]);
-  const [leilaoSel, setLeilaoSel] = useState<number | undefined>();
-  const [loteSel, setLoteSel]     = useState<number | undefined>();
-  const [dados, setDados]         = useState<any[]>([]);
-  const [resumo, setResumo]       = useState<any[]>([]);
-  const [loading, setLoading]     = useState(false);
-  const [tab, setTab]             = useState<'lances' | 'resumo'>('resumo');
+  const [leilaoSel, setLeilaoSel]   = useState<number | undefined>();
+  const [leilaoLabel, setLeilaoLabel] = useState('');
+  const [loteSel, setLoteSel]       = useState<number | undefined>();
+  const [dados, setDados]           = useState<any[]>([]);
+  const [resumo, setResumo]         = useState<any[]>([]);
+  const [loading, setLoading]       = useState(false);
+  const [tab, setTab]               = useState<'lances' | 'resumo'>('resumo');
+
+  const [relatorioModal, setRelatorioModal]     = useState(false);
+  const [lancesRelatorio, setLancesRelatorio]   = useState<LancePDF[]>([]);
+  const [loadingRelatorio, setLoadingRelatorio] = useState(false);
 
   useEffect(() => {
     api.get('/leiloes').then(r => setLeiloes(r.data.map((l: any) => ({ value: l.id, label: l.leilao }))));
@@ -22,12 +31,12 @@ export default function Lances() {
 
   const onLeilao = async (idLeilao: number) => {
     setLeilaoSel(idLeilao);
+    setLeilaoLabel(leiloes.find(l => l.value === idLeilao)?.label || '');
     setLoteSel(undefined);
     setDados([]);
-    // carregar lotes desse leilão
+    setLancesRelatorio([]);
     const r = await api.get('/lotes', { params: { idLeilao } });
     setLotes(r.data.map((l: any) => ({ value: l.id, label: `${l.lotexx} — ${l.deslot}` })));
-    // resumo por lote
     setLoading(true);
     try {
       const res = await api.get(`/lances/resumo/${idLeilao}`);
@@ -43,6 +52,16 @@ export default function Lances() {
       const r = await api.get('/lances', { params: { idLeilao: leilaoSel, idLote } });
       setDados(r.data);
     } finally { setLoading(false); }
+  };
+
+  const gerarRelatorio = async () => {
+    if (!leilaoSel) return;
+    setLoadingRelatorio(true);
+    try {
+      const r = await api.get('/lances', { params: { idLeilao: leilaoSel } });
+      setLancesRelatorio(r.data as LancePDF[]);
+      setRelatorioModal(true);
+    } finally { setLoadingRelatorio(false); }
   };
 
   const colsResumo = [
@@ -71,12 +90,14 @@ export default function Lances() {
   const totalLances = resumo.reduce((a, r) => a + (r.qtdLances || 0), 0);
   const lotesComLance = resumo.filter(r => r.qtdLances > 0).length;
 
+  const lotesRelatorio = new Set(lancesRelatorio.map(l => l.idLote)).size;
+
   return (
     <>
       <Title level={4}><TrophyOutlined style={{ marginRight: 8 }} />Lances</Title>
 
-      <Row gutter={12} style={{ marginBottom: 16 }}>
-        <Col span={12}>
+      <Row gutter={12} style={{ marginBottom: 16 }} align="middle">
+        <Col span={11}>
           <Select
             placeholder="Selecione o leilão"
             style={{ width: '100%' }}
@@ -86,7 +107,7 @@ export default function Lances() {
             filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())}
           />
         </Col>
-        <Col span={12}>
+        <Col span={11}>
           <Select
             placeholder="Filtrar por lote (opcional)"
             style={{ width: '100%' }}
@@ -99,6 +120,17 @@ export default function Lances() {
             onClear={() => { setLoteSel(undefined); setDados([]); setTab('resumo'); }}
             filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())}
           />
+        </Col>
+        <Col span={2} style={{ textAlign: 'right' }}>
+          <Button
+            icon={<FileDoneOutlined />}
+            disabled={!leilaoSel || resumo.length === 0}
+            loading={loadingRelatorio}
+            onClick={gerarRelatorio}
+            title="Gerar Relatório de Lances"
+          >
+            PDF
+          </Button>
         </Col>
       </Row>
 
@@ -139,6 +171,34 @@ export default function Lances() {
           />
         </>
       )}
+
+      {/* Modal de relatório */}
+      <Modal
+        open={relatorioModal}
+        onCancel={() => setRelatorioModal(false)}
+        footer={null}
+        title={
+          <Space>
+            <FileDoneOutlined />
+            <span>Relatório de Lances — {leilaoLabel}</span>
+          </Space>
+        }
+        width={420}
+      >
+        <div style={{ padding: '12px 0', textAlign: 'center' }}>
+          <div style={{ marginBottom: 16, textAlign: 'left', lineHeight: 2 }}>
+            <Text type="secondary">
+              <strong>{lancesRelatorio.length}</strong> lance{lancesRelatorio.length !== 1 ? 's' : ''} em{' '}
+              <strong>{lotesRelatorio}</strong> lote{lotesRelatorio !== 1 ? 's' : ''}
+            </Text>
+          </div>
+          <BotaoBaixarLancesPDF
+            lances={lancesRelatorio}
+            leilao={leilaoLabel}
+            empresa={config.empresa}
+          />
+        </div>
+      </Modal>
     </>
   );
 }
