@@ -23,7 +23,7 @@ const ALL_MENU_ITEMS = [
       { key: '/leiloes', label: 'Leilões', controle: 'Leilões' },
       { key: '/lotes', icon: <ShoppingOutlined />, label: 'Lotes', controle: 'Lotes' },
       { key: '/lances', icon: <TrophyOutlined />, label: 'Lances', controle: 'Lançes' },
-      { key: '/ordem-entrada', icon: <OrderedListOutlined />, label: 'Ordem de Entrada', controle: undefined },
+      { key: '/ordem-entrada', icon: <OrderedListOutlined />, label: 'Ordem de Entrada', controle: 'Ordem de Entrada' },
     ],
   },
   {
@@ -31,9 +31,9 @@ const ALL_MENU_ITEMS = [
     children: [
       { key: '/vendas', icon: <DollarOutlined />, label: 'Vendas', controle: 'Vendas' },
       { key: '/consulta-vendas', icon: <FileSearchOutlined />, label: 'Consulta Vendas', controle: 'Consulta Vendas' },
-      { key: '/contratos', icon: <FileTextOutlined />, label: 'Contratos', controle: undefined },
+      { key: '/contratos', icon: <FileTextOutlined />, label: 'Contratos', controle: 'Contratos' },
       { key: '/cotacoes', icon: <LineChartOutlined />, label: 'Cotações', controle: 'Cotações' },
-      { key: '/despesas', icon: <WalletOutlined />, label: 'Despesas', controle: undefined },
+      { key: '/despesas', icon: <WalletOutlined />, label: 'Despesas', controle: 'Despesas' },
     ],
   },
   {
@@ -54,8 +54,8 @@ const ALL_MENU_ITEMS = [
   {
     key: 'sistema-group', icon: <SafetyOutlined />, label: 'Sistema', controle: 'Clientes',
     children: [
-      { key: '/perfis', icon: <SafetyOutlined />, label: 'Perfis', controle: 'Clientes' },
-      { key: '/usuarios', icon: <UserOutlined />, label: 'Usuários', controle: 'Clientes' },
+      { key: '/perfis', icon: <SafetyOutlined />, label: 'Perfis', controle: 'Perfis' },
+      { key: '/usuarios', icon: <UserOutlined />, label: 'Usuários', controle: 'Usuários' },
     ],
   },
 ];
