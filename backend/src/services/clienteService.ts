@@ -1,6 +1,19 @@
 import { getPool, sql } from '../config/database';
 import { Cliente } from '../models/cliente';
 
+let colunaUsuCriada = false;
+async function garantirColunasUsu() {
+  if (colunaUsuCriada) return;
+  const pool = await getPool();
+  await pool.request().query(`
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Clientes' AND COLUMN_NAME='USUCAD')
+      ALTER TABLE Clientes ADD USUCAD INT NULL;
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Clientes' AND COLUMN_NAME='USUALT')
+      ALTER TABLE Clientes ADD USUALT INT NULL;
+  `);
+  colunaUsuCriada = true;
+}
+
 let colunaSolicitadoPorCriada = false;
 async function garantirColunaSolicitadoPor() {
   if (colunaSolicitadoPorCriada) return;
@@ -37,6 +50,10 @@ function mapRow(c: any): Cliente {
     estciv: c.ESTCIV, datcad: c.DATCAD, datalt: c.DATALT,
     idSolicitadoPor: c.ID_SOLICITADO_POR ? Number(c.ID_SOLICITADO_POR) : null,
     nomeSolicitadoPor: c.NOME_SOLICITADO_POR ?? null,
+    usucad: c.USUCAD ? Number(c.USUCAD) : null,
+    usualt: c.USUALT ? Number(c.USUALT) : null,
+    nomeUsucad: c.NOME_USUCAD ?? null,
+    nomeUsualt: c.NOME_USUALT ?? null,
     comprovante1: c.COMPROVANTE1, comprovante2: c.COMPROVANTE2, comprovante3: c.COMPROVANTE3,
     // Permissões de Dashboard
     verComissoes: c.VER_COMISSOES, verValoresLiquidos: c.VER_VALORES_LIQUIDOS,
@@ -162,20 +179,59 @@ export async function listarClientes(busca?: string, filtro?: string, filtroValo
 
 export async function buscarClientePorId(id: number): Promise<Cliente | null> {
   await garantirColunaSolicitadoPor();
+  await garantirColunasUsu();
   const pool = await getPool();
   const r = await pool.request().input('id', sql.Int, id).query(`
     SELECT C.*, CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO,
-           SOLIC.NOMEXX AS NOME_SOLICITADO_POR
+           SOLIC.NOMEXX  AS NOME_SOLICITADO_POR,
+           UCAD.NOMEXX   AS NOME_USUCAD,
+           UALT.NOMEXX   AS NOME_USUALT
     FROM Clientes C
-    LEFT JOIN Cidades CID ON CID.ID = C.CIDADE
+    LEFT JOIN Cidades  CID  ON CID.ID  = C.CIDADE
     LEFT JOIN Clientes SOLIC ON SOLIC.ID = C.ID_SOLICITADO_POR
+    LEFT JOIN Clientes UCAD  ON UCAD.ID  = C.USUCAD
+    LEFT JOIN Clientes UALT  ON UALT.ID  = C.USUALT
     WHERE C.ID=@id`);
   if (!r.recordset.length) return null;
   return mapRow(r.recordset[0]);
 }
 
+export class DuplicidadeError extends Error {
+  constructor(msg: string) { super(msg); this.name = 'DuplicidadeError'; }
+}
+
+async function verificarDuplicidade(cpf?: string, cnpj?: string, excludeId?: number) {
+  const pool = await getPool();
+  const norm = (v: string) =>
+    `REPLACE(REPLACE(REPLACE(REPLACE(${v},'.',''),'-',''),'/',''),' ','')`;
+
+  if (cpf && cpf.trim()) {
+    const req = pool.request().input('cpf', sql.VarChar, cpf);
+    let q = `SELECT TOP 1 ID, NOMEXX FROM Clientes
+      WHERE ${norm('CPFXXX')} = ${norm('@cpf')}
+        AND CPFXXX IS NOT NULL AND CPFXXX <> ''`;
+    if (excludeId) { req.input('excId', sql.Int, excludeId); q += ` AND ID <> @excId`; }
+    const r = await req.query(q);
+    if (r.recordset.length)
+      throw new DuplicidadeError(`CPF já cadastrado para: ${r.recordset[0].NOMEXX}`);
+  }
+
+  if (cnpj && cnpj.trim()) {
+    const req = pool.request().input('cnpj', sql.VarChar, cnpj);
+    let q = `SELECT TOP 1 ID, NOMEXX FROM Clientes
+      WHERE ${norm('CNPJXX')} = ${norm('@cnpj')}
+        AND CNPJXX IS NOT NULL AND CNPJXX <> ''`;
+    if (excludeId) { req.input('excId', sql.Int, excludeId); q += ` AND ID <> @excId`; }
+    const r = await req.query(q);
+    if (r.recordset.length)
+      throw new DuplicidadeError(`CNPJ já cadastrado para: ${r.recordset[0].NOMEXX}`);
+  }
+}
+
 export async function criarCliente(d: Cliente): Promise<number> {
+  await verificarDuplicidade(d.cpfxxx, d.cnpjxx);
   await garantirColunaSolicitadoPor();
+  await garantirColunasUsu();
   const pool = await getPool();
   const r = await pool.request()
     .input('nomexx', sql.VarChar, d.nomexx||null).input('endere', sql.VarChar, d.endere||null)
@@ -203,14 +259,17 @@ export async function criarCliente(d: Cliente): Promise<number> {
     .input('refer1', sql.VarChar, d.refer1||null).input('telrefere1', sql.VarChar, d.telrefere1||null)
     .input('refer2', sql.VarChar, d.refer2||null).input('telrefere2', sql.VarChar, d.telrefere2||null)
     .input('idSolicitadoPor', sql.Int, d.idSolicitadoPor||null)
-    .query(`INSERT INTO Clientes (NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,CODCLA,ESTCIV,OBSXXX,DATCAD,BANCOX,AGENCI,CONTAX,PIX,BANCO1,AGENCIA1,CONTA1,PIX1,BANCO2,AGENCIA2,CONTA2,PIX2,REFER1,TELREFERE1,REFER2,TELREFERE2,ID_SOLICITADO_POR)
+    .input('usucad', sql.Int, d.usucad||null)
+    .query(`INSERT INTO Clientes (NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,CODCLA,ESTCIV,OBSXXX,DATCAD,BANCOX,AGENCI,CONTAX,PIX,BANCO1,AGENCIA1,CONTA1,PIX1,BANCO2,AGENCIA2,CONTA2,PIX2,REFER1,TELREFERE1,REFER2,TELREFERE2,ID_SOLICITADO_POR,USUCAD)
       OUTPUT INSERTED.ID
-      VALUES (@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@codcla,@estciv,@obsxxx,@datcad,@bancox,@agenci,@contax,@pix,@banco1,@agencia1,@conta1,@pix1,@banco2,@agencia2,@conta2,@pix2,@refer1,@telrefere1,@refer2,@telrefere2,@idSolicitadoPor)`);
+      VALUES (@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@codcla,@estciv,@obsxxx,@datcad,@bancox,@agenci,@contax,@pix,@banco1,@agencia1,@conta1,@pix1,@banco2,@agencia2,@conta2,@pix2,@refer1,@telrefere1,@refer2,@telrefere2,@idSolicitadoPor,@usucad)`);
   return r.recordset[0].ID;
 }
 
 export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
+  await verificarDuplicidade(d.cpfxxx, d.cnpjxx, id);
   await garantirColunaSolicitadoPor();
+  await garantirColunasUsu();
   const pool = await getPool();
   await pool.request()
     .input('id', sql.Int, id)
@@ -238,6 +297,7 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
     .input('refer1', sql.VarChar, d.refer1||null).input('telrefere1', sql.VarChar, d.telrefere1||null)
     .input('refer2', sql.VarChar, d.refer2||null).input('telrefere2', sql.VarChar, d.telrefere2||null)
     .input('idSolicitadoPor', sql.Int, d.idSolicitadoPor||null)
+    .input('usualt', sql.Int, d.usualt||null)
     .query(`UPDATE Clientes SET NOMEXX=@nomexx,ENDERE=@endere,BAIRRO=@bairro,CEPXXX=@cepxxx,
       CPFXXX=@cpfxxx,CNPJXX=@cnpjxx,TELRES=@telres,TELCOM=@telcom,CELU_1=@celu1,CELU_2=@celu2,
       RGXXXX=@rgxxxx,DATNAS=@datnas,EMAILX=@emailx,EMAIL2=@email2,CIDADE=@cidade,COMPLE=@comple,
@@ -247,7 +307,7 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
       BANCO1=@banco1,AGENCIA1=@agencia1,CONTA1=@conta1,PIX1=@pix1,
       BANCO2=@banco2,AGENCIA2=@agencia2,CONTA2=@conta2,PIX2=@pix2,
       REFER1=@refer1,TELREFERE1=@telrefere1,REFER2=@refer2,TELREFERE2=@telrefere2,
-      ID_SOLICITADO_POR=@idSolicitadoPor
+      ID_SOLICITADO_POR=@idSolicitadoPor,USUALT=@usualt
       WHERE ID=@id`);
 }
 

@@ -259,7 +259,10 @@ export default function Clientes() {
       message.success('Salvo com sucesso');
       setDrawerOpen(false);
       carregar(busca);
-    } catch { message.error('Erro ao salvar'); }
+    } catch (err: any) {
+      const msg = err?.response?.data?.error;
+      message.error(msg || 'Erro ao salvar', msg ? 6 : 3);
+    }
   };
 
   const deletar = async (id: number) => {
@@ -493,6 +496,8 @@ export default function Clientes() {
       <Col xs={12} sm={8} md={6}><Form.Item name="classificacao" label="Classificação"><Input type="number" /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="datcad" label="Data Cadastro"><Input disabled /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="datalt" label="Última Alteração"><Input disabled /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="nomeUsucad" label="Cadastrado por"><Input disabled /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="nomeUsualt" label="Alterado por"><Input disabled /></Form.Item></Col>
       <Col xs={24} sm={16} md={12}>
         <Form.Item name="idSolicitadoPor" label="Solicitado Por">
           <Select

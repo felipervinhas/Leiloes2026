@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as svc from '../services/clienteService';
+import { DuplicidadeError } from '../services/clienteService';
 import { consultarVendas } from '../services/consultaVendasService';
 
 export const listar = async (req: Request, res: Response) => {
@@ -14,11 +15,23 @@ export const buscar = async (req: Request, res: Response) => {
   res.json(data);
 };
 export const criar = async (req: Request, res: Response) => {
-  res.status(201).json({ id: await svc.criarCliente(req.body) });
+  try {
+    const idUsuario = (req as any).usuario?.id ?? null;
+    res.status(201).json({ id: await svc.criarCliente({ ...req.body, usucad: idUsuario }) });
+  } catch (err) {
+    if (err instanceof DuplicidadeError) return res.status(409).json({ error: err.message });
+    throw err;
+  }
 };
 export const atualizar = async (req: Request, res: Response) => {
-  await svc.atualizarCliente(Number(req.params.id), req.body);
-  res.json({ ok: true });
+  try {
+    const idUsuario = (req as any).usuario?.id ?? null;
+    await svc.atualizarCliente(Number(req.params.id), { ...req.body, usualt: idUsuario });
+    res.json({ ok: true });
+  } catch (err) {
+    if (err instanceof DuplicidadeError) return res.status(409).json({ error: err.message });
+    throw err;
+  }
 };
 export const deletar = async (req: Request, res: Response) => {
   await svc.deletarCliente(Number(req.params.id));

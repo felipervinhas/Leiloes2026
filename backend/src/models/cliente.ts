@@ -51,6 +51,10 @@ export interface Cliente {
   comprovante3?: string;
   idSolicitadoPor?: number | null;
   nomeSolicitadoPor?: string;
+  usucad?: number | null;
+  usualt?: number | null;
+  nomeUsucad?: string;
+  nomeUsualt?: string;
   // Permissões de Dashboard (para ADMs)
   verComissoes?: string;
   verValoresLiquidos?: string;
