@@ -505,6 +505,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
   const [propriedades, setPropriedades] = useState<any[]>([]);
   const [modalProps, setModalProps] = useState(false);
   const [compSelecionado, setCompSelecionado] = useState<any>(null);
+  const [pisteiros, setPisteiros] = useState<{ value: number; label: string }[]>([]);
 
   // ── step 3 ──────────────────────────────────────────────────────────────
   const [dataBase, setDataBase] = useState<Dayjs | null>(dayjs());
@@ -518,6 +519,8 @@ function Wizard({ editId, onConcluir, onCancelar }: {
     api.get('/leiloes').then(r =>
       setLeiloes(r.data.map((l: any) => ({ value: l.id, label: l.leilao }))));
     api.get('/condicoes-pagamento').then(r => setCondicoes(r.data));
+    api.get('/usuarios', { params: { tipo: 'PISTEIRO' } }).then(r =>
+      setPisteiros(r.data.map((u: any) => ({ value: u.id, label: u.nomexx }))));
   }, []);
 
   useEffect(() => {
@@ -686,10 +689,11 @@ function Wizard({ editId, onConcluir, onCancelar }: {
         percen:          vals.percen ?? 100,
         formaPagamento:  vals.formaPagamento,
         idPropriedade:   vals.idPropriedade ?? null,
+        idPisteiro:      vals.idPisteiro ?? null,
       });
       const rc = await api.get(`/vendas/${movId}/compradores`);
       setCompradores(rc.data);
-      form2.resetFields(['idCli', 'percen', 'formaPagamento', 'idPropriedade']);
+      form2.resetFields(['idCli', 'percen', 'formaPagamento', 'idPropriedade', 'idPisteiro']);
       setClientes([]);
       message.success('Comprador adicionado');
     } finally { setSalvando(false); }
@@ -796,6 +800,10 @@ function Wizard({ editId, onConcluir, onCancelar }: {
           </Tooltip>
         </Space>
       ),
+    },
+    {
+      title: 'Pisteiro', dataIndex: 'nomePisteiro', width: 130, ellipsis: true,
+      render: (v: string) => v || <span style={{ color: '#ccc' }}>—</span>,
     },
     {
       title: 'Parcelas', width: 90, align: 'center' as const,
@@ -1085,6 +1093,14 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                     <Select options={FORMAS_PAGAMENTO.map(f => ({ value: f, label: f }))} />
                   </Form.Item>
                 </Col>
+                {pisteiros.length > 0 && (
+                  <Col xs={24} sm={6} md={4}>
+                    <Form.Item name="idPisteiro" label="Pisteiro">
+                      <Select options={pisteiros} allowClear placeholder="Opcional..."
+                        showSearch filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
+                    </Form.Item>
+                  </Col>
+                )}
                 <Col xs={24} sm={6} md={3} style={{ display: 'flex', alignItems: 'flex-end' }}>
                   <Form.Item style={{ marginBottom: 0, width: '100%' }}>
                     <Button type="primary" icon={<PlusOutlined />} block

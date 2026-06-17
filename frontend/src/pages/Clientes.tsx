@@ -25,8 +25,8 @@ import { exportarClientesExcel } from '../relatorios/exportarExcel';
 const { Title } = Typography;
 
 interface Cliente { id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string; emailx?: string;
-  celu1?: string; ativox?: string; blocli?: string; acessoApp?: string; datcad?: string;
-  nomeCidade?: string; nomeEstado?: string; }
+  celu1?: string; ativox?: string; blocli?: string; acessoApp?: string; datcad?: string; datalt?: string;
+  nomeCidade?: string; nomeEstado?: string; idSolicitadoPor?: number | null; nomeSolicitadoPor?: string; }
 
 interface ClienteRanking { id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string;
   emailx?: string; celu1?: string; ativox?: string;
@@ -65,6 +65,7 @@ export default function Clientes() {
   const [busca, setBusca] = useState('');
   const [filtroCampo, setFiltroCampo] = useState('nome');
   const [cidades, setCidades] = useState<{ value: number; label: string }[]>([]);
+  const [usuarios, setUsuarios] = useState<{ value: number; label: string }[]>([]);
   const [cepLoading, setCepLoading] = useState(false);
   const [form] = Form.useForm();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -178,7 +179,12 @@ export default function Clientes() {
     }
   };
 
-  useEffect(() => { carregar(); carregarCidades(); }, []);
+  useEffect(() => {
+    carregar();
+    carregarCidades();
+    api.get('/usuarios').then(r =>
+      setUsuarios(r.data.map((u: any) => ({ value: u.id, label: u.nomexx }))));
+  }, []);
 
   useEffect(() => {
     const clienteId = (location.state as any)?.abrirClienteId;
@@ -192,9 +198,11 @@ export default function Clientes() {
     if (item) {
       const r = await api.get(`/clientes/${item.id}`);
       const d = r.data;
-      form.setFieldsValue({ 
-        ...d, 
+      form.setFieldsValue({
+        ...d,
         datnas: d.datnas ? dayjs(d.datnas) : null,
+        datcad: d.datcad ? dayjs(d.datcad).format('DD/MM/YYYY') : '',
+        datalt: d.datalt ? dayjs(d.datalt).format('DD/MM/YYYY') : '',
         // Converter S/N para true/false para checkboxes
         verComissoes: d.verComissoes === 'S',
         verValoresLiquidos: d.verValoresLiquidos === 'S',
@@ -477,6 +485,16 @@ export default function Clientes() {
       <Col xs={12} sm={8} md={6}><Form.Item name="acessoApp" label="Acesso App"><Select options={ACESSO} allowClear /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="limcre" label="Limite de Crédito"><Input /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="classificacao" label="Classificação"><Input type="number" /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="datcad" label="Data Cadastro"><Input disabled /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="datalt" label="Última Alteração"><Input disabled /></Form.Item></Col>
+      <Col xs={24} sm={16} md={12}>
+        <Form.Item name="idSolicitadoPor" label="Solicitado Por">
+          <Select
+            options={usuarios} allowClear placeholder="Selecione o usuário que solicitou..."
+            showSearch filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())}
+          />
+        </Form.Item>
+      </Col>
       <Col xs={24} md={12}><Form.Item name="senhax" label={editando ? 'Senha (deixe em branco para manter)' : 'Senha'}><Input.Password /></Form.Item></Col>
       <Col xs={24}><Form.Item name="obsxxx" label="Observações"><Input.TextArea rows={3} /></Form.Item></Col>
     </Row>

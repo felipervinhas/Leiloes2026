@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import * as svc from '../services/usuarioService';
 
 export const listar = async (req: Request, res: Response) => {
-  res.json(await svc.listarUsuarios(req.query.busca as string));
+  res.json(await svc.listarUsuarios(req.query.busca as string, req.query.tipo as string));
 };
 export const buscar = async (req: Request, res: Response) => {
   const data = await svc.buscarUsuarioPorId(Number(req.params.id));

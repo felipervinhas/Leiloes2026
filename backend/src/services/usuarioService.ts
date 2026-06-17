@@ -34,7 +34,7 @@ function mapRow(c: any): UsuarioSistema {
   };
 }
 
-export async function listarUsuarios(busca?: string): Promise<UsuarioSistema[]> {
+export async function listarUsuarios(busca?: string, tipo?: string): Promise<UsuarioSistema[]> {
   await garantirColuna();
   const pool = await getPool();
   const req = pool.request();
@@ -42,6 +42,10 @@ export async function listarUsuarios(busca?: string): Promise<UsuarioSistema[]> 
   if (busca) {
     req.input('busca', sql.VarChar, `%${busca}%`);
     where += ` AND (NOMEXX LIKE @busca OR EMAILX LIKE @busca)`;
+  }
+  if (tipo) {
+    req.input('tipo', sql.NVarChar, tipo);
+    where += ` AND TIPO_USUARIO = @tipo`;
   }
   const r = await req.query(`SELECT ID, NOMEXX, EMAILX, CPFXXX, ATIVOX, BLOCLI, ACESSO_APP, TIPO_USUARIO FROM Clientes ${where} ORDER BY NOMEXX`);
   return r.recordset.map(mapRow);

@@ -49,6 +49,7 @@ export interface DadosComprador {
   percen: number;
   formaPagamento: string;
   idPropriedade?: number | null;
+  idPisteiro?: number | null;
 }
 
 export interface GerarParcelasParams {
@@ -353,17 +354,34 @@ export async function buscarLoteMovimento(idMov: number) {
 
 // ─── compradores ─────────────────────────────────────────────────────────────
 
+let colunaPisteiroMovComp = false;
+async function garantirColunaMovCompPisteiro() {
+  if (colunaPisteiroMovComp) return;
+  const pool = await getPool();
+  await pool.request().query(`
+    IF NOT EXISTS (
+      SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_NAME='MOVIMENTO_COMPRADOR' AND COLUMN_NAME='ID_PISTEIRO'
+    )
+    ALTER TABLE MOVIMENTO_COMPRADOR ADD ID_PISTEIRO INT NULL
+  `);
+  colunaPisteiroMovComp = true;
+}
+
 export async function listarCompradores(idMov: number) {
+  await garantirColunaMovCompPisteiro();
   const pool = await getPool();
   const r = await pool.request()
     .input('idMov', sql.Int, idMov)
     .query(`
       SELECT MC.*, C.NOMEXX, C.CPFXXX, CP.DESFIN,
-             CP_PROP.NOME_PROPRIEDADE, CP_PROP.CIDADE, CP_PROP.ESTADO
+             CP_PROP.NOME_PROPRIEDADE, CP_PROP.CIDADE, CP_PROP.ESTADO,
+             PIST.NOMEXX AS NOME_PISTEIRO
       FROM MOVIMENTO_COMPRADOR MC
       LEFT JOIN CLIENTES C ON C.ID = MC.IDCLI
       LEFT JOIN CONDICAOPAGTOS CP ON CP.ID = MC.IDCONDPAGTO
       LEFT JOIN CLIENTES_PROPRIEDADES CP_PROP ON CP_PROP.ID = MC.ID_PROPRIEDADE
+      LEFT JOIN CLIENTES PIST ON PIST.ID = MC.ID_PISTEIRO
       WHERE MC.IDMOV = @idMov
       ORDER BY MC.ID
     `);
@@ -389,6 +407,8 @@ export async function listarCompradores(idMov: number) {
     nomePropriedade:   row.NOME_PROPRIEDADE,
     cidadePropriedade: row.CIDADE,
     estadoPropriedade: row.ESTADO,
+    idPisteiro:        row.ID_PISTEIRO ? Number(row.ID_PISTEIRO) : null,
+    nomePisteiro:      row.NOME_PISTEIRO ?? null,
   }));
 }
 
@@ -415,6 +435,7 @@ export async function salvarComprador(
   const comissaoVendedor = valorBaseComissaoVendedor > 0
     ? (valorComissaoVendedor / valorBaseComissaoVendedor) * 100 : 0;
 
+  await garantirColunaMovCompPisteiro();
   const r = await pool.request()
     .input('idMov',                       sql.Int,     idMov)
     .input('idMovLote',                   sql.Int,     idMovLote)
@@ -434,20 +455,21 @@ export async function salvarComprador(
     .input('valorBaseComissaoVendedor',   sql.Decimal, valorBaseComissaoVendedor)
     .input('formaPagamento',              sql.VarChar, d.formaPagamento)
     .input('idPropriedade',               sql.Int,     d.idPropriedade || null)
+    .input('idPisteiro',                  sql.Int,     d.idPisteiro || null)
     .query(`
       INSERT INTO MOVIMENTO_COMPRADOR
         (IDMOV,IDMOVLOTE,IDLEILAO,CODNOT,IDCLI,IDCONDPAGTO,PERCEN,
          VALORORIGINAL,VALORPAGAR,VALORDESCONTO,VALORCOMISSAO,COMISSAO,
          VALORCOMISSAOVENDEDOR,COMISSAOVENDEDOR,
          VALORBASECOMISSAO,VALORBASECOMISSAOVENDEDOR,
-         FORMA_PAGAMENTO,ID_PROPRIEDADE)
+         FORMA_PAGAMENTO,ID_PROPRIEDADE,ID_PISTEIRO)
       OUTPUT INSERTED.ID
       VALUES
         (@idMov,@idMovLote,@idLeilao,@codnot,@idCli,@idCondPagto,@percen,
          @valorOriginal,@valorPagar,@valorDesconto,@valorComissao,@comissao,
          @valorComissaoVendedor,@comissaoVendedor,
          @valorBaseComissao,@valorBaseComissaoVendedor,
-         @formaPagamento,@idPropriedade)
+         @formaPagamento,@idPropriedade,@idPisteiro)
     `);
 
   const idComp = r.recordset[0].ID;

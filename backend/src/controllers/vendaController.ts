@@ -72,7 +72,7 @@ export const listarCompradores = async (req: Request, res: Response) => {
 
 export const adicionarComprador = async (req: Request, res: Response) => {
   const idMov = Number(req.params.id);
-  const { idCli, idCondPagto, percen, formaPagamento, idPropriedade } = req.body;
+  const { idCli, idCondPagto, percen, formaPagamento, idPropriedade, idPisteiro } = req.body;
   if (!idCli || !idCondPagto) {
     return res.status(400).json({ error: 'idCli e idCondPagto são obrigatórios' });
   }
@@ -90,6 +90,7 @@ export const adicionarComprador = async (req: Request, res: Response) => {
     idCli: Number(idCli), idCondPagto: Number(idCondPagto),
     percen: Number(percen) || 100, formaPagamento: formaPagamento || 'PROMISSORIA',
     idPropriedade: idPropriedade ? Number(idPropriedade) : null,
+    idPisteiro: idPisteiro ? Number(idPisteiro) : null,
   }, {
     id: mov.idLeilao, comcom: mov.comcom ?? 0, comven: mov.comven ?? 0,
     condic: mov.condic ?? 0, codnot: mov.codnot,

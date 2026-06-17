@@ -1,6 +1,20 @@
 import { getPool, sql } from '../config/database';
 import { Cliente } from '../models/cliente';
 
+let colunaSolicitadoPorCriada = false;
+async function garantirColunaSolicitadoPor() {
+  if (colunaSolicitadoPorCriada) return;
+  const pool = await getPool();
+  await pool.request().query(`
+    IF NOT EXISTS (
+      SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_NAME='Clientes' AND COLUMN_NAME='ID_SOLICITADO_POR'
+    )
+    ALTER TABLE Clientes ADD ID_SOLICITADO_POR INT NULL
+  `);
+  colunaSolicitadoPorCriada = true;
+}
+
 function mapRow(c: any): Cliente {
   return {
     id: c.ID, nomexx: c.NOMEXX, endere: c.ENDERE, bairro: c.BAIRRO, cepxxx: c.CEPXXX,
@@ -21,6 +35,8 @@ function mapRow(c: any): Cliente {
     ativox: c.ATIVOX, blocli: c.BLOCLI, adm: c.ADM, acessoApp: c.ACESSO_APP,
     senhax: c.SENHAX, limcre: c.LIMCRE, classificacao: c.CLASSIFICACAO, codcla: c.CODCLA,
     estciv: c.ESTCIV, datcad: c.DATCAD, datalt: c.DATALT,
+    idSolicitadoPor: c.ID_SOLICITADO_POR ? Number(c.ID_SOLICITADO_POR) : null,
+    nomeSolicitadoPor: c.NOME_SOLICITADO_POR ?? null,
     comprovante1: c.COMPROVANTE1, comprovante2: c.COMPROVANTE2, comprovante3: c.COMPROVANTE3,
     // Permissões de Dashboard
     verComissoes: c.VER_COMISSOES, verValoresLiquidos: c.VER_VALORES_LIQUIDOS,
@@ -117,17 +133,21 @@ export async function listarClientes(busca?: string, filtro?: string): Promise<C
 }
 
 export async function buscarClientePorId(id: number): Promise<Cliente | null> {
+  await garantirColunaSolicitadoPor();
   const pool = await getPool();
   const r = await pool.request().input('id', sql.Int, id).query(`
-    SELECT C.*, CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO
+    SELECT C.*, CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO,
+           SOLIC.NOMEXX AS NOME_SOLICITADO_POR
     FROM Clientes C
     LEFT JOIN Cidades CID ON CID.ID = C.CIDADE
+    LEFT JOIN Clientes SOLIC ON SOLIC.ID = C.ID_SOLICITADO_POR
     WHERE C.ID=@id`);
   if (!r.recordset.length) return null;
   return mapRow(r.recordset[0]);
 }
 
 export async function criarCliente(d: Cliente): Promise<number> {
+  await garantirColunaSolicitadoPor();
   const pool = await getPool();
   const r = await pool.request()
     .input('nomexx', sql.VarChar, d.nomexx||null).input('endere', sql.VarChar, d.endere||null)
@@ -154,13 +174,15 @@ export async function criarCliente(d: Cliente): Promise<number> {
     .input('conta2', sql.VarChar, d.conta2||null).input('pix2', sql.VarChar, d.pix2||null)
     .input('refer1', sql.VarChar, d.refer1||null).input('telrefere1', sql.VarChar, d.telrefere1||null)
     .input('refer2', sql.VarChar, d.refer2||null).input('telrefere2', sql.VarChar, d.telrefere2||null)
-    .query(`INSERT INTO Clientes (NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,CODCLA,ESTCIV,OBSXXX,DATCAD,BANCOX,AGENCI,CONTAX,PIX,BANCO1,AGENCIA1,CONTA1,PIX1,BANCO2,AGENCIA2,CONTA2,PIX2,REFER1,TELREFERE1,REFER2,TELREFERE2)
+    .input('idSolicitadoPor', sql.Int, d.idSolicitadoPor||null)
+    .query(`INSERT INTO Clientes (NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,CODCLA,ESTCIV,OBSXXX,DATCAD,BANCOX,AGENCI,CONTAX,PIX,BANCO1,AGENCIA1,CONTA1,PIX1,BANCO2,AGENCIA2,CONTA2,PIX2,REFER1,TELREFERE1,REFER2,TELREFERE2,ID_SOLICITADO_POR)
       OUTPUT INSERTED.ID
-      VALUES (@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@codcla,@estciv,@obsxxx,@datcad,@bancox,@agenci,@contax,@pix,@banco1,@agencia1,@conta1,@pix1,@banco2,@agencia2,@conta2,@pix2,@refer1,@telrefere1,@refer2,@telrefere2)`);
+      VALUES (@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@codcla,@estciv,@obsxxx,@datcad,@bancox,@agenci,@contax,@pix,@banco1,@agencia1,@conta1,@pix1,@banco2,@agencia2,@conta2,@pix2,@refer1,@telrefere1,@refer2,@telrefere2,@idSolicitadoPor)`);
   return r.recordset[0].ID;
 }
 
 export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
+  await garantirColunaSolicitadoPor();
   const pool = await getPool();
   await pool.request()
     .input('id', sql.Int, id)
@@ -187,6 +209,7 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
     .input('conta2', sql.VarChar, d.conta2||null).input('pix2', sql.VarChar, d.pix2||null)
     .input('refer1', sql.VarChar, d.refer1||null).input('telrefere1', sql.VarChar, d.telrefere1||null)
     .input('refer2', sql.VarChar, d.refer2||null).input('telrefere2', sql.VarChar, d.telrefere2||null)
+    .input('idSolicitadoPor', sql.Int, d.idSolicitadoPor||null)
     .query(`UPDATE Clientes SET NOMEXX=@nomexx,ENDERE=@endere,BAIRRO=@bairro,CEPXXX=@cepxxx,
       CPFXXX=@cpfxxx,CNPJXX=@cnpjxx,TELRES=@telres,TELCOM=@telcom,CELU_1=@celu1,CELU_2=@celu2,
       RGXXXX=@rgxxxx,DATNAS=@datnas,EMAILX=@emailx,EMAIL2=@email2,CIDADE=@cidade,COMPLE=@comple,
@@ -195,7 +218,8 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
       OBSXXX=@obsxxx,DATALT=@datalt,BANCOX=@bancox,AGENCI=@agenci,CONTAX=@contax,PIX=@pix,
       BANCO1=@banco1,AGENCIA1=@agencia1,CONTA1=@conta1,PIX1=@pix1,
       BANCO2=@banco2,AGENCIA2=@agencia2,CONTA2=@conta2,PIX2=@pix2,
-      REFER1=@refer1,TELREFERE1=@telrefere1,REFER2=@refer2,TELREFERE2=@telrefere2
+      REFER1=@refer1,TELREFERE1=@telrefere1,REFER2=@refer2,TELREFERE2=@telrefere2,
+      ID_SOLICITADO_POR=@idSolicitadoPor
       WHERE ID=@id`);
 }
 
