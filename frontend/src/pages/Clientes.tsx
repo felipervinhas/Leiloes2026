@@ -83,9 +83,11 @@ export default function Clientes() {
     setHistoricoLoading(true);
     try {
       const r = await api.get(`/clientes/${id}/historico`);
-      setHistoricoCompras(r.data.compras);
-      setHistoricoVendas(r.data.vendas);
+      setHistoricoCompras(r.data.compras ?? []);
+      setHistoricoVendas(r.data.vendas ?? []);
       setHistoricoCarregado(true);
+    } catch (err: any) {
+      message.error(`Erro ao carregar histórico: ${err?.response?.data?.error || err?.message || 'desconhecido'}`);
     } finally {
       setHistoricoLoading(false);
     }

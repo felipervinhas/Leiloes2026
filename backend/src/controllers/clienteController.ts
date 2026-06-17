@@ -47,10 +47,14 @@ export const analisar = async (req: Request, res: Response) => {
   res.json({ ok: true });
 };
 export const historico = async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
-  const [compras, vendas] = await Promise.all([
-    consultarVendas({ idComprador: id }),
-    consultarVendas({ idVendedor: id }),
-  ]);
-  res.json({ compras, vendas });
+  try {
+    const id = Number(req.params.id);
+    const compras = await consultarVendas({ idComprador: id });
+    const vendas  = await consultarVendas({ idVendedor: id });
+    console.log(`[historico] cliente=${id} compras=${compras.length} vendas=${vendas.length}`);
+    res.json({ compras, vendas });
+  } catch (err) {
+    console.error('[historico] erro:', err);
+    res.status(500).json({ error: String(err) });
+  }
 };
