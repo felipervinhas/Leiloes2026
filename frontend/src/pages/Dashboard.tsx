@@ -405,16 +405,18 @@ export default function Dashboard() {
             loading={loading}
           />
         </Col>
+        {(!permissoes || permissoes.verComissoes === 'S') && (
         <Col xs={24} sm={12} lg={6}>
           <KpiCard
             icon={<RiseOutlined />}
             label="Comissões Totais"
-            value={loading ? '...' : fmtComRestricao(k?.comissaoGeral ?? 0, permissoes?.verComissoes)}
-            sub={`Líquido: ${loading ? '...' : fmtComRestricao(k?.liquidoGeral ?? 0, permissoes?.verValoresLiquidos)}`}
+            value={loading ? '...' : fmtR(k?.comissaoGeral ?? 0)}
+            sub={(!permissoes || permissoes.verValoresLiquidos === 'S') ? `Líquido: ${loading ? '...' : fmtR(k?.liquidoGeral ?? 0)}` : undefined}
             color="#52c41a"
             loading={loading}
           />
         </Col>
+        )}
         <Col xs={24} sm={12} lg={6}>
           <KpiCard
             icon={<TeamOutlined />}
@@ -612,17 +614,14 @@ export default function Dashboard() {
         )}
 
         {/* Top Compradores */}
+        {(!permissoes || permissoes.verTopCompradores === 'S') && (
         <Col xs={24} lg={12}>
           <Card
             title={<span><TrophyOutlined style={{ marginRight: 6, color: '#ffc53d' }} />Top Compradores</span>}
             style={{ borderRadius: 12 }}
             styles={{ body: { padding: '8px 16px 16px' } }}
           >
-            {permissoes?.verTopCompradores !== 'S' ? (
-              <div style={{ padding: '20px', textAlign: 'center', color: '#8c8c8c' }}>
-                [RESTRITO]
-              </div>
-            ) : topsCategoryLoading ? <Spin style={{ margin: '20px auto', display: 'block' }} />
+            {topsCategoryLoading ? <Spin style={{ margin: '20px auto', display: 'block' }} />
               : !topsPorCategoria?.topCompradores.length ? <Empty description="Sem dados" />
               : topsPorCategoria.topCompradores.map((c, i) => {
                 const maxVal = topsPorCategoria.topCompradores[0].valorTotal;
@@ -641,12 +640,14 @@ export default function Dashboard() {
                           {c.compras} compra{c.compras !== 1 ? 's' : ''}
                         </Text>
                       </div>
+                      {(!permissoes || permissoes.verValoresLiquidos === 'S') && (
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <div style={{ fontWeight: 700, fontSize: 13, color: '#1677ff' }}>
-                          {fmtComRestricao(c.valorTotal, permissoes?.verValoresLiquidos)}
+                          {fmtR(c.valorTotal)}
                         </div>
-                        <Text style={{ fontSize: 10, color: '#8c8c8c' }}>liq. {fmtComRestricao(c.valorLiq, permissoes?.verValoresLiquidos)}</Text>
+                        <Text style={{ fontSize: 10, color: '#8c8c8c' }}>liq. {fmtR(c.valorLiq)}</Text>
                       </div>
+                      )}
                     </div>
                     <Progress
                       percent={Math.round(pct)}
@@ -660,19 +661,17 @@ export default function Dashboard() {
               })}
           </Card>
         </Col>
+        )}
 
         {/* Top Vendedores */}
+        {(!permissoes || permissoes.verTopVendedores === 'S') && (
         <Col xs={24} lg={12}>
           <Card
             title={<span><TrophyOutlined style={{ marginRight: 6, color: '#13c2c2' }} />Top Vendedores</span>}
             style={{ borderRadius: 12 }}
             styles={{ body: { padding: '8px 16px 16px' } }}
           >
-            {permissoes?.verTopVendedores !== 'S' ? (
-              <div style={{ padding: '20px', textAlign: 'center', color: '#8c8c8c' }}>
-                [RESTRITO]
-              </div>
-            ) : topsCategoryLoading ? <Spin style={{ margin: '20px auto', display: 'block' }} />
+            {topsCategoryLoading ? <Spin style={{ margin: '20px auto', display: 'block' }} />
               : !topsPorCategoria?.topVendedores.length ? <Empty description="Sem dados" />
               : topsPorCategoria.topVendedores.map((v, i) => {
                 const maxVal = topsPorCategoria.topVendedores[0].valorTotal;
@@ -691,12 +690,14 @@ export default function Dashboard() {
                           {v.vendas} venda{v.vendas !== 1 ? 's' : ''}
                         </Text>
                       </div>
+                      {(!permissoes || permissoes.verValoresLiquidos === 'S') && (
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <div style={{ fontWeight: 700, fontSize: 13, color: '#13c2c2' }}>
-                          {fmtComRestricao(v.valorTotal, permissoes?.verValoresLiquidos)}
+                          {fmtR(v.valorTotal)}
                         </div>
-                        <Text style={{ fontSize: 10, color: '#8c8c8c' }}>liq. {fmtComRestricao(v.valorLiq, permissoes?.verValoresLiquidos)}</Text>
+                        <Text style={{ fontSize: 10, color: '#8c8c8c' }}>liq. {fmtR(v.valorLiq)}</Text>
                       </div>
+                      )}
                     </div>
                     <Progress
                       percent={Math.round(pct)}
@@ -710,8 +711,10 @@ export default function Dashboard() {
               })}
           </Card>
         </Col>
+        )}
 
         {/* Próximos vencimentos */}
+        {(!permissoes || permissoes.verVencimentos === 'S') && (
         <Col xs={24} lg={24}>
           <Card
             title={<span><CalendarOutlined style={{ marginRight: 6, color: '#fa8c16' }} />Próximos Vencimentos</span>}
@@ -723,11 +726,7 @@ export default function Dashboard() {
               ) : null
             }
           >
-            {permissoes?.verVencimentos !== 'S' ? (
-              <div style={{ padding: '20px', textAlign: 'center', color: '#8c8c8c' }}>
-                [RESTRITO]
-              </div>
-            ) : loading ? <Spin style={{ margin: '20px auto', display: 'block' }} />
+            {loading ? <Spin style={{ margin: '20px auto', display: 'block' }} />
               : !data?.vencimentos.length
               ? <Empty description="Sem vencimentos nos próximos 45 dias" />
               : data.vencimentos.map((v, i) => {
@@ -766,6 +765,7 @@ export default function Dashboard() {
               })}
           </Card>
         </Col>
+        )}
       </Row>
 
       {/* ── Cadastros incompletos (>70% vazio) ─────────────────────────── */}
