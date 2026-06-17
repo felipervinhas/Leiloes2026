@@ -45,17 +45,22 @@ function mapRow(c: any): Cliente {
   };
 }
 
-export async function listarClientesFaturamento(busca?: string, filtro?: string) {
+export async function listarClientesFaturamento(busca?: string, filtro?: string, filtroValor?: string) {
   const pool = await getPool();
   const req = pool.request();
-  let where = '';
+  const conditions: string[] = [];
   if (busca && filtro) {
     req.input('busca', sql.VarChar, `%${busca}%`);
     const col: Record<string, string> = {
       nome: 'C.NOMEXX', cpf: 'C.CPFXXX', cnpj: 'C.CNPJXX', email: 'C.EMAILX',
     };
-    where = `WHERE ${col[filtro] || 'C.NOMEXX'} LIKE @busca`;
+    conditions.push(`${col[filtro] || 'C.NOMEXX'} LIKE @busca`);
   }
+  const tot = `(ISNULL(COMP.TOTAL, 0) + ISNULL(VEN.TOTAL, 0))`;
+  if (filtroValor === 'ate10k')   conditions.push(`${tot} BETWEEN 1 AND 10000`);
+  if (filtroValor === 'ate20k')   conditions.push(`${tot} BETWEEN 1 AND 20000`);
+  if (filtroValor === 'acima30k') conditions.push(`${tot} > 30000`);
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const r = await req.query(`
     SELECT TOP 500
       C.ID, C.NOMEXX, C.CPFXXX, C.CNPJXX, C.EMAILX, C.CELU_1, C.ATIVOX, C.DATCAD,
@@ -105,17 +110,39 @@ export async function listarClientesFaturamento(busca?: string, filtro?: string)
   }));
 }
 
-export async function listarClientes(busca?: string, filtro?: string): Promise<Cliente[]> {
+export async function listarClientes(busca?: string, filtro?: string, filtroValor?: string): Promise<Cliente[]> {
   const pool = await getPool();
   const req = pool.request();
-  let where = '';
+  const conditions: string[] = [];
+
   if (busca && filtro) {
     req.input('busca', sql.VarChar, `%${busca}%`);
     const col: Record<string, string> = {
       nome: 'C.NOMEXX', cpf: 'C.CPFXXX', cnpj: 'C.CNPJXX', email: 'C.EMAILX',
     };
-    where = `WHERE ${col[filtro] || 'C.NOMEXX'} LIKE @busca`;
+    conditions.push(`${col[filtro] || 'C.NOMEXX'} LIKE @busca`);
   }
+
+  const tot = `(ISNULL(COMP_V.TOTAL, 0) + ISNULL(VEN_V.TOTAL, 0))`;
+  let joinValor = '';
+  if (filtroValor) {
+    joinValor = `
+      LEFT JOIN (
+        SELECT TRY_CAST(IDCLI AS INT) AS IDCLI, SUM(ISNULL(VALORPAGAR,0)) AS TOTAL
+        FROM MOVIMENTO_COMPRADOR WHERE TRY_CAST(IDCLI AS INT) IS NOT NULL
+        GROUP BY TRY_CAST(IDCLI AS INT)
+      ) COMP_V ON COMP_V.IDCLI = C.ID
+      LEFT JOIN (
+        SELECT CODVEN, SUM(ISNULL(VLRTOT,0)) AS TOTAL
+        FROM MOVIMENTO_LOTE WHERE CODVEN IS NOT NULL
+        GROUP BY CODVEN
+      ) VEN_V ON VEN_V.CODVEN = C.ID`;
+    if (filtroValor === 'ate10k')   conditions.push(`${tot} BETWEEN 1 AND 10000`);
+    if (filtroValor === 'ate20k')   conditions.push(`${tot} BETWEEN 1 AND 20000`);
+    if (filtroValor === 'acima30k') conditions.push(`${tot} > 30000`);
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const r = await req.query(`
     SELECT TOP 500 C.ID,C.NOMEXX,C.CPFXXX,C.CNPJXX,C.EMAILX,C.CELU_1,
       C.ATIVOX,C.BLOCLI,C.ADM,C.ACESSO_APP,C.DATCAD,C.CIDADE,
@@ -128,6 +155,7 @@ export async function listarClientes(busca?: string, filtro?: string): Promise<C
       CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO
     FROM Clientes C
     LEFT JOIN Cidades CID ON CID.ID = C.CIDADE
+    ${joinValor}
     ${where} ORDER BY C.NOMEXX`);
   return r.recordset.map(mapRow);
 }

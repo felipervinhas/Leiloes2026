@@ -66,6 +66,7 @@ export default function Clientes() {
   const [filtroCampo, setFiltroCampo] = useState('nome');
   const [cidades, setCidades] = useState<{ value: number; label: string }[]>([]);
   const [usuarios, setUsuarios] = useState<{ value: number; label: string }[]>([]);
+  const [filtroValor, setFiltroValor] = useState<string | undefined>(undefined);
   const [cepLoading, setCepLoading] = useState(false);
   const [form] = Form.useForm();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -90,7 +91,7 @@ export default function Clientes() {
   const carregar = async (b = '') => {
     setLoading(true);
     try {
-      const r = await api.get('/clientes', { params: { busca: b, filtro: filtroCampo } });
+      const r = await api.get('/clientes', { params: { busca: b, filtro: filtroCampo, filtroValor } });
       setDados(r.data);
     } finally { setLoading(false); }
   };
@@ -98,7 +99,7 @@ export default function Clientes() {
   const carregarRanking = async (b = '') => {
     setLoading(true);
     try {
-      const r = await api.get('/clientes/faturamento', { params: { busca: b, filtro: filtroCampo } });
+      const r = await api.get('/clientes/faturamento', { params: { busca: b, filtro: filtroCampo, filtroValor } });
       setDadosRanking(r.data);
     } finally { setLoading(false); }
   };
@@ -185,6 +186,11 @@ export default function Clientes() {
     api.get('/usuarios').then(r =>
       setUsuarios(r.data.map((u: any) => ({ value: u.id, label: u.nomexx }))));
   }, []);
+
+  useEffect(() => {
+    if (rankingMode) carregarRanking(busca);
+    else carregar(busca);
+  }, [filtroValor]);
 
   useEffect(() => {
     const clienteId = (location.state as any)?.abrirClienteId;
@@ -734,6 +740,20 @@ export default function Clientes() {
       <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
         <Col xs={24} sm="auto" style={{ minWidth: 130 }}>
           <Select value={filtroCampo} onChange={setFiltroCampo} options={FILTROS} style={{ width: '100%' }} />
+        </Col>
+        <Col xs={24} sm="auto" style={{ minWidth: 160 }}>
+          <Select
+            value={filtroValor}
+            onChange={v => setFiltroValor(v)}
+            allowClear
+            placeholder="Faturamento..."
+            style={{ width: '100%' }}
+            options={[
+              { value: 'ate10k',   label: 'Até R$ 10 mil' },
+              { value: 'ate20k',   label: 'Até R$ 20 mil' },
+              { value: 'acima30k', label: 'Acima de R$ 30 mil' },
+            ]}
+          />
         </Col>
         <Col xs={24} sm={undefined} flex="auto">
           <Input.Search

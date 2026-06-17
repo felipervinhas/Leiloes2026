@@ -3,10 +3,10 @@ import * as svc from '../services/clienteService';
 import { consultarVendas } from '../services/consultaVendasService';
 
 export const listar = async (req: Request, res: Response) => {
-  res.json(await svc.listarClientes(req.query.busca as string, req.query.filtro as string));
+  res.json(await svc.listarClientes(req.query.busca as string, req.query.filtro as string, req.query.filtroValor as string));
 };
 export const listarFaturamento = async (req: Request, res: Response) => {
-  res.json(await svc.listarClientesFaturamento(req.query.busca as string, req.query.filtro as string));
+  res.json(await svc.listarClientesFaturamento(req.query.busca as string, req.query.filtro as string, req.query.filtroValor as string));
 };
 export const buscar = async (req: Request, res: Response) => {
   const data = await svc.buscarClientePorId(Number(req.params.id));
