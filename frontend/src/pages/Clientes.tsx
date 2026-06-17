@@ -48,7 +48,9 @@ export default function Clientes() {
   const location = useLocation();
   const { banco } = useBanco();
   const screens = Grid.useBreakpoint();
-  const { rz: rzC } = useColumnWidths('clientes', { id: 70, nomexx: 220, cpfcnpj: 150, emailx: 180, celu1: 140 });
+  const { rz: rzC }  = useColumnWidths('clientes', { id: 70, nomexx: 220, cpfcnpj: 150, emailx: 180, celu1: 140 });
+  const { rz: rzHC } = useColumnWidths('hist_compras', { leilao: 120, lotexx: 65, deslot: 160, descricaoRaca: 110, qtdxxx: 60, valorPagar: 110, valorLiquido: 110, primeiroVencimentoData: 100, defesa: 80 });
+  const { rz: rzHV } = useColumnWidths('hist_vendas',  { leilao: 120, lotexx: 65, deslot: 160, descricaoRaca: 110, qtdxxx: 60, nomeComprador: 140, valorPagar: 110, valorComissaoVendedor: 100, defesa: 80 });
   const sm = !!screens.sm;  // ≥ 576px
   const md = !!screens.md;  // ≥ 768px
   
@@ -551,15 +553,15 @@ export default function Clientes() {
   })() : <Typography.Text type="secondary">Disponível apenas ao editar um cliente existente.</Typography.Text>;
 
   const colunasHistCompras = [
-    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 120 },
-    { title: 'Lote', dataIndex: 'lotexx', width: 65 },
-    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, width: 160 },
-    { title: 'Raça', dataIndex: 'descricaoRaca', ellipsis: true, width: 110 },
-    { title: 'Qtd', dataIndex: 'qtdxxx', width: 60, align: 'right' as const, render: (v: number) => v?.toLocaleString('pt-BR') },
-    { title: 'Vlr. Total', dataIndex: 'valorPagar', width: 110, align: 'right' as const, render: (v: number) => fmt(v) },
-    { title: 'Vlr. Líquido', dataIndex: 'valorLiquido', width: 110, align: 'right' as const, render: (v: number) => <span style={{ fontWeight: 600, color: '#52c41a' }}>{fmt(v)}</span> },
-    { title: '1ª Parcela', dataIndex: 'primeiroVencimentoData', width: 100 },
-    { title: 'Status', dataIndex: 'defesa', width: 80, render: (v: string) => <Tag color={v === 'S' ? 'green' : 'default'}>{v === 'S' ? 'Vendido' : 'N/V'}</Tag> },
+    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, ...rzHC('leilao') },
+    { title: 'Lote', dataIndex: 'lotexx', ...rzHC('lotexx') },
+    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzHC('deslot') },
+    { title: 'Raça', dataIndex: 'descricaoRaca', ellipsis: true, ...rzHC('descricaoRaca') },
+    { title: 'Qtd', dataIndex: 'qtdxxx', ...rzHC('qtdxxx'), align: 'right' as const, render: (v: number) => v?.toLocaleString('pt-BR') },
+    { title: 'Vlr. Total', dataIndex: 'valorPagar', ...rzHC('valorPagar'), align: 'right' as const, render: (v: number) => fmt(v) },
+    { title: 'Vlr. Líquido', dataIndex: 'valorLiquido', ...rzHC('valorLiquido'), align: 'right' as const, render: (v: number) => <span style={{ fontWeight: 600, color: '#52c41a' }}>{fmt(v)}</span> },
+    { title: '1ª Parcela', dataIndex: 'primeiroVencimentoData', ...rzHC('primeiroVencimentoData') },
+    { title: 'Status', dataIndex: 'defesa', ...rzHC('defesa'), render: (v: string) => <Tag color={v === 'S' ? 'green' : 'default'}>{v === 'S' ? 'Vendido' : 'N/V'}</Tag> },
     {
       title: '', width: 120, fixed: 'right' as const,
       render: (_: any, row: any) => (
@@ -579,15 +581,15 @@ export default function Clientes() {
   ];
 
   const colunasHistVendas = [
-    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 120 },
-    { title: 'Lote', dataIndex: 'lotexx', width: 65 },
-    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, width: 160 },
-    { title: 'Raça', dataIndex: 'descricaoRaca', ellipsis: true, width: 110 },
-    { title: 'Qtd', dataIndex: 'qtdxxx', width: 60, align: 'right' as const, render: (v: number) => v?.toLocaleString('pt-BR') },
-    { title: 'Comprador', dataIndex: 'nomeComprador', ellipsis: true, width: 140 },
-    { title: 'Vlr. Total', dataIndex: 'valorPagar', width: 110, align: 'right' as const, render: (v: number) => fmt(v) },
-    { title: 'Comissão', dataIndex: 'valorComissaoVendedor', width: 100, align: 'right' as const, render: (v: number) => v > 0 ? <span style={{ color: '#fa8c16' }}>{fmt(v)}</span> : '—' },
-    { title: 'Status', dataIndex: 'defesa', width: 80, render: (v: string) => <Tag color={v === 'S' ? 'green' : 'default'}>{v === 'S' ? 'Vendido' : 'N/V'}</Tag> },
+    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, ...rzHV('leilao') },
+    { title: 'Lote', dataIndex: 'lotexx', ...rzHV('lotexx') },
+    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzHV('deslot') },
+    { title: 'Raça', dataIndex: 'descricaoRaca', ellipsis: true, ...rzHV('descricaoRaca') },
+    { title: 'Qtd', dataIndex: 'qtdxxx', ...rzHV('qtdxxx'), align: 'right' as const, render: (v: number) => v?.toLocaleString('pt-BR') },
+    { title: 'Comprador', dataIndex: 'nomeComprador', ellipsis: true, ...rzHV('nomeComprador') },
+    { title: 'Vlr. Total', dataIndex: 'valorPagar', ...rzHV('valorPagar'), align: 'right' as const, render: (v: number) => fmt(v) },
+    { title: 'Comissão', dataIndex: 'valorComissaoVendedor', ...rzHV('valorComissaoVendedor'), align: 'right' as const, render: (v: number) => v > 0 ? <span style={{ color: '#fa8c16' }}>{fmt(v)}</span> : '—' },
+    { title: 'Status', dataIndex: 'defesa', ...rzHV('defesa'), render: (v: string) => <Tag color={v === 'S' ? 'green' : 'default'}>{v === 'S' ? 'Vendido' : 'N/V'}</Tag> },
     {
       title: '', width: 40,
       render: (_: any, row: any) => (
@@ -628,6 +630,7 @@ export default function Clientes() {
               </Row>
             )}
             <Table rowKey="id" size="small" loading={historicoLoading} dataSource={historicoCompras}
+              components={{ header: { cell: ResizableTitle } }}
               pagination={{ pageSize: 10, showTotal: t => `${t} registros`, simple: true }}
               scroll={{ x: 900 }} columns={colunasHistCompras}
             />
@@ -662,6 +665,7 @@ export default function Clientes() {
               </Row>
             )}
             <Table rowKey="id" size="small" loading={historicoLoading} dataSource={historicoVendas}
+              components={{ header: { cell: ResizableTitle } }}
               pagination={{ pageSize: 10, showTotal: t => `${t} registros`, simple: true }}
               scroll={{ x: 900 }} columns={colunasHistVendas}
             />

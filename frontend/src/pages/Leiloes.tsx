@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker,
   Space, Popconfirm, Typography, Row, Col, message, Tag, Tabs, Divider, Image, Grid } from 'antd';
+import ResizableTitle from '../components/ResizableTitle';
+import { useColumnWidths } from '../hooks/useColumnWidths';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CalendarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api from '../services/api';
@@ -15,6 +17,7 @@ interface Imagens { desktop: string; mobile: string; media: string; }
 export default function Leiloes() {
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false;
+  const { rz: rzLei } = useColumnWidths('leiloes', { leilao: 300, datlei: 110, ativox: 80 });
 
   const [dados, setDados] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -99,9 +102,9 @@ export default function Leiloes() {
         />
       ),
     },
-    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true },
-    { title: 'Data', dataIndex: 'datlei', width: 110, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
-    { title: 'Ativo', dataIndex: 'ativox', width: 80, render: (v: string) => <Tag color={v === 'S' ? 'green' : 'red'}>{v === 'S' ? 'Sim' : 'Não'}</Tag> },
+    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, ...rzLei('leilao') },
+    { title: 'Data', dataIndex: 'datlei', ...rzLei('datlei'), render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
+    { title: 'Ativo', dataIndex: 'ativox', ...rzLei('ativox'), render: (v: string) => <Tag color={v === 'S' ? 'green' : 'red'}>{v === 'S' ? 'Sim' : 'Não'}</Tag> },
     {
       title: 'Ações', width: 100,
       render: (_: any, r: any) => (
@@ -218,6 +221,7 @@ export default function Leiloes() {
         </Col>
       </Row>
       <Table rowKey="id" columns={colunas} dataSource={dados} loading={loading}
+        components={{ header: { cell: ResizableTitle } }}
         pagination={{ pageSize: 15, showTotal: t => `${t} registros`, simple: isMobile }}
         size="small" scroll={{ x: 'max-content' }} />
 

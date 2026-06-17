@@ -3,6 +3,8 @@ import {
   Table, Button, Select, Row, Col, Typography, Tag, Space,
   Card, Divider, message, Spin, Radio,
 } from 'antd';
+import ResizableTitle from '../components/ResizableTitle';
+import { useColumnWidths } from '../hooks/useColumnWidths';
 import {
   SearchOutlined, FileExcelOutlined, FileSearchOutlined, ClearOutlined, PrinterOutlined,
 } from '@ant-design/icons';
@@ -60,6 +62,13 @@ export default function ConsultaVendas() {
   const [dados, setDados]   = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [consultou, setConsultou] = useState(false);
+
+  const { rz: rzCV } = useColumnWidths('consulta_vendas', {
+    lotexx: 70, deslot: 180, descricaoRaca: 120, especies: 90, rpxxx: 90, sbbxxx: 90,
+    nomeVendedor: 160, nomeComprador: 160, qtdxxx: 70, valorUnidade: 110, valorPagar: 120,
+    valorComissao: 110, valorDesconto: 110, valorLiquido: 120, desfin: 130,
+    parcelaInicial: 110, primeiroVencimentoData: 110, datlan: 120, defesa: 100,
+  });
 
   useEffect(() => {
     api.get('/leiloes').then(r =>
@@ -184,36 +193,36 @@ export default function ConsultaVendas() {
   ).sort((a, b) => a.categoria.localeCompare(b.categoria));
 
   const colunas: any[] = [
-    { title: 'Lote', dataIndex: 'lotexx', width: 70, fixed: 'left' as const,
+    { title: 'Lote', dataIndex: 'lotexx', ...rzCV('lotexx'), fixed: 'left' as const,
       sorter: (a: any, b: any) => (a.lotexx || '').localeCompare(b.lotexx || '') },
-    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, width: 180 },
-    { title: 'Raça', dataIndex: 'descricaoRaca', width: 120, ellipsis: true },
-    { title: 'Espécie', dataIndex: 'especies', width: 90, ellipsis: true },
-    { title: 'RP', dataIndex: 'rpxxx', width: 90 },
-    { title: 'SBB', dataIndex: 'sbbxxx', width: 90 },
-    { title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, width: 160 },
-    { title: 'Comprador', dataIndex: 'nomeComprador', ellipsis: true, width: 160 },
-    { title: 'Qtd', dataIndex: 'qtdxxx', width: 70, align: 'right' as const,
+    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzCV('deslot') },
+    { title: 'Raça', dataIndex: 'descricaoRaca', ...rzCV('descricaoRaca'), ellipsis: true },
+    { title: 'Espécie', dataIndex: 'especies', ...rzCV('especies'), ellipsis: true },
+    { title: 'RP', dataIndex: 'rpxxx', ...rzCV('rpxxx') },
+    { title: 'SBB', dataIndex: 'sbbxxx', ...rzCV('sbbxxx') },
+    { title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, ...rzCV('nomeVendedor') },
+    { title: 'Comprador', dataIndex: 'nomeComprador', ellipsis: true, ...rzCV('nomeComprador') },
+    { title: 'Qtd', dataIndex: 'qtdxxx', ...rzCV('qtdxxx'), align: 'right' as const,
       render: (v: number) => v ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '—' },
-    { title: 'Vlr. Unit.', dataIndex: 'valorUnidade', width: 110, align: 'right' as const,
+    { title: 'Vlr. Unit.', dataIndex: 'valorUnidade', ...rzCV('valorUnidade'), align: 'right' as const,
       render: fmt,
       sorter: (a: any, b: any) => (a.valorUnidade || 0) - (b.valorUnidade || 0) },
-    { title: 'Vlr. a Pagar', dataIndex: 'valorPagar', width: 120, align: 'right' as const,
+    { title: 'Vlr. a Pagar', dataIndex: 'valorPagar', ...rzCV('valorPagar'), align: 'right' as const,
       render: (v: number) => <Text strong>{fmt(v)}</Text>,
       sorter: (a: any, b: any) => (a.valorPagar || 0) - (b.valorPagar || 0) },
-    { title: 'Comissão', dataIndex: 'valorComissao', width: 110, align: 'right' as const,
+    { title: 'Comissão', dataIndex: 'valorComissao', ...rzCV('valorComissao'), align: 'right' as const,
       render: (v: number) => <Text type="warning">{fmt(v)}</Text> },
-    { title: 'Desconto', dataIndex: 'valorDesconto', width: 110, align: 'right' as const,
+    { title: 'Desconto', dataIndex: 'valorDesconto', ...rzCV('valorDesconto'), align: 'right' as const,
       render: (v: number) => v > 0 ? <Text type="danger">- {fmt(v)}</Text> : '—' },
-    { title: 'Vlr. Líquido', dataIndex: 'valorLiquido', width: 120, align: 'right' as const,
+    { title: 'Vlr. Líquido', dataIndex: 'valorLiquido', ...rzCV('valorLiquido'), align: 'right' as const,
       render: (v: number) => <Text strong style={{ color: '#52c41a' }}>{fmt(v)}</Text>,
       sorter: (a: any, b: any) => (a.valorLiquido || 0) - (b.valorLiquido || 0) },
-    { title: 'Condição', dataIndex: 'desfin', width: 130, ellipsis: true },
-    { title: '1ª Parcela', dataIndex: 'parcelaInicial', width: 110, align: 'right' as const, render: fmt },
-    { title: 'Vencimento', dataIndex: 'primeiroVencimentoData', width: 110 },
-    { title: 'Dt. Lançamento', dataIndex: 'datlan', width: 120,
+    { title: 'Condição', dataIndex: 'desfin', ...rzCV('desfin'), ellipsis: true },
+    { title: '1ª Parcela', dataIndex: 'parcelaInicial', ...rzCV('parcelaInicial'), align: 'right' as const, render: fmt },
+    { title: 'Vencimento', dataIndex: 'primeiroVencimentoData', ...rzCV('primeiroVencimentoData') },
+    { title: 'Dt. Lançamento', dataIndex: 'datlan', ...rzCV('datlan'),
       render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
-    { title: 'Status', dataIndex: 'defesa', width: 100,
+    { title: 'Status', dataIndex: 'defesa', ...rzCV('defesa'),
       render: (v: string) => v === 'S'
         ? <Tag color="green">Vendido</Tag>
         : <Tag color="default">Não vendido</Tag> },
@@ -481,6 +490,7 @@ export default function ConsultaVendas() {
 
           <Table
             rowKey="id"
+            components={{ header: { cell: ResizableTitle } }}
             columns={colunas}
             dataSource={dados}
             loading={loading}

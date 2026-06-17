@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker,
   Space, Popconfirm, Typography, Row, Col, message, Tag, Switch, Tabs, Divider, Image, Grid } from 'antd';
+import ResizableTitle from '../components/ResizableTitle';
+import { useColumnWidths } from '../hooks/useColumnWidths';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CopyOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { useConfig } from '../context/ConfigContext';
 import dayjs from 'dayjs';
@@ -16,6 +18,7 @@ interface LoteImagem { num: number; url: string; key: string; }
 export default function Lotes() {
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false;
+  const { rz: rzLot } = useColumnWidths('lotes', { lotexx: 70, deslot: 300, nomeVendedor: 160 });
 
   const [dados, setDados] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -126,9 +129,9 @@ export default function Lotes() {
         />
       ),
     },
-    { title: 'Lote', dataIndex: 'lotexx', width: 70 },
-    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true },
-    { title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, width: 160 },
+    { title: 'Lote', dataIndex: 'lotexx', ...rzLot('lotexx') },
+    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzLot('deslot') },
+    { title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, ...rzLot('nomeVendedor') },
     {
       title: 'Ações', width: 120,
       render: (_: any, r: any) => (
@@ -250,6 +253,7 @@ export default function Lotes() {
         </Col>
       </Row>
       <Table rowKey="id" columns={colunas} dataSource={dados} loading={loading}
+        components={{ header: { cell: ResizableTitle } }}
         pagination={{ pageSize: 15, showTotal: t => `${t} registros`, simple: isMobile }}
         size="small" scroll={{ x: 'max-content' }} />
 
