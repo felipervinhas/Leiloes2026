@@ -78,3 +78,24 @@ export async function deletarUsuario(id: number): Promise<void> {
   await pool.request().input('id', sql.Int, id)
     .query(`UPDATE Clientes SET ADM='N' WHERE ID=@id`);
 }
+
+export async function listarControlesUsuario(id: number): Promise<string[]> {
+  const pool = await getPool();
+  const r = await pool.request()
+    .input('id', sql.Int, id)
+    .query(`SELECT CONTROLE FROM Clientes_Perfil WHERE ID_CLIENTES = @id AND CONTROLE IS NOT NULL AND CONTROLE <> '' ORDER BY CONTROLE`);
+  return r.recordset.map((row: any) => row.CONTROLE as string);
+}
+
+export async function salvarControlesUsuario(id: number, controles: string[]): Promise<void> {
+  const pool = await getPool();
+  await pool.request()
+    .input('id', sql.Int, id)
+    .query(`DELETE FROM Clientes_Perfil WHERE ID_CLIENTES = @id AND CONTROLE IS NOT NULL AND CONTROLE <> ''`);
+  for (const controle of controles) {
+    await pool.request()
+      .input('id', sql.Int, id)
+      .input('controle', sql.VarChar, controle)
+      .query(`INSERT INTO Clientes_Perfil (ID_CLIENTES, CONTROLE) VALUES (@id, @controle)`);
+  }
+}

@@ -20,3 +20,10 @@ export const deletar = async (req: Request, res: Response) => {
   await svc.deletarUsuario(Number(req.params.id));
   res.status(204).send();
 };
+export const getControles = async (req: Request, res: Response) => {
+  res.json(await svc.listarControlesUsuario(Number(req.params.id)));
+};
+export const putControles = async (req: Request, res: Response) => {
+  await svc.salvarControlesUsuario(Number(req.params.id), req.body.controles ?? []);
+  res.json({ ok: true });
+};
