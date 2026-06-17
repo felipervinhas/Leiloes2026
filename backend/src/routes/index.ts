@@ -153,6 +153,7 @@ bancoRouter.get('/clientes', cliente.listar);
 bancoRouter.get('/clientes/faturamento', cliente.listarFaturamento);
 bancoRouter.get('/clientes/pendentes', cliente.listarPendentes);
 bancoRouter.get('/clientes/pendentes/count', cliente.contarPendentes);
+bancoRouter.get('/clientes/:id/historico', cliente.historico);
 bancoRouter.get('/clientes/:id', cliente.buscar);
 bancoRouter.post('/clientes', cliente.criar);
 bancoRouter.put('/clientes/:id', cliente.atualizar);

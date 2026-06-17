@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as svc from '../services/clienteService';
+import { consultarVendas } from '../services/consultaVendasService';
 
 export const listar = async (req: Request, res: Response) => {
   res.json(await svc.listarClientes(req.query.busca as string, req.query.filtro as string));
@@ -44,4 +45,12 @@ export const recusar = async (req: Request, res: Response) => {
 export const analisar = async (req: Request, res: Response) => {
   await svc.analisarCliente(Number(req.params.id));
   res.json({ ok: true });
+};
+export const historico = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const [compras, vendas] = await Promise.all([
+    consultarVendas({ idComprador: id }),
+    consultarVendas({ idVendedor: id }),
+  ]);
+  res.json({ compras, vendas });
 };

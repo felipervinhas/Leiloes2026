@@ -57,6 +57,11 @@ export default function Clientes() {
   const [carregandoRelatorio, setCarregandoRelatorio] = useState(false);
   const [rankingMode, setRankingMode] = useState(false);
   const [dadosRanking, setDadosRanking] = useState<ClienteRanking[]>([]);
+  const [historicoCompras, setHistoricoCompras] = useState<any[]>([]);
+  const [historicoVendas, setHistoricoVendas] = useState<any[]>([]);
+  const [historicoLoading, setHistoricoLoading] = useState(false);
+  const [historicoCarregado, setHistoricoCarregado] = useState(false);
+  const [drawerActiveTab, setDrawerActiveTab] = useState('1');
 
   const carregar = async (b = '') => {
     setLoading(true);
@@ -72,6 +77,25 @@ export default function Clientes() {
       const r = await api.get('/clientes/faturamento', { params: { busca: b, filtro: filtroCampo } });
       setDadosRanking(r.data);
     } finally { setLoading(false); }
+  };
+
+  const carregarHistorico = async (id: number) => {
+    setHistoricoLoading(true);
+    try {
+      const r = await api.get(`/clientes/${id}/historico`);
+      setHistoricoCompras(r.data.compras);
+      setHistoricoVendas(r.data.vendas);
+      setHistoricoCarregado(true);
+    } finally {
+      setHistoricoLoading(false);
+    }
+  };
+
+  const onDrawerTabChange = (key: string) => {
+    setDrawerActiveTab(key);
+    if (key === 'historico' && editando && !historicoCarregado) {
+      carregarHistorico(editando.id);
+    }
   };
 
   const alternarRanking = () => {
@@ -142,6 +166,10 @@ export default function Clientes() {
       });
       setEditando(null);
     }
+    setHistoricoCarregado(false);
+    setHistoricoCompras([]);
+    setHistoricoVendas([]);
+    setDrawerActiveTab('1');
     setDrawerOpen(true);
   };
 
@@ -463,6 +491,103 @@ export default function Clientes() {
     );
   })() : <Typography.Text type="secondary">Disponível apenas ao editar um cliente existente.</Typography.Text>;
 
+  const colunasHistCompras = [
+    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 120 },
+    { title: 'Lote', dataIndex: 'lotexx', width: 65 },
+    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, width: 160 },
+    { title: 'Raça', dataIndex: 'descricaoRaca', ellipsis: true, width: 110 },
+    { title: 'Qtd', dataIndex: 'qtdxxx', width: 60, align: 'right' as const, render: (v: number) => v?.toLocaleString('pt-BR') },
+    { title: 'Vlr. Total', dataIndex: 'valorPagar', width: 110, align: 'right' as const, render: (v: number) => fmt(v) },
+    { title: 'Vlr. Líquido', dataIndex: 'valorLiquido', width: 110, align: 'right' as const, render: (v: number) => <span style={{ fontWeight: 600, color: '#52c41a' }}>{fmt(v)}</span> },
+    { title: '1ª Parcela', dataIndex: 'primeiroVencimentoData', width: 100 },
+    { title: 'Status', dataIndex: 'defesa', width: 80, render: (v: string) => <Tag color={v === 'S' ? 'green' : 'default'}>{v === 'S' ? 'Vendido' : 'N/V'}</Tag> },
+  ];
+
+  const colunasHistVendas = [
+    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 120 },
+    { title: 'Lote', dataIndex: 'lotexx', width: 65 },
+    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, width: 160 },
+    { title: 'Raça', dataIndex: 'descricaoRaca', ellipsis: true, width: 110 },
+    { title: 'Qtd', dataIndex: 'qtdxxx', width: 60, align: 'right' as const, render: (v: number) => v?.toLocaleString('pt-BR') },
+    { title: 'Comprador', dataIndex: 'nomeComprador', ellipsis: true, width: 140 },
+    { title: 'Vlr. Total', dataIndex: 'valorPagar', width: 110, align: 'right' as const, render: (v: number) => fmt(v) },
+    { title: 'Comissão', dataIndex: 'valorComissaoVendedor', width: 100, align: 'right' as const, render: (v: number) => v > 0 ? <span style={{ color: '#fa8c16' }}>{fmt(v)}</span> : '—' },
+    { title: 'Status', dataIndex: 'defesa', width: 80, render: (v: string) => <Tag color={v === 'S' ? 'green' : 'default'}>{v === 'S' ? 'Vendido' : 'N/V'}</Tag> },
+  ];
+
+  const tabHistorico = (
+    <Tabs size="small" items={[
+      {
+        key: 'compras',
+        label: `Compras (${historicoCompras.length})`,
+        children: (
+          <>
+            {historicoCompras.length > 0 && (
+              <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
+                <Col xs={12} sm={8}>
+                  <Card size="small" style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#888' }}>Lotes</div>
+                    <div style={{ fontWeight: 700, fontSize: 18 }}>{historicoCompras.length}</div>
+                  </Card>
+                </Col>
+                <Col xs={12} sm={8}>
+                  <Card size="small" style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#888' }}>Valor Total</div>
+                    <div style={{ fontWeight: 700, color: '#1677ff' }}>{fmt(historicoCompras.reduce((s, r) => s + (r.valorPagar || 0), 0))}</div>
+                  </Card>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Card size="small" style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#888' }}>Valor Líquido</div>
+                    <div style={{ fontWeight: 700, color: '#52c41a' }}>{fmt(historicoCompras.reduce((s, r) => s + (r.valorLiquido || 0), 0))}</div>
+                  </Card>
+                </Col>
+              </Row>
+            )}
+            <Table rowKey="id" size="small" loading={historicoLoading} dataSource={historicoCompras}
+              pagination={{ pageSize: 10, showTotal: t => `${t} registros`, simple: true }}
+              scroll={{ x: 900 }} columns={colunasHistCompras}
+            />
+          </>
+        ),
+      },
+      {
+        key: 'vendas',
+        label: `Vendas (${historicoVendas.length})`,
+        children: (
+          <>
+            {historicoVendas.length > 0 && (
+              <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
+                <Col xs={12} sm={8}>
+                  <Card size="small" style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#888' }}>Lotes</div>
+                    <div style={{ fontWeight: 700, fontSize: 18 }}>{historicoVendas.length}</div>
+                  </Card>
+                </Col>
+                <Col xs={12} sm={8}>
+                  <Card size="small" style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#888' }}>Valor Total</div>
+                    <div style={{ fontWeight: 700, color: '#52c41a' }}>{fmt(historicoVendas.reduce((s, r) => s + (r.valorPagar || 0), 0))}</div>
+                  </Card>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Card size="small" style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#888' }}>Comissão</div>
+                    <div style={{ fontWeight: 700, color: '#fa8c16' }}>{fmt(historicoVendas.reduce((s, r) => s + (r.valorComissaoVendedor || 0), 0))}</div>
+                  </Card>
+                </Col>
+              </Row>
+            )}
+            <Table rowKey="id" size="small" loading={historicoLoading} dataSource={historicoVendas}
+              pagination={{ pageSize: 10, showTotal: t => `${t} registros`, simple: true }}
+              scroll={{ x: 900 }} columns={colunasHistVendas}
+            />
+          </>
+        ),
+      },
+    ]} />
+  );
+
   return (
     <>
       {/* ── Header ── */}
@@ -623,6 +748,8 @@ export default function Clientes() {
         <Form form={form} layout="vertical" onFinish={salvar}>
           <Tabs
             size="small"
+            activeKey={drawerActiveTab}
+            onChange={onDrawerTabChange}
             items={[
               { key: '1', label: 'Pessoal', children: tabPessoal },
               { key: '2', label: 'Endereço', children: tabEndereco },
@@ -631,6 +758,7 @@ export default function Clientes() {
               { key: '5', label: 'Sistema', children: tabSistema },
               { key: '6', label: 'Documentos', children: tabDocumentos },
               ...(podeEditarPermissoes ? [{ key: '7', label: 'Permissões', children: tabPermissoes }] : []),
+              ...(editando ? [{ key: 'historico', label: <><ShoppingCartOutlined /> Compras/Vendas</>, children: tabHistorico }] : []),
             ]}
           />
         </Form>
