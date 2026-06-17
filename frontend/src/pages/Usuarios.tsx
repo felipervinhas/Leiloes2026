@@ -6,9 +6,11 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
 import api from '../services/api';
 
 const { Title, Text } = Typography;
-const SN     = [{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }];
-const BLOCLI = [{ value: 'Não', label: 'Não' }, { value: 'Sim', label: 'Sim' }];
-const ACESSO = ['1 - Liberado', '2 - Bloqueado', '3 - Pendente', '4 - Reprovado'].map(v => ({ value: v, label: v }));
+const SN          = [{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }];
+const BLOCLI      = [{ value: 'Não', label: 'Não' }, { value: 'Sim', label: 'Sim' }];
+const ACESSO      = ['1 - Liberado', '2 - Bloqueado', '3 - Pendente', '4 - Reprovado'].map(v => ({ value: v, label: v }));
+const TIPO_USR    = [{ value: 'ATENDENTE', label: 'Atendente' }, { value: 'PISTEIRO', label: 'Pisteiro' }];
+const TIPO_COLOR: Record<string, string> = { ATENDENTE: 'blue', PISTEIRO: 'purple' };
 
 const CONTROLES_GRUPOS = [
   { label: 'Leilões',   itens: ['Leilões', 'Lotes', 'Lançes', 'Ordem de Entrada'] },
@@ -92,6 +94,8 @@ export default function Usuarios() {
     { title: 'Nome', dataIndex: 'nomexx', ellipsis: true },
     { title: 'E-mail', dataIndex: 'emailx', ellipsis: true, width: 220 },
     { title: 'CPF', dataIndex: 'cpfxxx', width: 130 },
+    { title: 'Tipo', dataIndex: 'tipoUsuario', width: 110,
+      render: (v: string) => v ? <Tag color={TIPO_COLOR[v] || 'default'}>{TIPO_USR.find(t => t.value === v)?.label ?? v}</Tag> : <span style={{ color: '#ccc' }}>—</span> },
     { title: 'Ativo', dataIndex: 'ativox', width: 80,
       render: (v: string) => <Tag color={v === 'S' ? 'green' : 'red'}>{v === 'S' ? 'Sim' : 'Não'}</Tag> },
     { title: 'Bloqueado', dataIndex: 'blocli', width: 100,
@@ -122,9 +126,10 @@ export default function Usuarios() {
             <Input.Password />
           </Form.Item>
         </Col>
+        <Col xs={24} sm={8}><Form.Item name="tipoUsuario" label="Tipo de Usuário"><Select options={TIPO_USR} allowClear placeholder="Selecione..." /></Form.Item></Col>
         <Col xs={24} sm={8}><Form.Item name="ativox" label="Ativo"><Select options={SN} /></Form.Item></Col>
         <Col xs={24} sm={8}><Form.Item name="blocli" label="Bloqueado"><Select options={BLOCLI} /></Form.Item></Col>
-        <Col xs={24} sm={8}><Form.Item name="acessoApp" label="Acesso App"><Select options={ACESSO} allowClear /></Form.Item></Col>
+        <Col span={24}><Form.Item name="acessoApp" label="Acesso App"><Select options={ACESSO} allowClear /></Form.Item></Col>
       </Row>
     </Form>
   );
