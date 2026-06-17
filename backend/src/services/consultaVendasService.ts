@@ -15,6 +15,7 @@ const BASE_SQL = `
     V.CODNOT,
     V.IDLEILAO,
     L.LEILAO,
+    L.DATLEI,
     V.DATLAN,
     LO.LOTEXX,
     LO.DESLOT,
@@ -95,7 +96,7 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
   }
 
   const where = conds.length ? ' AND ' + conds.join(' AND ') : '';
-  const sql_text = BASE_SQL + where + ' ORDER BY TRY_CAST(LO.LOTEXX AS INT), LO.LOTEXX';
+  const sql_text = BASE_SQL + where + ' ORDER BY L.DATLEI DESC, TRY_CAST(LO.LOTEXX AS INT), LO.LOTEXX';
   const r = await req.query(sql_text);
 
   return r.recordset.map((row: any) => ({
@@ -103,6 +104,7 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
     codnot:                row.CODNOT,
     idLeilao:              row.IDLEILAO,
     leilao:                row.LEILAO,
+    datlei:                row.DATLEI,
     datlan:                row.DATLAN,
     lotexx:                row.LOTEXX,
     deslot:                row.DESLOT,
