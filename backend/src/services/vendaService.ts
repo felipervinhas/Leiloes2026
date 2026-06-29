@@ -760,22 +760,7 @@ export async function atualizarParcela(
 
 // ─── propriedades do comprador ───────────────────────────────────────────────
 
-export async function listarPropriedades(idCli: number) {
-  const pool = await getPool();
-  const r = await pool.request()
-    .input('idCli', sql.Int, idCli)
-    .query(`SELECT * FROM CLIENTES_PROPRIEDADES WHERE ID_CLIENTE=@idCli ORDER BY NOME_PROPRIEDADE`);
-  return r.recordset.map((row: any) => ({
-    id:               row.ID,
-    idCliente:        row.ID_CLIENTE,
-    inscricao:        row.INSCRICAO,
-    nomePropriedade:  row.NOME_PROPRIEDADE,
-    cidade:           row.CIDADE,
-    estado:           row.ESTADO,
-    localidade:       row.LOCALIDADE,
-    codigoPropriedade: row.CODIGO_PROPRIEDADE,
-  }));
-}
+export { listarPropriedades } from './clientePropriedadeService';
 
 export async function salvarPropriedadeComprador(
   idMov: number, idCli: number, idPropriedade: number,

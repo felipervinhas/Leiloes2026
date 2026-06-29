@@ -5,7 +5,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined
   CheckCircleFilled, FileTextOutlined, FileExcelOutlined, CloseOutlined,
   TrophyOutlined, ShoppingCartOutlined, TagOutlined, AuditOutlined, TeamOutlined,
   UserOutlined, EnvironmentOutlined, PhoneOutlined, BankOutlined, SettingOutlined,
-  FolderOpenOutlined, SafetyCertificateOutlined,
+  FolderOpenOutlined, SafetyCertificateOutlined, HomeOutlined,
   FileDoneOutlined, PrinterOutlined, ExportOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -87,6 +87,11 @@ export default function Clientes() {
   const [promissoriaLoading, setPromissoriaLoading] = useState<number | null>(null);
   const [promissoriaData, setPromissoriaData] = useState<FaturaData | null>(null);
   const [promissoriaModal, setPromissoriaModal] = useState(false);
+  const [propriedades, setPropriedades] = useState<any[]>([]);
+  const [propriedadesLoading, setPropriedadesLoading] = useState(false);
+  const [propModalOpen, setPropModalOpen] = useState(false);
+  const [propEditando, setPropEditando] = useState<any | null>(null);
+  const [formProp] = Form.useForm();
 
   const carregar = async (b = '') => {
     setLoading(true);
@@ -142,6 +147,49 @@ export default function Clientes() {
     setDrawerActiveTab(key);
     if (key === 'historico' && editando && !historicoCarregado) {
       carregarHistorico(editando.id);
+    }
+    if (key === 'propriedades' && editando) {
+      carregarPropriedades(editando.id);
+    }
+  };
+
+  const carregarPropriedades = async (idCli: number) => {
+    setPropriedadesLoading(true);
+    try {
+      const r = await api.get(`/clientes/${idCli}/propriedades`);
+      setPropriedades(r.data);
+    } catch {
+      message.error('Erro ao carregar propriedades');
+    } finally {
+      setPropriedadesLoading(false);
+    }
+  };
+
+  const abrirModalProp = (item?: any) => {
+    if (item) { formProp.setFieldsValue(item); setPropEditando(item); }
+    else { formProp.resetFields(); setPropEditando(null); }
+    setPropModalOpen(true);
+  };
+
+  const salvarPropriedadeCliente = async (values: any) => {
+    try {
+      if (propEditando) await api.put(`/clientes/${editando.id}/propriedades/${propEditando.id}`, values);
+      else await api.post(`/clientes/${editando.id}/propriedades`, values);
+      message.success('Propriedade salva');
+      setPropModalOpen(false);
+      carregarPropriedades(editando.id);
+    } catch {
+      message.error('Erro ao salvar propriedade');
+    }
+  };
+
+  const excluirPropriedadeCliente = async (id: number) => {
+    try {
+      await api.delete(`/clientes/${editando.id}/propriedades/${id}`);
+      message.success('Propriedade excluída');
+      carregarPropriedades(editando.id);
+    } catch {
+      message.error('Erro ao excluir propriedade');
     }
   };
 
@@ -636,6 +684,45 @@ export default function Clientes() {
     },
   ];
 
+  const colunasPropriedades = [
+    { title: 'Propriedade', dataIndex: 'nomePropriedade', ellipsis: true },
+    { title: 'Inscrição', dataIndex: 'inscricao', width: 130 },
+    {
+      title: 'Cidade/UF', ellipsis: true,
+      render: (_: any, r: any) => r.cidade ? `${r.cidade}${r.estado ? `/${r.estado}` : ''}` : '—',
+    },
+    { title: 'Localidade', dataIndex: 'localidade', ellipsis: true },
+    { title: 'Código', dataIndex: 'codigoPropriedade', width: 100 },
+    {
+      title: '', width: 80,
+      render: (_: any, r: any) => (
+        <Space size={4}>
+          <Button size="small" icon={<EditOutlined />} onClick={() => abrirModalProp(r)} />
+          <Popconfirm title="Confirma exclusão?" onConfirm={() => excluirPropriedadeCliente(r.id)}>
+            <Button size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  const tabPropriedades = (
+    <>
+      <div style={{ marginBottom: 12, textAlign: 'right' }}>
+        <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => abrirModalProp()}>
+          Adicionar Propriedade
+        </Button>
+      </div>
+      <Table
+        rowKey="id" size="small" loading={propriedadesLoading} dataSource={propriedades}
+        columns={colunasPropriedades}
+        pagination={false}
+        locale={{ emptyText: 'Nenhuma propriedade cadastrada' }}
+        scroll={{ x: 700 }}
+      />
+    </>
+  );
+
   const tabHistorico = (
     <Tabs size="small" items={[
       {
@@ -934,6 +1021,28 @@ export default function Clientes() {
         )}
       </Modal>
 
+      {/* Modal Propriedade */}
+      <Modal
+        title={propEditando ? 'Editar Propriedade' : 'Nova Propriedade'}
+        open={propModalOpen}
+        onCancel={() => setPropModalOpen(false)}
+        onOk={() => formProp.submit()}
+        destroyOnClose
+      >
+        <Form form={formProp} layout="vertical" onFinish={salvarPropriedadeCliente}>
+          <Form.Item name="nomePropriedade" label="Nome da Propriedade"><Input /></Form.Item>
+          <Row gutter={12}>
+            <Col span={12}><Form.Item name="inscricao" label="Inscrição"><Input /></Form.Item></Col>
+            <Col span={12}><Form.Item name="codigoPropriedade" label="Código"><Input /></Form.Item></Col>
+          </Row>
+          <Row gutter={12}>
+            <Col span={16}><Form.Item name="cidade" label="Cidade"><Input /></Form.Item></Col>
+            <Col span={8}><Form.Item name="estado" label="UF"><Input maxLength={2} /></Form.Item></Col>
+          </Row>
+          <Form.Item name="localidade" label="Localidade"><Input.TextArea rows={2} /></Form.Item>
+        </Form>
+      </Modal>
+
       {/* Drawer de cadastro */}
       <Drawer
         title={editando ? `Editar — ${editando.nomexx}` : 'Novo Cliente'}
@@ -957,6 +1066,7 @@ export default function Clientes() {
               { key: '2', label: <><EnvironmentOutlined /> Endereço</>, children: tabEndereco },
               { key: '3', label: <><PhoneOutlined /> Contatos</>, children: tabContatos },
               { key: '4', label: <><BankOutlined /> Bancário</>, children: tabBancario },
+              ...(editando ? [{ key: 'propriedades', label: <><HomeOutlined /> Propriedades</>, children: tabPropriedades }] : []),
               { key: '5', label: <><SettingOutlined /> Sistema</>, children: tabSistema },
               { key: '6', label: <><FolderOpenOutlined /> Documentos</>, children: tabDocumentos },
               ...(podeEditarPermissoes ? [{ key: '7', label: <><SafetyCertificateOutlined /> Permissões</>, children: tabPermissoes }] : []),
