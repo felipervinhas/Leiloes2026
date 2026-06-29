@@ -298,6 +298,7 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
     .input('refer2', sql.VarChar, d.refer2||null).input('telrefere2', sql.VarChar, d.telrefere2||null)
     .input('idSolicitadoPor', sql.Int, d.idSolicitadoPor||null)
     .input('usualt', sql.Int, d.usualt||null)
+    .input('senhax', sql.VarChar, d.senhax||null)
     .query(`UPDATE Clientes SET NOMEXX=@nomexx,ENDERE=@endere,BAIRRO=@bairro,CEPXXX=@cepxxx,
       CPFXXX=@cpfxxx,CNPJXX=@cnpjxx,TELRES=@telres,TELCOM=@telcom,CELU_1=@celu1,CELU_2=@celu2,
       RGXXXX=@rgxxxx,DATNAS=@datnas,EMAILX=@emailx,EMAIL2=@email2,CIDADE=@cidade,COMPLE=@comple,
@@ -308,6 +309,7 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
       BANCO2=@banco2,AGENCIA2=@agencia2,CONTA2=@conta2,PIX2=@pix2,
       REFER1=@refer1,TELREFERE1=@telrefere1,REFER2=@refer2,TELREFERE2=@telrefere2,
       ID_SOLICITADO_POR=@idSolicitadoPor,USUALT=@usualt
+      ${d.senhax ? ',SENHAX=@senhax' : ''}
       WHERE ID=@id`);
 }
 
