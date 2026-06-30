@@ -88,11 +88,6 @@ const mascararSePreciso = (valor: number, pode: string | undefined): number | st
   return valor;
 };
 
-const fmtComRestricao = (valor: number, pode: string | undefined): string => {
-  const resultado = mascararSePreciso(valor, pode);
-  if (resultado === '[RESTRITO]') return resultado;
-  return fmtR(resultado as number);
-};
 
 function KpiCard({
   icon, label, value, sub, color, loading,
@@ -169,16 +164,7 @@ function PieTooltip({ active, payload }: any) {
   );
 }
 
-// ─── Active shape para o donut ────────────────────────────────────────────────
-function ActiveSlice(props: any) {
-  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
-  return (
-    <g>
-      <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 6}
-        startAngle={startAngle} endAngle={endAngle} fill={fill} />
-    </g>
-  );
-}
+
 
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function Dashboard() {

@@ -797,7 +797,7 @@ export async function dadosFatura(idMov: number) {
            VEN.NOMEXX  AS NOME_VENDEDOR,  VEN.CPFXXX  AS CPF_VENDEDOR,
            VEN.ENDERE  AS ENDERE_VENDEDOR, VEN.BAIRRO AS BAIRRO_VENDEDOR,
            VEN.CEPXXX  AS CEP_VENDEDOR,   VEN.CELU_1  AS CELULAR_VENDEDOR,
-           VEN.TELRES  AS TELRES_VENDEDOR,
+           VEN.TELRES  AS TELRES_VENDEDOR, VEN.EMAILX  AS EMAIL_VENDEDOR,
            CIDVEN.CIDADE AS CIDADE_VENDEDOR, CIDVEN.ESTADO AS ESTADO_VENDEDOR
     FROM MOVIMENTO_LOTE ML
     LEFT JOIN LOTES LO       ON LO.ID  = ML.IDLOTE
@@ -811,9 +811,9 @@ export async function dadosFatura(idMov: number) {
     SELECT MC.ID, MC.IDCLI, MC.IDMOVLOTE, MC.PERCEN, MC.VALORORIGINAL, MC.VALORPAGAR,
            MC.VALORDESCONTO, MC.VALORCOMISSAO, MC.COMISSAO, MC.FORMA_PAGAMENTO,
            MC.IDCONDPAGTO,
-           C.NOMEXX, C.CPFXXX, C.ENDERE, C.BAIRRO, C.CEPXXX, C.CELU_1,
+           C.NOMEXX, C.CPFXXX, C.ENDERE, C.BAIRRO, C.CEPXXX, C.CELU_1, C.EMAILX,
            CIDC.CIDADE  AS NOMECIDADE,    CIDC.ESTADO  AS ESTADO,
-           CP.DESFIN,
+           CP.DESFIN, CP.QTDPAR AS COND_QTDPAR,
            CPR.NOME_PROPRIEDADE, CPR.CIDADE AS CIDADE_PROP, CPR.ESTADO AS ESTADO_PROP
     FROM MOVIMENTO_COMPRADOR MC
     LEFT JOIN CLIENTES C        ON C.ID   = MC.IDCLI
@@ -872,6 +872,7 @@ export async function dadosFatura(idMov: number) {
       cepVendedor:     l.CEP_VENDEDOR,
       celularVendedor: l.CELULAR_VENDEDOR,
       telresVendedor:  l.TELRES_VENDEDOR,
+      emailVendedor:   l.EMAIL_VENDEDOR,
       cidadeVendedor:  l.CIDADE_VENDEDOR,
       estadoVendedor:  l.ESTADO_VENDEDOR,
     } : null,
@@ -884,6 +885,7 @@ export async function dadosFatura(idMov: number) {
       bairro:         c.BAIRRO,
       cepxxx:         c.CEPXXX,
       celu1:          c.CELU_1,
+      emailx:         c.EMAILX,
       nomeCidade:     c.NOMECIDADE,
       nomeEstado:     c.ESTADO,
       percen:         c.PERCEN,
@@ -894,6 +896,7 @@ export async function dadosFatura(idMov: number) {
       comissao:       c.COMISSAO,
       formaPagamento: c.FORMA_PAGAMENTO,
       desfin:         c.DESFIN,
+      qtdparCond:     c.COND_QTDPAR != null ? Number(c.COND_QTDPAR) : null,
       nomePropriedade: c.NOME_PROPRIEDADE,
       cidadeProp:      c.CIDADE_PROP,
       estadoProp:      c.ESTADO_PROP,

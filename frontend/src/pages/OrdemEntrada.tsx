@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Select, Button, Table, Input, Space, message, Typography, Row, Col, Tag, Grid, Tooltip } from 'antd';
 import {
-  SaveOutlined, PrinterOutlined, OrderedListOutlined, ClearOutlined, CalendarOutlined,
+  SaveOutlined, OrderedListOutlined, ClearOutlined, CalendarOutlined,
 } from '@ant-design/icons';
 import api from '../services/api';
 import { BotaoBaixarPDFOrdem, LoteOrdemPDF } from '../relatorios/RelatorioOrdemEntrada';

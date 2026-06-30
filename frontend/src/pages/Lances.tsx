@@ -165,7 +165,7 @@ export default function Lances() {
       {tab === 'lances' && (
         <>
           <Space style={{ marginBottom: 8 }}>
-            <a onClick={() => setTab('resumo')} style={{ fontSize: 13 }}>← Voltar ao resumo</a>
+            <button onClick={() => setTab('resumo')} style={{ fontSize: 13, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>← Voltar ao resumo</button>
           </Space>
           <Table
             rowKey="id"

@@ -179,12 +179,6 @@ function formatarData(iso?: string | null) {
   try { return new Date(iso).toLocaleDateString('pt-BR'); } catch { return iso; }
 }
 
-function enderecoCompleto(c: ClienteCompleto) {
-  const partes = [c.endere, c.comple, c.bairro].filter(Boolean).join(', ');
-  const cidade = [c.nomeCidade, c.nomeEstado].filter(Boolean).join(' - ');
-  const cep = c.cepxxx ? `CEP ${c.cepxxx}` : '';
-  return [partes, cidade, cep].filter(Boolean).join(' — ') || null;
-}
 
 function CardCliente({ cliente: c, index }: { cliente: ClienteCompleto; index: number }) {
   const ativo = c.ativox === 'S';

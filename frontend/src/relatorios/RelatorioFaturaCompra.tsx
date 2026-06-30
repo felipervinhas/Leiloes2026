@@ -28,6 +28,7 @@ export interface FaturaData {
     cepVendedor?: string;
     celularVendedor?: string;
     telresVendedor?: string;
+    emailVendedor?: string;
     cidadeVendedor?: string;
     estadoVendedor?: string;
   };
@@ -39,6 +40,7 @@ export interface FaturaData {
     bairro?: string;
     cepxxx?: string;
     celu1?: string;
+    emailx?: string;
     nomeCidade?: string;
     nomeEstado?: string;
     percen?: number;
@@ -49,6 +51,7 @@ export interface FaturaData {
     comissao?: number;
     formaPagamento?: string;
     desfin?: string;
+    qtdparCond?: number | null;
     nomePropriedade?: string;
     cidadeProp?: string;
     estadoProp?: string;
@@ -66,11 +69,11 @@ interface Props {
   empresa?: string;
 }
 
-const AZUL    = '#001529';
-const AZUL2   = '#1677ff';
-const VERDE   = '#52c41a';
-const LARANJA = '#fa8c16';
-const CINZA   = '#d9d9d9';
+const PRETO  = '#000';
+const ESCURO = '#222';
+const MEDIO  = '#555';
+const CINZA  = '#bbb';
+const CLARO  = '#f0f0f0';
 const CATEGO: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C: 'Castrado' };
 
 const fmtR = (v?: number | null) =>
@@ -82,10 +85,10 @@ const s = StyleSheet.create({
   page: {
     fontFamily: 'Helvetica',
     fontSize: 8,
-    color: '#222',
-    paddingHorizontal: 22,
-    paddingTop: 14,
-    paddingBottom: 24,
+    color: ESCURO,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 18,
     backgroundColor: '#fff',
   },
 
@@ -94,207 +97,192 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomColor: AZUL,
+    borderBottomColor: PRETO,
     borderBottomWidth: 2,
-    paddingBottom: 7,
-    marginBottom: 8,
+    paddingBottom: 5,
+    marginBottom: 6,
   },
-  docHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  docLogo: { width: 40, height: 40, objectFit: 'contain' },
-  docEmpresa: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: AZUL },
+  docHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  docLogo: { width: 32, height: 32, objectFit: 'contain' },
+  docEmpresa: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: PRETO },
   docHeaderRight: { alignItems: 'flex-end' },
-  docTitulo: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: AZUL, letterSpacing: 0.5 },
-  docNumero: { fontSize: 9, color: AZUL2, fontFamily: 'Helvetica-Bold', marginTop: 3 },
-  docData: { fontSize: 7.5, color: '#666', marginTop: 2 },
+  docTitulo: { fontSize: 14, fontFamily: 'Helvetica-Bold', color: PRETO, letterSpacing: 0.5 },
+  docNumero: { fontSize: 8, color: ESCURO, fontFamily: 'Helvetica-Bold', marginTop: 2 },
+  docData: { fontSize: 6.5, color: MEDIO, marginTop: 1 },
 
   // ── Leilão ──
   leilaoBox: {
-    backgroundColor: AZUL,
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    backgroundColor: ESCURO,
+    borderRadius: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 7,
+    marginBottom: 5,
   },
-  leilaoLabel: { fontSize: 6.5, color: '#a0b4c8', textTransform: 'uppercase', letterSpacing: 0.5 },
-  leilaoNome:  { fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#fff', marginTop: 2 },
-  leilaoData:  { fontSize: 8, color: '#ffc53d', fontFamily: 'Helvetica-Bold' },
+  leilaoLabel: { fontSize: 5.5, color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.5 },
+  leilaoNome:  { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#fff', marginTop: 1 },
+  leilaoData:  { fontSize: 7.5, color: '#ddd', fontFamily: 'Helvetica-Bold' },
 
   // ── Duas colunas ──
-  duasColunas: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 7,
-  },
-  colLote:    { flex: 1.1, backgroundColor: '#f0f6ff', borderRadius: 4, padding: 8, borderColor: '#91caff', borderWidth: 1 },
-  colVendedor:{ flex: 1,   backgroundColor: '#fff7e6', borderRadius: 4, padding: 8, borderColor: '#ffd591', borderWidth: 1 },
+  duasColunas: { flexDirection: 'row', gap: 6, marginBottom: 5 },
+  colLote:    { flex: 1.1, backgroundColor: CLARO, borderRadius: 3, padding: 6, borderColor: CINZA, borderWidth: 0.5 },
+  colVendedor:{ flex: 1,   backgroundColor: CLARO, borderRadius: 3, padding: 6, borderColor: CINZA, borderWidth: 0.5 },
 
   secLabel: {
-    fontSize: 6,
-    fontFamily: 'Helvetica-Bold',
-    color: AZUL2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 3,
-    paddingBottom: 2,
-    borderBottomColor: '#c8deff',
-    borderBottomWidth: 0.5,
+    fontSize: 5, fontFamily: 'Helvetica-Bold', color: ESCURO,
+    textTransform: 'uppercase', letterSpacing: 0.8,
+    marginBottom: 3, paddingBottom: 2,
+    borderBottomColor: CINZA, borderBottomWidth: 0.5,
   },
   secLabelOrange: {
-    fontSize: 6,
-    fontFamily: 'Helvetica-Bold',
-    color: LARANJA,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 3,
-    paddingBottom: 2,
-    borderBottomColor: '#ffd591',
-    borderBottomWidth: 0.5,
+    fontSize: 5, fontFamily: 'Helvetica-Bold', color: ESCURO,
+    textTransform: 'uppercase', letterSpacing: 0.8,
+    marginBottom: 3, paddingBottom: 2,
+    borderBottomColor: CINZA, borderBottomWidth: 0.5,
   },
-  loteNum:   { fontSize: 14, fontFamily: 'Helvetica-Bold', color: AZUL, marginBottom: 2 },
-  loteDes:   { fontSize: 9,  fontFamily: 'Helvetica-Bold', color: '#111', marginBottom: 2 },
-  loteInfo:  { fontSize: 7.5, color: '#555', marginBottom: 1 },
-  loteRaca:  { fontSize: 7, color: '#888', marginBottom: 1 },
-  nomeXX:    { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111', marginBottom: 2 },
-  cpfXX:     { fontSize: 8, color: '#444', marginBottom: 2 },
-  endereco:  { fontSize: 7.5, color: '#555', marginBottom: 2 },
-  telefone:  { fontSize: 7.5, color: '#777', marginTop: 3 },
+  loteNum:   { fontSize: 12, fontFamily: 'Helvetica-Bold', color: PRETO, marginBottom: 1 },
+  loteDes:   { fontSize: 8,  fontFamily: 'Helvetica-Bold', color: PRETO, marginBottom: 1 },
+  loteInfo:  { fontSize: 6.5, color: MEDIO, marginBottom: 1 },
+  loteRaca:  { fontSize: 6.5, color: MEDIO, marginBottom: 1 },
+  nomeXX:    { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PRETO, marginBottom: 1 },
+  cpfXX:     { fontSize: 7, color: ESCURO, marginBottom: 1 },
+  endereco:  { fontSize: 7, color: MEDIO, marginBottom: 1 },
+  telefone:  { fontSize: 7, color: MEDIO, marginTop: 2 },
 
   // ── Comprador ──
   compradorBox: {
-    backgroundColor: '#f6ffed',
-    borderRadius: 4,
-    borderColor: '#b7eb8f',
-    borderWidth: 1,
-    padding: 8,
-    marginBottom: 7,
+    backgroundColor: CLARO,
+    borderRadius: 3,
+    borderColor: CINZA,
+    borderWidth: 0.5,
+    padding: 5,
+    marginBottom: 5,
   },
   compradorHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   compradorEsq: { flex: 1 },
   compradorDir: { alignItems: 'flex-end' },
   percTag: {
-    backgroundColor: '#52c41a',
+    backgroundColor: ESCURO,
     borderRadius: 3,
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical: 2,
   },
   percText: { fontSize: 7, color: '#fff', fontFamily: 'Helvetica-Bold' },
   comprLabelGreen: {
-    fontSize: 6, fontFamily: 'Helvetica-Bold', color: '#389e0d',
+    fontSize: 5, fontFamily: 'Helvetica-Bold', color: ESCURO,
     textTransform: 'uppercase', letterSpacing: 0.8,
     marginBottom: 3, paddingBottom: 2,
-    borderBottomColor: '#b7eb8f', borderBottomWidth: 0.5,
+    borderBottomColor: CINZA, borderBottomWidth: 0.5,
   },
 
   // ── Acerto ──
   acertoBox: {
     backgroundColor: '#fafafa',
-    borderRadius: 4,
+    borderRadius: 3,
     borderColor: CINZA,
-    borderWidth: 1,
-    padding: 8,
-    marginBottom: 7,
+    borderWidth: 0.5,
+    padding: '4 6',
+    marginBottom: 5,
   },
   acertoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 0 },
-  acertoItem: { width: '33%', marginBottom: 4 },
-  acertoLabel:{ fontSize: 6.5, color: '#888', marginBottom: 1 },
-  acertoValor:{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111' },
-  acertoValorBlue: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: AZUL2 },
-  acertoValorGreen:{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: VERDE },
-  acertoValorOrange:{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: LARANJA },
-  acertoValorRed:  { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#ff4d4f' },
+  acertoItem: { width: '33%', marginBottom: 3 },
+  acertoLabel:{ fontSize: 5.5, color: MEDIO, marginBottom: 1 },
+  acertoValor:      { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PRETO },
+  acertoValorBlue:  { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PRETO },
+  acertoValorGreen: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PRETO },
+  acertoValorOrange:{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: ESCURO },
+  acertoValorRed:   { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: ESCURO },
 
-  // ── Parcelas (3 colunas) ──
+  // ── Parcelas (4 colunas) ──
   parcelasBox: {
-    borderRadius: 4,
+    borderRadius: 3,
     borderColor: CINZA,
-    borderWidth: 1,
-    marginBottom: 7,
+    borderWidth: 0.5,
+    marginBottom: 5,
     overflow: 'hidden',
   },
   parcelasHeader: {
-    backgroundColor: AZUL,
-    flexDirection: 'row',
-    paddingVertical: 3,
-    paddingHorizontal: 6,
-  },
-  thP: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: '#fff' },
-  thPRight: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: '#fff', textAlign: 'right' as const },
-
-  // linha de 3 grupos
-  parcRow3: {
+    backgroundColor: ESCURO,
     flexDirection: 'row',
     paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderBottomColor: '#f0f0f0',
+    paddingHorizontal: 4,
+  },
+  thP: { fontSize: 6, fontFamily: 'Helvetica-Bold', color: '#fff' },
+  thPRight: { fontSize: 6, fontFamily: 'Helvetica-Bold', color: '#fff', textAlign: 'right' as const },
+
+  // linha de 4 grupos
+  parcRow3: {
+    flexDirection: 'row',
+    paddingVertical: 1.5,
+    paddingHorizontal: 4,
+    borderBottomColor: CLARO,
     borderBottomWidth: 0.5,
   },
   parcRowAlt: { backgroundColor: '#fafafa' },
-  // grupo de 3 células (# | data | valor)
   cGrupo:    { flex: 1, flexDirection: 'row' },
-  cGrupoSep: { borderLeftColor: '#d0d0d0', borderLeftWidth: 0.5, paddingLeft: 4 },
-  cNumP:  { width: 30 },
+  cGrupoSep: { borderLeftColor: CINZA, borderLeftWidth: 0.5, paddingLeft: 3 },
+  cNumP:  { width: 20 },
   cDatP:  { flex: 1 },
-  cVlrP:  { width: 66, textAlign: 'right' as const },
+  cVlrP:  { width: 56, textAlign: 'right' as const },
 
-  tdP:      { fontSize: 7 },
-  tdPRight: { fontSize: 7, textAlign: 'right' as const },
-  tdPBold:  { fontSize: 7, fontFamily: 'Helvetica-Bold', color: VERDE },
-  semParcelas: { padding: 12, textAlign: 'center' as const, fontSize: 8, color: '#aaa', fontStyle: 'italic' },
+  tdP:      { fontSize: 6.5, color: ESCURO },
+  tdPRight: { fontSize: 6.5, color: ESCURO, textAlign: 'right' as const },
+  tdPBold:  { fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: PRETO },
+  semParcelas: { padding: 10, textAlign: 'center' as const, fontSize: 7.5, color: CINZA, fontStyle: 'italic' },
 
   parcelasTotal: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: CLARO,
     flexDirection: 'row',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 4,
   },
 
   // ── Propriedade ──
   propBox: {
-    backgroundColor: '#f9f0ff',
+    backgroundColor: CLARO,
     borderRadius: 3,
-    borderColor: '#d3adf7',
+    borderColor: CINZA,
     borderWidth: 0.5,
-    padding: 6,
-    marginTop: 6,
+    padding: 5,
+    marginTop: 5,
   },
-  propLabel: { fontSize: 6, color: '#722ed1', fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', marginBottom: 3 },
-  propText:  { fontSize: 7.5, color: '#555', marginBottom: 1 },
+  propLabel: { fontSize: 5.5, color: ESCURO, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', marginBottom: 3 },
+  propText:  { fontSize: 7, color: MEDIO, marginBottom: 1 },
 
   // ── Assinaturas ──
   assinaturas: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
-    paddingTop: 8,
+    marginTop: 8,
+    paddingTop: 6,
     borderTopColor: CINZA,
     borderTopWidth: 0.5,
   },
-  assinaturaItem: { flex: 1, alignItems: 'center', marginHorizontal: 10 },
-  assinaturaLinha: { borderTopColor: '#333', borderTopWidth: 0.5, width: '80%', marginBottom: 4 },
-  assinaturaNome: { fontSize: 7, color: '#444', textAlign: 'center' as const },
-  assinaturaRole: { fontSize: 6.5, color: '#888', textAlign: 'center' as const },
+  assinaturaItem: { flex: 1, alignItems: 'center', marginHorizontal: 8 },
+  assinaturaLinha: { borderTopColor: ESCURO, borderTopWidth: 0.5, width: '80%', marginBottom: 3 },
+  assinaturaNome: { fontSize: 7, color: ESCURO, textAlign: 'center' as const },
+  assinaturaRole: { fontSize: 6.5, color: MEDIO, textAlign: 'center' as const },
 
   // ── Rodapé ──
   footer: {
     position: 'absolute',
-    bottom: 12,
-    left: 30,
-    right: 30,
+    bottom: 10,
+    left: 20,
+    right: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     borderTopColor: CINZA,
     borderTopWidth: 0.5,
     paddingTop: 3,
   },
-  footerText: { fontSize: 6, color: '#aaa' },
+  footerText: { fontSize: 6, color: CINZA },
 });
 
 function InfoItem({ label, value, style }: { label: string; value?: string | null; style?: any }) {
@@ -310,23 +298,15 @@ function SecaoVendedor({ lote }: { lote: NonNullable<FaturaData['lote']> }) {
   const ende = [lote.endereVendedor, lote.bairroVendedor].filter(Boolean).join(', ');
   const cid  = [lote.cidadeVendedor, lote.estadoVendedor].filter(Boolean).join(' — ');
   const tel  = lote.celularVendedor || lote.telresVendedor;
-  const temEndereco = !!(ende || cid || tel);
   return (
     <View style={s.colVendedor}>
       <Text style={s.secLabelOrange}>Vendedor</Text>
       <Text style={s.nomeXX}>{lote.nomeVendedor || '—'}</Text>
       <Text style={s.cpfXX}>CPF: {lote.cpfVendedor || 'não informado'}</Text>
-      {temEndereco ? (
-        <>
-          {ende ? <Text style={s.endereco}>{ende}</Text> : null}
-          {cid  ? <Text style={s.endereco}>{cid}{lote.cepVendedor ? `  CEP ${lote.cepVendedor}` : ''}</Text> : null}
-          {tel  ? <Text style={s.telefone}>Tel: {tel}</Text> : null}
-        </>
-      ) : (
-        <Text style={{ fontSize: 7, color: '#bbb', fontStyle: 'italic', marginTop: 4 }}>
-          Endereço não cadastrado
-        </Text>
-      )}
+      {ende ? <Text style={s.endereco}>{ende}</Text> : null}
+      {cid  ? <Text style={s.endereco}>{cid}{lote.cepVendedor ? `  CEP ${lote.cepVendedor}` : ''}</Text> : null}
+      {tel  ? <Text style={s.telefone}>Tel: {tel}</Text> : null}
+      {lote.emailVendedor ? <Text style={s.telefone}>{lote.emailVendedor}</Text> : null}
     </View>
   );
 }
@@ -368,7 +348,8 @@ function SecaoComprador({ comp, index }: { comp: FaturaData['compradores'][0]; i
             <Text style={s.cpfXX}>CPF: {comp.cpfxxx || 'não informado'}</Text>
             {ende ? <Text style={s.endereco}>{ende}</Text> : null}
             {cid  ? <Text style={s.endereco}>{cid}{comp.cepxxx ? `  CEP ${comp.cepxxx}` : ''}</Text> : null}
-            {comp.celu1 ? <Text style={s.telefone}>Tel: {comp.celu1}</Text> : null}
+            {comp.celu1  ? <Text style={s.telefone}>Tel: {comp.celu1}</Text> : null}
+            {comp.emailx ? <Text style={s.telefone}>{comp.emailx}</Text> : null}
           </View>
           {comp.percen != null && comp.percen !== 100 ? (
             <View style={s.compradorDir}>
@@ -398,7 +379,6 @@ function SecaoComprador({ comp, index }: { comp: FaturaData['compradores'][0]; i
         <Text style={[s.secLabel, { marginBottom: 8 }]}>Dados do Acerto</Text>
         <View style={s.acertoGrid}>
           <InfoItem label="Cond. Pagamento" value={comp.desfin} />
-          <InfoItem label="Forma de Pagamento" value={comp.formaPagamento} />
           <InfoItem label="Valor Total" value={fmtR(comp.valorOriginal)} style={s.acertoValorBlue} />
           <InfoItem label="Comissão" value={comp.comissao != null ? `${comp.comissao}%` : '—'} style={s.acertoValorOrange} />
           <InfoItem label="Vlr. Comissão" value={fmtR(comp.valorComissao)} style={s.acertoValorOrange} />
@@ -407,19 +387,17 @@ function SecaoComprador({ comp, index }: { comp: FaturaData['compradores'][0]; i
         </View>
       </View>
 
-      {/* Parcelas — 3 colunas */}
+      {/* Parcelas — 4 colunas */}
       {(() => {
         const parc = comp.parcelas;
-        // agrupar em linhas de 3
         const linhas: (typeof parc[0] | null)[][] = [];
-        for (let i = 0; i < parc.length; i += 3) {
-          linhas.push([parc[i] || null, parc[i + 1] || null, parc[i + 2] || null]);
+        for (let i = 0; i < parc.length; i += 4) {
+          linhas.push([parc[i] || null, parc[i+1] || null, parc[i+2] || null, parc[i+3] || null]);
         }
         return (
           <View style={s.parcelasBox}>
-            {/* Cabeçalho */}
             <View style={s.parcelasHeader}>
-              {[0, 1, 2].map(c => (
+              {[0, 1, 2, 3].map(c => (
                 <View key={c} style={[s.cGrupo, c > 0 ? s.cGrupoSep : {}]}>
                   <View style={s.cNumP}><Text style={s.thP}>#</Text></View>
                   <View style={s.cDatP}><Text style={s.thP}>Vencimento</Text></View>
@@ -432,26 +410,21 @@ function SecaoComprador({ comp, index }: { comp: FaturaData['compradores'][0]; i
               <Text style={s.semParcelas}>Parcelas ainda não geradas</Text>
             ) : (
               linhas.map((linha, li) => (
-                <View key={li} wrap={false}
-                  style={[s.parcRow3, li % 2 === 1 ? s.parcRowAlt : {}]}>
+                <View key={li} wrap={false} style={[s.parcRow3, li % 2 === 1 ? s.parcRowAlt : {}]}>
                   {linha.map((p, ci) => (
                     <View key={ci} style={[s.cGrupo, ci > 0 ? s.cGrupoSep : {}]}>
                       {p ? (
                         <View style={{ flexDirection: 'row', flex: 1 }}>
                           <View style={s.cNumP}>
                             <Text style={p.pripar === 'S' ? s.tdPBold : s.tdP}>
-                              {p.ordxxx || String(li * 3 + ci + 1).padStart(2, '0')}
+                              {p.ordxxx || String(li * 4 + ci + 1).padStart(2, '0')}
                             </Text>
                           </View>
                           <View style={s.cDatP}>
-                            <Text style={p.pripar === 'S' ? s.tdPBold : s.tdP}>
-                              {p.datven || '—'}
-                            </Text>
+                            <Text style={p.pripar === 'S' ? s.tdPBold : s.tdP}>{p.datven || '—'}</Text>
                           </View>
                           <View style={s.cVlrP}>
-                            <Text style={p.pripar === 'S' ? s.tdPBold : s.tdPRight}>
-                              {fmtR(p.vlrpar)}
-                            </Text>
+                            <Text style={p.pripar === 'S' ? s.tdPBold : s.tdPRight}>{fmtR(p.vlrpar)}</Text>
                           </View>
                         </View>
                       ) : null}
@@ -461,15 +434,12 @@ function SecaoComprador({ comp, index }: { comp: FaturaData['compradores'][0]; i
               ))
             )}
 
-            {/* Total */}
             {parc.length > 0 && (
               <View style={s.parcelasTotal}>
-                <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', flex: 1 }}>
-                  TOTAL — {parc.length} parcela{parc.length !== 1 ? 's' : ''}
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', flex: 1 }}>
+                  {(() => { const q = comp.qtdparCond ?? parc.length; return `TOTAL — ${q} parcela${q !== 1 ? 's' : ''}`; })()}
                 </Text>
-                <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold' }}>
-                  {fmtR(totalParcelas)}
-                </Text>
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold' }}>{fmtR(totalParcelas)}</Text>
               </View>
             )}
           </View>
@@ -548,7 +518,7 @@ function FaturaCompraPDF({ dados, empresa }: Props) {
 
         {/* Rodapé */}
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>{nomeEmpresa} — Sistema de Gestão</Text>
+          <Text style={s.footerText}>{nomeEmpresa}</Text>
           <Text
             style={s.footerText}
             render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`}

@@ -33,6 +33,7 @@ export default function ContratoEditor({ content, onChange, onPrint, readOnly }:
     onUpdate: ({ editor: ed }) => onChange?.(ed.getHTML()),
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
       editor.commands.setContent(content);

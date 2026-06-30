@@ -6,7 +6,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined
   TrophyOutlined, ShoppingCartOutlined, TagOutlined, AuditOutlined, TeamOutlined,
   UserOutlined, EnvironmentOutlined, PhoneOutlined, BankOutlined, SettingOutlined,
   FolderOpenOutlined, SafetyCertificateOutlined, HomeOutlined,
-  FileDoneOutlined, PrinterOutlined, ExportOutlined } from '@ant-design/icons';
+  FileDoneOutlined, EyeOutlined, ExportOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ResizableTitle from '../components/ResizableTitle';
@@ -16,7 +16,7 @@ import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
 import { useAuth } from '../context/AuthContext';
 import { useBanco } from '../context/BancoContext';
-import { PDFDownloadLink } from '@react-pdf/renderer';
+import { BlobProvider } from '@react-pdf/renderer';
 import FaturaCompraPDF, { FaturaData } from '../relatorios/RelatorioFaturaCompra';
 import PromissoriaPDF from '../relatorios/RelatorioPromissoria';
 import { BotaoBaixarPDF, ClienteCompleto } from '../relatorios/RelatorioClientes';
@@ -228,6 +228,7 @@ export default function Clientes() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     carregar();
     carregarCidades();
@@ -235,11 +236,13 @@ export default function Clientes() {
       setUsuarios(r.data.map((u: any) => ({ value: u.id, label: u.nomexx }))));
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (rankingMode) carregarRanking(busca);
     else carregar(busca);
   }, [filtroValor]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const clienteId = (location.state as any)?.abrirClienteId;
     if (clienteId) {
@@ -974,17 +977,18 @@ export default function Clientes() {
               <div><strong>Vendedor:</strong> {faturaData.lote?.nomeVendedor || '—'}</div>
               <div><strong>Parcelas:</strong> {faturaData.compradores.reduce((t: number, c: any) => t + c.parcelas.length, 0)}</div>
             </div>
-            <PDFDownloadLink
-              document={<FaturaCompraPDF dados={faturaData} empresa={config.empresa} />}
-              fileName={`fatura-compra-${faturaData.id}.pdf`}
-              style={{ textDecoration: 'none' }}
-            >
-              {({ loading }: { loading: boolean }) => (
-                <Button type="primary" size="large" icon={<PrinterOutlined />} loading={loading} style={{ width: '100%' }}>
-                  {loading ? 'Gerando PDF...' : 'Baixar Fatura PDF'}
+            <BlobProvider document={<FaturaCompraPDF dados={faturaData} empresa={config.empresa} />}>
+              {({ url, loading }: { url: string | null; loading: boolean }) => (
+                <Button
+                  type="primary" size="large" icon={<EyeOutlined />}
+                  loading={loading} disabled={!url}
+                  onClick={() => url && window.open(url, '_blank')}
+                  style={{ width: '100%' }}
+                >
+                  {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Fatura'}
                 </Button>
               )}
-            </PDFDownloadLink>
+            </BlobProvider>
           </div>
         )}
       </Modal>
@@ -1002,21 +1006,22 @@ export default function Clientes() {
             <div style={{ marginBottom: 16, textAlign: 'left', lineHeight: 1.8 }}>
               <div><strong>Leilão:</strong> {promissoriaData.leilao || '—'}</div>
               <div><strong>Lote:</strong> {promissoriaData.lote?.lotexx} — {promissoriaData.lote?.deslot}</div>
-              <div><strong>Vendedor (Credor):</strong> {promissoriaData.lote?.nomeVendedor || '—'}</div>
+              <div><strong>Vendedor:</strong> {promissoriaData.lote?.nomeVendedor || '—'}</div>
               <div><strong>Compradores:</strong> {promissoriaData.compradores.map((c: any) => c.nomexx).filter(Boolean).join(', ')}</div>
-              <div><strong>Total de promissórias:</strong> {promissoriaData.compradores.reduce((t: number, c: any) => t + c.parcelas.length, 0)} parcelas</div>
+              <div><strong>Total de promissórias:</strong> {promissoriaData.compradores.reduce((t: number, c: any) => t + (c.qtdparCond ?? c.parcelas.length), 0)} parcelas</div>
             </div>
-            <PDFDownloadLink
-              document={<PromissoriaPDF dados={promissoriaData} empresa={config.empresa} />}
-              fileName={`promissorias-${(promissoriaData as any).codnot || promissoriaData.id}.pdf`}
-              style={{ textDecoration: 'none' }}
-            >
-              {({ loading }: { loading: boolean }) => (
-                <Button type="primary" size="large" icon={<PrinterOutlined />} loading={loading} style={{ width: '100%' }}>
-                  {loading ? 'Gerando PDF...' : 'Baixar Promissórias PDF'}
+            <BlobProvider document={<PromissoriaPDF dados={promissoriaData} empresa={config.empresa} />}>
+              {({ url, loading }: { url: string | null; loading: boolean }) => (
+                <Button
+                  type="primary" size="large" icon={<EyeOutlined />}
+                  loading={loading} disabled={!url}
+                  onClick={() => url && window.open(url, '_blank')}
+                  style={{ width: '100%' }}
+                >
+                  {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Promissória'}
                 </Button>
               )}
-            </PDFDownloadLink>
+            </BlobProvider>
           </div>
         )}
       </Modal>

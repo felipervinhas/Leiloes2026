@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Button, Card, Col, Drawer, Form, Input, message, Modal,
+  Button, Card, Col, Drawer, Form, Input, message,
   Popconfirm, Row, Select, Space, Spin, Tag, Tooltip, Typography,
 } from 'antd';
 import {

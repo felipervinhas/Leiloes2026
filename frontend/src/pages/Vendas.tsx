@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useBanco } from '../context/BancoContext';
 import ResizableTitle from '../components/ResizableTitle';
@@ -12,9 +12,9 @@ import {
   ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined,
   DeleteOutlined, DollarOutlined, EditOutlined, FileSearchOutlined,
   FileDoneOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UserOutlined,
-  PrinterOutlined, FileTextOutlined, AuditOutlined,
+  FileTextOutlined, AuditOutlined, EyeOutlined,
 } from '@ant-design/icons';
-import { PDFDownloadLink } from '@react-pdf/renderer';
+import { BlobProvider } from '@react-pdf/renderer';
 import FaturaCompraPDF, { FaturaData } from '../relatorios/RelatorioFaturaCompra';
 import PromissoriaPDF from '../relatorios/RelatorioPromissoria';
 import { useConfig } from '../context/ConfigContext';
@@ -120,6 +120,7 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
   const [dados, setDados]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     api.get('/leiloes').then(r =>
       setLeiloes(r.data.map((l: any) => ({ value: l.id, label: l.leilao }))));
@@ -255,23 +256,21 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
               <div><strong>Vendedor:</strong> {faturaData.lote?.nomeVendedor || '—'}</div>
               <div><strong>Parcelas:</strong> {faturaData.compradores.reduce((t, c) => t + c.parcelas.length, 0)}</div>
             </div>
-            <PDFDownloadLink
-              document={<FaturaCompraPDF dados={faturaData} empresa={config.empresa} />}
-              fileName={`fatura-compra-${faturaData.id}.pdf`}
-              style={{ textDecoration: 'none' }}
-            >
-              {({ loading }) => (
+            <BlobProvider document={<FaturaCompraPDF dados={faturaData} empresa={config.empresa} />}>
+              {({ url, loading }) => (
                 <Button
                   type="primary"
                   size="large"
-                  icon={<PrinterOutlined />}
+                  icon={<EyeOutlined />}
                   loading={loading}
+                  disabled={!url}
+                  onClick={() => url && window.open(url, '_blank')}
                   style={{ width: '100%' }}
                 >
-                  {loading ? 'Gerando PDF...' : 'Baixar Fatura PDF'}
+                  {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Fatura'}
                 </Button>
               )}
-            </PDFDownloadLink>
+            </BlobProvider>
           </div>
         )}
       </Modal>
@@ -294,33 +293,31 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
             <div style={{ marginBottom: 16, textAlign: 'left', lineHeight: 1.8 }}>
               <div><strong>Leilão:</strong> {promissoriaData.leilao || '—'}</div>
               <div><strong>Lote:</strong> {promissoriaData.lote?.lotexx} — {promissoriaData.lote?.deslot}</div>
-              <div><strong>Vendedor (Credor):</strong> {promissoriaData.lote?.nomeVendedor || '—'}</div>
+              <div><strong>Vendedor:</strong> {promissoriaData.lote?.nomeVendedor || '—'}</div>
               <div>
                 <strong>Compradores:</strong>{' '}
                 {promissoriaData.compradores.map(c => c.nomexx).filter(Boolean).join(', ')}
               </div>
               <div>
                 <strong>Total de promissórias:</strong>{' '}
-                {promissoriaData.compradores.reduce((t, c) => t + c.parcelas.length, 0)} parcelas
+                {promissoriaData.compradores.reduce((t, c) => t + (c.qtdparCond ?? c.parcelas.length), 0)} parcelas
               </div>
             </div>
-            <PDFDownloadLink
-              document={<PromissoriaPDF dados={promissoriaData} empresa={config.empresa} />}
-              fileName={`promissorias-${promissoriaData.codnot || promissoriaData.id}.pdf`}
-              style={{ textDecoration: 'none' }}
-            >
-              {({ loading }) => (
+            <BlobProvider document={<PromissoriaPDF dados={promissoriaData} empresa={config.empresa} />}>
+              {({ url, loading }) => (
                 <Button
                   type="primary"
                   size="large"
-                  icon={<PrinterOutlined />}
+                  icon={<EyeOutlined />}
                   loading={loading}
+                  disabled={!url}
+                  onClick={() => url && window.open(url, '_blank')}
                   style={{ width: '100%' }}
                 >
-                  {loading ? 'Gerando PDF...' : 'Baixar Promissórias PDF'}
+                  {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Promissória'}
                 </Button>
               )}
-            </PDFDownloadLink>
+            </BlobProvider>
           </div>
         )}
       </Modal>
@@ -477,10 +474,8 @@ function Wizard({ editId, onConcluir, onCancelar }: {
 
   const [step, setStep]     = useState(0);
   const [movId, setMovId]   = useState<number | undefined>(editId);
-  const [loteId, setLoteId] = useState<number | undefined>();
   const [salvando, setSalvando] = useState(false);
   const [mov, setMov]   = useState<any>(null);
-  const [lote, setLote] = useState<any>(null);
   const [compradores, setCompradores] = useState<any[]>([]);
   const [parcelas, setParcelas]       = useState<any[]>([]);
 
@@ -523,6 +518,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
       setPisteiros(r.data.map((u: any) => ({ value: u.id, label: u.nomexx }))));
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!editId) return;
     (async () => {
@@ -534,7 +530,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
 
       const rl = await api.get(`/vendas/${editId}/lote`);
       if (rl.data) {
-        setLote(rl.data); setLoteDetalhes(rl.data); setLoteId(rl.data.idLote);
+        setLoteDetalhes(rl.data);
         form1.setFieldsValue({
           idLote: rl.data.idLote, qtdxxx: rl.data.qtdxxx,
           vlrpar: rl.data.vlrpar, vlrtot: rl.data.vlrtot, vlrdes: rl.data.vlrdes ?? 0,
@@ -557,7 +553,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
   };
 
   const onLeilaoChange = async (id: number) => {
-    setLoteDetalhes(null); setLoteId(undefined);
+    setLoteDetalhes(null);
     form1.resetFields();
     await carregarLotesDisp(id);
     // guarda info do leilão para calcular comissões
@@ -590,7 +586,6 @@ function Wizard({ editId, onConcluir, onCancelar }: {
   const onLoteChange = (id: number) => {
     const det = lotesDisp.find(l => l.id === id);
     setLoteDetalhes(det ?? null);
-    setLoteId(id);
 
     const qtdpar = Number(leilaoInfo?.qtdpar ?? 1);
     const comcom = leilaoInfo?.comcom ?? 0;
@@ -654,8 +649,6 @@ function Wizard({ editId, onConcluir, onCancelar }: {
         comiss, comissVendedor: comissVend,
         datlan: datlei,
       });
-      const rl = await api.get(`/vendas/${movId}/lote`);
-      setLote(rl.data);
       setStep(2);
     } finally { setSalvando(false); }
   };
@@ -762,19 +755,6 @@ function Wizard({ editId, onConcluir, onCancelar }: {
       editingValRef.current = null;
     }
   };
-
-  // ── cols parcelas ────────────────────────────────────────────────────────
-  const colsParcelas: any[] = [
-    { title: '#', dataIndex: 'ordxxx', width: 70, align: 'center' as const },
-    {
-      title: 'Comprador', dataIndex: 'nomexx', ellipsis: true, width: 180,
-      render: (v: string, row: any) => (
-        <span>{v} {row.pripar === 'S' && <Tag color="blue" style={{ fontSize: 10 }}>1ª</Tag>}</span>
-      ),
-    },
-    { title: 'Vencimento', dataIndex: 'datven', width: 120, render: fmtData },
-    { title: 'Valor', dataIndex: 'vlrpar', width: 120, align: 'right' as const, render: fmt },
-  ];
 
   const colsCompradores: any[] = [
     { title: 'Comprador', dataIndex: 'nomexx', ellipsis: true },
@@ -1344,6 +1324,7 @@ export default function Vendas() {
   const navigate = useNavigate();
   const { banco } = useBanco();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const id = (location.state as any)?.abrirVendaId;
     const clienteId = (location.state as any)?.origemClienteId;

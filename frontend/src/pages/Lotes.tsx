@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker,
-  Space, Popconfirm, Typography, Row, Col, message, Tag, Switch, Tabs, Divider, Image, Grid } from 'antd';
+  Space, Popconfirm, Typography, Row, Col, message, Switch, Tabs, Divider, Image, Grid } from 'antd';
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CopyOutlined, AppstoreOutlined } from '@ant-design/icons';
@@ -58,6 +58,7 @@ export default function Lotes() {
   };
 
   useEffect(() => { carregarAuxiliares(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { carregar(busca); }, [leilaoFiltro]);
 
   const abrirModal = async (item?: any) => {
