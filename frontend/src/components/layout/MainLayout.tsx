@@ -12,6 +12,7 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useBanco } from '../../context/BancoContext';
 import { useConfig } from '../../context/ConfigContext';
+import AIChat from '../AIChat';
 
 const { Header, Sider, Content } = Layout;
 
@@ -251,6 +252,7 @@ export default function MainLayout() {
   );
 
   return (
+    <>
     <Layout style={{ minHeight: '100vh', background: shellBg }}>
       <style>{`
         .leiloes-sider {
@@ -527,5 +529,7 @@ export default function MainLayout() {
         </Content>
       </Layout>
     </Layout>
+    <AIChat />
+    </>
   );
 }

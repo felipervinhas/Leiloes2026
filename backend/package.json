@@ -9,6 +9,7 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.107.0",
     "@aws-sdk/client-s3": "^3.1063.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.1.0",
