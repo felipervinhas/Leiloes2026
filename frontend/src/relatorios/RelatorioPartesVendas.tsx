@@ -45,13 +45,9 @@ interface Props {
   filtrosDesc?: string;
 }
 
-const AZUL       = '#001529';
-const AZUL_CLARO = '#1677ff';
-const CINZA      = '#d9d9d9';
-const VERDE_BG   = '#f6ffed';
-const VERDE_BD   = '#b7eb8f';
-const AZUL_BG    = '#e6f4ff';
-const AZUL_BD    = '#91caff';
+const ESCURO = '#222';
+const CINZA  = '#bbb';
+const CLARO  = '#f0f0f0';
 
 const fmtR = (v?: number | null) =>
   v != null && v !== 0
@@ -74,12 +70,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 28,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
 
   // Cabeçalho
   header: {
-    backgroundColor: AZUL,
+    backgroundColor: ESCURO,
     borderRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 9,
@@ -92,10 +88,10 @@ const s = StyleSheet.create({
   headerLogo: { width: 108, height: 33, objectFit: 'contain', marginRight: 14 },
   headerTitleBox: { flexDirection: 'column', justifyContent: 'center' },
   headerTitle: { color: '#ffffff', fontSize: 11, fontFamily: 'Helvetica-Bold' },
-  headerSub: { color: '#a0b4c8', fontSize: 7.5, marginTop: 2 },
-  headerFiltro: { color: '#6894b4', fontSize: 7, marginTop: 2, fontStyle: 'italic' },
+  headerSub: { color: '#aaa', fontSize: 7.5, marginTop: 2 },
+  headerFiltro: { color: '#aaa', fontSize: 7, marginTop: 2, fontStyle: 'italic' },
   headerRight: { alignItems: 'flex-end' },
-  headerDate: { color: '#a0b4c8', fontSize: 7 },
+  headerDate: { color: '#aaa', fontSize: 7 },
   headerCount: { color: '#ffffff', fontSize: 8.5, fontFamily: 'Helvetica-Bold', marginTop: 3 },
 
   // Card por venda
@@ -110,14 +106,14 @@ const s = StyleSheet.create({
 
   // Cabeçalho do card (info do lote)
   cardHeader: {
-    backgroundColor: AZUL,
+    backgroundColor: ESCURO,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   loteNum: {
-    color: '#ffc53d',
+    color: '#ddd',
     fontFamily: 'Helvetica-Bold',
     fontSize: 10,
     marginRight: 10,
@@ -130,12 +126,12 @@ const s = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
   },
   racaTag: {
-    color: '#a0b4c8',
+    color: '#aaa',
     fontSize: 7,
     marginLeft: 8,
   },
   valorTag: {
-    color: '#95de64',
+    color: '#ddd',
     fontFamily: 'Helvetica-Bold',
     fontSize: 9,
     marginLeft: 12,
@@ -147,15 +143,15 @@ const s = StyleSheet.create({
   },
   colEsq: {
     flex: 1,
-    backgroundColor: AZUL_BG,
-    borderRightColor: AZUL_BD,
+    backgroundColor: CLARO,
+    borderRightColor: CINZA,
     borderRightWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
   colDir: {
     flex: 1,
-    backgroundColor: VERDE_BG,
+    backgroundColor: CLARO,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -164,22 +160,22 @@ const s = StyleSheet.create({
   parteLabel: {
     fontSize: 6,
     fontFamily: 'Helvetica-Bold',
-    color: AZUL_CLARO,
+    color: ESCURO,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 4,
-    borderBottomColor: AZUL_BD,
+    borderBottomColor: CINZA,
     borderBottomWidth: 0.5,
     paddingBottom: 3,
   },
   parteLabelGreen: {
     fontSize: 6,
     fontFamily: 'Helvetica-Bold',
-    color: '#389e0d',
+    color: ESCURO,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 4,
-    borderBottomColor: VERDE_BD,
+    borderBottomColor: CINZA,
     borderBottomWidth: 0.5,
     paddingBottom: 3,
   },
@@ -200,7 +196,7 @@ const s = StyleSheet.create({
   },
   parteCpfValor: {
     fontFamily: 'Helvetica-Bold',
-    color: AZUL,
+    color: ESCURO,
   },
 
   // Endereço
@@ -233,7 +229,7 @@ const s = StyleSheet.create({
   // Propriedade
   propLabel: {
     fontSize: 6,
-    color: '#52c41a',
+    color: ESCURO,
     fontFamily: 'Helvetica-Bold',
     textTransform: 'uppercase',
     marginTop: 5,

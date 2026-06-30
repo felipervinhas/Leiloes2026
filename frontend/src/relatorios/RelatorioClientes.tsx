@@ -42,13 +42,10 @@ interface Props {
   logoUrl?: string; // URL direta como fallback
 }
 
-const AZUL = '#001529';
-const AZUL_HEADER_CARD = '#e6f4ff';
-const AZUL_CLARO = '#1677ff';
-const CINZA_LABEL = '#888';
-const CINZA_BORDA = '#d9d9d9';
-const VERDE = '#389e0d';
-const VERMELHO = '#cf1322';
+const ESCURO = '#222';
+const CLARO  = '#f0f0f0';
+const MEDIO  = '#555';
+const CINZA  = '#bbb';
 
 const s = StyleSheet.create({
   page: {
@@ -58,12 +55,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 36,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#fff',
   },
 
   // ---- Cabeçalho do documento ----
   docHeader: {
-    backgroundColor: AZUL,
+    backgroundColor: ESCURO,
     borderRadius: 4,
     padding: '10 14',
     marginBottom: 12,
@@ -74,24 +71,24 @@ const s = StyleSheet.create({
   docHeaderEsquerda: { flexDirection: 'column', justifyContent: 'center' },
   docHeaderLogo: { width: 40, height: 40, objectFit: 'contain', marginBottom: 2 },
   docHeaderTitulo: { color: '#fff', fontSize: 13, fontFamily: 'Helvetica-Bold' },
-  docHeaderSub: { color: '#a0b4c8', fontSize: 8, marginTop: 2 },
+  docHeaderSub: { color: '#aaa', fontSize: 8, marginTop: 2 },
   docHeaderDireita: { alignItems: 'flex-end' },
-  docHeaderData: { color: '#a0b4c8', fontSize: 7.5 },
+  docHeaderData: { color: '#aaa', fontSize: 7.5 },
   docHeaderTotal: { color: '#fff', fontSize: 8, fontFamily: 'Helvetica-Bold', marginTop: 2 },
 
   // ---- Card de cliente ----
   card: {
     backgroundColor: '#fff',
     borderRadius: 4,
-    borderColor: CINZA_BORDA,
+    borderColor: CINZA,
     borderWidth: 1,
     marginBottom: 10,
     overflow: 'hidden',
   },
 
   cardHeader: {
-    backgroundColor: AZUL_HEADER_CARD,
-    borderBottomColor: CINZA_BORDA,
+    backgroundColor: CLARO,
+    borderBottomColor: CINZA,
     borderBottomWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -99,7 +96,7 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  cardNome: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: AZUL, flex: 1 },
+  cardNome: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: ESCURO, flex: 1 },
   cardId: { fontSize: 7.5, color: '#555', marginLeft: 6 },
 
   statusBadge: {
@@ -128,7 +125,7 @@ const s = StyleSheet.create({
 
   // ---- Campo label + valor ----
   campo: { marginRight: 16, marginBottom: 2 },
-  campoLabel: { fontSize: 6.5, color: CINZA_LABEL, marginBottom: 1 },
+  campoLabel: { fontSize: 6.5, color: MEDIO, marginBottom: 1 },
   campoValor: { fontSize: 8, color: '#222' },
   campoVazio: { fontSize: 8, color: '#bbb' },
 
@@ -136,7 +133,7 @@ const s = StyleSheet.create({
   secaoTitulo: {
     fontSize: 6.5,
     fontFamily: 'Helvetica-Bold',
-    color: AZUL_CLARO,
+    color: ESCURO,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
@@ -154,7 +151,7 @@ const s = StyleSheet.create({
     right: 24,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    borderTopColor: CINZA_BORDA,
+    borderTopColor: CINZA,
     borderTopWidth: 1,
     paddingTop: 4,
   },
@@ -199,11 +196,11 @@ function CardCliente({ cliente: c, index }: { cliente: ClienteCompleto; index: n
         </View>
         <View style={{ flexDirection: 'row' }}>
           {bloqueado && (
-            <View style={[s.statusBadge, { backgroundColor: '#faad14' }]}>
+            <View style={[s.statusBadge, { backgroundColor: ESCURO }]}>
               <Text style={s.statusText}>BLOQUEADO</Text>
             </View>
           )}
-          <View style={[s.statusBadge, { backgroundColor: ativo ? VERDE : VERMELHO }]}>
+          <View style={[s.statusBadge, { backgroundColor: ESCURO }]}>
             <Text style={s.statusText}>{ativo ? 'ATIVO' : 'INATIVO'}</Text>
           </View>
         </View>

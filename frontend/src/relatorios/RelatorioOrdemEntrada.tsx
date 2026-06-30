@@ -22,9 +22,8 @@ interface Props {
   empresa?: string;
 }
 
-const AZUL = '#001529';
-const AZUL_CLARO = '#1677ff';
-const CINZA = '#d9d9d9';
+const ESCURO = '#222';
+const CINZA  = '#bbb';
 
 const SEXO: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C: 'Castrado' };
 
@@ -40,7 +39,7 @@ const s = StyleSheet.create({
   },
 
   header: {
-    backgroundColor: AZUL,
+    backgroundColor: ESCURO,
     borderRadius: 4,
     padding: '8 14',
     marginBottom: 10,
@@ -50,14 +49,14 @@ const s = StyleSheet.create({
   },
   headerEsquerda: { flexDirection: 'column', justifyContent: 'center' },
   headerLogo: { width: 110, height: 34, objectFit: 'contain', marginBottom: 2 },
-  headerSub: { color: '#a0b4c8', fontSize: 8, marginTop: 2 },
+  headerSub: { color: '#aaa', fontSize: 8, marginTop: 2 },
   headerDireita: { alignItems: 'flex-end' },
-  headerData: { color: '#a0b4c8', fontSize: 7 },
+  headerData: { color: '#aaa', fontSize: 7 },
   headerTotal: { color: '#fff', fontSize: 8, fontFamily: 'Helvetica-Bold', marginTop: 2 },
 
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#f0f2f5',
+    backgroundColor: '#f0f0f0',
     paddingVertical: 5,
     paddingHorizontal: 6,
     borderBottomColor: CINZA,
@@ -85,7 +84,7 @@ const s = StyleSheet.create({
   cRaca:   { width: 100 },
   cSexo:   { width: 50 },
 
-  tdOrdem: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: AZUL_CLARO },
+  tdOrdem: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: ESCURO },
   tdNormal: { fontSize: 8 },
   tdRaca:  { fontSize: 7.5, color: '#555' },
   tdSexo:  { fontSize: 8, textAlign: 'center' as const },

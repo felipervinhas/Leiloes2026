@@ -20,9 +20,8 @@ interface DocProps {
   empresa?: string;
 }
 
-const AZUL  = '#001529';
-const VERDE = '#52c41a';
-const CINZA = '#f5f5f5';
+const ESCURO = '#222';
+const CINZA  = '#f0f0f0';
 
 const fmtR = (v?: number | null) =>
   v != null
@@ -41,7 +40,7 @@ const s = StyleSheet.create({
   },
 
   headerRow: {
-    backgroundColor: AZUL,
+    backgroundColor: ESCURO,
     borderRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 9,
@@ -54,26 +53,26 @@ const s = StyleSheet.create({
   headerLogo: { width: 108, height: 33, objectFit: 'contain', marginRight: 14 },
   headerTitleBox: { flexDirection: 'column' },
   headerTitle: { color: '#fff', fontSize: 11, fontFamily: 'Helvetica-Bold' },
-  headerSub:   { color: '#a0b4c8', fontSize: 7.5, marginTop: 2 },
+  headerSub:   { color: '#aaa', fontSize: 7.5, marginTop: 2 },
   headerRight: { alignItems: 'flex-end' },
-  headerDate:  { color: '#a0b4c8', fontSize: 7 },
+  headerDate:  { color: '#aaa', fontSize: 7 },
   headerCount: { color: '#fff', fontSize: 8.5, fontFamily: 'Helvetica-Bold', marginTop: 3 },
 
   loteHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1a3a5c',
+    backgroundColor: ESCURO,
     padding: '5pt 8pt',
     marginTop: 10,
     borderRadius: 2,
   },
   loteTitulo: { fontFamily: 'Helvetica-Bold', fontSize: 8.5, color: '#fff' },
-  loteQtd:   { fontSize: 7, color: '#8ab4d8' },
+  loteQtd:   { fontSize: 7, color: '#aaa' },
 
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#dde6f5',
+    backgroundColor: '#f0f0f0',
     borderBottom: '0.5pt solid #aac',
     padding: '3pt 6pt',
   },
@@ -95,7 +94,7 @@ const s = StyleSheet.create({
 
   headerCell: { fontFamily: 'Helvetica-Bold', fontSize: 6.5, color: '#445' },
   cell:       { fontSize: 7.5 },
-  valorCell:  { fontSize: 7.5, color: VERDE, fontFamily: 'Helvetica-Bold' },
+  valorCell:  { fontSize: 7.5, color: '#000', fontFamily: 'Helvetica-Bold' },
 
   footer: {
     position: 'absolute',

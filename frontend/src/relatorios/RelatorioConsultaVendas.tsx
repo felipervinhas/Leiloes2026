@@ -49,12 +49,9 @@ interface Props {
   filtrosDesc?: string;
 }
 
-const AZUL       = '#001529';
-const AZUL_CLARO = '#1677ff';
-const VERDE      = '#52c41a';
-const LARANJA    = '#fa8c16';
-const VERMELHO   = '#ff4d4f';
-const CINZA      = '#d9d9d9';
+const ESCURO = '#222';
+const CINZA  = '#bbb';
+const CLARO  = '#f0f0f0';
 
 const fmtR = (v?: number | null) =>
   v != null && v !== 0
@@ -79,7 +76,7 @@ const s = StyleSheet.create({
 
   // Cabeçalho
   header: {
-    backgroundColor: AZUL,
+    backgroundColor: ESCURO,
     borderRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 9,
@@ -92,18 +89,18 @@ const s = StyleSheet.create({
   headerLogo: { width: 108, height: 33, objectFit: 'contain', marginRight: 14 },
   headerTitleBox: { flexDirection: 'column', justifyContent: 'center' },
   headerTitle: { color: '#ffffff', fontSize: 11, fontFamily: 'Helvetica-Bold' },
-  headerSub: { color: '#a0b4c8', fontSize: 7.5, marginTop: 2 },
-  headerFiltro: { color: '#6894b4', fontSize: 7, marginTop: 2, fontStyle: 'italic' },
+  headerSub: { color: '#aaa', fontSize: 7.5, marginTop: 2 },
+  headerFiltro: { color: '#aaa', fontSize: 7, marginTop: 2, fontStyle: 'italic' },
   headerRight: { alignItems: 'flex-end' },
-  headerDate: { color: '#a0b4c8', fontSize: 7 },
+  headerDate: { color: '#aaa', fontSize: 7 },
   headerCount: { color: '#ffffff', fontSize: 8.5, fontFamily: 'Helvetica-Bold', marginTop: 3 },
 
   // Linha de resumo financeiro
   resumo: {
     flexDirection: 'row',
-    backgroundColor: '#f0f6ff',
+    backgroundColor: CLARO,
     borderRadius: 4,
-    borderColor: '#c8deff',
+    borderColor: CINZA,
     borderWidth: 1,
     marginBottom: 7,
     paddingVertical: 7,
@@ -111,18 +108,18 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
   },
   resumoItem: { flexDirection: 'column', alignItems: 'center', flex: 1 },
-  resumoSep: { width: 1, backgroundColor: '#d0e0ff', marginVertical: 2 },
+  resumoSep: { width: 1, backgroundColor: CINZA, marginVertical: 2 },
   resumoLabel: { fontSize: 6, color: '#888', marginBottom: 2, textAlign: 'center' as const },
   resumoValor: { fontSize: 9, fontFamily: 'Helvetica-Bold', textAlign: 'center' as const },
   mediasBox: {
-    borderColor: '#e8f0fe',
+    borderColor: CINZA,
     borderWidth: 1,
     borderRadius: 4,
     marginBottom: 7,
   },
   mediasTitle: {
-    backgroundColor: '#f5f8ff',
-    color: AZUL,
+    backgroundColor: CLARO,
+    color: ESCURO,
     fontSize: 7,
     fontFamily: 'Helvetica-Bold',
     paddingHorizontal: 8,
@@ -132,18 +129,18 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderTopColor: '#e8f0fe',
+    borderTopColor: CINZA,
     borderTopWidth: 0.5,
   },
   mediaCat: { flex: 1, fontSize: 6.5 },
   mediaQtd: { width: 45, fontSize: 6.5, textAlign: 'right' as const },
   mediaValor: { width: 70, fontSize: 6.5, textAlign: 'right' as const },
-  mediaMedia: { width: 70, fontSize: 6.5, textAlign: 'right' as const, fontFamily: 'Helvetica-Bold', color: '#722ed1' },
+  mediaMedia: { width: 70, fontSize: 6.5, textAlign: 'right' as const, fontFamily: 'Helvetica-Bold', color: ESCURO },
 
   // Cabeçalho da tabela
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: AZUL,
+    backgroundColor: ESCURO,
     paddingVertical: 4,
     paddingHorizontal: 4,
     borderTopLeftRadius: 3,
@@ -159,10 +156,10 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: 4,
     paddingHorizontal: 4,
-    borderBottomColor: '#e8f0fe',
+    borderBottomColor: CINZA,
     borderBottomWidth: 0.5,
   },
-  rowAlt: { backgroundColor: '#f5f8ff' },
+  rowAlt: { backgroundColor: CLARO },
 
   // Colunas
   cLote:     { width: 42 },
@@ -185,7 +182,7 @@ const s = StyleSheet.create({
   // Linha de totais
   totaisRow: {
     flexDirection: 'row',
-    backgroundColor: AZUL,
+    backgroundColor: ESCURO,
     paddingVertical: 5,
     paddingHorizontal: 4,
     borderBottomLeftRadius: 3,
@@ -194,8 +191,8 @@ const s = StyleSheet.create({
   },
   tdTotLabel:  { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#fff' },
   tdTotVal:    { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#fff', textAlign: 'right' as const },
-  tdTotGreen:  { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#95de64', textAlign: 'right' as const },
-  tdTotOrange: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#ffd591', textAlign: 'right' as const },
+  tdTotGreen:  { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#fff', textAlign: 'right' as const },
+  tdTotOrange: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#ddd', textAlign: 'right' as const },
 
   // Rodapé
   footer: {
@@ -248,49 +245,49 @@ function ConsultaVendasPDF({
         <View style={s.resumo} fixed>
           <View style={s.resumoItem}>
             <Text style={s.resumoLabel}>Total Lotes</Text>
-            <Text style={[s.resumoValor, { color: AZUL_CLARO }]}>
+            <Text style={[s.resumoValor, { color: ESCURO }]}>
               {totais.totalLotes.toLocaleString('pt-BR')}
             </Text>
           </View>
           <View style={s.resumoSep} />
           <View style={s.resumoItem}>
             <Text style={s.resumoLabel}>Qtd. Total</Text>
-            <Text style={[s.resumoValor, { color: AZUL_CLARO }]}>
+            <Text style={[s.resumoValor, { color: ESCURO }]}>
               {fmtN(totais.totalQtd)}
             </Text>
           </View>
           <View style={s.resumoSep} />
           <View style={s.resumoItem}>
             <Text style={s.resumoLabel}>Valor Total</Text>
-            <Text style={[s.resumoValor, { color: AZUL_CLARO }]}>
+            <Text style={[s.resumoValor, { color: ESCURO }]}>
               {fmtR(totais.totalValor)}
             </Text>
           </View>
           <View style={s.resumoSep} />
           <View style={s.resumoItem}>
             <Text style={s.resumoLabel}>Comissão</Text>
-            <Text style={[s.resumoValor, { color: LARANJA }]}>
+            <Text style={[s.resumoValor, { color: ESCURO }]}>
               {fmtR(totais.totalComissao)}
             </Text>
           </View>
           <View style={s.resumoSep} />
           <View style={s.resumoItem}>
             <Text style={s.resumoLabel}>Descontos</Text>
-            <Text style={[s.resumoValor, { color: VERMELHO }]}>
+            <Text style={[s.resumoValor, { color: ESCURO }]}>
               {fmtR(totais.totalDesconto)}
             </Text>
           </View>
           <View style={s.resumoSep} />
           <View style={s.resumoItem}>
             <Text style={s.resumoLabel}>Valor Líquido</Text>
-            <Text style={[s.resumoValor, { color: VERDE }]}>
+            <Text style={[s.resumoValor, { color: '#000' }]}>
               {fmtR(totais.totalLiquido)}
             </Text>
           </View>
           <View style={s.resumoSep} />
           <View style={s.resumoItem}>
             <Text style={s.resumoLabel}>Média/Cabeça</Text>
-            <Text style={[s.resumoValor, { color: '#722ed1' }]}>
+            <Text style={[s.resumoValor, { color: ESCURO }]}>
               {fmtR(totais.mediaGeral)}
             </Text>
           </View>
@@ -300,7 +297,7 @@ function ConsultaVendasPDF({
         {totais.mediasCategoria?.length ? (
           <View style={s.mediasBox}>
             <Text style={s.mediasTitle}>Médias por Categoria</Text>
-            <View style={[s.mediasRow, { backgroundColor: '#fbfdff' }]}>
+            <View style={[s.mediasRow, { backgroundColor: CLARO }]}>
               <Text style={[s.mediaCat, { fontFamily: 'Helvetica-Bold' }]}>Categoria</Text>
               <Text style={[s.mediaQtd, { fontFamily: 'Helvetica-Bold' }]}>Qtd.</Text>
               <Text style={[s.mediaValor, { fontFamily: 'Helvetica-Bold' }]}>Total</Text>
@@ -333,7 +330,7 @@ function ConsultaVendasPDF({
         {vendas.map((v, i) => (
           <View key={v.id} style={[s.row, i % 2 === 1 ? s.rowAlt : {}]} wrap={false}>
             <View style={s.cLote}>
-              <Text style={[s.tdBold, { color: AZUL_CLARO }]}>{v.lotexx || '—'}</Text>
+              <Text style={[s.tdBold, { color: ESCURO }]}>{v.lotexx || '—'}</Text>
             </View>
             <View style={s.cDes}>
               <Text style={s.tdNormal}>{v.deslot || '—'}</Text>
@@ -356,10 +353,10 @@ function ConsultaVendasPDF({
               <Text style={s.tdBoldRight}>{fmtR(v.valorPagar)}</Text>
             </View>
             <View style={s.cComissao}>
-              <Text style={[s.tdNormalRight, { color: LARANJA }]}>{fmtR(v.valorComissao)}</Text>
+              <Text style={[s.tdNormalRight, { color: ESCURO }]}>{fmtR(v.valorComissao)}</Text>
             </View>
             <View style={s.cLiquido}>
-              <Text style={[s.tdBoldRight, { color: VERDE }]}>{fmtR(v.valorLiquido)}</Text>
+              <Text style={[s.tdBoldRight, { color: '#000' }]}>{fmtR(v.valorLiquido)}</Text>
             </View>
           </View>
         ))}
