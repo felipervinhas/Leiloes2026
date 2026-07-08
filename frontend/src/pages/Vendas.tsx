@@ -624,18 +624,16 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
                 filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
             </Col>
           )}
-          <Col xs={12} sm="auto">
-            <Button icon={<SearchOutlined />} onClick={carregar} loading={loading} block={isMobile}>Buscar</Button>
-          </Col>
-          <Col xs={12} sm="auto">
-            <Button icon={<ReloadOutlined />} block={isMobile} onClick={() => {
-              setTipoBusca('todos'); setBusca(''); setIdLeilao(undefined);
-              setTimeout(carregar, 0);
-            }}>Limpar</Button>
-          </Col>
-          <Col xs={12} sm="auto">
-            <Button icon={<FileExcelOutlined />} block={isMobile}
-              onClick={() => exportarVendasExcel(dados)}>Excel</Button>
+          <Col xs={24} sm="auto" style={{ marginLeft: isMobile ? 0 : 'auto' }}>
+            <Space wrap>
+              <Button icon={<SearchOutlined />} onClick={carregar} loading={loading} block={isMobile}>Buscar</Button>
+              <Button icon={<ReloadOutlined />} block={isMobile} onClick={() => {
+                setTipoBusca('todos'); setBusca(''); setIdLeilao(undefined);
+                setTimeout(carregar, 0);
+              }}>Limpar</Button>
+              <Button icon={<FileExcelOutlined />} block={isMobile}
+                onClick={() => exportarVendasExcel(dados)}>Excel</Button>
+            </Space>
           </Col>
         </Row>
       </Card>
@@ -1352,7 +1350,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
               </Col>
 
               <Col xs={24} sm={12} md={4}>
-                <Form.Item name="qtdparOverride" label="Qtd. Parcelas (override)"
+                <Form.Item name="qtdparOverride" label="Qtd. Parcelas"
                   tooltip="Sobrepõe a qtd. de parcelas padrão do leilão para este lote/venda">
                   <InputNumber min={1} style={{ width: '100%' }} placeholder={String(leilaoInfo?.qtdpar ?? 1)} />
                 </Form.Item>
