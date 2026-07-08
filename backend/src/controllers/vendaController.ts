@@ -11,16 +11,16 @@ export const listar = async (req: Request, res: Response) => {
 };
 
 export const criar = async (req: Request, res: Response) => {
-  const { idLeilao, codnot } = req.body;
+  const { idLeilao, codnot, defesa } = req.body;
   if (!idLeilao) return res.status(400).json({ error: 'idLeilao obrigatório' });
-  const id = await svc.criarMovimento({ idLeilao: Number(idLeilao), codnot: codnot || '' });
+  const id = await svc.criarMovimento({ idLeilao: Number(idLeilao), codnot: codnot || '', defesa });
   res.status(201).json({ id });
 };
 
 export const atualizar = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  const { idLeilao, codnot } = req.body;
-  await svc.atualizarMovimento(id, { idLeilao: Number(idLeilao), codnot });
+  const { idLeilao, codnot, defesa } = req.body;
+  await svc.atualizarMovimento(id, { idLeilao: Number(idLeilao), codnot, defesa });
   res.json({ ok: true });
 };
 
@@ -106,6 +106,35 @@ export const excluirComprador = async (req: Request, res: Response) => {
   res.json({ ok: true });
 };
 
+export const atualizarComprador = async (req: Request, res: Response) => {
+  const idMov  = Number(req.params.id);
+  const idComp = Number(req.params.idComp);
+  const { idCondPagto, percen, formaPagamento, idPropriedade, idPisteiro } = req.body;
+  if (!idCondPagto) return res.status(400).json({ error: 'idCondPagto é obrigatório' });
+
+  const lote = await svc.buscarLoteMovimento(idMov);
+  if (!lote) return res.status(404).json({ error: 'Lote não encontrado' });
+
+  await svc.atualizarComprador(idMov, idComp, {
+    vlrtot: lote.vlrtot, vlrdes: lote.vlrdes ?? 0,
+    comiss: lote.comiss ?? 0, comissVendedor: lote.comissVendedor ?? 0,
+    lotexx: lote.lotexx, datlan: String(lote.datlan ?? ''), qtdxxx: lote.qtdxxx,
+  }, {
+    idCli: Number(req.body.idCli), idCondPagto: Number(idCondPagto),
+    percen: Number(percen) || 100, formaPagamento: formaPagamento || 'PROMISSORIA',
+    idPropriedade: idPropriedade ? Number(idPropriedade) : null,
+    idPisteiro: idPisteiro ? Number(idPisteiro) : null,
+  });
+  res.json({ ok: true });
+};
+
+export const atualizarComissaoComprador = async (req: Request, res: Response) => {
+  const idComp = Number(req.params.idComp);
+  const { valorComissao, valorComissaoVendedor } = req.body;
+  await svc.atualizarComissaoManual(idComp, Number(valorComissao) || 0, Number(valorComissaoVendedor) || 0);
+  res.json({ ok: true });
+};
+
 // ─── parcelas ────────────────────────────────────────────────────────────────
 
 export const listarParcelas = async (req: Request, res: Response) => {
@@ -182,5 +211,34 @@ export const salvarPropriedade = async (req: Request, res: Response) => {
   const idComp = Number(req.params.idComp);
   const { idCli, idPropriedade } = req.body;
   await svc.salvarPropriedadeComprador(idMov, Number(idCli), Number(idPropriedade));
+  res.json({ ok: true });
+};
+
+// ─── encaminhamento ──────────────────────────────────────────────────────────
+
+const CAMPOS_STATUS = ['ST_COMISSAO', 'ST_PARCELA', 'ST_CONTRATO', 'ST_EMBARQUE'] as const;
+
+export const atualizarEncaminhamento = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const { campo, valor } = req.body;
+  if (!CAMPOS_STATUS.includes(campo)) {
+    return res.status(400).json({ error: 'Campo inválido' });
+  }
+  await svc.atualizarStatus(id, campo, String(valor));
+  res.json({ ok: true });
+};
+
+export const atualizarFormaPagamento = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const { forma } = req.body;
+  await svc.atualizarFormaPagamentoMovimento(id, String(forma));
+  res.json({ ok: true });
+};
+
+// ─── atualizar informações ───────────────────────────────────────────────────
+
+export const atualizarInfo = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  await svc.atualizarInfoLote(id);
   res.json({ ok: true });
 };

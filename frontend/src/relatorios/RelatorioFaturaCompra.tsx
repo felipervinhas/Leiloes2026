@@ -21,6 +21,10 @@ export interface FaturaData {
     vlrtot?: number;
     vlrdes?: number;
     comiss?: number;
+    comissVendedor?: number;
+    datnas?: string;
+    obslot?: string;
+    pelagem?: string;
     nomeVendedor?: string;
     cpfVendedor?: string;
     endereVendedor?: string;
@@ -49,6 +53,8 @@ export interface FaturaData {
     valorDesconto?: number;
     valorComissao?: number;
     comissao?: number;
+    valorComissaoVendedor?: number;
+    comissaoVendedor?: number;
     formaPagamento?: string;
     desfin?: string;
     qtdparCond?: number | null;
@@ -64,9 +70,18 @@ export interface FaturaData {
   }>;
 }
 
+export type VarianteFatura = 'comprador' | 'sindicato' | 'vendedor';
+
+const TITULO_VARIANTE: Record<VarianteFatura, string> = {
+  comprador: 'FATURA DE COMPRA',
+  sindicato: 'FATURA',
+  vendedor:  'FATURA DE VENDA',
+};
+
 interface Props {
   dados: FaturaData;
   empresa?: string;
+  variante?: VarianteFatura;
 }
 
 const PRETO  = '#000';
@@ -329,7 +344,7 @@ function SecaoLote({ lote }: { lote: NonNullable<FaturaData['lote']> }) {
   );
 }
 
-function SecaoComprador({ comp, index }: { comp: FaturaData['compradores'][0]; index: number }) {
+function SecaoComprador({ comp, index, variante }: { comp: FaturaData['compradores'][0]; index: number; variante: VarianteFatura }) {
   // sem wrap={false} para que seções longas (muitas parcelas) quebrem normalmente entre páginas
   const ende = [comp.endere, comp.bairro].filter(Boolean).join(', ');
   const cid  = [comp.nomeCidade, comp.nomeEstado].filter(Boolean).join(' — ');
@@ -380,8 +395,17 @@ function SecaoComprador({ comp, index }: { comp: FaturaData['compradores'][0]; i
         <View style={s.acertoGrid}>
           <InfoItem label="Cond. Pagamento" value={comp.desfin} />
           <InfoItem label="Valor Total" value={fmtR(comp.valorOriginal)} style={s.acertoValorBlue} />
-          <InfoItem label="Comissão" value={comp.comissao != null ? `${comp.comissao}%` : '—'} style={s.acertoValorOrange} />
-          <InfoItem label="Vlr. Comissão" value={fmtR(comp.valorComissao)} style={s.acertoValorOrange} />
+          {variante === 'vendedor' ? (
+            <>
+              <InfoItem label="Comissão Vendedor" value={comp.comissaoVendedor != null ? `${comp.comissaoVendedor}%` : '—'} style={s.acertoValorOrange} />
+              <InfoItem label="Vlr. Comissão Vendedor" value={fmtR(comp.valorComissaoVendedor)} style={s.acertoValorOrange} />
+            </>
+          ) : (
+            <>
+              <InfoItem label="Comissão" value={comp.comissao != null ? `${comp.comissao}%` : '—'} style={s.acertoValorOrange} />
+              <InfoItem label="Vlr. Comissão" value={fmtR(comp.valorComissao)} style={s.acertoValorOrange} />
+            </>
+          )}
           <InfoItem label="Desconto" value={fmtR(comp.valorDesconto)} style={s.acertoValorRed} />
           <InfoItem label="Valor Líquido" value={fmtR(comp.valorPagar)} style={s.acertoValorGreen} />
         </View>
@@ -449,13 +473,13 @@ function SecaoComprador({ comp, index }: { comp: FaturaData['compradores'][0]; i
   );
 }
 
-function FaturaCompraPDF({ dados, empresa }: Props) {
+function FaturaCompraPDF({ dados, empresa, variante = 'comprador' }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
   return (
     <Document
-      title={`Fatura de Compras #${dados.id}${dados.codnot ? ` — ${dados.codnot}` : ''}`}
+      title={`${TITULO_VARIANTE[variante]} #${dados.id}${dados.codnot ? ` — ${dados.codnot}` : ''}`}
       author={nomeEmpresa}
     >
       <Page size="A4" style={s.page}>
@@ -467,7 +491,7 @@ function FaturaCompraPDF({ dados, empresa }: Props) {
             <Text style={s.docEmpresa}>{nomeEmpresa}</Text>
           </View>
           <View style={s.docHeaderRight}>
-            <Text style={s.docTitulo}>FATURA DE COMPRAS</Text>
+            <Text style={s.docTitulo}>{TITULO_VARIANTE[variante]}</Text>
             {dados.codnot ? <Text style={s.docNumero}>Boleto Nº {dados.codnot}</Text> : null}
             <Text style={s.docData}>
               Código #{dados.id}   ·   Emissão: {agora}
@@ -497,7 +521,7 @@ function FaturaCompraPDF({ dados, empresa }: Props) {
 
         {/* Compradores */}
         {dados.compradores.map((comp, i) => (
-          <SecaoComprador key={comp.id} comp={comp} index={i} />
+          <SecaoComprador key={comp.id} comp={comp} index={i} variante={variante} />
         ))}
 
         {/* Assinaturas */}

@@ -425,7 +425,7 @@ export default function MainLayout() {
           gap: 12,
           position: 'sticky',
           top: 0,
-          zIndex: 1,
+          zIndex: 100,
         }}>
           {/* Botão hambúrguer no mobile */}
           {isMobile && (

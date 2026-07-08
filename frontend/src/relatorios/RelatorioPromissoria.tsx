@@ -44,7 +44,7 @@ function extensoInteiro(n: number): string {
   return p.join(' e ');
 }
 
-function valorExtenso(valor: number): string {
+export function valorExtenso(valor: number): string {
   if (!valor || valor <= 0) return 'zero reais';
   const reais    = Math.floor(valor);
   const centavos = Math.round((valor - reais) * 100);

@@ -42,7 +42,18 @@ function UrlInvalida() {
 function ThemedOutlet() {
   const config = useConfig();
   return (
-    <AntConfigProvider locale={ptBR} theme={{ token: { colorPrimary: config.corMenuTop } }}>
+    <AntConfigProvider
+      locale={ptBR}
+      theme={{
+        token: { colorPrimary: config.corMenuTop },
+        components: {
+          Form: {
+            labelColor: 'rgba(0, 0, 0, 0.85)',
+            labelFontSize: 14,
+          },
+        },
+      }}
+    >
       <Outlet />
     </AntConfigProvider>
   );

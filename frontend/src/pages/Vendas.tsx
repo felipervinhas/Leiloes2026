@@ -4,19 +4,22 @@ import { useBanco } from '../context/BancoContext';
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import {
-  Alert, Badge, Button, Card, Col, DatePicker, Divider, Form, Grid, Input,
-  InputNumber, message, Modal, Popconfirm, Row, Select, Space, Spin,
+  Alert, Badge, Button, Card, Checkbox, Col, DatePicker, Divider, Dropdown, Form, Grid, Input,
+  InputNumber, message, Modal, Popconfirm, Radio, Row, Select, Space, Spin,
   Steps, Table, Tag, Tooltip, Typography,
 } from 'antd';
 import {
   ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined,
   DeleteOutlined, DollarOutlined, EditOutlined, FileSearchOutlined,
   FileDoneOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UserOutlined,
-  FileTextOutlined, AuditOutlined, EyeOutlined,
+  FileTextOutlined, AuditOutlined, EyeOutlined, FileExcelOutlined, FlagOutlined,
+  PercentageOutlined, PlusCircleOutlined, SyncOutlined, MoreOutlined,
 } from '@ant-design/icons';
 import { BlobProvider } from '@react-pdf/renderer';
-import FaturaCompraPDF, { FaturaData } from '../relatorios/RelatorioFaturaCompra';
+import FaturaCompraPDF, { FaturaData, VarianteFatura } from '../relatorios/RelatorioFaturaCompra';
 import PromissoriaPDF from '../relatorios/RelatorioPromissoria';
+import NotaVendaPDF from '../relatorios/RelatorioNotaVenda';
+import { exportarVendasExcel } from '../relatorios/exportarExcel';
 import { useConfig } from '../context/ConfigContext';
 import ContratoEditor from '../components/ContratoEditor';
 import api from '../services/api';
@@ -44,7 +47,7 @@ const TIPO_BUSCA = [
   { value: 'vendedor',  label: 'Vendedor' },
 ];
 
-function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: number) => void }) {
+function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEditar: (id: number) => void; reloadSignal?: number }) {
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false;
 
@@ -70,11 +73,17 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
   const [contratoStep, setContratoStep]             = useState<'select' | 'edit'>('select');
   const [contratoLoading, setContratoLoading]       = useState(false);
 
-  const abrirFatura = async (id: number) => {
+  const [faturaVariante, setFaturaVariante] = useState<VarianteFatura>('comprador');
+  const [notaVendaModal, setNotaVendaModal] = useState(false);
+  const [notaVendaData, setNotaVendaData]   = useState<FaturaData | null>(null);
+  const [notaVendaLoading, setNotaVendaLoading] = useState<number | null>(null);
+
+  const abrirFatura = async (id: number, variante: VarianteFatura = 'comprador') => {
     setFaturaLoading(id);
     try {
       const r = await api.get(`/vendas/${id}/fatura`);
       setFaturaData(r.data);
+      setFaturaVariante(variante);
       setFaturaModal(true);
     } catch { message.error('Erro ao carregar fatura'); }
     finally { setFaturaLoading(null); }
@@ -88,6 +97,16 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
       setPromissoriaModal(true);
     } catch { message.error('Erro ao carregar promissórias'); }
     finally { setPromissoriaLoading(null); }
+  };
+
+  const abrirNotaVenda = async (id: number) => {
+    setNotaVendaLoading(id);
+    try {
+      const r = await api.get(`/vendas/${id}/fatura`);
+      setNotaVendaData(r.data);
+      setNotaVendaModal(true);
+    } catch { message.error('Erro ao carregar nota de venda'); }
+    finally { setNotaVendaLoading(null); }
   };
 
   const abrirContrato = async (row: any) => {
@@ -127,6 +146,15 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
     carregar();
   }, []);
 
+  // Recarrega ao voltar do wizard (após salvar/cancelar) mantendo o filtro aplicado —
+  // não usar isso como "key" do componente, senão o filtro é perdido no remount.
+  const primeiraVez = useRef(true);
+  useEffect(() => {
+    if (primeiraVez.current) { primeiraVez.current = false; return; }
+    carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadSignal]);
+
   const carregar = async () => {
     setLoading(true);
     try {
@@ -144,9 +172,49 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
     carregar();
   };
 
+  // ── Encaminhamento (status comissão/parcela/contrato/embarque + forma pagto) ──
+  const [encModal, setEncModal] = useState(false);
+  const [encRow, setEncRow]     = useState<any | null>(null);
+
+  const abrirEncaminhamento = (row: any) => { setEncRow(row); setEncModal(true); };
+
+  const atualizarCampoStatus = async (
+    campo: 'stComissao' | 'stParcela' | 'stContrato' | 'stEmbarque',
+    campoApi: 'ST_COMISSAO' | 'ST_PARCELA' | 'ST_CONTRATO' | 'ST_EMBARQUE',
+    valor: string,
+  ) => {
+    if (!encRow) return;
+    await api.put(`/vendas/${encRow.id}/encaminhamento`, { campo: campoApi, valor });
+    setEncRow((r: any) => ({ ...r, [campo]: valor }));
+    setDados(ds => ds.map(d => d.id === encRow.id ? { ...d, [campo]: valor } : d));
+    message.success('Encaminhamento atualizado');
+  };
+
+  const atualizarFormaPagtoVenda = async (forma: string) => {
+    if (!encRow) return;
+    await api.put(`/vendas/${encRow.id}/forma-pagamento`, { forma });
+    setEncRow((r: any) => ({ ...r, formaPagamento: forma }));
+    message.success('Forma de pagamento atualizada');
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const alvo = e.target as HTMLElement;
+      const emCampo = ['INPUT', 'TEXTAREA'].includes(alvo?.tagName) || alvo?.isContentEditable;
+      if (e.key === 'Insert' && !emCampo && !encModal && !faturaModal && !promissoriaModal && !contratoModal && !notaVendaModal) {
+        e.preventDefault();
+        onNova();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [encModal, faturaModal, promissoriaModal, contratoModal, notaVendaModal]);
+
   const colunas: any[] = [
     {
       title: 'Cód', dataIndex: 'id', ...rzV('id'), fixed: 'left' as const,
+      sorter: (a: any, b: any) => a.id - b.id,
       render: (v: number) => <Text strong>#{v}</Text>,
     },
     {
@@ -155,25 +223,38 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
         ? <Tag color="green">Vendido</Tag>
         : <Tag color="orange">Pendente</Tag>,
     },
-    { title: 'Boleto', dataIndex: 'codnot', ...rzV('codnot') },
-    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, ...rzV('leilao') },
+    { title: 'Boleto', dataIndex: 'codnot', ...rzV('codnot'), sorter: (a: any, b: any) => String(a.codnot).localeCompare(String(b.codnot)) },
+    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, ...rzV('leilao'), sorter: (a: any, b: any) => String(a.leilao).localeCompare(String(b.leilao)) },
     {
       title: 'Data', dataIndex: 'datlan', ...rzV('datlan'),
+      sorter: (a: any, b: any) => new Date(a.datlan).getTime() - new Date(b.datlan).getTime(),
       render: fmtData,
     },
-    { title: 'Lote', dataIndex: 'lotexx', ...rzV('lotexx') },
+    { title: 'Lote', dataIndex: 'lotexx', ...rzV('lotexx'), sorter: (a: any, b: any) => String(a.lotexx).localeCompare(String(b.lotexx)) },
     { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzV('deslot') },
-    { title: 'Comprador', dataIndex: 'nomexx', ellipsis: true, ...rzV('nomexx') },
+    {
+      title: 'Comprador', dataIndex: 'nomexx', ellipsis: true, ...rzV('nomexx'),
+      sorter: (a: any, b: any) => String(a.nomexx).localeCompare(String(b.nomexx)),
+      render: (v: string, row: any) => (
+        // Cliente fictício "DEFESA" (placeholder legado para lotes retirados/não vendidos)
+        v === 'DEFESA' && !row.vlrtot
+          ? <Text type="secondary" italic>Lote não vendido</Text>
+          : (v || '—')
+      ),
+    },
     {
       title: 'Qtd', dataIndex: 'qtdxxx', ...rzV('qtdxxx'), align: 'right' as const,
+      sorter: (a: any, b: any) => (a.qtdxxx ?? 0) - (b.qtdxxx ?? 0),
       render: (v: number) => v ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '—',
     },
     {
       title: 'Vlr. Parcela', dataIndex: 'vlrpar', ...rzV('vlrpar'), align: 'right' as const,
+      sorter: (a: any, b: any) => (a.vlrpar ?? 0) - (b.vlrpar ?? 0),
       render: fmt,
     },
     {
       title: 'Vlr. Total', dataIndex: 'vlrtot', ...rzV('vlrtot'), align: 'right' as const,
+      sorter: (a: any, b: any) => (a.vlrtot ?? 0) - (b.vlrtot ?? 0),
       render: (v: number) => <Text strong>{fmt(v)}</Text>,
     },
     {
@@ -188,45 +269,45 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
       ),
     },
     {
-      title: '', width: 180, fixed: 'right' as const,
+      title: '', width: 90, fixed: 'right' as const,
       render: (_: any, row: any) => (
-        <Space>
-          <Tooltip title="Fatura de Compras">
-            <Button
-              size="small"
-              icon={<FileDoneOutlined />}
-              loading={faturaLoading === row.id}
-              onClick={() => abrirFatura(row.id)}
-            />
-          </Tooltip>
-          <Tooltip title="Promissórias">
-            <Button
-              size="small"
-              icon={<AuditOutlined />}
-              loading={promissoriaLoading === row.id}
-              onClick={() => abrirPromissoria(row.id)}
-            />
-          </Tooltip>
-          <Tooltip title="Contrato">
-            <Button
-              size="small"
-              icon={<FileTextOutlined />}
-              onClick={() => abrirContrato(row)}
-            />
-          </Tooltip>
+        <Space size={4}>
           <Tooltip title="Editar">
             <Button size="small" icon={<EditOutlined />} onClick={() => onEditar(row.id)} />
           </Tooltip>
-          <Popconfirm
-            title="Excluir esta venda?"
-            description="Parcelas e compradores também serão excluídos."
-            onConfirm={() => excluir(row.id)}
-            okText="Excluir" cancelText="Cancelar" okButtonProps={{ danger: true }}
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  key: 'documentos', label: 'Documentos', icon: <FileTextOutlined />,
+                  children: [
+                    { key: 'fatura',          label: 'Fatura de Compras',  icon: <FileDoneOutlined />, onClick: () => abrirFatura(row.id) },
+                    { key: 'promissoria',     label: 'Promissórias',       icon: <AuditOutlined />,    onClick: () => abrirPromissoria(row.id) },
+                    { key: 'notaVenda',       label: 'Nota de Venda',      onClick: () => abrirNotaVenda(row.id) },
+                    { key: 'faturaSindicato', label: 'Fatura Sindicatos',  onClick: () => abrirFatura(row.id, 'sindicato') },
+                    { key: 'faturaVendedor',  label: 'Fatura de Vendedor', onClick: () => abrirFatura(row.id, 'vendedor') },
+                    { key: 'contrato',        label: 'Contrato',           onClick: () => abrirContrato(row) },
+                  ],
+                },
+                { key: 'encaminhamento', label: 'Encaminhamento', icon: <FlagOutlined />, onClick: () => abrirEncaminhamento(row) },
+                { type: 'divider' },
+                {
+                  key: 'excluir', label: 'Excluir', icon: <DeleteOutlined />, danger: true,
+                  onClick: () => Modal.confirm({
+                    title: 'Excluir esta venda?',
+                    content: 'Parcelas e compradores também serão excluídos.',
+                    okText: 'Excluir', okButtonProps: { danger: true }, cancelText: 'Cancelar',
+                    onOk: () => excluir(row.id),
+                  }),
+                },
+              ],
+            }}
           >
-            <Tooltip title="Excluir">
-              <Button size="small" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
+            <Button
+              size="small" icon={<MoreOutlined />}
+              loading={faturaLoading === row.id || promissoriaLoading === row.id || notaVendaLoading === row.id}
+            />
+          </Dropdown>
         </Space>
       ),
     },
@@ -256,7 +337,7 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
               <div><strong>Vendedor:</strong> {faturaData.lote?.nomeVendedor || '—'}</div>
               <div><strong>Parcelas:</strong> {faturaData.compradores.reduce((t, c) => t + c.parcelas.length, 0)}</div>
             </div>
-            <BlobProvider document={<FaturaCompraPDF dados={faturaData} empresa={config.empresa} />}>
+            <BlobProvider document={<FaturaCompraPDF dados={faturaData} empresa={config.empresa} variante={faturaVariante} />}>
               {({ url, loading }) => (
                 <Button
                   type="primary"
@@ -315,6 +396,49 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
                   style={{ width: '100%' }}
                 >
                   {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Promissória'}
+                </Button>
+              )}
+            </BlobProvider>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal Nota de Venda */}
+      <Modal
+        open={notaVendaModal}
+        onCancel={() => { setNotaVendaModal(false); setNotaVendaData(null); }}
+        footer={null}
+        title={
+          <Space>
+            <FileTextOutlined />
+            <span>Nota de Venda {notaVendaData ? `— Boleto ${notaVendaData.codnot || notaVendaData.id}` : ''}</span>
+          </Space>
+        }
+        width={480}
+      >
+        {notaVendaData && (
+          <div style={{ padding: '16px 0', textAlign: 'center' }}>
+            <div style={{ marginBottom: 16, textAlign: 'left', lineHeight: 1.8 }}>
+              <div><strong>Leilão:</strong> {notaVendaData.leilao || '—'}</div>
+              <div><strong>Lote:</strong> {notaVendaData.lote?.lotexx} — {notaVendaData.lote?.deslot}</div>
+              <div><strong>Vendedor:</strong> {notaVendaData.lote?.nomeVendedor || '—'}</div>
+              <div>
+                <strong>Compradores:</strong>{' '}
+                {notaVendaData.compradores.map(c => c.nomexx).filter(Boolean).join(', ')}
+              </div>
+            </div>
+            <BlobProvider document={<NotaVendaPDF dados={notaVendaData} empresa={config.empresa} />}>
+              {({ url, loading }) => (
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<EyeOutlined />}
+                  loading={loading}
+                  disabled={!url}
+                  onClick={() => url && window.open(url, '_blank')}
+                  style={{ width: '100%' }}
+                >
+                  {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Nota de Venda'}
                 </Button>
               )}
             </BlobProvider>
@@ -401,6 +525,71 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
         )}
       </Modal>
 
+      {/* Modal Encaminhamento */}
+      <Modal
+        open={encModal}
+        onCancel={() => { setEncModal(false); setEncRow(null); }}
+        footer={null}
+        title={
+          <Space>
+            <FlagOutlined />
+            <span>Encaminhamento {encRow ? `— Venda #${encRow.id}` : ''}</span>
+          </Space>
+        }
+        width={420}
+      >
+        {encRow && (
+          <div style={{ padding: '8px 0' }}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 4 }}><Text strong>Pagamento Comissão</Text></div>
+              <Radio.Group
+                value={encRow.stComissao === 'C' ? 'C' : 'A'}
+                onChange={e => atualizarCampoStatus('stComissao', 'ST_COMISSAO', e.target.value)}
+              >
+                <Radio value="A">Em andamento</Radio>
+                <Radio value="C">Concluído</Radio>
+              </Radio.Group>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 4 }}><Text strong>Pagamento Parcelas</Text></div>
+              <Radio.Group
+                value={encRow.stParcela === 'C' ? 'C' : 'A'}
+                onChange={e => atualizarCampoStatus('stParcela', 'ST_PARCELA', e.target.value)}
+              >
+                <Radio value="A">Em andamento</Radio>
+                <Radio value="C">Concluído</Radio>
+              </Radio.Group>
+              {encRow.stParcela === 'C' && (
+                <Select
+                  style={{ width: '100%', marginTop: 8 }}
+                  placeholder="Forma de pagamento"
+                  value={encRow.formaPagamento}
+                  onChange={atualizarFormaPagtoVenda}
+                  options={FORMA_PAGAMENTO_OPTS}
+                />
+              )}
+            </div>
+
+            <Divider style={{ margin: '12px 0' }} />
+
+            <Checkbox
+              checked={encRow.stContrato === 'C'}
+              onChange={e => atualizarCampoStatus('stContrato', 'ST_CONTRATO', e.target.checked ? 'C' : 'A')}
+              style={{ display: 'block', marginBottom: 8 }}
+            >
+              Contrato Concluído
+            </Checkbox>
+            <Checkbox
+              checked={encRow.stEmbarque === 'C'}
+              onChange={e => atualizarCampoStatus('stEmbarque', 'ST_EMBARQUE', e.target.checked ? 'C' : 'A')}
+            >
+              Embarque Concluído
+            </Checkbox>
+          </div>
+        )}
+      </Modal>
+
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #fffbeb' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -444,6 +633,10 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
               setTimeout(carregar, 0);
             }}>Limpar</Button>
           </Col>
+          <Col xs={12} sm="auto">
+            <Button icon={<FileExcelOutlined />} block={isMobile}
+              onClick={() => exportarVendasExcel(dados)}>Excel</Button>
+          </Col>
         </Row>
       </Card>
 
@@ -463,6 +656,11 @@ function Listagem({ onNova, onEditar }: { onNova: () => void; onEditar: (id: num
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FORMAS_PAGAMENTO = ['PROMISSORIA', 'CHEQUE', 'DINHEIRO', 'FINANCIAMENTO', 'PIX'];
+const FORMA_PAGAMENTO_LABEL: Record<string, string> = {
+  PROMISSORIA: 'Promissória', CHEQUE: 'Cheque', DINHEIRO: 'Dinheiro',
+  FINANCIAMENTO: 'Financiamento', PIX: 'PIX',
+};
+const FORMA_PAGAMENTO_OPTS = FORMAS_PAGAMENTO.map(f => ({ value: f, label: FORMA_PAGAMENTO_LABEL[f] }));
 
 function Wizard({ editId, onConcluir, onCancelar }: {
   editId?: number;
@@ -489,6 +687,10 @@ function Wizard({ editId, onConcluir, onCancelar }: {
   const [loteDetalhes, setLoteDetalhes] = useState<any>(null);
   const [ckCalcTotal, setCkCalcTotal]   = useState(false);
   const [leilaoInfo, setLeilaoInfo]     = useState<any>(null);
+  const [loteSimpModal, setLoteSimpModal] = useState(false);
+  const [formLoteSimp]  = Form.useForm();
+  const [racas, setRacas] = useState<{ value: number; label: string }[]>([]);
+  const [vendedores, setVendedores] = useState<{ value: number; label: string }[]>([]);
 
   // ── step 2 ──────────────────────────────────────────────────────────────
   const [form2]         = Form.useForm();
@@ -501,6 +703,10 @@ function Wizard({ editId, onConcluir, onCancelar }: {
   const [modalProps, setModalProps] = useState(false);
   const [compSelecionado, setCompSelecionado] = useState<any>(null);
   const [pisteiros, setPisteiros] = useState<{ value: number; label: string }[]>([]);
+  const [compEditando, setCompEditando] = useState<any | null>(null);
+  const [comissaoModal, setComissaoModal] = useState(false);
+  const [comissaoAlvo, setComissaoAlvo] = useState<any | null>(null);
+  const [formComissao] = Form.useForm();
 
   // ── step 3 ──────────────────────────────────────────────────────────────
   const [dataBase, setDataBase] = useState<Dayjs | null>(dayjs());
@@ -525,7 +731,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
       const r  = await api.get(`/vendas/${editId}`);
       const mv = r.data;
       setMov(mv);
-      form0.setFieldsValue({ idLeilao: mv.idLeilao, codnot: mv.codnot });
+      form0.setFieldsValue({ idLeilao: mv.idLeilao, codnot: mv.codnot, defesa: mv.defesa !== 'N' });
       await carregarLotesDisp(mv.idLeilao);
 
       const rl = await api.get(`/vendas/${editId}/lote`);
@@ -534,7 +740,13 @@ function Wizard({ editId, onConcluir, onCancelar }: {
         form1.setFieldsValue({
           idLote: rl.data.idLote, qtdxxx: rl.data.qtdxxx,
           vlrpar: rl.data.vlrpar, vlrtot: rl.data.vlrtot, vlrdes: rl.data.vlrdes ?? 0,
+          qtdparOverride: rl.data.qtdpar,
         });
+        // O lote desta venda não vem na lista de "disponíveis" (já está vendido a ela mesma) —
+        // injeta manualmente para o Select conseguir exibir o rótulo em vez do código bruto.
+        setLotesDisp(prev => prev.some(l => l.id === rl.data.idLote)
+          ? prev
+          : [{ ...rl.data, id: rl.data.idLote }, ...prev]);
       }
 
       const rc = await api.get(`/vendas/${editId}/compradores`);
@@ -565,13 +777,14 @@ function Wizard({ editId, onConcluir, onCancelar }: {
 
   const salvarStep0 = async () => {
     const vals = await form0.validateFields();
+    const payload = { idLeilao: vals.idLeilao, codnot: vals.codnot, defesa: vals.defesa === false ? 'N' : 'S' };
     setSalvando(true);
     try {
       if (movId) {
-        await api.put(`/vendas/${movId}`, vals);
-        setMov({ ...mov, ...vals });
+        await api.put(`/vendas/${movId}`, payload);
+        setMov({ ...mov, ...payload });
       } else {
-        const r = await api.post('/vendas', vals);
+        const r = await api.post('/vendas', payload);
         setMovId(r.data.id);
         const rm = await api.get(`/vendas/${r.data.id}`);
         setMov(rm.data);
@@ -625,6 +838,41 @@ function Wizard({ editId, onConcluir, onCancelar }: {
     form1.setFieldsValue({ vlrpar, vlrtot, vlrdes: vals.vlrdes || 0, _comiss: comiss, _comissVend: comissVend });
   };
 
+  const abrirLoteSimplificado = async () => {
+    formLoteSimp.resetFields();
+    if (racas.length === 0) {
+      const r = await api.get('/racas');
+      setRacas(r.data.map((x: any) => ({ value: x.id, label: `${x.descricao}${x.especies ? ` (${x.especies})` : ''}` })));
+    }
+    if (vendedores.length === 0) {
+      const r = await api.get('/clientes');
+      setVendedores(r.data.map((x: any) => ({ value: x.id, label: x.nomexx })));
+    }
+    setLoteSimpModal(true);
+  };
+
+  const criarLoteSimplificado = async () => {
+    const vals = await formLoteSimp.validateFields();
+    const idLeilao = form0.getFieldValue('idLeilao');
+    setSalvando(true);
+    try {
+      const r = await api.post('/lotes', { ...vals, idleilao: idLeilao });
+      await carregarLotesDisp(idLeilao);
+      form1.setFieldValue('idLote', r.data.id);
+      onLoteChange(r.data.id);
+      setLoteSimpModal(false);
+      message.success('Lote cadastrado');
+    } finally { setSalvando(false); }
+  };
+
+  const atualizarInformacoes = async () => {
+    if (!movId) return;
+    await api.post(`/vendas/${movId}/atualizar-info`);
+    const rl = await api.get(`/vendas/${movId}/lote`);
+    if (rl.data) setLoteDetalhes(rl.data);
+    message.success('Informações atualizadas');
+  };
+
   const salvarStep1 = async () => {
     const vals = await form1.validateFields();
     if (!movId) return;
@@ -645,7 +893,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
         vlrpar: vals.vlrpar,
         vlrtot: vals.vlrtot,
         vlrdes: vals.vlrdes ?? 0,
-        qtdpar: leilaoInfo?.qtdpar ?? 1,
+        qtdpar: vals.qtdparOverride || leilaoInfo?.qtdpar || 1,
         comiss, comissVendedor: comissVend,
         datlan: datlei,
       });
@@ -676,20 +924,65 @@ function Wizard({ editId, onConcluir, onCancelar }: {
     if (!movId) return;
     setSalvando(true);
     try {
-      await api.post(`/vendas/${movId}/compradores`, {
+      const payload = {
         idCli:           vals.idCli,
         idCondPagto:     vals.idCondPagto,
         percen:          vals.percen ?? 100,
         formaPagamento:  vals.formaPagamento,
         idPropriedade:   vals.idPropriedade ?? null,
         idPisteiro:      vals.idPisteiro ?? null,
-      });
+      };
+      if (compEditando) {
+        await api.put(`/vendas/${movId}/compradores/${compEditando.id}`, payload);
+        message.success('Comprador atualizado');
+      } else {
+        await api.post(`/vendas/${movId}/compradores`, payload);
+        message.success('Comprador adicionado');
+      }
       const rc = await api.get(`/vendas/${movId}/compradores`);
       setCompradores(rc.data);
-      form2.resetFields(['idCli', 'percen', 'formaPagamento', 'idPropriedade', 'idPisteiro']);
-      setClientes([]);
-      message.success('Comprador adicionado');
+      cancelarEdicaoComprador();
     } finally { setSalvando(false); }
+  };
+
+  const iniciarEdicaoComprador = (comp: any) => {
+    setCompEditando(comp);
+    setClientes([{ value: comp.idCli, label: comp.nomexx }]);
+    onCondicaoChange(comp.idCondPagto);
+    form2.setFieldsValue({
+      idCli:          comp.idCli,
+      idCondPagto:    comp.idCondPagto,
+      percen:         comp.percen,
+      formaPagamento: comp.formaPagamento,
+      idPropriedade:  comp.idPropriedade,
+      idPisteiro:     comp.idPisteiro,
+    });
+  };
+
+  const cancelarEdicaoComprador = () => {
+    setCompEditando(null);
+    setCondicaoSel(null);
+    setClientes([]);
+    form2.resetFields(['idCli', 'idCondPagto', 'percen', 'formaPagamento', 'idPropriedade', 'idPisteiro']);
+  };
+
+  const abrirComissaoManual = (comp: any) => {
+    setComissaoAlvo(comp);
+    formComissao.setFieldsValue({
+      valorComissao: comp.valorComissao ?? 0,
+      valorComissaoVendedor: comp.valorComissaoVendedor ?? 0,
+    });
+    setComissaoModal(true);
+  };
+
+  const salvarComissaoManual = async () => {
+    const vals = await formComissao.validateFields();
+    if (!comissaoAlvo || !movId) return;
+    await api.put(`/vendas/${movId}/compradores/${comissaoAlvo.id}/comissao`, vals);
+    const rc = await api.get(`/vendas/${movId}/compradores`);
+    setCompradores(rc.data);
+    setComissaoModal(false);
+    message.success('Comissão atualizada');
   };
 
   const removerComprador = async (idComp: number) => {
@@ -760,14 +1053,21 @@ function Wizard({ editId, onConcluir, onCancelar }: {
     { title: 'Comprador', dataIndex: 'nomexx', ellipsis: true },
     { title: 'Condição', dataIndex: 'desfin', width: 180, ellipsis: true },
     { title: '%', dataIndex: 'percen', width: 60, render: (v: number) => `${v}%` },
-    { title: 'Forma Pag.', dataIndex: 'formaPagamento', width: 120 },
+    { title: 'Forma Pag.', dataIndex: 'formaPagamento', width: 120, render: (v: string) => FORMA_PAGAMENTO_LABEL[v] || v },
     {
       title: 'Vlr. a Pagar', dataIndex: 'valorPagar', width: 120, align: 'right' as const,
       render: fmt,
     },
     {
-      title: 'Comissão', dataIndex: 'valorComissao', width: 100, align: 'right' as const,
-      render: (v: number) => <Text type="warning">{fmt(v)}</Text>,
+      title: 'Comissão', dataIndex: 'valorComissao', width: 130, align: 'right' as const,
+      render: (v: number, row: any) => (
+        <Space size={4}>
+          <Text type="warning">{fmt(v)}</Text>
+          <Tooltip title="Sobrepor comissão manualmente">
+            <Button size="small" icon={<PercentageOutlined />} onClick={() => abrirComissaoManual(row)} />
+          </Tooltip>
+        </Space>
+      ),
     },
     {
       title: 'Propriedade', dataIndex: 'nomePropriedade', ellipsis: true, width: 150,
@@ -797,12 +1097,17 @@ function Wizard({ editId, onConcluir, onCancelar }: {
       },
     },
     {
-      title: '', width: 80, fixed: 'right' as const,
+      title: '', width: 110, fixed: 'right' as const,
       render: (_: any, row: any) => (
-        <Popconfirm title="Remover este comprador?" onConfirm={() => removerComprador(row.id)}
-          okText="Remover" cancelText="Cancelar" okButtonProps={{ danger: true }}>
-          <Button size="small" danger icon={<DeleteOutlined />} />
-        </Popconfirm>
+        <Space size={4}>
+          <Tooltip title="Editar comprador">
+            <Button size="small" icon={<EditOutlined />} onClick={() => iniciarEdicaoComprador(row)} />
+          </Tooltip>
+          <Popconfirm title="Remover este comprador?" onConfirm={() => removerComprador(row.id)}
+            okText="Remover" cancelText="Cancelar" okButtonProps={{ danger: true }}>
+            <Button size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
@@ -813,6 +1118,42 @@ function Wizard({ editId, onConcluir, onCancelar }: {
     if (step === 2) return compradores.length > 0;
     return true;
   };
+
+  const avancarStep2 = async () => {
+    if (!canAvancar() || !movId) return;
+    const rp = await api.get(`/vendas/${movId}/parcelas`);
+    setParcelas(rp.data);
+    setStep(3);
+  };
+
+  useEffect(() => {
+    const modalAberto = loteSimpModal || comissaoModal || modalProps;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (modalAberto) return;
+      const alvo = e.target as HTMLElement;
+      const emCampo = ['INPUT', 'TEXTAREA'].includes(alvo?.tagName) || alvo?.isContentEditable;
+      if (emCampo) return;
+
+      if (e.key === 'F9') {
+        e.preventDefault();
+        if (step === 0) salvarStep0();
+        else if (step === 1) salvarStep1();
+        else if (step === 2) avancarStep2();
+        else if (step === 3) onConcluir();
+      } else if (e.key === 'F8') {
+        e.preventDefault();
+        if (step === 1) setStep(0);
+        else if (step === 2) setStep(1);
+        else if (step === 3) setStep(2);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        if (step === 0) onCancelar();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, movId, loteSimpModal, comissaoModal, modalProps, compradores]);
 
   return (
     <div>
@@ -845,7 +1186,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
       {/* ── STEP 0 ── */}
       {step === 0 && (
         <Card title="Informações do Leilão">
-          <Form form={form0} layout="vertical" style={{ maxWidth: 600 }}>
+          <Form form={form0} layout="vertical" style={{ maxWidth: 600 }} initialValues={{ defesa: true }}>
             <Form.Item name="idLeilao" label="Leilão"
               rules={[{ required: true, message: 'Selecione o leilão' }]}>
               <Select showSearch placeholder="Escolha o leilão" options={leiloes}
@@ -861,6 +1202,9 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                     form0.setFieldValue('codnot', String(Math.floor(Math.random() * 900000) + 100000));
                   }
                 }} />
+            </Form.Item>
+            <Form.Item name="defesa" valuePropName="checked">
+              <Checkbox>Vendido</Checkbox>
             </Form.Item>
           </Form>
           <Row justify="end">
@@ -907,7 +1251,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
 
           <Form form={form1} layout="vertical" onValuesChange={recalcularValores}>
             <Row gutter={16}>
-              <Col span={24}>
+              <Col xs={18} sm={20}>
                 <Form.Item name="idLote" label="Lote disponível"
                   rules={[{ required: true, message: 'Selecione um lote' }]}>
                   <Select showSearch placeholder="Selecione o lote..."
@@ -918,6 +1262,13 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                       label: `${l.lotexx} — ${l.deslot}` + (l.nomeVendedor ? ` (${l.nomeVendedor})` : ''),
                     }))}
                   />
+                </Form.Item>
+              </Col>
+              <Col xs={6} sm={4}>
+                <Form.Item label=" ">
+                  <Button icon={<PlusCircleOutlined />} block onClick={abrirLoteSimplificado}>
+                    Novo lote
+                  </Button>
                 </Form.Item>
               </Col>
 
@@ -999,6 +1350,13 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                     formatter={v => v != null ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''} />
                 </Form.Item>
               </Col>
+
+              <Col xs={24} sm={12} md={4}>
+                <Form.Item name="qtdparOverride" label="Qtd. Parcelas (override)"
+                  tooltip="Sobrepõe a qtd. de parcelas padrão do leilão para este lote/venda">
+                  <InputNumber min={1} style={{ width: '100%' }} placeholder={String(leilaoInfo?.qtdpar ?? 1)} />
+                </Form.Item>
+              </Col>
             </Row>
 
             {leilaoInfo && (
@@ -1018,11 +1376,68 @@ function Wizard({ editId, onConcluir, onCancelar }: {
 
           <Row justify="space-between">
             <Button icon={<ArrowLeftOutlined />} onClick={() => setStep(0)}>Voltar</Button>
-            <Button type="primary" icon={<ArrowRightOutlined />}
-              loading={salvando} onClick={salvarStep1}>
-              Próximo
-            </Button>
+            <Space>
+              {movId && (
+                <Tooltip title="Sincroniza o vendedor gravado nesta venda com o cadastro atual do lote">
+                  <Button icon={<SyncOutlined />} onClick={atualizarInformacoes}>
+                    Atualizar Informações
+                  </Button>
+                </Tooltip>
+              )}
+              <Button type="primary" icon={<ArrowRightOutlined />}
+                loading={salvando} onClick={salvarStep1}>
+                Próximo
+              </Button>
+            </Space>
           </Row>
+
+          {/* Modal Lote Simplificado */}
+          <Modal
+            title="Cadastrar novo lote" open={loteSimpModal}
+            onCancel={() => setLoteSimpModal(false)}
+            onOk={criarLoteSimplificado} okText="Salvar" confirmLoading={salvando}
+          >
+            <Form form={formLoteSimp} layout="vertical">
+              <Row gutter={12}>
+                <Col span={12}>
+                  <Form.Item name="lotexx" label="Nº Lote" rules={[{ required: true, message: 'Informe o número do lote' }]}>
+                    <Input />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="catego" label="Categoria">
+                    <Input />
+                  </Form.Item>
+                </Col>
+                <Col span={24}>
+                  <Form.Item name="deslot" label="Descrição">
+                    <Input />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="racaxx" label="Raça">
+                    <Select showSearch options={racas} allowClear
+                      filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="codven" label="Vendedor">
+                    <Select showSearch options={vendedores} allowClear
+                      filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item name="rpxxx" label="RP"><Input /></Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item name="sbbxxx" label="SBB"><Input /></Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item name="pesoxx" label="Peso"><InputNumber style={{ width: '100%' }} /></Form.Item>
+                </Col>
+              </Row>
+            </Form>
+          </Modal>
         </Card>
       )}
 
@@ -1030,15 +1445,16 @@ function Wizard({ editId, onConcluir, onCancelar }: {
       {step === 2 && (
         <Card title="Compradores">
           {/* formulário add comprador */}
-          <Card size="small" title="Adicionar comprador" style={{ marginBottom: 16 }}>
+          <Card size="small" title={compEditando ? `Editando comprador — ${compEditando.nomexx}` : 'Adicionar comprador'} style={{ marginBottom: 16 }}>
             <Form form={form2} layout="vertical">
               <Row gutter={[12, 0]}>
-                <Col xs={24} md={8}>
+                <Col xs={24} md={7}>
                   <Form.Item name="idCli" label="Comprador"
                     rules={[{ required: true, message: 'Selecione o comprador' }]}>
                     <Select
                       showSearch filterOption={false} placeholder="Digite para buscar..."
                       options={clientes} loading={loadingCli} onSearch={buscarClientes}
+                      disabled={!!compEditando}
                       notFoundContent={loadingCli ? <Spin size="small" /> : 'Digite 2+ letras'}
                       onChange={() => {
                         const id = form2.getFieldValue('idCli');
@@ -1051,7 +1467,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                     />
                   </Form.Item>
                 </Col>
-                <Col xs={24} sm={12} md={6}>
+                <Col xs={24} sm={12} md={5}>
                   <Form.Item name="idCondPagto" label="Condição de Pagamento"
                     rules={[{ required: true, message: 'Selecione a condição' }]}>
                     <Select showSearch placeholder="Condição..."
@@ -1070,25 +1486,29 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                 <Col xs={12} sm={6} md={4}>
                   <Form.Item name="formaPagamento" label="Forma de Pagamento"
                     rules={[{ required: true }]} initialValue="PROMISSORIA">
-                    <Select options={FORMAS_PAGAMENTO.map(f => ({ value: f, label: f }))} />
+                    <Select options={FORMA_PAGAMENTO_OPTS} />
                   </Form.Item>
                 </Col>
                 {pisteiros.length > 0 && (
-                  <Col xs={24} sm={6} md={4}>
+                  <Col xs={24} sm={12} md={5}>
                     <Form.Item name="idPisteiro" label="Pisteiro">
                       <Select options={pisteiros} allowClear placeholder="Opcional..."
                         showSearch filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
                     </Form.Item>
                   </Col>
                 )}
-                <Col xs={24} sm={6} md={3} style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <Form.Item style={{ marginBottom: 0, width: '100%' }}>
-                    <Button type="primary" icon={<PlusOutlined />} block
-                      loading={salvando} onClick={adicionarComprador}>
-                      Adicionar
-                    </Button>
-                  </Form.Item>
-                </Col>
+              </Row>
+
+              <Row justify="end" style={{ marginTop: 4 }}>
+                <Space>
+                  {compEditando && (
+                    <Button onClick={cancelarEdicaoComprador}>Cancelar</Button>
+                  )}
+                  <Button type="primary" icon={compEditando ? <EditOutlined /> : <PlusOutlined />}
+                    loading={salvando} onClick={adicionarComprador}>
+                    {compEditando ? 'Salvar' : 'Adicionar'}
+                  </Button>
+                </Space>
               </Row>
 
               {condicaoSel && (
@@ -1163,6 +1583,26 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                 />
               )
             }
+          </Modal>
+
+          {/* Modal comissão manual */}
+          <Modal
+            title={`Sobrepor comissão${comissaoAlvo ? ` — ${comissaoAlvo.nomexx}` : ''}`}
+            open={comissaoModal} onCancel={() => setComissaoModal(false)}
+            onOk={salvarComissaoManual} okText="Salvar"
+          >
+            <Form form={formComissao} layout="vertical">
+              <Form.Item name="valorComissao" label="Valor Comissão (Comprador/Leiloeiro)">
+                <InputNumber<number> min={0} step={100} style={{ width: '100%' }}
+                  formatter={v => v != null ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
+                  parser={v => Number(String(v ?? '').replace('R$ ', '').replace(/\./g, '').replace(',', '.')) || 0} />
+              </Form.Item>
+              <Form.Item name="valorComissaoVendedor" label="Valor Comissão Vendedor">
+                <InputNumber<number> min={0} step={100} style={{ width: '100%' }}
+                  formatter={v => v != null ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
+                  parser={v => Number(String(v ?? '').replace('R$ ', '').replace(/\./g, '').replace(',', '.')) || 0} />
+              </Form.Item>
+            </Form>
           </Modal>
         </Card>
       )}
@@ -1357,5 +1797,5 @@ export default function Vendas() {
     );
   }
 
-  return <Listagem key={reloadKey} onNova={abrirNova} onEditar={abrirEdit} />;
+  return <Listagem reloadSignal={reloadKey} onNova={abrirNova} onEditar={abrirEdit} />;
 }

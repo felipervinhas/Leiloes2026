@@ -30,6 +30,7 @@ export interface FiltrosListagem {
 export interface DadosMovimento {
   idLeilao: number;
   codnot: string;
+  defesa?: 'S' | 'N';
 }
 
 export interface DadosLote {
@@ -93,7 +94,7 @@ export async function listarVendas(filtros: FiltrosListagem) {
     where += ' AND V.NOMEXX LIKE @busca';
   } else if (tipoBusca === 'vendedor' && busca) {
     req.input('busca', sql.VarChar, `%${busca}%`);
-    where += ' AND V.DESLOT LIKE @busca';
+    where += ' AND CV.NOMEXX LIKE @busca';
   } else if (tipoBusca === 'leilao' && idLeilao) {
     req.input('idLeilao', sql.Int, idLeilao);
     where += ' AND V.IDLEILAO = @idLeilao';
@@ -103,6 +104,8 @@ export async function listarVendas(filtros: FiltrosListagem) {
     SELECT V.*, L.LEILAO
     FROM VWVendas V
     LEFT JOIN Leiloes L ON L.ID = V.IDLEILAO
+    LEFT JOIN LOTES LOV ON LOV.ID = V.IDLOTE
+    LEFT JOIN CLIENTES CV ON CV.ID = LOV.CODVEN
     ${where}
     ORDER BY V.DATLAN DESC, V.ID DESC
   `);
@@ -145,10 +148,11 @@ export async function criarMovimento(d: DadosMovimento): Promise<number> {
     .input('idLeilao', sql.Int,     d.idLeilao)
     .input('codnot',   sql.VarChar, d.codnot)
     .input('datlan',   sql.Date,    datlan)
+    .input('defesa',   sql.Char,    d.defesa || 'S')
     .query(`
       INSERT INTO MOVIMENTO (IDLEILAO, CODNOT, DATLAN, DEFESA)
       OUTPUT INSERTED.ID
-      VALUES (@idLeilao, @codnot, @datlan, 'N')
+      VALUES (@idLeilao, @codnot, @datlan, @defesa)
     `);
   return r.recordset[0].ID;
 }
@@ -159,7 +163,8 @@ export async function atualizarMovimento(id: number, d: DadosMovimento): Promise
     .input('id',       sql.Int,     id)
     .input('idLeilao', sql.Int,     d.idLeilao)
     .input('codnot',   sql.VarChar, d.codnot)
-    .query(`UPDATE MOVIMENTO SET IDLEILAO=@idLeilao, CODNOT=@codnot WHERE ID=@id`);
+    .input('defesa',   sql.Char,    d.defesa || 'S')
+    .query(`UPDATE MOVIMENTO SET IDLEILAO=@idLeilao, CODNOT=@codnot, DEFESA=@defesa WHERE ID=@id`);
 }
 
 export async function buscarMovimento(id: number) {
@@ -181,6 +186,7 @@ export async function buscarMovimento(id: number) {
     idLeilao:   row.IDLEILAO,
     codnot:     row.CODNOT,
     datlan:     row.DATLAN,
+    defesa:     row.DEFESA,
     leilao:     row.LEILAO,
     datlei:     row.DATLEI,
     condic:     row.CONDIC,
@@ -412,16 +418,10 @@ export async function listarCompradores(idMov: number) {
   }));
 }
 
-export async function salvarComprador(
-  idMov: number,
-  idMovLote: number,
-  movLote: { vlrtot: number; vlrdes: number; comiss: number; comissVendedor: number; lotexx: string; datlan: string; qtdxxx: number },
-  d: DadosComprador,
-  leilao: { id: number; comcom: number; comven: number; condic: number; codnot: string },
-): Promise<number> {
-  const pool = await getPool();
+type MovLoteBase = { vlrtot: number; vlrdes: number; comiss: number; comissVendedor: number; lotexx: string; datlan: string; qtdxxx: number };
 
-  const percen = d.percen / 100;
+function calcularValoresComprador(movLote: MovLoteBase, percenPct: number) {
+  const percen = percenPct / 100;
   const valorOriginal = (movLote.vlrtot + movLote.vlrdes) * percen;
   const valorDesconto = movLote.vlrdes * percen;
   const valorPagar    = movLote.vlrtot * percen;
@@ -434,6 +434,30 @@ export async function salvarComprador(
     ? (valorComissao / valorBaseComissao) * 100 : 0;
   const comissaoVendedor = valorBaseComissaoVendedor > 0
     ? (valorComissaoVendedor / valorBaseComissaoVendedor) * 100 : 0;
+
+  return {
+    valorOriginal, valorDesconto, valorPagar,
+    valorBaseComissao, valorBaseComissaoVendedor,
+    valorComissao, valorComissaoVendedor,
+    comissao, comissaoVendedor,
+  };
+}
+
+export async function salvarComprador(
+  idMov: number,
+  idMovLote: number,
+  movLote: MovLoteBase,
+  d: DadosComprador,
+  leilao: { id: number; comcom: number; comven: number; condic: number; codnot: string },
+): Promise<number> {
+  const pool = await getPool();
+
+  const {
+    valorOriginal, valorDesconto, valorPagar,
+    valorBaseComissao, valorBaseComissaoVendedor,
+    valorComissao, valorComissaoVendedor,
+    comissao, comissaoVendedor,
+  } = calcularValoresComprador(movLote, d.percen);
 
   await garantirColunaMovCompPisteiro();
   const r = await pool.request()
@@ -475,6 +499,66 @@ export async function salvarComprador(
   const idComp = r.recordset[0].ID;
   await rateiaQtdAnimais(idMov, movLote.qtdxxx);
   return idComp;
+}
+
+export async function atualizarComprador(
+  idMov: number,
+  idComp: number,
+  movLote: MovLoteBase,
+  d: DadosComprador,
+): Promise<void> {
+  const pool = await getPool();
+
+  const {
+    valorOriginal, valorDesconto, valorPagar,
+    valorBaseComissao, valorBaseComissaoVendedor,
+    valorComissao, valorComissaoVendedor,
+    comissao, comissaoVendedor,
+  } = calcularValoresComprador(movLote, d.percen);
+
+  await pool.request()
+    .input('id',                          sql.Int,     idComp)
+    .input('idCondPagto',                 sql.Int,     d.idCondPagto)
+    .input('percen',                      sql.Decimal, d.percen)
+    .input('valorOriginal',               sql.Decimal, valorOriginal)
+    .input('valorPagar',                  sql.Decimal, valorPagar)
+    .input('valorDesconto',               sql.Decimal, valorDesconto)
+    .input('valorComissao',               sql.Decimal, valorComissao)
+    .input('comissao',                    sql.Decimal, comissao)
+    .input('valorComissaoVendedor',       sql.Decimal, valorComissaoVendedor)
+    .input('comissaoVendedor',            sql.Decimal, comissaoVendedor)
+    .input('valorBaseComissao',           sql.Decimal, valorBaseComissao)
+    .input('valorBaseComissaoVendedor',   sql.Decimal, valorBaseComissaoVendedor)
+    .input('formaPagamento',              sql.VarChar, d.formaPagamento)
+    .input('idPropriedade',               sql.Int,     d.idPropriedade || null)
+    .input('idPisteiro',                  sql.Int,     d.idPisteiro || null)
+    .query(`
+      UPDATE MOVIMENTO_COMPRADOR SET
+        IDCONDPAGTO=@idCondPagto, PERCEN=@percen,
+        VALORORIGINAL=@valorOriginal, VALORPAGAR=@valorPagar, VALORDESCONTO=@valorDesconto,
+        VALORCOMISSAO=@valorComissao, COMISSAO=@comissao,
+        VALORCOMISSAOVENDEDOR=@valorComissaoVendedor, COMISSAOVENDEDOR=@comissaoVendedor,
+        VALORBASECOMISSAO=@valorBaseComissao, VALORBASECOMISSAOVENDEDOR=@valorBaseComissaoVendedor,
+        FORMA_PAGAMENTO=@formaPagamento, ID_PROPRIEDADE=@idPropriedade, ID_PISTEIRO=@idPisteiro
+      WHERE ID=@id
+    `);
+
+  await rateiaQtdAnimais(idMov, movLote.qtdxxx);
+}
+
+export async function atualizarComissaoManual(
+  idComp: number, valorComissao: number, valorComissaoVendedor: number,
+): Promise<void> {
+  const pool = await getPool();
+  await pool.request()
+    .input('id',                    sql.Int,     idComp)
+    .input('valorComissao',         sql.Decimal, valorComissao)
+    .input('valorComissaoVendedor', sql.Decimal, valorComissaoVendedor)
+    .query(`
+      UPDATE MOVIMENTO_COMPRADOR
+      SET VALORCOMISSAO=@valorComissao, VALORCOMISSAOVENDEDOR=@valorComissaoVendedor
+      WHERE ID=@id
+    `);
 }
 
 export async function excluirComprador(idMov: number, idComp: number, qtdLote: number): Promise<void> {
@@ -790,8 +874,8 @@ export async function dadosFatura(idMov: number) {
   const mov = rMov.recordset[0];
 
   const rLote = await pool.request().input('id', sql.Int, idMov).query(`
-    SELECT ML.QTDXXX, ML.VLRPAR, ML.VLRTOT, ML.VLRDES, ML.QTDPAR, ML.COMISS,
-           LO.LOTEXX, LO.DESLOT, LO.RPXXX, LO.SBBXXX, LO.PESOXX, LO.DATNAS,
+    SELECT ML.QTDXXX, ML.VLRPAR, ML.VLRTOT, ML.VLRDES, ML.QTDPAR, ML.COMISS, ML.COMISS_VENDEDOR,
+           LO.LOTEXX, LO.DESLOT, LO.RPXXX, LO.SBBXXX, LO.PESOXX, LO.DATNAS, LO.OBSLOT,
            LO.PELAGE, LO.FILIACAO, LO.CATEGO,
            R.DESCRICAO AS DESCRICAORACA, R.ESPECIES,
            VEN.NOMEXX  AS NOME_VENDEDOR,  VEN.CPFXXX  AS CPF_VENDEDOR,
@@ -810,6 +894,7 @@ export async function dadosFatura(idMov: number) {
   const rComp = await pool.request().input('id', sql.Int, idMov).query(`
     SELECT MC.ID, MC.IDCLI, MC.IDMOVLOTE, MC.PERCEN, MC.VALORORIGINAL, MC.VALORPAGAR,
            MC.VALORDESCONTO, MC.VALORCOMISSAO, MC.COMISSAO, MC.FORMA_PAGAMENTO,
+           MC.VALORCOMISSAOVENDEDOR, MC.COMISSAOVENDEDOR,
            MC.IDCONDPAGTO,
            C.NOMEXX, C.CPFXXX, C.ENDERE, C.BAIRRO, C.CEPXXX, C.CELU_1, C.EMAILX,
            CIDC.CIDADE  AS NOMECIDADE,    CIDC.ESTADO  AS ESTADO,
@@ -865,6 +950,10 @@ export async function dadosFatura(idMov: number) {
       vlrtot:        l.VLRTOT,
       vlrdes:        l.VLRDES,
       comiss:        l.COMISS,
+      comissVendedor: l.COMISS_VENDEDOR,
+      datnas:        l.DATNAS ? new Date(l.DATNAS).toLocaleDateString('pt-BR') : undefined,
+      obslot:        l.OBSLOT,
+      pelagem:       l.PELAGE,
       nomeVendedor:  l.NOME_VENDEDOR,
       cpfVendedor:   l.CPF_VENDEDOR,
       endereVendedor:  l.ENDERE_VENDEDOR,
@@ -894,6 +983,8 @@ export async function dadosFatura(idMov: number) {
       valorDesconto:  c.VALORDESCONTO,
       valorComissao:  c.VALORCOMISSAO,
       comissao:       c.COMISSAO,
+      valorComissaoVendedor: c.VALORCOMISSAOVENDEDOR,
+      comissaoVendedor:      c.COMISSAOVENDEDOR,
       formaPagamento: c.FORMA_PAGAMENTO,
       desfin:         c.DESFIN,
       qtdparCond:     c.COND_QTDPAR != null ? Number(c.COND_QTDPAR) : null,
@@ -918,4 +1009,25 @@ export async function atualizarStatus(
     .input('id',    sql.Int,     id)
     .input('valor', sql.VarChar, valor)
     .query(`UPDATE MOVIMENTO_COMPRADOR SET ${campo}=@valor WHERE IDMOV=@id`);
+}
+
+export async function atualizarFormaPagamentoMovimento(idMov: number, forma: string): Promise<void> {
+  const pool = await getPool();
+  await pool.request()
+    .input('idMov', sql.Int,     idMov)
+    .input('forma', sql.VarChar, forma)
+    .query(`UPDATE MOVIMENTO_COMPRADOR SET FORMA_PAGAMENTO=@forma WHERE IDMOV=@idMov`);
+}
+
+// ─── atualizar informações (sincroniza vendedor do lote) ───────────────────
+
+export async function atualizarInfoLote(idMov: number): Promise<void> {
+  const pool = await getPool();
+  await pool.request()
+    .input('idMov', sql.Int, idMov)
+    .query(`
+      UPDATE MOVIMENTO_LOTE
+      SET CODVEN = (SELECT CODVEN FROM LOTES WHERE ID = MOVIMENTO_LOTE.IDLOTE)
+      WHERE IDMOV = @idMov
+    `);
 }
