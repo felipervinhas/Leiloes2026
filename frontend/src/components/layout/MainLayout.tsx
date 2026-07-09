@@ -57,6 +57,7 @@ const ALL_MENU_ITEMS = [
     children: [
       { key: '/perfis', icon: <SafetyOutlined />, label: 'Perfis', controle: 'Perfis' },
       { key: '/usuarios', icon: <UserOutlined />, label: 'Usuários', controle: 'Usuários' },
+      { key: '/editor-relatorios', icon: <FileTextOutlined />, label: 'Editor de Relatórios', controle: 'Editor de Relatórios', adminOnly: true },
     ],
   },
 ];
@@ -79,6 +80,7 @@ const ROUTE_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
   '/condicoes-pagamento': { label: 'Cond. Pagto.', icon: <CreditCardOutlined /> },
   '/perfis': { label: 'Perfis', icon: <SafetyOutlined /> },
   '/usuarios': { label: 'Usuários', icon: <UserOutlined /> },
+  '/editor-relatorios': { label: 'Editor de Relatórios', icon: <FileTextOutlined /> },
 };
 
 function temAcesso(controle: string | undefined, controles: string[]): boolean {
@@ -87,17 +89,18 @@ function temAcesso(controle: string | undefined, controles: string[]): boolean {
   return controles.includes(controle);
 }
 
-function filtrarMenu(items: any[], controles: string[]): any[] {
+function filtrarMenu(items: any[], controles: string[], isAdmin: boolean): any[] {
   return items
     .map(item => {
+      if (item.adminOnly && !isAdmin) return null;
       if (item.children) {
-        const filhos = filtrarMenu(item.children, controles);
+        const filhos = filtrarMenu(item.children, controles, isAdmin);
         if (filhos.length === 0) return null;
-        const { controle: _c, ...rest } = item;
+        const { controle: _c, adminOnly: _a, ...rest } = item;
         return { ...rest, children: filhos };
       }
       if (!temAcesso(item.controle, controles)) return null;
-      const { controle: _c, ...rest } = item;
+      const { controle: _c, adminOnly: _a, ...rest } = item;
       return rest;
     })
     .filter(Boolean);
@@ -118,7 +121,7 @@ export default function MainLayout() {
   const config = useConfig();
 
   const controles: string[] = usuario?.controles ?? [];
-  const menuItems = filtrarMenu(ALL_MENU_ITEMS, controles);
+  const menuItems = filtrarMenu(ALL_MENU_ITEMS, controles, usuario?.adm === 'S');
 
   const cor1 = config.corMenuTop || '#FEC824';
   const cor2 = config.corMenuBottom || '#003333';

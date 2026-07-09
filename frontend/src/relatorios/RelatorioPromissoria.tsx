@@ -2,90 +2,16 @@ import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/render
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import lacrePromissoria from '../assets/lacre_promissoria.png';
 import { FaturaData } from './RelatorioFaturaCompra';
+import { montarContextoPromissoria } from './promissoriaContext';
+import TabelaParcelasBloco from './TabelaParcelasBloco';
+import { valorExtenso, fmtR, fmtData, CATEGO } from './promissoriaUtils';
 
 interface Props {
   dados: FaturaData;
   empresa?: string;
 }
 
-// ─── Valor por extenso ────────────────────────────────────────────────────────
-
-const UNIDADES = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove',
-                  'dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
-const DEZENAS  = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
-const CENTENAS = ['', 'cem', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos',
-                  'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
-
-function bloco(n: number): string {
-  if (n === 0) return '';
-  if (n === 100) return 'cem';
-  const c = Math.floor(n / 100);
-  const resto = n % 100;
-  const cStr = c > 0 ? CENTENAS[c] : '';
-  if (resto === 0) return cStr;
-  if (resto < 20) return (cStr ? cStr + ' e ' : '') + UNIDADES[resto];
-  const d = Math.floor(resto / 10);
-  const u = resto % 10;
-  const dStr = DEZENAS[d] + (u > 0 ? ' e ' + UNIDADES[u] : '');
-  return (cStr ? cStr + ' e ' : '') + dStr;
-}
-
-function extensoInteiro(n: number): string {
-  if (n === 0) return 'zero';
-  const bi  = Math.floor(n / 1_000_000_000);
-  const mi  = Math.floor((n % 1_000_000_000) / 1_000_000);
-  const mil = Math.floor((n % 1_000_000) / 1_000);
-  const res = n % 1_000;
-  const p: string[] = [];
-  if (bi  > 0) p.push(bloco(bi)  + (bi  === 1 ? ' bilhão'  : ' bilhões'));
-  if (mi  > 0) p.push(bloco(mi)  + (mi  === 1 ? ' milhão'  : ' milhões'));
-  if (mil > 0) p.push(mil === 1 ? 'mil' : bloco(mil) + ' mil');
-  if (res > 0) p.push(bloco(res));
-  return p.join(' e ');
-}
-
-export function valorExtenso(valor: number): string {
-  if (!valor || valor <= 0) return 'zero reais';
-  const reais    = Math.floor(valor);
-  const centavos = Math.round((valor - reais) * 100);
-  const rStr     = extensoInteiro(reais) + (reais === 1 ? ' real' : ' reais');
-  if (centavos === 0) return rStr;
-  return rStr + ' e ' + extensoInteiro(centavos) + (centavos === 1 ? ' centavo' : ' centavos');
-}
-
-// ─── Utilitários ──────────────────────────────────────────────────────────────
-
-const fmtR = (v?: number | null) =>
-  v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—';
-
-const MESES_EXT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-                   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-
-// Backend envia datas já em "DD/MM/YYYY". new Date() não parseia esse formato.
-function parseDate(s?: string | null): Date | null {
-  if (!s || s === '—') return null;
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-    const [dd, mm, yyyy] = s.split('/').map(Number);
-    return new Date(yyyy, mm - 1, dd);
-  }
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-const fmtData = (iso?: string | null) => {
-  if (!iso || iso === '—') return '—';
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(iso)) return iso; // já formatado
-  const d = parseDate(iso);
-  return d ? d.toLocaleDateString('pt-BR') : '—';
-};
-
-const fmtDataExtenso = (iso?: string | null) => {
-  const d = parseDate(iso);
-  if (!d) return '—';
-  return `${d.getDate()} ${MESES_EXT[d.getMonth()]} ${d.getFullYear()}`;
-};
-
-const CATEGO: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C: 'Castrado' };
+export { valorExtenso };
 
 // ─── Paleta monocromática (safe para impressão P&B) ──────────────────────────
 
@@ -197,39 +123,6 @@ const s = StyleSheet.create({
   acertoValGreen:   { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PRETO },
   acertoValOrange:  { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: ESCURO },
 
-  // ── Tabela de parcelas (4 grupos por linha) ──
-  tabelaBox: {
-    borderRadius: 3, borderWidth: 0.5, borderColor: CINZA,
-    marginBottom: 6, overflow: 'hidden',
-  },
-  tabelaHeader: {
-    backgroundColor: ESCURO, flexDirection: 'row',
-    paddingVertical: 2, paddingHorizontal: 4,
-  },
-  tabelaRow: {
-    flexDirection: 'row', paddingVertical: 1.5, paddingHorizontal: 4,
-    borderBottomWidth: 0.5, borderBottomColor: CLARO,
-  },
-  tabelaRowAlt: { backgroundColor: '#fafafa' },
-  tabelaTotal: {
-    backgroundColor: CLARO, flexDirection: 'row',
-    paddingVertical: 3, paddingHorizontal: 4,
-  },
-
-  // grupo de 4 células dentro de uma linha
-  cGrupo:    { flex: 1, flexDirection: 'row' },
-  cGrupoSep: { borderLeftWidth: 0.5, borderLeftColor: CINZA, paddingLeft: 3 },
-  cNum:  { width: 20 },
-  cData: { flex: 1 },
-  cValor:{ width: 56, textAlign: 'right' },
-
-  th:      { fontSize: 6, fontFamily: 'Helvetica-Bold', color: '#fff' },
-  thRight: { fontSize: 6, fontFamily: 'Helvetica-Bold', color: '#fff', textAlign: 'right' },
-  td:      { fontSize: 6.5, color: ESCURO },
-  tdRight: { fontSize: 6.5, color: ESCURO, textAlign: 'right' },
-  tdBold:  { fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: PRETO },
-  tdBoldRight: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: PRETO, textAlign: 'right' },
-
   // ── Promissória única ──
   promBox: {
     borderWidth: 1, borderColor: '#555', borderRadius: 3,
@@ -318,18 +211,8 @@ function PromissoriaPDF({ dados, empresa }: Props) {
       author={nomeEmpresa}
     >
       {dados.compradores.map((comp, ci) => {
-        const totalParcelas = comp.parcelas.reduce((a, p) => a + (p.vlrpar ?? 0), 0);
-        const totalValor    = comp.valorPagar ?? totalParcelas;
-        const extenso       = valorExtenso(totalValor).toUpperCase();
-        const credor        = dados.lote?.nomeVendedor || nomeEmpresa;
-        const cpfCredor     = dados.lote?.cpfVendedor;
-
-        const endereVend = [
-          dados.lote?.endereVendedor,
-          dados.lote?.bairroVendedor,
-          dados.lote?.cidadeVendedor,
-          dados.lote?.estadoVendedor,
-        ].filter(Boolean).join(', ');
+        const ctx = montarContextoPromissoria(dados, comp, empresa);
+        const { totalValor, extenso, credor, cpfCredor, endereVend } = ctx.calc;
 
         return (
           <Page key={ci} size="A4" style={s.page}>
@@ -451,87 +334,11 @@ function PromissoriaPDF({ dados, empresa }: Props) {
             </View>
 
             {/* ── TABELA DE PARCELAS (4 grupos por linha) ── */}
-            {(() => {
-              const parc = comp.parcelas;
-              // agrupa em linhas de 4
-              const linhas: (typeof parc[0] | null)[][] = [];
-              for (let i = 0; i < parc.length; i += 4) {
-                linhas.push([parc[i] ?? null, parc[i + 1] ?? null, parc[i + 2] ?? null, parc[i + 3] ?? null]);
-              }
-              return (
-                <View style={s.tabelaBox}>
-                  {/* Cabeçalho — 4 grupos */}
-                  <View style={s.tabelaHeader}>
-                    {[0, 1, 2, 3].map(g => (
-                      <View key={g} style={[s.cGrupo, g > 0 ? s.cGrupoSep : {}]}>
-                        <View style={s.cNum}><Text style={s.th}>#</Text></View>
-                        <View style={s.cData}><Text style={s.th}>Vencimento</Text></View>
-                        <View style={s.cValor}><Text style={s.thRight}>Valor</Text></View>
-                      </View>
-                    ))}
-                  </View>
-
-                  {parc.length === 0 ? (
-                    <Text style={{ padding: 10, textAlign: 'center', fontSize: 7.5, color: '#aaa', fontStyle: 'italic' }}>
-                      Parcelas ainda não geradas
-                    </Text>
-                  ) : (
-                    linhas.map((linha, li) => (
-                      <View key={li} wrap={false}
-                        style={[s.tabelaRow, li % 2 === 1 ? s.tabelaRowAlt : {}]}>
-                        {linha.map((p, gi) => (
-                          <View key={gi} style={[s.cGrupo, gi > 0 ? s.cGrupoSep : {}]}>
-                            {p ? (
-                              <>
-                                <View style={s.cNum}>
-                                  <Text style={p.pripar === 'S' ? s.tdBold : s.td}>
-                                    {p.ordxxx ?? String(li * 4 + gi + 1).padStart(2, '0')}
-                                  </Text>
-                                </View>
-                                <View style={s.cData}>
-                                  <Text style={p.pripar === 'S' ? s.tdBold : s.td}>
-                                    {fmtData(p.datven)}
-                                  </Text>
-                                </View>
-                                <View style={s.cValor}>
-                                  <Text style={p.pripar === 'S' ? s.tdBoldRight : s.tdRight}>
-                                    {fmtR(p.vlrpar)}
-                                  </Text>
-                                </View>
-                              </>
-                            ) : null}
-                          </View>
-                        ))}
-                      </View>
-                    ))
-                  )}
-
-                  {/* Total */}
-                  {parc.length > 0 && (
-                    <View style={s.tabelaTotal}>
-                      <Text style={{ flex: 1, fontSize: 7.5, fontFamily: 'Helvetica-Bold' }}>
-                        {(() => {
-                          const qtd = comp.qtdparCond ?? parc.length;
-                          return `TOTAL — ${qtd} parcela${qtd !== 1 ? 's' : ''}`;
-                        })()}
-                      </Text>
-                      <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: PRETO }}>
-                        {fmtR(totalParcelas)}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })()}
+            <TabelaParcelasBloco parcelas={comp.parcelas} qtdCond={comp.qtdparCond} />
 
             {/* ── NOTA PROMISSÓRIA ÚNICA ── */}
             {(() => {
-              const dataExtenso = fmtDataExtenso(dados.datlei || dados.datlan);
-              const praça = [
-                dados.lote?.cidadeVendedor?.toUpperCase(),
-                dados.lote?.estadoVendedor?.toUpperCase(),
-              ].filter(Boolean).join('/') || '___';
-              const localEmissao = comp.nomeCidade?.toUpperCase() || '___';
+              const { dataExtenso, praca, localEmissao } = ctx.calc;
 
               return (
                 <View style={s.promBox} wrap={false}>
@@ -554,7 +361,7 @@ function PromissoriaPDF({ dados, empresa }: Props) {
 
                       {/* Texto */}
                       <Text style={s.promTexto}>
-                        {`AO(S) ${dataExtenso} PAGAREI POR ESTA NOTA PROMISSÓRIA ÚNICA A ${(credor).toUpperCase()}${cpfCredor ? ` CPF: ${cpfCredor}` : ''} OU A SUA ORDEM A QUANTIA DE (${extenso}) EM MOEDA CORRENTE DO PAÍS NA PRAÇA DE ${praça} PELA COMPRA QUE LHE FIZE(MOS).`}
+                        {`AO(S) ${dataExtenso} PAGAREI POR ESTA NOTA PROMISSÓRIA ÚNICA A ${(credor).toUpperCase()}${cpfCredor ? ` CPF: ${cpfCredor}` : ''} OU A SUA ORDEM A QUANTIA DE (${extenso}) EM MOEDA CORRENTE DO PAÍS NA PRAÇA DE ${praca} PELA COMPRA QUE LHE FIZE(MOS).`}
                       </Text>
 
                       {/* Local + Data */}

@@ -22,6 +22,7 @@ import * as despesa from '../controllers/despesaController';
 import * as dash     from '../controllers/dashboardController';
 import * as permissaoDash from '../controllers/permissaoDashboardController';
 import * as contrato  from '../controllers/contratoController';
+import * as relatorioLayout from '../controllers/relatorioLayoutController';
 import * as preferencia from '../controllers/preferenciaController';
 import { chatAI } from '../controllers/aiController';
 import multer from 'multer';
@@ -58,6 +59,15 @@ bancoRouter.get('/contratos/templates/:id',                          contrato.bu
 bancoRouter.put('/contratos/templates/:id',                          contrato.atualizar);
 bancoRouter.delete('/contratos/templates/:id',                       contrato.deletar);
 bancoRouter.get('/contratos/gerar/:idMov/:idCli/:idTemplate',        contrato.gerar);
+
+// Editor de relatórios (layouts drag-and-drop)
+bancoRouter.get('/relatorio-layouts/templates',              relatorioLayout.listar);
+bancoRouter.post('/relatorio-layouts/templates',             relatorioLayout.criar);
+bancoRouter.get('/relatorio-layouts/templates/:id',          relatorioLayout.buscar);
+bancoRouter.put('/relatorio-layouts/templates/:id',          relatorioLayout.atualizar);
+bancoRouter.delete('/relatorio-layouts/templates/:id',       relatorioLayout.deletar);
+bancoRouter.post('/relatorio-layouts/templates/:id/ativar',  relatorioLayout.ativar);
+bancoRouter.get('/relatorio-layouts/ativo/:tipo',            relatorioLayout.ativo);
 
 bancoRouter.get('/cidades', cidade.listar);
 bancoRouter.get('/cidades/:id', cidade.buscar);

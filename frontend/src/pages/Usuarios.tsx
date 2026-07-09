@@ -17,7 +17,7 @@ const CONTROLES_GRUPOS = [
   { label: 'Comercial', itens: ['Vendas', 'Consulta Vendas', 'Contratos', 'Cotações', 'Despesas'] },
   { label: 'Clientes',  itens: ['Clientes', 'Notificações'] },
   { label: 'Cadastros', itens: ['Cidades', 'Raças', 'Condições de Pagamento'] },
-  { label: 'Sistema',   itens: ['Perfis', 'Usuários'] },
+  { label: 'Sistema',   itens: ['Perfis', 'Usuários', 'Editor de Relatórios'] },
 ];
 
 const TODOS_CONTROLES = CONTROLES_GRUPOS.flatMap(g => g.itens);

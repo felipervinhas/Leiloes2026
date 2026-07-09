@@ -1,10 +1,13 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Select, Button, Table, Input, Space, message, Typography, Row, Col, Tag, Grid, Tooltip } from 'antd';
 import {
-  SaveOutlined, OrderedListOutlined, ClearOutlined, CalendarOutlined,
+  SaveOutlined, OrderedListOutlined, ClearOutlined, CalendarOutlined, EyeOutlined,
 } from '@ant-design/icons';
+import { BlobProvider } from '@react-pdf/renderer';
 import api from '../services/api';
 import { BotaoBaixarPDFOrdem, LoteOrdemPDF } from '../relatorios/RelatorioOrdemEntrada';
+import OrdemEntradaDinamica from '../relatorios/OrdemEntradaDinamica';
+import { CampoLayout } from '../relatorios/tipoLayout';
 import { useConfig } from '../context/ConfigContext';
 
 interface LoteOrdem {
@@ -32,11 +35,15 @@ export default function OrdemEntrada() {
   const [ordens, setOrdens] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [layoutAtivo, setLayoutAtivo] = useState<CampoLayout[] | null>(null);
 
   useEffect(() => {
     api.get('/leiloes').then(r => {
       setLeiloes(r.data.map((l: any) => ({ value: l.id, label: l.leilao || `Leilão #${l.id}` })));
     });
+    api.get('/relatorio-layouts/ativo/ordem_entrada')
+      .then(r => setLayoutAtivo(r.data?.conteudo || null))
+      .catch(() => setLayoutAtivo(null));
   }, []);
 
   const carregarLotes = async (id: number, label: string) => {
@@ -192,6 +199,30 @@ export default function OrdemEntrada() {
                 titulo={nomeLeilao}
                 empresa={config.empresa}
               />
+              {layoutAtivo && (
+                <BlobProvider
+                  document={
+                    <OrdemEntradaDinamica
+                      lotes={lotesParaPDF}
+                      layout={layoutAtivo}
+                      titulo={nomeLeilao}
+                      empresa={config.empresa}
+                      logoBase64={config.logoBase64}
+                    />
+                  }
+                >
+                  {({ url, loading: gerandoPdf }) => (
+                    <Button
+                      icon={<EyeOutlined />}
+                      loading={gerandoPdf}
+                      disabled={!url}
+                      onClick={() => url && window.open(url, '_blank')}
+                    >
+                      Imprimir (modelo personalizado)
+                    </Button>
+                  )}
+                </BlobProvider>
+              )}
             </Space>
           </Col>
         )}

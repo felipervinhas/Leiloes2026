@@ -18,6 +18,9 @@ import {
 import { BlobProvider } from '@react-pdf/renderer';
 import FaturaCompraPDF, { FaturaData, VarianteFatura } from '../relatorios/RelatorioFaturaCompra';
 import PromissoriaPDF from '../relatorios/RelatorioPromissoria';
+import PromissoriaDinamica from '../relatorios/PromissoriaDinamica';
+import RelatorioFaturaCompradorDinamico from '../relatorios/RelatorioFaturaCompradorDinamico';
+import { CampoLayout } from '../relatorios/tipoLayout';
 import NotaVendaPDF from '../relatorios/RelatorioNotaVenda';
 import { exportarVendasExcel } from '../relatorios/exportarExcel';
 import { useConfig } from '../context/ConfigContext';
@@ -32,6 +35,12 @@ const fmt = (v?: number | null) =>
 
 const fmtData = (v?: string | Date | null) =>
   v ? dayjs(v).format('DD/MM/YYYY') : '—';
+
+const TITULO_FATURA_VARIANTE: Record<VarianteFatura, string> = {
+  comprador: 'Fatura de Comprador',
+  sindicato: 'Fatura Sindicato',
+  vendedor: 'Fatura de Vendedor',
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LISTAGEM
@@ -63,6 +72,7 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
   const [promissoriaLoading, setPromissoriaLoading] = useState<number | null>(null);
   const [promissoriaData, setPromissoriaData]       = useState<FaturaData | null>(null);
   const [promissoriaModal, setPromissoriaModal]     = useState(false);
+  const [promissoriaLayout, setPromissoriaLayout]   = useState<CampoLayout[] | null>(null);
 
   // Contrato
   const [contratoModal, setContratoModal]           = useState(false);
@@ -74,16 +84,22 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
   const [contratoLoading, setContratoLoading]       = useState(false);
 
   const [faturaVariante, setFaturaVariante] = useState<VarianteFatura>('comprador');
+  const [faturaLayout, setFaturaLayout] = useState<CampoLayout[] | null>(null);
   const [notaVendaModal, setNotaVendaModal] = useState(false);
   const [notaVendaData, setNotaVendaData]   = useState<FaturaData | null>(null);
   const [notaVendaLoading, setNotaVendaLoading] = useState<number | null>(null);
+  const [notaVendaLayout, setNotaVendaLayout] = useState<CampoLayout[] | null>(null);
 
   const abrirFatura = async (id: number, variante: VarianteFatura = 'comprador') => {
     setFaturaLoading(id);
     try {
-      const r = await api.get(`/vendas/${id}/fatura`);
-      setFaturaData(r.data);
+      const [rDados, rLayout] = await Promise.all([
+        api.get(`/vendas/${id}/fatura`),
+        api.get(`/relatorio-layouts/ativo/fatura_${variante}`).catch(() => ({ data: null })),
+      ]);
+      setFaturaData(rDados.data);
       setFaturaVariante(variante);
+      setFaturaLayout(rLayout.data?.conteudo || null);
       setFaturaModal(true);
     } catch { message.error('Erro ao carregar fatura'); }
     finally { setFaturaLoading(null); }
@@ -92,8 +108,12 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
   const abrirPromissoria = async (id: number) => {
     setPromissoriaLoading(id);
     try {
-      const r = await api.get(`/vendas/${id}/fatura`);
-      setPromissoriaData(r.data);
+      const [rDados, rLayout] = await Promise.all([
+        api.get(`/vendas/${id}/fatura`),
+        api.get('/relatorio-layouts/ativo/promissoria').catch(() => ({ data: null })),
+      ]);
+      setPromissoriaData(rDados.data);
+      setPromissoriaLayout(rLayout.data?.conteudo || null);
       setPromissoriaModal(true);
     } catch { message.error('Erro ao carregar promissórias'); }
     finally { setPromissoriaLoading(null); }
@@ -102,8 +122,12 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
   const abrirNotaVenda = async (id: number) => {
     setNotaVendaLoading(id);
     try {
-      const r = await api.get(`/vendas/${id}/fatura`);
-      setNotaVendaData(r.data);
+      const [rDados, rLayout] = await Promise.all([
+        api.get(`/vendas/${id}/fatura`),
+        api.get('/relatorio-layouts/ativo/nota_venda').catch(() => ({ data: null })),
+      ]);
+      setNotaVendaData(rDados.data);
+      setNotaVendaLayout(rLayout.data?.conteudo || null);
       setNotaVendaModal(true);
     } catch { message.error('Erro ao carregar nota de venda'); }
     finally { setNotaVendaLoading(null); }
@@ -318,7 +342,7 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
       {/* Modal Fatura de Compras */}
       <Modal
         open={faturaModal}
-        onCancel={() => { setFaturaModal(false); setFaturaData(null); }}
+        onCancel={() => { setFaturaModal(false); setFaturaData(null); setFaturaLayout(null); }}
         footer={null}
         title={
           <Space>
@@ -337,7 +361,13 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
               <div><strong>Vendedor:</strong> {faturaData.lote?.nomeVendedor || '—'}</div>
               <div><strong>Parcelas:</strong> {faturaData.compradores.reduce((t, c) => t + c.parcelas.length, 0)}</div>
             </div>
-            <BlobProvider document={<FaturaCompraPDF dados={faturaData} empresa={config.empresa} variante={faturaVariante} />}>
+            <BlobProvider
+              document={
+                faturaLayout
+                  ? <RelatorioFaturaCompradorDinamico dados={faturaData} layout={faturaLayout} empresa={config.empresa} logoBase64={config.logoBase64} titulo={TITULO_FATURA_VARIANTE[faturaVariante]} />
+                  : <FaturaCompraPDF dados={faturaData} empresa={config.empresa} variante={faturaVariante} />
+              }
+            >
               {({ url, loading }) => (
                 <Button
                   type="primary"
@@ -359,7 +389,7 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
       {/* Modal Promissórias */}
       <Modal
         open={promissoriaModal}
-        onCancel={() => { setPromissoriaModal(false); setPromissoriaData(null); }}
+        onCancel={() => { setPromissoriaModal(false); setPromissoriaData(null); setPromissoriaLayout(null); }}
         footer={null}
         title={
           <Space>
@@ -384,7 +414,13 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
                 {promissoriaData.compradores.reduce((t, c) => t + (c.qtdparCond ?? c.parcelas.length), 0)} parcelas
               </div>
             </div>
-            <BlobProvider document={<PromissoriaPDF dados={promissoriaData} empresa={config.empresa} />}>
+            <BlobProvider
+              document={
+                promissoriaLayout
+                  ? <PromissoriaDinamica dados={promissoriaData} layout={promissoriaLayout} empresa={config.empresa} logoBase64={config.logoBase64} />
+                  : <PromissoriaPDF dados={promissoriaData} empresa={config.empresa} />
+              }
+            >
               {({ url, loading }) => (
                 <Button
                   type="primary"
@@ -406,7 +442,7 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
       {/* Modal Nota de Venda */}
       <Modal
         open={notaVendaModal}
-        onCancel={() => { setNotaVendaModal(false); setNotaVendaData(null); }}
+        onCancel={() => { setNotaVendaModal(false); setNotaVendaData(null); setNotaVendaLayout(null); }}
         footer={null}
         title={
           <Space>
@@ -427,7 +463,13 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
                 {notaVendaData.compradores.map(c => c.nomexx).filter(Boolean).join(', ')}
               </div>
             </div>
-            <BlobProvider document={<NotaVendaPDF dados={notaVendaData} empresa={config.empresa} />}>
+            <BlobProvider
+              document={
+                notaVendaLayout
+                  ? <PromissoriaDinamica dados={notaVendaData} layout={notaVendaLayout} empresa={config.empresa} logoBase64={config.logoBase64} titulo="Nota de Venda" />
+                  : <NotaVendaPDF dados={notaVendaData} empresa={config.empresa} />
+              }
+            >
               {({ url, loading }) => (
                 <Button
                   type="primary"

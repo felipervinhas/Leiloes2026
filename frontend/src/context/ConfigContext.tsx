@@ -12,6 +12,8 @@ export interface Configuracoes {
   corMenuBottom: string;
   corLetraTop: string;
   corLetraBottom: string;
+  /** Logotipo em data URI (base64), pronto para embutir em PDFs (@react-pdf/renderer). */
+  logoBase64: string | null;
 }
 
 const defaultConfig: Configuracoes = {
@@ -24,6 +26,7 @@ const defaultConfig: Configuracoes = {
   corMenuBottom: '#001529',
   corLetraTop: '#ffffff',
   corLetraBottom: '#000000',
+  logoBase64: null,
 };
 
 const ConfigContext = createContext<Configuracoes>(defaultConfig);
@@ -35,7 +38,10 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!banco) return;
     api.get('/configuracoes')
-      .then(r => setConfig(r.data))
+      .then(r => setConfig(cfg => ({ ...cfg, ...r.data })))
+      .catch(() => {});
+    api.get('/configuracoes/logo')
+      .then(r => setConfig(cfg => ({ ...cfg, logoBase64: r.data?.logo ?? null })))
       .catch(() => {});
   }, [banco]);
 

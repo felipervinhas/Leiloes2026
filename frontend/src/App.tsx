@@ -25,6 +25,7 @@ import Vendas from './pages/Vendas';
 import ConsultaVendas from './pages/ConsultaVendas';
 import Contratos from './pages/Contratos';
 import Despesas from './pages/Despesas';
+import EditorRelatorios from './pages/EditorRelatorios';
 import { BANCOS_PERMITIDOS } from './config/bancos';
 
 function UrlInvalida() {
@@ -99,6 +100,7 @@ function App() {
                 <Route path="consulta-vendas" element={<ConsultaVendas />} />
                 <Route path="contratos" element={<Contratos />} />
                 <Route path="despesas" element={<Despesas />} />
+                <Route path="editor-relatorios" element={<EditorRelatorios />} />
               </Route>
             </Route>
           </Route>
