@@ -4,6 +4,7 @@ import { bancoMiddleware } from '../middleware/banco';
 import authRoutes from './auth';
 import * as cidade from '../controllers/cidadeController';
 import * as raca from '../controllers/racaController';
+import * as classificacao from '../controllers/classificacaoController';
 import * as condicao from '../controllers/condicaoPagtoController';
 import * as perfil from '../controllers/perfilController';
 import * as usuario from '../controllers/usuarioController';
@@ -11,6 +12,7 @@ import * as leilao from '../controllers/leilaoController';
 import * as lote from '../controllers/loteController';
 import * as cliente from '../controllers/clienteController';
 import * as clientePropriedade from '../controllers/clientePropriedadeController';
+import * as ocorrenciaCliente from '../controllers/ocorrenciaClienteController';
 import { getConfiguracoes, getLogoBase64, getLogoImagem } from '../controllers/configController';
 import * as upload from '../controllers/uploadController';
 import * as lance from '../controllers/lanceController';
@@ -80,6 +82,12 @@ bancoRouter.get('/racas/:id', raca.buscar);
 bancoRouter.post('/racas', raca.criar);
 bancoRouter.put('/racas/:id', raca.atualizar);
 bancoRouter.delete('/racas/:id', raca.deletar);
+
+bancoRouter.get('/classificacoes', classificacao.listar);
+bancoRouter.get('/classificacoes/:id', classificacao.buscar);
+bancoRouter.post('/classificacoes', classificacao.criar);
+bancoRouter.put('/classificacoes/:id', classificacao.atualizar);
+bancoRouter.delete('/classificacoes/:id', classificacao.deletar);
 
 bancoRouter.get('/condicoes-pagamento', condicao.listar);
 bancoRouter.get('/condicoes-pagamento/:id', condicao.buscar);
@@ -152,6 +160,11 @@ bancoRouter.get('/clientes/:idCli/propriedades', clientePropriedade.listar);
 bancoRouter.post('/clientes/:idCli/propriedades', clientePropriedade.criar);
 bancoRouter.put('/clientes/:idCli/propriedades/:id', clientePropriedade.atualizar);
 bancoRouter.delete('/clientes/:idCli/propriedades/:id', clientePropriedade.deletar);
+
+bancoRouter.get('/clientes/:idCli/ocorrencias', ocorrenciaCliente.listar);
+bancoRouter.post('/clientes/:idCli/ocorrencias', ocorrenciaCliente.criar);
+bancoRouter.put('/clientes/:idCli/ocorrencias/:id', ocorrenciaCliente.atualizar);
+bancoRouter.delete('/clientes/:idCli/ocorrencias/:id', ocorrenciaCliente.deletar);
 bancoRouter.post('/vendas/:id/compradores/:idComp/propriedade', venda.salvarPropriedade);
 
 bancoRouter.get('/lances', lance.listar);

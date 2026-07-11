@@ -6,7 +6,7 @@ import {
   CreditCardOutlined, SafetyOutlined, SettingOutlined, MenuFoldOutlined,
   MenuUnfoldOutlined, TrophyOutlined, BellOutlined, LineChartOutlined,
   DollarOutlined, WalletOutlined, FileSearchOutlined, OrderedListOutlined,
-  FileTextOutlined, MenuOutlined,
+  FileTextOutlined, MenuOutlined, TagsOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -50,6 +50,7 @@ const ALL_MENU_ITEMS = [
       { key: '/cidades', icon: <EnvironmentOutlined />, label: 'Cidades', controle: 'Cidades' },
       { key: '/racas', icon: <BranchesOutlined />, label: 'Raças', controle: 'Raças' },
       { key: '/condicoes-pagamento', icon: <CreditCardOutlined />, label: 'Condições Pagto.', controle: 'Condições de Pagamento' },
+      { key: '/classificacoes', icon: <TagsOutlined />, label: 'Classificações', controle: 'Classificações' },
     ],
   },
   {
@@ -78,6 +79,7 @@ const ROUTE_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
   '/cidades': { label: 'Cidades', icon: <EnvironmentOutlined /> },
   '/racas': { label: 'Raças', icon: <BranchesOutlined /> },
   '/condicoes-pagamento': { label: 'Cond. Pagto.', icon: <CreditCardOutlined /> },
+  '/classificacoes': { label: 'Classificações', icon: <TagsOutlined /> },
   '/perfis': { label: 'Perfis', icon: <SafetyOutlined /> },
   '/usuarios': { label: 'Usuários', icon: <UserOutlined /> },
   '/editor-relatorios': { label: 'Editor de Relatórios', icon: <FileTextOutlined /> },

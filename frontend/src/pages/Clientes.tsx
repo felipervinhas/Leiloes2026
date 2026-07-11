@@ -26,10 +26,11 @@ const { Title } = Typography;
 
 interface Cliente { id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string; emailx?: string;
   celu1?: string; ativox?: string; blocli?: string; acessoApp?: string; datcad?: string; datalt?: string;
-  nomeCidade?: string; nomeEstado?: string; idSolicitadoPor?: number | null; nomeSolicitadoPor?: string; }
+  nomeCidade?: string; nomeEstado?: string; idSolicitadoPor?: number | null; nomeSolicitadoPor?: string;
+  classificacoesDescricao?: string; }
 
 interface ClienteRanking { id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string;
-  emailx?: string; celu1?: string; ativox?: string;
+  emailx?: string; celu1?: string; ativox?: string; classificacoesDescricao?: string;
   qtdCompras: number; vlrCompras: number;
   qtdVendas: number;  vlrVendas: number;
   qtdLances: number;  vlrLances: number; }
@@ -65,8 +66,10 @@ export default function Clientes() {
   const [busca, setBusca] = useState('');
   const [filtroCampo, setFiltroCampo] = useState('nome');
   const [cidades, setCidades] = useState<{ value: number; label: string }[]>([]);
+  const [classificacoesOpcoes, setClassificacoesOpcoes] = useState<{ value: number; label: string }[]>([]);
   const [usuarios, setUsuarios] = useState<{ value: number; label: string }[]>([]);
   const [filtroValor, setFiltroValor] = useState<string | undefined>(undefined);
+  const [filtroClassificacoes, setFiltroClassificacoes] = useState<number[]>([]);
   const [cepLoading, setCepLoading] = useState(false);
   const [form] = Form.useForm();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -92,11 +95,21 @@ export default function Clientes() {
   const [propModalOpen, setPropModalOpen] = useState(false);
   const [propEditando, setPropEditando] = useState<any | null>(null);
   const [formProp] = Form.useForm();
+  const [ocorrencias, setOcorrencias] = useState<any[]>([]);
+  const [ocorrenciasLoading, setOcorrenciasLoading] = useState(false);
+  const [ocorrenciaModalOpen, setOcorrenciaModalOpen] = useState(false);
+  const [ocorrenciaEditando, setOcorrenciaEditando] = useState<any | null>(null);
+  const [formOcorrencia] = Form.useForm();
 
   const carregar = async (b = '') => {
     setLoading(true);
     try {
-      const r = await api.get('/clientes', { params: { busca: b, filtro: filtroCampo, filtroValor } });
+      const r = await api.get('/clientes', {
+        params: {
+          busca: b, filtro: filtroCampo, filtroValor,
+          classificacoes: filtroClassificacoes.length ? filtroClassificacoes.join(',') : undefined,
+        },
+      });
       setDados(r.data);
     } finally { setLoading(false); }
   };
@@ -104,7 +117,12 @@ export default function Clientes() {
   const carregarRanking = async (b = '') => {
     setLoading(true);
     try {
-      const r = await api.get('/clientes/faturamento', { params: { busca: b, filtro: filtroCampo, filtroValor } });
+      const r = await api.get('/clientes/faturamento', {
+        params: {
+          busca: b, filtro: filtroCampo, filtroValor,
+          classificacoes: filtroClassificacoes.length ? filtroClassificacoes.join(',') : undefined,
+        },
+      });
       setDadosRanking(r.data);
     } finally { setLoading(false); }
   };
@@ -151,6 +169,9 @@ export default function Clientes() {
     if (key === 'propriedades' && editando) {
       carregarPropriedades(editando.id);
     }
+    if (key === 'ocorrencias' && editando) {
+      carregarOcorrencias(editando.id);
+    }
   };
 
   const carregarPropriedades = async (idCli: number) => {
@@ -193,6 +214,53 @@ export default function Clientes() {
     }
   };
 
+  const carregarOcorrencias = async (idCli: number) => {
+    setOcorrenciasLoading(true);
+    try {
+      const r = await api.get(`/clientes/${idCli}/ocorrencias`);
+      setOcorrencias(r.data);
+    } catch {
+      message.error('Erro ao carregar ocorrências');
+    } finally {
+      setOcorrenciasLoading(false);
+    }
+  };
+
+  const abrirModalOcorrencia = (item?: any) => {
+    if (item) {
+      formOcorrencia.setFieldsValue({ ...item, dataOcorrencia: item.dataOcorrencia ? dayjs(item.dataOcorrencia) : null });
+      setOcorrenciaEditando(item);
+    } else {
+      formOcorrencia.resetFields();
+      formOcorrencia.setFieldsValue({ dataOcorrencia: dayjs() });
+      setOcorrenciaEditando(null);
+    }
+    setOcorrenciaModalOpen(true);
+  };
+
+  const salvarOcorrencia = async (values: any) => {
+    const payload = { ...values, dataOcorrencia: values.dataOcorrencia ? values.dataOcorrencia.format('YYYY-MM-DD') : null };
+    try {
+      if (ocorrenciaEditando) await api.put(`/clientes/${editando.id}/ocorrencias/${ocorrenciaEditando.id}`, payload);
+      else await api.post(`/clientes/${editando.id}/ocorrencias`, payload);
+      message.success('Ocorrência salva');
+      setOcorrenciaModalOpen(false);
+      carregarOcorrencias(editando.id);
+    } catch {
+      message.error('Erro ao salvar ocorrência');
+    }
+  };
+
+  const excluirOcorrencia = async (id: number) => {
+    try {
+      await api.delete(`/clientes/${editando.id}/ocorrencias/${id}`);
+      message.success('Ocorrência excluída');
+      carregarOcorrencias(editando.id);
+    } catch {
+      message.error('Erro ao excluir ocorrência');
+    }
+  };
+
   const alternarRanking = () => {
     const proximo = !rankingMode;
     setRankingMode(proximo);
@@ -203,6 +271,11 @@ export default function Clientes() {
   const carregarCidades = async () => {
     const r = await api.get('/cidades');
     setCidades(r.data.map((c: any) => ({ value: c.id, label: `${c.cidade} - ${c.estado}` })));
+  };
+
+  const carregarClassificacoes = async () => {
+    const r = await api.get('/classificacoes');
+    setClassificacoesOpcoes(r.data.map((c: any) => ({ value: c.id, label: c.descricao })));
   };
 
   const buscarCep = async () => {
@@ -232,6 +305,7 @@ export default function Clientes() {
   useEffect(() => {
     carregar();
     carregarCidades();
+    carregarClassificacoes();
     api.get('/usuarios').then(r =>
       setUsuarios(r.data.map((u: any) => ({ value: u.id, label: u.nomexx }))));
   }, []);
@@ -240,7 +314,7 @@ export default function Clientes() {
   useEffect(() => {
     if (rankingMode) carregarRanking(busca);
     else carregar(busca);
-  }, [filtroValor]);
+  }, [filtroValor, filtroClassificacoes]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -363,6 +437,12 @@ export default function Clientes() {
       title: 'Cidade/UF', dataIndex: 'nomeCidade', ellipsis: true, ...rzC('cidade'),
       render: (_: any, r: Cliente) => r.nomeCidade
         ? `${r.nomeCidade}${r.nomeEstado ? `/${r.nomeEstado}` : ''}`
+        : '—',
+    }] : []),
+    ...(md ? [{
+      title: 'Classificações', dataIndex: 'classificacoesDescricao', ellipsis: true, width: 200,
+      render: (v: string) => v
+        ? <Space size={[4, 4]} wrap>{v.split(', ').map(c => <Tag key={c}>{c}</Tag>)}</Space>
         : '—',
     }] : []),
     {
@@ -543,8 +623,16 @@ export default function Clientes() {
       <Col xs={12} sm={8} md={6}><Form.Item name="ativox" label="Ativo"><Select options={SN} /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="blocli" label="Bloqueado"><Select options={[{ value: 'Não', label: 'Não' }, { value: 'Sim', label: 'Sim' }]} /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="acessoApp" label="Acesso App"><Select options={ACESSO} allowClear /></Form.Item></Col>
-      <Col xs={12} sm={8} md={6}><Form.Item name="limcre" label="Limite de Crédito"><Input /></Form.Item></Col>
-      <Col xs={12} sm={8} md={6}><Form.Item name="classificacao" label="Classificação"><Input type="number" /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="limcre" label="Limite de Crédito"><Input /></Form.Item></Col>      
+      <Col xs={24} sm={16} md={12}>
+        <Form.Item name="classificacoes" label="Classificações">
+          <Select
+            mode="multiple" options={classificacoesOpcoes} allowClear showSearch
+            placeholder="Selecione uma ou mais classificações..."
+            filterOption={(input, opt) => (opt?.label as string)?.toLowerCase().includes(input.toLowerCase())}
+          />
+        </Form.Item>
+      </Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="datcad" label="Data Cadastro"><Input disabled /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="datalt" label="Última Alteração"><Input disabled /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="nomeUsucad" label="Cadastrado por"><Input disabled /></Form.Item></Col>
@@ -726,6 +814,43 @@ export default function Clientes() {
     </>
   );
 
+  const colunasOcorrencias = [
+    { title: 'Data', dataIndex: 'dataOcorrencia', width: 110, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
+    { title: 'Ocorrência', dataIndex: 'ocorrencia', ellipsis: true },
+    {
+      title: '', width: 80,
+      render: (_: any, r: any) => (
+        <Space size={4}>
+          <Button size="small" icon={<EditOutlined />} onClick={() => abrirModalOcorrencia(r)} />
+          <Popconfirm title="Confirma exclusão?" onConfirm={() => excluirOcorrencia(r.id)}>
+            <Button size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  const tabOcorrencias = (
+    <>
+      <Form.Item name="ocorrencias" label="Ocorrências (resumo)">
+        <Input.TextArea rows={3} placeholder="Observação geral sobre ocorrências do cliente..." />
+      </Form.Item>
+      <Divider plain>Histórico de Ocorrências</Divider>
+      <div style={{ marginBottom: 12, textAlign: 'right' }}>
+        <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => abrirModalOcorrencia()}>
+          Adicionar Ocorrência
+        </Button>
+      </div>
+      <Table
+        rowKey="id" size="small" loading={ocorrenciasLoading} dataSource={ocorrencias}
+        columns={colunasOcorrencias}
+        pagination={false}
+        locale={{ emptyText: 'Nenhuma ocorrência registrada' }}
+        scroll={{ x: 500 }}
+      />
+    </>
+  );
+
   const tabHistorico = (
     <Tabs size="small" items={[
       {
@@ -848,6 +973,20 @@ export default function Clientes() {
               { value: 'ate20k',   label: 'Até R$ 20 mil' },
               { value: 'acima30k', label: 'Acima de R$ 30 mil' },
             ]}
+          />
+        </Col>
+        <Col xs={24} sm="auto" style={{ minWidth: 200 }}>
+          <Select
+            mode="multiple"
+            value={filtroClassificacoes}
+            onChange={setFiltroClassificacoes}
+            allowClear
+            showSearch
+            placeholder="Classificações..."
+            style={{ width: '100%' }}
+            maxTagCount="responsive"
+            options={classificacoesOpcoes}
+            filterOption={(input, opt) => (opt?.label as string)?.toLowerCase().includes(input.toLowerCase())}
           />
         </Col>
         <Col xs={24} sm={undefined} flex="auto">
@@ -1048,6 +1187,22 @@ export default function Clientes() {
         </Form>
       </Modal>
 
+      {/* Modal Ocorrência */}
+      <Modal
+        title={ocorrenciaEditando ? 'Editar Ocorrência' : 'Nova Ocorrência'}
+        open={ocorrenciaModalOpen}
+        onCancel={() => setOcorrenciaModalOpen(false)}
+        onOk={() => formOcorrencia.submit()}
+        destroyOnClose
+      >
+        <Form form={formOcorrencia} layout="vertical" onFinish={salvarOcorrencia}>
+          <Form.Item name="dataOcorrencia" label="Data"><DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} /></Form.Item>
+          <Form.Item name="ocorrencia" label="Ocorrência" rules={[{ required: true }]}>
+            <Input.TextArea rows={3} maxLength={500} showCount />
+          </Form.Item>
+        </Form>
+      </Modal>
+
       {/* Drawer de cadastro */}
       <Drawer
         title={editando ? `Editar — ${editando.nomexx}` : 'Novo Cliente'}
@@ -1072,6 +1227,7 @@ export default function Clientes() {
               { key: '3', label: <><PhoneOutlined /> Contatos</>, children: tabContatos },
               { key: '4', label: <><BankOutlined /> Bancário</>, children: tabBancario },
               ...(editando ? [{ key: 'propriedades', label: <><HomeOutlined /> Propriedades</>, children: tabPropriedades }] : []),
+              ...(editando ? [{ key: 'ocorrencias', label: <><FileTextOutlined /> Ocorrências</>, children: tabOcorrencias }] : []),
               { key: '5', label: <><SettingOutlined /> Sistema</>, children: tabSistema },
               { key: '6', label: <><FolderOpenOutlined /> Documentos</>, children: tabDocumentos },
               ...(podeEditarPermissoes ? [{ key: '7', label: <><SafetyCertificateOutlined /> Permissões</>, children: tabPermissoes }] : []),

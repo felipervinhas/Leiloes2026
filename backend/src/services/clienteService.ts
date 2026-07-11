@@ -1,5 +1,26 @@
 import { getPool, sql } from '../config/database';
 import { Cliente } from '../models/cliente';
+import { listarClassificacoesDoCliente, salvarClassificacoesDoCliente, garantirTabelasClassificacao } from './classificacaoService';
+
+const JOIN_CLASSIFICACOES = `
+  LEFT JOIN (
+    SELECT CC.ID_CLIENTE, STRING_AGG(CL.DESCRICAO, ', ') AS DESCRICOES
+    FROM CLIENTES_CLASSIFICACOES CC
+    JOIN Classificacoes CL ON CL.ID = CC.ID_CLASSIFICACAO
+    GROUP BY CC.ID_CLIENTE
+  ) CLS ON CLS.ID_CLIENTE = C.ID`;
+
+function condicaoClassificacoes(req: any, classificacoes: string | undefined): string | null {
+  if (!classificacoes) return null;
+  const ids = classificacoes.split(',').map(Number).filter(n => !isNaN(n));
+  if (!ids.length) return null;
+  const params = ids.map((v, i) => {
+    const name = `cls${i}`;
+    req.input(name, sql.Int, v);
+    return `@${name}`;
+  });
+  return `EXISTS (SELECT 1 FROM CLIENTES_CLASSIFICACOES CCX WHERE CCX.ID_CLIENTE = C.ID AND CCX.ID_CLASSIFICACAO IN (${params.join(',')}))`;
+}
 
 let colunaUsuCriada = false;
 async function garantirColunasUsu() {
@@ -62,7 +83,8 @@ function mapRow(c: any): Cliente {
   };
 }
 
-export async function listarClientesFaturamento(busca?: string, filtro?: string, filtroValor?: string) {
+export async function listarClientesFaturamento(busca?: string, filtro?: string, filtroValor?: string, classificacoes?: string) {
+  await garantirTabelasClassificacao();
   const pool = await getPool();
   const req = pool.request();
   const conditions: string[] = [];
@@ -73,6 +95,8 @@ export async function listarClientesFaturamento(busca?: string, filtro?: string,
     };
     conditions.push(`${col[filtro] || 'C.NOMEXX'} LIKE @busca`);
   }
+  const condClassificacoes = condicaoClassificacoes(req, classificacoes);
+  if (condClassificacoes) conditions.push(condClassificacoes);
   const tot = `(ISNULL(COMP.TOTAL, 0) + ISNULL(VEN.TOTAL, 0))`;
   if (filtroValor === 'ate10k')   conditions.push(`${tot} BETWEEN 1 AND 10000`);
   if (filtroValor === 'ate20k')   conditions.push(`${tot} BETWEEN 1 AND 20000`);
@@ -87,7 +111,8 @@ export async function listarClientesFaturamento(busca?: string, filtro?: string,
       ISNULL(VEN.QTD,    0) AS QTD_VENDAS,
       ISNULL(VEN.TOTAL,  0) AS VLR_VENDAS,
       ISNULL(LAN.QTD,    0) AS QTD_LANCES,
-      ISNULL(LAN.VLR,    0) AS VLR_LANCES
+      ISNULL(LAN.VLR,    0) AS VLR_LANCES,
+      CLS.DESCRICOES AS CLASSIFICACOES_DESC
     FROM Clientes C
     LEFT JOIN Cidades CID ON CID.ID = C.CIDADE
     LEFT JOIN (
@@ -114,6 +139,7 @@ export async function listarClientesFaturamento(busca?: string, filtro?: string,
       WHERE IDCLIENTE IS NOT NULL
       GROUP BY IDCLIENTE
     ) LAN ON LAN.IDCLIENTE = C.ID
+    ${JOIN_CLASSIFICACOES}
     ${where}
     ORDER BY ISNULL(COMP.TOTAL, 0) DESC, C.NOMEXX
   `);
@@ -121,13 +147,15 @@ export async function listarClientesFaturamento(busca?: string, filtro?: string,
     id: c.ID, nomexx: c.NOMEXX, cpfxxx: c.CPFXXX, cnpjxx: c.CNPJXX,
     emailx: c.EMAILX, celu1: c.CELU_1, ativox: c.ATIVOX, datcad: c.DATCAD,
     nomeCidade: c.NOMECIDADE, nomeEstado: c.NOMEESTADO,
+    classificacoesDescricao: c.CLASSIFICACOES_DESC,
     qtdCompras: c.QTD_COMPRAS, vlrCompras: c.VLR_COMPRAS,
     qtdVendas:  c.QTD_VENDAS,  vlrVendas:  c.VLR_VENDAS,
     qtdLances:  c.QTD_LANCES,  vlrLances:  c.VLR_LANCES,
   }));
 }
 
-export async function listarClientes(busca?: string, filtro?: string, filtroValor?: string): Promise<Cliente[]> {
+export async function listarClientes(busca?: string, filtro?: string, filtroValor?: string, classificacoes?: string): Promise<Cliente[]> {
+  await garantirTabelasClassificacao();
   const pool = await getPool();
   const req = pool.request();
   const conditions: string[] = [];
@@ -139,6 +167,9 @@ export async function listarClientes(busca?: string, filtro?: string, filtroValo
     };
     conditions.push(`${col[filtro] || 'C.NOMEXX'} LIKE @busca`);
   }
+
+  const condClassificacoes = condicaoClassificacoes(req, classificacoes);
+  if (condClassificacoes) conditions.push(condClassificacoes);
 
   const tot = `(ISNULL(COMP_V.TOTAL, 0) + ISNULL(VEN_V.TOTAL, 0))`;
   let joinValor = '';
@@ -169,12 +200,14 @@ export async function listarClientes(busca?: string, filtro?: string, filtroValo
       ISNULL(C.VER_TOP_COMPRADORES, 'S') AS VER_TOP_COMPRADORES,
       ISNULL(C.VER_TOP_VENDEDORES, 'S') AS VER_TOP_VENDEDORES,
       ISNULL(C.VER_VENCIMENTOS, 'S') AS VER_VENCIMENTOS,
-      CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO
+      CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO,
+      CLS.DESCRICOES AS CLASSIFICACOES_DESC
     FROM Clientes C
     LEFT JOIN Cidades CID ON CID.ID = C.CIDADE
+    ${JOIN_CLASSIFICACOES}
     ${joinValor}
     ${where} ORDER BY C.NOMEXX`);
-  return r.recordset.map(mapRow);
+  return r.recordset.map((c: any) => ({ ...mapRow(c), classificacoesDescricao: c.CLASSIFICACOES_DESC }));
 }
 
 export async function buscarClientePorId(id: number): Promise<Cliente | null> {
@@ -193,7 +226,9 @@ export async function buscarClientePorId(id: number): Promise<Cliente | null> {
     LEFT JOIN Clientes UALT  ON UALT.ID  = C.USUALT
     WHERE C.ID=@id`);
   if (!r.recordset.length) return null;
-  return mapRow(r.recordset[0]);
+  const cliente = mapRow(r.recordset[0]);
+  cliente.classificacoes = await listarClassificacoesDoCliente(id);
+  return cliente;
 }
 
 export class DuplicidadeError extends Error {
@@ -249,6 +284,7 @@ export async function criarCliente(d: Cliente): Promise<number> {
     .input('limcre', sql.VarChar, d.limcre||null).input('classificacao', sql.Int, d.classificacao||null)
     .input('codcla', sql.Char, d.codcla||'F')
     .input('estciv', sql.VarChar, d.estciv||null).input('obsxxx', sql.VarChar, d.obsxxx||null)
+    .input('ocorrencias', sql.VarChar, d.ocorrencias||null)
     .input('datcad', sql.Date, new Date())
     .input('bancox', sql.VarChar, d.bancox||null).input('agenci', sql.VarChar, d.agenci||null)
     .input('contax', sql.VarChar, d.contax||null).input('pix', sql.VarChar, d.pix||null)
@@ -260,10 +296,12 @@ export async function criarCliente(d: Cliente): Promise<number> {
     .input('refer2', sql.VarChar, d.refer2||null).input('telrefere2', sql.VarChar, d.telrefere2||null)
     .input('idSolicitadoPor', sql.Int, d.idSolicitadoPor||null)
     .input('usucad', sql.Int, d.usucad||null)
-    .query(`INSERT INTO Clientes (NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,CODCLA,ESTCIV,OBSXXX,DATCAD,BANCOX,AGENCI,CONTAX,PIX,BANCO1,AGENCIA1,CONTA1,PIX1,BANCO2,AGENCIA2,CONTA2,PIX2,REFER1,TELREFERE1,REFER2,TELREFERE2,ID_SOLICITADO_POR,USUCAD)
+    .query(`INSERT INTO Clientes (NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,CODCLA,ESTCIV,OBSXXX,OCORRENCIAS,DATCAD,BANCOX,AGENCI,CONTAX,PIX,BANCO1,AGENCIA1,CONTA1,PIX1,BANCO2,AGENCIA2,CONTA2,PIX2,REFER1,TELREFERE1,REFER2,TELREFERE2,ID_SOLICITADO_POR,USUCAD)
       OUTPUT INSERTED.ID
-      VALUES (@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@codcla,@estciv,@obsxxx,@datcad,@bancox,@agenci,@contax,@pix,@banco1,@agencia1,@conta1,@pix1,@banco2,@agencia2,@conta2,@pix2,@refer1,@telrefere1,@refer2,@telrefere2,@idSolicitadoPor,@usucad)`);
-  return r.recordset[0].ID;
+      VALUES (@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@codcla,@estciv,@obsxxx,@ocorrencias,@datcad,@bancox,@agenci,@contax,@pix,@banco1,@agencia1,@conta1,@pix1,@banco2,@agencia2,@conta2,@pix2,@refer1,@telrefere1,@refer2,@telrefere2,@idSolicitadoPor,@usucad)`);
+  const id = r.recordset[0].ID;
+  await salvarClassificacoesDoCliente(id, d.classificacoes || []);
+  return id;
 }
 
 export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
@@ -287,7 +325,8 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
     .input('acessoApp', sql.VarChar, d.acessoApp||null).input('limcre', sql.VarChar, d.limcre||null)
     .input('classificacao', sql.Int, d.classificacao||null).input('codcla', sql.Char, d.codcla||'F')
     .input('estciv', sql.VarChar, d.estciv||null)
-    .input('obsxxx', sql.VarChar, d.obsxxx||null).input('datalt', sql.Date, new Date())
+    .input('obsxxx', sql.VarChar, d.obsxxx||null).input('ocorrencias', sql.VarChar, d.ocorrencias||null)
+    .input('datalt', sql.Date, new Date())
     .input('bancox', sql.VarChar, d.bancox||null).input('agenci', sql.VarChar, d.agenci||null)
     .input('contax', sql.VarChar, d.contax||null).input('pix', sql.VarChar, d.pix||null)
     .input('banco1', sql.VarChar, d.banco1||null).input('agencia1', sql.VarChar, d.agencia1||null)
@@ -304,13 +343,14 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
       RGXXXX=@rgxxxx,DATNAS=@datnas,EMAILX=@emailx,EMAIL2=@email2,CIDADE=@cidade,COMPLE=@comple,
       PROFISS=@profiss,EMPRES=@empres,RENDAX=@rendax,ATIVOX=@ativox,BLOCLI=@blocli,
       ACESSO_APP=@acessoApp,LIMCRE=@limcre,CLASSIFICACAO=@classificacao,CODCLA=@codcla,ESTCIV=@estciv,
-      OBSXXX=@obsxxx,DATALT=@datalt,BANCOX=@bancox,AGENCI=@agenci,CONTAX=@contax,PIX=@pix,
+      OBSXXX=@obsxxx,OCORRENCIAS=@ocorrencias,DATALT=@datalt,BANCOX=@bancox,AGENCI=@agenci,CONTAX=@contax,PIX=@pix,
       BANCO1=@banco1,AGENCIA1=@agencia1,CONTA1=@conta1,PIX1=@pix1,
       BANCO2=@banco2,AGENCIA2=@agencia2,CONTA2=@conta2,PIX2=@pix2,
       REFER1=@refer1,TELREFERE1=@telrefere1,REFER2=@refer2,TELREFERE2=@telrefere2,
       ID_SOLICITADO_POR=@idSolicitadoPor,USUALT=@usualt
       ${d.senhax ? ',SENHAX=@senhax' : ''}
       WHERE ID=@id`);
+  await salvarClassificacoesDoCliente(id, d.classificacoes || []);
 }
 
 export async function deletarCliente(id: number): Promise<void> {

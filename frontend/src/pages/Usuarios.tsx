@@ -16,7 +16,7 @@ const CONTROLES_GRUPOS = [
   { label: 'Leilões',   itens: ['Leilões', 'Lotes', 'Lançes', 'Ordem de Entrada'] },
   { label: 'Comercial', itens: ['Vendas', 'Consulta Vendas', 'Contratos', 'Cotações', 'Despesas'] },
   { label: 'Clientes',  itens: ['Clientes', 'Notificações'] },
-  { label: 'Cadastros', itens: ['Cidades', 'Raças', 'Condições de Pagamento'] },
+  { label: 'Cadastros', itens: ['Cidades', 'Raças', 'Condições de Pagamento', 'Classificações'] },
   { label: 'Sistema',   itens: ['Perfis', 'Usuários', 'Editor de Relatórios'] },
 ];
 

@@ -11,6 +11,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Cidades from './pages/Cidades';
 import Racas from './pages/Racas';
+import Classificacoes from './pages/Classificacoes';
 import CondicoesPagamento from './pages/CondicoesPagamento';
 import Perfis from './pages/Perfis';
 import Usuarios from './pages/Usuarios';
@@ -89,6 +90,7 @@ function App() {
                 <Route path="clientes" element={<Clientes />} />
                 <Route path="cidades" element={<Cidades />} />
                 <Route path="racas" element={<Racas />} />
+                <Route path="classificacoes" element={<Classificacoes />} />
                 <Route path="condicoes-pagamento" element={<CondicoesPagamento />} />
                 <Route path="perfis" element={<Perfis />} />
                 <Route path="usuarios" element={<Usuarios />} />
