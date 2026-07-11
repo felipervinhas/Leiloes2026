@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Select, Button, Table, Input, Space, message, Typography, Row, Col, Tag, Grid, Tooltip } from 'antd';
 import {
-  SaveOutlined, OrderedListOutlined, ClearOutlined, CalendarOutlined, EyeOutlined,
+  SaveOutlined, OrderedListOutlined, ClearOutlined, CalendarOutlined, EyeOutlined, HolderOutlined,
 } from '@ant-design/icons';
 import { BlobProvider } from '@react-pdf/renderer';
 import api from '../services/api';
@@ -33,9 +33,12 @@ export default function OrdemEntrada() {
   const [nomeLeilao, setNomeLeilao] = useState<string | undefined>();
   const [lotes, setLotes] = useState<LoteOrdem[]>([]);
   const [ordens, setOrdens] = useState<Record<number, string>>({});
+  const [ordemIds, setOrdemIds] = useState<number[]>([]);
+  const [arrastandoId, setArrastandoId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [layoutAtivo, setLayoutAtivo] = useState<CampoLayout[] | null>(null);
+  const dragIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     api.get('/leiloes').then(r => {
@@ -55,10 +58,46 @@ export default function OrdemEntrada() {
       const init: Record<number, string> = {};
       data.forEach(l => { init[l.id] = l.ordem || ''; });
       setOrdens(init);
+      setOrdemIds(ordenarIdsInicial(data, init));
       setNomeLeilao(label);
     } finally {
       setLoading(false);
     }
+  };
+
+  const ordenarIdsInicial = (lista: LoteOrdem[], ordensMap: Record<number, string>) => {
+    return [...lista]
+      .sort((a, b) => {
+        const oa = ordensMap[a.id] || '';
+        const ob = ordensMap[b.id] || '';
+        if (oa && !ob) return -1;
+        if (!oa && ob) return 1;
+        if (!oa && !ob) return a.lotexx.localeCompare(b.lotexx);
+        const na = parseInt(oa) || 0;
+        const nb = parseInt(ob) || 0;
+        return na !== nb ? na - nb : a.lotexx.localeCompare(b.lotexx);
+      })
+      .map(l => l.id);
+  };
+
+  const renumerar = (ids: number[]) => {
+    const novas: Record<number, string> = {};
+    ids.forEach((id, i) => { novas[id] = String(i + 1).padStart(2, '0'); });
+    setOrdens(novas);
+  };
+
+  const moverLinha = (origemId: number | null, destinoId: number) => {
+    if (origemId == null || origemId === destinoId) return;
+    setOrdemIds(prev => {
+      const lista = [...prev];
+      const de = lista.indexOf(origemId);
+      const para = lista.indexOf(destinoId);
+      if (de === -1 || para === -1) return prev;
+      lista.splice(de, 1);
+      lista.splice(para, 0, origemId);
+      renumerar(lista);
+      return lista;
+    });
   };
 
   const onChangeLeilao = (id: number, opt: any) => {
@@ -70,9 +109,7 @@ export default function OrdemEntrada() {
     setOrdens(prev => ({ ...prev, [id]: valor }));
 
   const autonumerar = () => {
-    const novas: Record<number, string> = {};
-    lotes.forEach((l, i) => { novas[l.id] = String(i + 1).padStart(2, '0'); });
-    setOrdens(novas);
+    renumerar(ordemIds);
     message.success('Numeração automática aplicada — salve para confirmar');
   };
 
@@ -95,18 +132,15 @@ export default function OrdemEntrada() {
     }
   };
 
-  const lotesOrdenados = useMemo(() => {
-    return [...lotes].sort((a, b) => {
-      const oa = ordens[a.id] || '';
-      const ob = ordens[b.id] || '';
-      if (oa && !ob) return -1;
-      if (!oa && ob) return 1;
-      if (!oa && !ob) return a.lotexx.localeCompare(b.lotexx);
-      const na = parseInt(oa) || 0;
-      const nb = parseInt(ob) || 0;
-      return na !== nb ? na - nb : a.lotexx.localeCompare(b.lotexx);
-    });
-  }, [lotes, ordens]);
+  const porId = useMemo(
+    () => Object.fromEntries(lotes.map(l => [l.id, l])) as Record<number, LoteOrdem>,
+    [lotes],
+  );
+
+  const lotesOrdenados = useMemo(
+    () => ordemIds.map(id => porId[id]).filter(Boolean),
+    [ordemIds, porId],
+  );
 
   const comOrdem = lotes.filter(l => ordens[l.id]);
 
@@ -119,6 +153,14 @@ export default function OrdemEntrada() {
     });
 
   const colunas = [
+    {
+      title: '',
+      key: 'arrastar',
+      width: 32,
+      render: () => (
+        <HolderOutlined style={{ cursor: 'grab', color: '#999' }} />
+      ),
+    },
     {
       title: 'Ordem',
       key: 'ordem',
@@ -244,13 +286,24 @@ export default function OrdemEntrada() {
           size="small"
           pagination={false}
           scroll={{ x: sm ? 700 : 400, y: 'calc(100vh - 300px)' }}
-          rowClassName={r => ordens[r.id] ? 'lote-com-ordem' : ''}
+          rowClassName={r => [
+            ordens[r.id] ? 'lote-com-ordem' : '',
+            arrastandoId === r.id ? 'lote-arrastando' : '',
+          ].filter(Boolean).join(' ')}
+          onRow={(record) => ({
+            draggable: true,
+            onDragStart: () => { dragIdRef.current = record.id; setArrastandoId(record.id); },
+            onDragOver: (e: React.DragEvent) => e.preventDefault(),
+            onDrop: () => { moverLinha(dragIdRef.current, record.id); },
+            onDragEnd: () => { dragIdRef.current = null; setArrastandoId(null); },
+          })}
         />
       )}
 
       <style>{`
         .lote-com-ordem td { background-color: #f6ffed !important; }
         .lote-com-ordem:hover td { background-color: #d9f7be !important; }
+        .lote-arrastando td { opacity: 0.4; }
       `}</style>
     </>
   );
