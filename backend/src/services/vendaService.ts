@@ -996,6 +996,178 @@ export async function dadosFatura(idMov: number) {
   };
 }
 
+// ─── fatura unificada (N lotes de um mesmo comprador+vendedor+leilão) ───────
+
+export interface FaturaUnificadaLote {
+  idMc: number;
+  idMov: number;
+  idMovLote: number;
+  codnot?: string;
+  datlan: string;
+  lotexx?: string;
+  deslot?: string;
+  rpxxx?: string;
+  sbbxxx?: string;
+  pesoxx?: number;
+  catego?: string;
+  descricaoRaca?: string;
+  especies?: string;
+  qtdxxx?: number;
+  valorOriginal: number;
+  valorPagar: number;
+  valorDesconto: number;
+  valorComissao: number;
+  comissao: number;
+  formaPagamento?: string;
+  desfin?: string;
+  qtdparCond: number;
+  parcelas: Array<{ ordxxx?: string; datven?: string; vlrpar?: number; pripar?: string }>;
+}
+
+export interface FaturaUnificadaGrupo {
+  idLeilao: number;
+  leilao?: string;
+  datlei?: string;
+  vendedor: {
+    id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string;
+    endere?: string; bairro?: string; cepxxx?: string;
+    celu1?: string; telres?: string; emailx?: string;
+    nomeCidade?: string; nomeEstado?: string;
+  };
+  comprador: {
+    id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string;
+    endere?: string; bairro?: string; cepxxx?: string;
+    celu1?: string; celu2?: string; telcom?: string; telres?: string; emailx?: string;
+    nomeCidade?: string; nomeEstado?: string; nomePropriedade?: string;
+  };
+  lotes: FaturaUnificadaLote[];
+  totais: {
+    totalCompra: number;
+    totalAVista: number;
+    totalPromissorias: number;
+    totalSinal: number;
+    totalComissao: number;
+    totalDesconto: number;
+  };
+}
+
+export async function dadosFaturaUnificada(ids: number[]): Promise<FaturaUnificadaGrupo[]> {
+  if (!ids.length) return [];
+  const pool = await getPool();
+  const req = pool.request();
+  const placeholders = ids.map((id, i) => { req.input(`id${i}`, sql.Int, id); return `@id${i}`; });
+
+  const rMc = await req.query(`
+    SELECT MC.ID, MC.IDMOV, MC.IDMOVLOTE, MC.IDCLI, MC.VALORORIGINAL, MC.VALORPAGAR,
+           MC.VALORDESCONTO, MC.VALORCOMISSAO, MC.COMISSAO, MC.FORMA_PAGAMENTO, MC.IDCONDPAGTO,
+           M.IDLEILAO, M.CODNOT, M.DATLAN,
+           LEI.LEILAO, LEI.DATLEI,
+           ML.QTDXXX, ML.CODVEN AS ID_VENDEDOR,
+           LO.LOTEXX, LO.DESLOT, LO.RPXXX, LO.SBBXXX, LO.PESOXX, LO.CATEGO,
+           R.DESCRICAO AS DESCRICAORACA, R.ESPECIES,
+           VEN.NOMEXX AS NOME_VENDEDOR, VEN.CPFXXX AS CPF_VENDEDOR, VEN.CNPJXX AS CNPJ_VENDEDOR,
+           VEN.ENDERE AS ENDERE_VENDEDOR, VEN.BAIRRO AS BAIRRO_VENDEDOR, VEN.CEPXXX AS CEP_VENDEDOR,
+           VEN.CELU_1 AS CELULAR_VENDEDOR, VEN.TELRES AS TELRES_VENDEDOR, VEN.EMAILX AS EMAIL_VENDEDOR,
+           CIDVEN.CIDADE AS CIDADE_VENDEDOR, CIDVEN.ESTADO AS ESTADO_VENDEDOR,
+           C.NOMEXX, C.CPFXXX, C.CNPJXX, C.ENDERE, C.BAIRRO, C.CEPXXX,
+           C.CELU_1, C.CELU_2, C.TELCOM, C.TELRES, C.EMAILX,
+           CIDC.CIDADE AS NOMECIDADE, CIDC.ESTADO AS ESTADO,
+           CP.DESFIN, CP.QTDPAR AS COND_QTDPAR,
+           CPR.NOME_PROPRIEDADE
+    FROM MOVIMENTO_COMPRADOR MC
+    LEFT JOIN MOVIMENTO M       ON M.ID  = MC.IDMOV
+    LEFT JOIN LEILOES LEI       ON LEI.ID = M.IDLEILAO
+    LEFT JOIN MOVIMENTO_LOTE ML ON ML.ID  = MC.IDMOVLOTE
+    LEFT JOIN LOTES LO          ON LO.ID  = ML.IDLOTE
+    LEFT JOIN RACAS R           ON R.ID   = LO.RACAXX
+    LEFT JOIN CLIENTES VEN      ON VEN.ID = ML.CODVEN
+    LEFT JOIN CIDADES CIDVEN    ON CIDVEN.ID = VEN.CIDADE
+    LEFT JOIN CLIENTES C        ON C.ID   = MC.IDCLI
+    LEFT JOIN CIDADES CIDC      ON CIDC.ID = C.CIDADE
+    LEFT JOIN CONDICAOPAGTOS CP ON CP.ID   = MC.IDCONDPAGTO
+    LEFT JOIN CLIENTES_PROPRIEDADES CPR ON CPR.ID = MC.ID_PROPRIEDADE
+    WHERE MC.ID IN (${placeholders.join(',')})
+    ORDER BY M.IDLEILAO, MC.IDCLI, ML.CODVEN, TRY_CAST(LO.LOTEXX AS INT), LO.LOTEXX
+  `);
+
+  const idMovLotes = [...new Set(rMc.recordset.map((r: any) => r.IDMOVLOTE).filter((v: any) => v != null))];
+  const parcelasPorMovLote: Record<number, any[]> = {};
+  if (idMovLotes.length) {
+    const req2 = pool.request();
+    const ph2 = idMovLotes.map((id, i) => { req2.input(`ml${i}`, sql.Int, id as number); return `@ml${i}`; });
+    const rParc = await req2.query(`
+      SELECT IDMOVLOTE, ORDXXX, FORMAT(DATVEN,'dd/MM/yyyy') AS DATVEN_F, VLRPAR, PRIPAR
+      FROM MOVIMENTO_PARCELAMENTO
+      WHERE IDMOVLOTE IN (${ph2.join(',')})
+      ORDER BY IDMOVLOTE, DATVEN, ORDXXX
+    `);
+    for (const p of rParc.recordset) {
+      const key = p.IDMOVLOTE;
+      if (!parcelasPorMovLote[key]) parcelasPorMovLote[key] = [];
+      parcelasPorMovLote[key].push({ ordxxx: p.ORDXXX, datven: p.DATVEN_F, vlrpar: p.VLRPAR, pripar: p.PRIPAR });
+    }
+  }
+
+  const grupos = new Map<string, FaturaUnificadaGrupo>();
+  for (const r of rMc.recordset) {
+    const idVendedor  = Number(r.ID_VENDEDOR);
+    const idComprador = Number(r.IDCLI);
+    const chave = `${r.IDLEILAO}_${idComprador}_${idVendedor}`;
+
+    if (!grupos.has(chave)) {
+      grupos.set(chave, {
+        idLeilao: r.IDLEILAO,
+        leilao: r.LEILAO,
+        datlei: r.DATLEI ? new Date(r.DATLEI).toLocaleDateString('pt-BR') : undefined,
+        vendedor: {
+          id: idVendedor, nomexx: r.NOME_VENDEDOR, cpfxxx: r.CPF_VENDEDOR, cnpjxx: r.CNPJ_VENDEDOR,
+          endere: r.ENDERE_VENDEDOR, bairro: r.BAIRRO_VENDEDOR, cepxxx: r.CEP_VENDEDOR,
+          celu1: r.CELULAR_VENDEDOR, telres: r.TELRES_VENDEDOR, emailx: r.EMAIL_VENDEDOR,
+          nomeCidade: r.CIDADE_VENDEDOR, nomeEstado: r.ESTADO_VENDEDOR,
+        },
+        comprador: {
+          id: idComprador, nomexx: r.NOMEXX, cpfxxx: r.CPFXXX, cnpjxx: r.CNPJXX,
+          endere: r.ENDERE, bairro: r.BAIRRO, cepxxx: r.CEPXXX,
+          celu1: r.CELU_1, celu2: r.CELU_2, telcom: r.TELCOM, telres: r.TELRES, emailx: r.EMAILX,
+          nomeCidade: r.NOMECIDADE, nomeEstado: r.ESTADO,
+          nomePropriedade: r.NOME_PROPRIEDADE,
+        },
+        lotes: [],
+        totais: { totalCompra: 0, totalAVista: 0, totalPromissorias: 0, totalSinal: 0, totalComissao: 0, totalDesconto: 0 },
+      });
+    }
+
+    const grupo = grupos.get(chave)!;
+    const parcelas = parcelasPorMovLote[r.IDMOVLOTE] || [];
+    const qtdparCond = r.COND_QTDPAR != null ? Number(r.COND_QTDPAR) : parcelas.length;
+    const aVista = qtdparCond <= 1;
+    const valorOriginal = r.VALORORIGINAL || 0;
+    const valorPagar     = r.VALORPAGAR    || 0;
+    const primeiraParcela = parcelas.find(p => p.pripar === 'S');
+    const valorSinal = primeiraParcela ? (primeiraParcela.vlrpar || 0) : valorPagar;
+
+    grupo.lotes.push({
+      idMc: r.ID, idMov: r.IDMOV, idMovLote: r.IDMOVLOTE, codnot: r.CODNOT,
+      datlan: r.DATLAN ? new Date(r.DATLAN).toLocaleDateString('pt-BR') : '—',
+      lotexx: r.LOTEXX, deslot: r.DESLOT, rpxxx: r.RPXXX, sbbxxx: r.SBBXXX, pesoxx: r.PESOXX,
+      catego: r.CATEGO, descricaoRaca: r.DESCRICAORACA, especies: r.ESPECIES, qtdxxx: r.QTDXXX,
+      valorOriginal, valorPagar,
+      valorDesconto: r.VALORDESCONTO || 0, valorComissao: r.VALORCOMISSAO || 0, comissao: r.COMISSAO || 0,
+      formaPagamento: r.FORMA_PAGAMENTO, desfin: r.DESFIN, qtdparCond,
+      parcelas,
+    });
+
+    grupo.totais.totalCompra   += valorOriginal;
+    grupo.totais.totalComissao += r.VALORCOMISSAO || 0;
+    grupo.totais.totalDesconto += r.VALORDESCONTO || 0;
+    grupo.totais.totalSinal        += valorSinal;
+    grupo.totais.totalPromissorias += valorSinal;
+    if (aVista) grupo.totais.totalAVista += valorPagar;
+  }
+
+  return Array.from(grupos.values());
+}
+
 // ─── atualizar status (encaminhamentos) ─────────────────────────────────────
 
 export async function atualizarStatus(

@@ -22,6 +22,9 @@ import EditorBlocoCartao from '../components/relatorioEditor/EditorBlocoCartao';
 import { FICHA_CLIENTE_CAMPOS, COLUNAS_PROPRIEDADES_PADRAO, PropriedadeFichaPDF } from '../relatorios/fichaClienteCampos';
 import { ClienteFichaPDF } from '../relatorios/fichaClienteContext';
 import FichaClienteDinamica from '../relatorios/FichaClienteDinamica';
+import { FATURA_UNIFICADA_CAMPOS, COLUNAS_LOTES_FATURA_PADRAO } from '../relatorios/faturaUnificadaCampos';
+import { FaturaUnificadaGrupo } from '../relatorios/RelatorioFaturaUnificada';
+import FaturaUnificadaDinamica from '../relatorios/FaturaUnificadaDinamica';
 
 const { Title } = Typography;
 
@@ -54,7 +57,7 @@ interface TemplateResumo {
 interface TipoRelatorioConfig {
   tipo: string;
   label: string;
-  familia: 'fatura' | 'ordem_entrada' | 'ficha_cliente';
+  familia: 'fatura' | 'ordem_entrada' | 'ficha_cliente' | 'fatura_unificada';
   campos: CampoDisponivel[];
   tituloDocumento: string;
   larguraMM: number;
@@ -63,6 +66,7 @@ interface TipoRelatorioConfig {
   suportaBlocoCompradores?: boolean;
   suportaTabelaLotes?: boolean;
   suportaTabelaPropriedades?: boolean;
+  suportaTabelaLotesFatura?: boolean;
 }
 
 const TIPOS_RELATORIO: TipoRelatorioConfig[] = [
@@ -89,6 +93,11 @@ const TIPOS_RELATORIO: TipoRelatorioConfig[] = [
   {
     tipo: 'ficha_cliente', label: 'Ficha de Cliente', familia: 'ficha_cliente',
     campos: FICHA_CLIENTE_CAMPOS, tituloDocumento: 'Ficha de Cliente', suportaTabelaPropriedades: true,
+    larguraMM: 210, alturaMM: 297,
+  },
+  {
+    tipo: 'fatura_unificada', label: 'Fatura Unificada', familia: 'fatura_unificada',
+    campos: FATURA_UNIFICADA_CAMPOS, tituloDocumento: 'Fatura Unificada', suportaTabelaLotesFatura: true,
     larguraMM: 210, alturaMM: 297,
   },
 ];
@@ -120,6 +129,8 @@ export default function EditorRelatorios() {
   const [clienteTesteId, setClienteTesteId] = useState<number | null>(null);
   const [clienteTeste, setClienteTeste] = useState<ClienteFichaPDF | null>(null);
   const [propriedadesTeste, setPropriedadesTeste] = useState<PropriedadeFichaPDF[]>([]);
+
+  const [gruposFaturaTeste, setGruposFaturaTeste] = useState<FaturaUnificadaGrupo[]>([]);
 
   const [ultimoEstiloTexto, setUltimoEstiloTexto] = useState<Partial<EstiloTexto>>(carregarUltimoEstilo);
 
@@ -169,11 +180,21 @@ export default function EditorRelatorios() {
   }, [vendaTesteId]);
 
   useEffect(() => {
-    if (tipoConfig.familia !== 'ordem_entrada') return;
+    if (tipoConfig.familia !== 'ordem_entrada' && tipoConfig.familia !== 'fatura_unificada') return;
     api.get('/leiloes').then(r => setLeilaoOptions((r.data || []).map((l: any) => ({
       value: l.id, label: l.leilao || `Leilão #${l.id}`,
     })))).catch(() => setLeilaoOptions([]));
   }, [tipoConfig.familia]);
+
+  useEffect(() => {
+    if (tipoConfig.familia !== 'fatura_unificada' || !leilaoTesteId) { setGruposFaturaTeste([]); return; }
+    api.get('/consulta-vendas', { params: { idLeilao: leilaoTesteId } }).then(async r => {
+      const ids = (r.data || []).map((v: any) => v.id);
+      if (!ids.length) { setGruposFaturaTeste([]); return; }
+      const rf = await api.post('/vendas/fatura-unificada', { ids });
+      setGruposFaturaTeste(rf.data || []);
+    }).catch(() => setGruposFaturaTeste([]));
+  }, [tipoConfig.familia, leilaoTesteId]);
 
   useEffect(() => {
     if (!leilaoTesteId) { setLotesTeste([]); return; }
@@ -357,6 +378,21 @@ export default function EditorRelatorios() {
       x: 10, y: 200, largura: 190, altura: 60,
       ...BASE_CAMPO, fontSize: 8,
       colunas: COLUNAS_PROPRIEDADES_PADRAO.map(c => ({ ...c })),
+    };
+    setLayout(l => [...l, novo]);
+    setSelecionadoId(novo.id);
+  };
+
+  const adicionarTabelaLotesFatura = () => {
+    if (layout.some(c => c.tipo === 'bloco:tabela-lotes-fatura')) {
+      message.warning('Já existe uma tabela de lotes neste layout');
+      return;
+    }
+    const novo: CampoLayout = {
+      id: novoId(), tipo: 'bloco:tabela-lotes-fatura',
+      x: 10, y: 100, largura: 190, altura: 60,
+      ...BASE_CAMPO, fontSize: 8,
+      colunas: COLUNAS_LOTES_FATURA_PADRAO.map(c => ({ ...c })),
     };
     setLayout(l => [...l, novo]);
     setSelecionadoId(novo.id);
@@ -554,6 +590,35 @@ export default function EditorRelatorios() {
               </BlobProvider>
             )}
           </>
+        ) : tipoConfig.familia === 'fatura_unificada' ? (
+          <>
+            <span style={{ fontSize: 13, color: '#666' }}>Pré-visualizar com leilão:</span>
+            <Select
+              showSearch
+              placeholder="Escolher leilão…"
+              style={{ width: 260 }}
+              value={leilaoTesteId ?? undefined}
+              optionFilterProp="label"
+              onChange={setLeilaoTesteId}
+              options={leilaoOptions}
+              allowClear
+              onClear={() => setLeilaoTesteId(null)}
+            />
+            {gruposFaturaTeste.length > 0 && (
+              <BlobProvider document={<FaturaUnificadaDinamica grupos={gruposFaturaTeste} layout={layout} empresa={config.empresa} logoBase64={config.logoBase64} />}>
+                {({ url, loading }) => (
+                  <Button
+                    icon={<EyeOutlined />}
+                    loading={loading}
+                    disabled={!url || layout.length === 0}
+                    onClick={() => url && window.open(url, '_blank')}
+                  >
+                    Pré-visualizar PDF ({gruposFaturaTeste.length} fatura{gruposFaturaTeste.length !== 1 ? 's' : ''})
+                  </Button>
+                )}
+              </BlobProvider>
+            )}
+          </>
         ) : (
           <>
             <span style={{ fontSize: 13, color: '#666' }}>Pré-visualizar com venda:</span>
@@ -606,6 +671,7 @@ export default function EditorRelatorios() {
             onAdicionarTabelaLotes={tipoConfig.suportaTabelaLotes ? adicionarTabelaLotes : undefined}
             onAdicionarBlocoCompradores={tipoConfig.suportaBlocoCompradores ? adicionarBlocoCompradores : undefined}
             onAdicionarTabelaPropriedades={tipoConfig.suportaTabelaPropriedades ? adicionarTabelaPropriedades : undefined}
+            onAdicionarTabelaLotesFatura={tipoConfig.suportaTabelaLotesFatura ? adicionarTabelaLotesFatura : undefined}
           />
         </div>
 

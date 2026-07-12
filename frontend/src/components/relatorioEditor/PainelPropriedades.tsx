@@ -40,12 +40,14 @@ export default function PainelPropriedades({
     : campo.tipo === 'bloco:tabela-lotes' ? 'Tabela de lotes'
     : campo.tipo === 'bloco:compradores' ? 'Bloco de compradores'
     : campo.tipo === 'bloco:tabela-propriedades' ? 'Tabela de propriedades'
+    : campo.tipo === 'bloco:tabela-lotes-fatura' ? 'Tabela de lotes'
     : campo.tipo === 'logo' ? 'Logotipo'
     : 'Retângulo';
 
   const ehTexto = campo.tipo === 'campo' || campo.tipo === 'texto_livre';
   const ehBloco = campo.tipo === 'bloco:parcelas' || campo.tipo === 'bloco:tabela-lotes'
-    || campo.tipo === 'bloco:compradores' || campo.tipo === 'bloco:tabela-propriedades';
+    || campo.tipo === 'bloco:compradores' || campo.tipo === 'bloco:tabela-propriedades'
+    || campo.tipo === 'bloco:tabela-lotes-fatura';
   const ehVisual = !ehBloco; // blocos não aceitam opacidade/rotação (conteúdo dinâmico complexo)
 
   const moverColuna = (idx: number, delta: number) => {
@@ -115,7 +117,7 @@ export default function PainelPropriedades({
         </div>
       )}
 
-      {(campo.tipo === 'bloco:tabela-lotes' || campo.tipo === 'bloco:tabela-propriedades') && (
+      {(campo.tipo === 'bloco:tabela-lotes' || campo.tipo === 'bloco:tabela-propriedades' || campo.tipo === 'bloco:tabela-lotes-fatura') && (
         <>
           <div style={{ fontSize: 11, color: '#888', marginBottom: 8 }}>
             Marque as colunas visíveis e use as setas para reordenar.

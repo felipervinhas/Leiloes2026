@@ -1,18 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Table, Button, Select, Row, Col, Typography, Tag, Space,
-  Card, Divider, message, Spin, Radio,
+  Card, Divider, message, Spin, Radio, Modal,
 } from 'antd';
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import {
   SearchOutlined, FileExcelOutlined, FileSearchOutlined, ClearOutlined, PrinterOutlined,
+  CheckCircleFilled, CloseOutlined, FileTextOutlined, EyeOutlined,
 } from '@ant-design/icons';
-import { PDFDownloadLink } from '@react-pdf/renderer';
+import { PDFDownloadLink, BlobProvider } from '@react-pdf/renderer';
 import api from '../services/api';
 import dayjs from 'dayjs';
 import ConsultaVendasPDF from '../relatorios/RelatorioConsultaVendas';
 import PartesVendasPDF from '../relatorios/RelatorioPartesVendas';
+import RelatorioFaturaUnificada, { FaturaUnificadaGrupo } from '../relatorios/RelatorioFaturaUnificada';
 import { useConfig } from '../context/ConfigContext';
 
 type Orientacao = 'retrato' | 'paisagem';
@@ -62,6 +64,11 @@ export default function ConsultaVendas() {
   const [dados, setDados]   = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [consultou, setConsultou] = useState(false);
+
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [gerandoFaturaUnificada, setGerandoFaturaUnificada] = useState(false);
+  const [faturasUnificadas, setFaturasUnificadas] = useState<FaturaUnificadaGrupo[] | null>(null);
+  const [modalFaturaOpen, setModalFaturaOpen] = useState(false);
 
   const { rz: rzCV } = useColumnWidths('consulta_vendas', {
     lotexx: 70, deslot: 180, descricaoRaca: 120, especies: 90, rpxxx: 90, sbbxxx: 90,
@@ -117,6 +124,7 @@ export default function ConsultaVendas() {
   const consultar = async () => {
     setLoading(true);
     setConsultou(true);
+    setSelectedRowKeys([]);
     try {
       const params: any = {};
       if (leilaoSel)    params.idLeilao    = leilaoSel;
@@ -129,6 +137,27 @@ export default function ConsultaVendas() {
       setDados(r.data);
     } catch { message.error('Erro ao consultar vendas'); }
     finally { setLoading(false); }
+  };
+
+  const limparSelecao = () => setSelectedRowKeys([]);
+
+  const gerarFaturaUnificada = async () => {
+    setGerandoFaturaUnificada(true);
+    try {
+      // rowKey da tabela é MOVIMENTO.ID (id), mas a fatura unificada precisa do ID
+      // real de MOVIMENTO_COMPRADOR — que é o que de fato identifica "este comprador
+      // neste lote" de forma única (um lote pode ter mais de um comprador).
+      const idsMc = dados
+        .filter(d => selectedRowKeys.includes(d.id))
+        .map(d => d.idMovimentoComprador)
+        .filter((id): id is number => id != null);
+      if (!idsMc.length) { message.warning('Nenhum lote válido selecionado'); return; }
+      const r = await api.post('/vendas/fatura-unificada', { ids: idsMc });
+      if (!r.data.length) { message.warning('Nenhum dado encontrado para os lotes selecionados'); return; }
+      setFaturasUnificadas(r.data);
+      setModalFaturaOpen(true);
+    } catch { message.error('Erro ao gerar fatura unificada'); }
+    finally { setGerandoFaturaUnificada(false); }
   };
 
   const limpar = () => {
@@ -498,6 +527,7 @@ export default function ConsultaVendas() {
             scroll={{ x: 2200 }}
             pagination={{ pageSize: 20, showTotal: t => `${t} registros`, showSizeChanger: true }}
             locale={{ emptyText: 'Nenhuma venda encontrada com os filtros informados' }}
+            rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
             summary={() =>
               dados.length > 0 ? (
                 <Table.Summary.Row style={{ background: '#fafafa', fontWeight: 700 }}>
@@ -524,6 +554,79 @@ export default function ConsultaVendas() {
           Selecione os filtros e clique em <strong>Consultar</strong>
         </div>
       )}
+
+      {/* Barra flutuante de seleção */}
+      {selectedRowKeys.length > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          background: '#001529', color: 'white',
+          padding: '10px 24px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+          zIndex: 1000, boxShadow: '0 -4px 16px rgba(0,0,0,0.4)',
+        }}>
+          <Space size={8}>
+            <CheckCircleFilled style={{ color: '#52c41a', fontSize: 16 }} />
+            <span>
+              <strong>{selectedRowKeys.length}</strong> lote{selectedRowKeys.length !== 1 ? 's' : ''} selecionado{selectedRowKeys.length !== 1 ? 's' : ''}
+            </span>
+          </Space>
+          <Space size={8}>
+            <Button
+              icon={<CloseOutlined />}
+              onClick={limparSelecao}
+              style={{ borderColor: '#aaa', color: '#fff', background: 'transparent' }}
+            >
+              Limpar
+            </Button>
+            <Button
+              type="primary"
+              icon={<FileTextOutlined />}
+              loading={gerandoFaturaUnificada}
+              onClick={gerarFaturaUnificada}
+            >
+              Gerar Fatura Unificada
+            </Button>
+          </Space>
+        </div>
+      )}
+
+      {/* Modal de resultado da fatura unificada */}
+      <Modal
+        title="Fatura Unificada"
+        open={modalFaturaOpen}
+        onCancel={() => setModalFaturaOpen(false)}
+        footer={null}
+      >
+        {faturasUnificadas && faturasUnificadas.length > 0 && (
+          <>
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
+              {faturasUnificadas.length} documento{faturasUnificadas.length !== 1 ? 's' : ''} — agrupado{faturasUnificadas.length !== 1 ? 's' : ''} por comprador e vendedor:
+            </Typography.Paragraph>
+            <ul style={{ marginBottom: 16, paddingLeft: 20, fontSize: 12, color: '#666' }}>
+              {faturasUnificadas.map((g, i) => (
+                <li key={i}>
+                  {g.comprador.nomexx || '—'} — {g.vendedor.nomexx || '—'} ({g.lotes.length} lote{g.lotes.length !== 1 ? 's' : ''})
+                </li>
+              ))}
+            </ul>
+            <BlobProvider document={<RelatorioFaturaUnificada grupos={faturasUnificadas} empresa={config.empresa} />}>
+              {({ url, loading }) => (
+                <Button
+                  type="primary"
+                  icon={<EyeOutlined />}
+                  loading={loading}
+                  disabled={!url}
+                  onClick={() => url && window.open(url, '_blank')}
+                  block
+                  size="large"
+                >
+                  {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir'}
+                </Button>
+              )}
+            </BlobProvider>
+          </>
+        )}
+      </Modal>
     </>
   );
 }

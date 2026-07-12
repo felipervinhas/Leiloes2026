@@ -202,6 +202,12 @@ export const fatura = async (req: Request, res: Response) => {
   res.json(dados);
 };
 
+export const faturaUnificada = async (req: Request, res: Response) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter((n: number) => !isNaN(n)) : [];
+  if (!ids.length) return res.status(400).json({ error: 'Informe ao menos um lote (ids)' });
+  res.json(await svc.dadosFaturaUnificada(ids));
+};
+
 export const listarPropriedades = async (req: Request, res: Response) => {
   res.json(await svc.listarPropriedades(Number(req.params.idCli)));
 };

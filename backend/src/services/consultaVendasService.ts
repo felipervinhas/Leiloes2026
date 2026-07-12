@@ -12,7 +12,11 @@ export interface FiltrosConsulta {
 const BASE_SQL = `
   SELECT
     V.ID,
+    MC.ID AS ID_MC,
     V.CODNOT,
+    /* MC = MOVIMENTO_COMPRADOR: VWVendas expõe V.ID = MOVIMENTO.ID (não é único por comprador
+       quando o lote é rateado entre vários compradores); recuperamos aqui o ID real de
+       MOVIMENTO_COMPRADOR, necessário para agrupar a Fatura Unificada corretamente. */
     V.IDLEILAO,
     L.LEILAO,
     L.DATLEI,
@@ -70,6 +74,7 @@ const BASE_SQL = `
   LEFT JOIN Clientes VEN           ON VEN.ID = LO.CODVEN
   LEFT JOIN CondicaoPagtos PG      ON PG.ID  = V.IDCONDPAGTO
   LEFT JOIN Clientes COM           ON COM.ID = V.IDCLI
+  LEFT JOIN Movimento_Comprador MC ON MC.IDMOV = V.ID AND MC.IDCLI = V.IDCLI
   LEFT JOIN Clientes_Propriedades CP ON CP.ID = V.ID_PROPRIEDADE
   LEFT JOIN Cidades CIDVEN         ON CIDVEN.ID = VEN.CIDADE
   LEFT JOIN Cidades CIDCOM         ON CIDCOM.ID = COM.CIDADE
@@ -101,6 +106,7 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
 
   return r.recordset.map((row: any) => ({
     id:                    row.ID,
+    idMovimentoComprador:  row.ID_MC,
     codnot:                row.CODNOT,
     idLeilao:              row.IDLEILAO,
     leilao:                row.LEILAO,

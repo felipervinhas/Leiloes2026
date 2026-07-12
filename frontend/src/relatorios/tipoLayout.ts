@@ -1,6 +1,7 @@
 export type TipoCampoLayout =
   | 'campo' | 'texto_livre' | 'bloco:parcelas' | 'logo' | 'retangulo'
-  | 'bloco:tabela-lotes' | 'bloco:compradores' | 'bloco:tabela-propriedades';
+  | 'bloco:tabela-lotes' | 'bloco:compradores' | 'bloco:tabela-propriedades'
+  | 'bloco:tabela-lotes-fatura';
 
 export type AlinhamentoH = 'left' | 'center' | 'right';
 export type AlinhamentoV = 'top' | 'middle' | 'bottom';
