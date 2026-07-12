@@ -1,18 +1,33 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select,
   Space, Popconfirm, Typography, Row, Col, message, Tag } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, WalletOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, WalletOutlined, PrinterOutlined } from '@ant-design/icons';
+import { BlobProvider } from '@react-pdf/renderer';
 import api from '../services/api';
+import { useConfig } from '../context/ConfigContext';
+import RelatorioReciboDespesa from '../relatorios/RelatorioReciboDespesa';
 
 const { Title } = Typography;
 const { TextArea } = Input;
 
 const DC_OPTS = [
-  { value: 'E', label: 'Entrada / Recibo' },
-  { value: 'S', label: 'Saída / Despesa' },
+  { value: 'D', label: 'Despesa' },
+  { value: 'C', label: 'Crédito' },
+  { value: 'F', label: 'Fechamento (pagamento)' },
 ];
 
+// D_C legado (dados antigos gravados como E/S): tratamos E como Crédito e S como Despesa.
+const DC_INFO: Record<string, { label: string; color: string; sinal: 1 | -1 }> = {
+  D: { label: 'Despesa', color: 'volcano', sinal: -1 },
+  S: { label: 'Despesa (legado)', color: 'volcano', sinal: -1 },
+  C: { label: 'Crédito', color: 'green', sinal: 1 },
+  E: { label: 'Crédito (legado)', color: 'green', sinal: 1 },
+  F: { label: 'Fechamento', color: 'blue', sinal: -1 },
+};
+const dcInfo = (v: string) => DC_INFO[v] || { label: v || '—', color: 'default', sinal: 1 as const };
+
 export default function Despesas() {
+  const config = useConfig();
   const [dados, setDados]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -21,6 +36,7 @@ export default function Despesas() {
   const [leiloes, setLeiloes]     = useState<{ value: number; label: string }[]>([]);
   const [clientes, setClientes]   = useState<{ value: number; label: string }[]>([]);
   const [leilaoFiltro, setLeilaoFiltro] = useState<number | undefined>();
+  const [recibo, setRecibo]       = useState<any | null>(null);
   const [form] = Form.useForm();
 
   const carregar = async (b = '', idLeilao?: number) => {
@@ -41,7 +57,7 @@ export default function Despesas() {
     setEditando(item || null);
     form.setFieldsValue(item
       ? { ...item }
-      : { dc: 'S', valor: 0 });
+      : { dc: 'D', valor: 0 });
     setModalOpen(true);
   };
 
@@ -60,31 +76,31 @@ export default function Despesas() {
     catch { message.error('Erro ao excluir'); }
   };
 
-  const totalEntradas = dados.filter(d => d.dc === 'E').reduce((a, d) => a + (d.valor || 0), 0);
-  const totalSaidas   = dados.filter(d => d.dc === 'S').reduce((a, d) => a + (d.valor || 0), 0);
-  const saldo         = totalEntradas - totalSaidas;
+  const totalDespesas    = dados.filter(d => dcInfo(d.dc).sinal === -1 && d.dc !== 'F').reduce((a, d) => a + (d.valor || 0), 0);
+  const totalCreditos    = dados.filter(d => dcInfo(d.dc).sinal === 1).reduce((a, d) => a + (d.valor || 0), 0);
+  const totalFechamentos = dados.filter(d => d.dc === 'F').reduce((a, d) => a + (d.valor || 0), 0);
+  const saldo            = totalCreditos - totalDespesas - totalFechamentos;
 
   const colunas = [
-    { title: 'Tipo', dataIndex: 'dc', width: 110,
-      render: (v: string) => v === 'E'
-        ? <Tag color="green">Entrada</Tag>
-        : <Tag color="volcano">Saída</Tag> },
+    { title: 'Tipo', dataIndex: 'dc', width: 130,
+      render: (v: string) => <Tag color={dcInfo(v).color}>{dcInfo(v).label}</Tag> },
     { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 180 },
     { title: 'Cliente', dataIndex: 'cliente', ellipsis: true },
     { title: 'Observações', dataIndex: 'observacoes', ellipsis: true },
     { title: 'Valor', dataIndex: 'valor', width: 140, align: 'right' as const,
       render: (v: number, r: any) => (
-        <span style={{ color: r.dc === 'E' ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
-          {r.dc === 'S' ? '- ' : '+ '}R$ {Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        <span style={{ color: dcInfo(r.dc).sinal === 1 ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
+          {dcInfo(r.dc).sinal === -1 ? '- ' : '+ '}R$ {Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
         </span>
       ),
     },
     { title: 'Inclusão', dataIndex: 'dataInclusao', width: 110,
       render: (v: string) => v ? new Date(v).toLocaleDateString('pt-BR') : '—' },
     {
-      title: 'Ações', width: 100,
+      title: 'Ações', width: 130,
       render: (_: any, r: any) => (
         <Space>
+          <Button size="small" icon={<PrinterOutlined />} onClick={() => setRecibo(r)} title="Imprimir recibo" />
           <Button size="small" icon={<EditOutlined />} onClick={() => abrirModal(r)} />
           <Popconfirm title="Confirma exclusão?" onConfirm={() => deletar(r.id)}>
             <Button size="small" danger icon={<DeleteOutlined />} />
@@ -101,11 +117,12 @@ export default function Despesas() {
       {dados.length > 0 && (
         <Row gutter={12} style={{ marginBottom: 12 }}>
           {[
-            { label: 'Total Entradas', value: totalEntradas, color: '#52c41a' },
-            { label: 'Total Saídas',   value: totalSaidas,   color: '#ff4d4f' },
-            { label: 'Saldo',          value: saldo,         color: saldo >= 0 ? '#52c41a' : '#ff4d4f' },
+            { label: 'Total Créditos',    value: totalCreditos,    color: '#52c41a' },
+            { label: 'Total Despesas',    value: totalDespesas,    color: '#ff4d4f' },
+            { label: 'Total Fechamentos', value: totalFechamentos, color: '#1677ff' },
+            { label: 'Saldo',             value: saldo,            color: saldo >= 0 ? '#52c41a' : '#ff4d4f' },
           ].map(({ label, value, color }) => (
-            <Col span={8} key={label}>
+            <Col span={6} key={label}>
               <div style={{ background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 6, padding: '8px 16px' }}>
                 <div style={{ fontSize: 12, color: '#888' }}>{label}</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color }}>
@@ -211,6 +228,34 @@ export default function Despesas() {
             </Col>
           </Row>
         </Form>
+      </Modal>
+
+      <Modal
+        title="Recibo"
+        open={!!recibo}
+        onCancel={() => setRecibo(null)}
+        footer={null}
+        width={400}
+      >
+        {recibo && (
+          <BlobProvider document={<RelatorioReciboDespesa dados={recibo} empresa={config.empresa} />}>
+            {({ url, loading: gerandoPdf, error }) => (
+              <>
+                <Button
+                  type="primary" icon={<PrinterOutlined />} loading={gerandoPdf} disabled={!url}
+                  onClick={() => url && window.open(url, '_blank')} block size="large"
+                >
+                  {gerandoPdf ? 'Gerando PDF...' : 'Visualizar / Imprimir Recibo'}
+                </Button>
+                {error ? (
+                  <div style={{ marginTop: 8, color: '#ff4d4f', fontSize: 12 }}>
+                    Erro ao gerar PDF: {String((error as any)?.message || error)}
+                  </div>
+                ) : null}
+              </>
+            )}
+          </BlobProvider>
+        )}
       </Modal>
     </>
   );

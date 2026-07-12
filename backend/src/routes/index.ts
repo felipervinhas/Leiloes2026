@@ -21,6 +21,7 @@ import * as venda from '../controllers/vendaController';
 import * as cotacao from '../controllers/cotacaoController';
 import * as notificacao from '../controllers/notificacaoController';
 import * as despesa from '../controllers/despesaController';
+import * as acertoVendedor from '../controllers/acertoVendedorController';
 import * as dash     from '../controllers/dashboardController';
 import * as permissaoDash from '../controllers/permissaoDashboardController';
 import * as contrato  from '../controllers/contratoController';
@@ -185,6 +186,8 @@ bancoRouter.get('/despesas', despesa.listar);
 bancoRouter.post('/despesas', despesa.criar);
 bancoRouter.put('/despesas/:id', despesa.atualizar);
 bancoRouter.delete('/despesas/:id', despesa.deletar);
+
+bancoRouter.get('/acerto-vendedor', acertoVendedor.buscar);
 
 bancoRouter.get('/clientes', cliente.listar);
 bancoRouter.get('/clientes/faturamento', cliente.listarFaturamento);

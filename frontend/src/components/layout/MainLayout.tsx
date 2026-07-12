@@ -35,6 +35,7 @@ const ALL_MENU_ITEMS = [
       { key: '/contratos', icon: <FileTextOutlined />, label: 'Contratos', controle: 'Contratos' },
       { key: '/cotacoes', icon: <LineChartOutlined />, label: 'Cotações', controle: 'Cotações' },
       { key: '/despesas', icon: <WalletOutlined />, label: 'Despesas', controle: 'Despesas' },
+      { key: '/acerto-vendedor', icon: <FileTextOutlined />, label: 'Acerto de Vendedor', controle: 'Acerto de Vendedor' },
     ],
   },
   {
@@ -74,6 +75,7 @@ const ROUTE_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
   '/contratos': { label: 'Contratos', icon: <FileTextOutlined /> },
   '/cotacoes': { label: 'Cotações', icon: <LineChartOutlined /> },
   '/despesas': { label: 'Despesas', icon: <WalletOutlined /> },
+  '/acerto-vendedor': { label: 'Acerto de Vendedor', icon: <FileTextOutlined /> },
   '/clientes': { label: 'Clientes', icon: <TeamOutlined /> },
   '/notificacoes': { label: 'Notificações', icon: <BellOutlined /> },
   '/cidades': { label: 'Cidades', icon: <EnvironmentOutlined /> },

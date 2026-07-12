@@ -2,8 +2,12 @@ import { Request, Response } from 'express';
 import * as svc from '../services/despesaService';
 
 export const listar = async (req: Request, res: Response) => {
-  const { idLeilao, busca } = req.query;
-  res.json(await svc.listarDespesas(idLeilao ? Number(idLeilao) : undefined, busca as string));
+  const { idLeilao, busca, idCliente } = req.query;
+  res.json(await svc.listarDespesas(
+    idLeilao ? Number(idLeilao) : undefined,
+    busca as string,
+    idCliente ? Number(idCliente) : undefined,
+  ));
 };
 export const criar = async (req: Request, res: Response) => {
   res.status(201).json({ id: await svc.criarDespesa(req.body) });

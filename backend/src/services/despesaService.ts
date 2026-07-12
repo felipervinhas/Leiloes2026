@@ -1,10 +1,11 @@
 import { getPool, sql } from '../config/database';
 
-export async function listarDespesas(idLeilao?: number, busca?: string) {
+export async function listarDespesas(idLeilao?: number, busca?: string, idCliente?: number) {
   const pool = await getPool();
   const req = pool.request();
   const conds: string[] = [];
-  if (idLeilao) { req.input('idLeilao', sql.Int, idLeilao); conds.push('D.CODLEI = @idLeilao'); }
+  if (idLeilao)  { req.input('idLeilao', sql.Int, idLeilao); conds.push('D.CODLEI = @idLeilao'); }
+  if (idCliente) { req.input('idCliente', sql.Int, idCliente); conds.push('D.CODIGO_CLIENTE = @idCliente'); }
   if (busca)    { req.input('busca', sql.VarChar, `%${busca}%`); conds.push('(D.OBSERVACOES LIKE @busca OR C.NOMEXX LIKE @busca)'); }
   const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
 
@@ -32,7 +33,7 @@ export async function criarDespesa(dados: any) {
   const r = await pool.request()
     .input('codLei',         sql.Int,     dados.codLei         || null)
     .input('codigoCliente',  sql.Int,     dados.codigoCliente  || null)
-    .input('dc',             sql.Char,    dados.dc             || 'S')
+    .input('dc',             sql.Char,    dados.dc             || 'D')
     .input('valor',          sql.Float,   dados.valor          || 0)
     .input('observacoes',    sql.VarChar, dados.observacoes    || null)
     .input('dataInclusao',   sql.Date,    new Date())
@@ -51,7 +52,7 @@ export async function atualizarDespesa(id: number, dados: any) {
     .input('id',             sql.Int,     id)
     .input('codLei',         sql.Int,     dados.codLei         || null)
     .input('codigoCliente',  sql.Int,     dados.codigoCliente  || null)
-    .input('dc',             sql.Char,    dados.dc             || 'S')
+    .input('dc',             sql.Char,    dados.dc             || 'D')
     .input('valor',          sql.Float,   dados.valor          || 0)
     .input('observacoes',    sql.VarChar, dados.observacoes    || null)
     .input('dataAlteracao',  sql.Date,    new Date())
