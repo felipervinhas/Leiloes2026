@@ -1,17 +1,16 @@
 import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { CampoLayout, normalizarCampoLayout, resolverFontFamily } from './tipoLayout';
-import { montarContextoOrdemEntrada } from './ordemEntradaContext';
-import { resolverCampoOrdemEntrada, interpolarTextoOrdemEntrada, LoteOrdemPDF } from './ordemEntradaCampos';
-import TabelaLotesBloco from './TabelaLotesBloco';
+import { montarContextoFichaCliente, ClienteFichaPDF } from './fichaClienteContext';
+import { resolverCampoFichaCliente, interpolarTextoFichaCliente, PropriedadeFichaPDF } from './fichaClienteCampos';
+import TabelaPropriedadesBloco from './TabelaPropriedadesBloco';
 
 interface Props {
-  lotes: LoteOrdemPDF[];
+  cliente: ClienteFichaPDF;
+  propriedades: PropriedadeFichaPDF[];
   layout: CampoLayout[];
-  titulo?: string;
   empresa?: string;
   logoBase64?: string | null;
-  orientacao?: 'retrato' | 'paisagem';
 }
 
 const MM_TO_PT = 2.834645669;
@@ -36,24 +35,23 @@ const JUSTIFY_V: Record<string, 'flex-start' | 'center' | 'flex-end'> = {
   top: 'flex-start', middle: 'center', bottom: 'flex-end',
 };
 
-/** Renderiza a Ordem de Entrada a partir de um layout salvo pelo editor visual (página única). */
-function OrdemEntradaDinamica({ lotes, layout, titulo, empresa, logoBase64, orientacao = 'paisagem' }: Props) {
+/** Renderiza a Ficha de Cliente a partir de um layout salvo pelo editor visual (página única A4). */
+function FichaClienteDinamica({ cliente, propriedades, layout, empresa, logoBase64 }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
-  const ctx = montarContextoOrdemEntrada(titulo, nomeEmpresa, lotes);
+  const ctx = montarContextoFichaCliente(cliente, nomeEmpresa, propriedades.length);
   const camposNormalizados = layout.map(normalizarCampoLayout);
-  const pageSize = orientacao === 'paisagem' ? ([841.89, 595.28] as [number, number]) : 'A4';
 
   return (
-    <Document title={`Ordem de Entrada — ${titulo || ''}`} author={nomeEmpresa}>
-      <Page size={pageSize} style={styles.page}>
+    <Document title={`Ficha de Cliente — ${cliente.nomexx || ''}`} author={nomeEmpresa}>
+      <Page size="A4" style={styles.page}>
         {camposNormalizados.map(campo => {
           const pos = posicao(campo);
 
-          if (campo.tipo === 'bloco:tabela-lotes') {
+          if (campo.tipo === 'bloco:tabela-propriedades') {
             return (
-              <TabelaLotesBloco
+              <TabelaPropriedadesBloco
                 key={campo.id}
-                lotes={lotes}
+                propriedades={propriedades}
                 colunas={campo.colunas || []}
                 fontFamily={resolverFontFamily(campo.fontFamily, campo.bold, campo.italic)}
                 fontSize={campo.fontSize}
@@ -84,8 +82,8 @@ function OrdemEntradaDinamica({ lotes, layout, titulo, empresa, logoBase64, orie
           }
 
           const texto = campo.tipo === 'texto_livre'
-            ? interpolarTextoOrdemEntrada(campo.textoFixo || '', ctx)
-            : resolverCampoOrdemEntrada(campo.key || '', ctx);
+            ? interpolarTextoFichaCliente(campo.textoFixo || '', ctx)
+            : resolverCampoFichaCliente(campo.key || '', ctx);
 
           return (
             <View
@@ -117,4 +115,4 @@ function OrdemEntradaDinamica({ lotes, layout, titulo, empresa, logoBase64, orie
   );
 }
 
-export default OrdemEntradaDinamica;
+export default FichaClienteDinamica;

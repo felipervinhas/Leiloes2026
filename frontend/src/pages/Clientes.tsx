@@ -21,6 +21,9 @@ import FaturaCompraPDF, { FaturaData } from '../relatorios/RelatorioFaturaCompra
 import PromissoriaPDF from '../relatorios/RelatorioPromissoria';
 import { BotaoBaixarPDF, ClienteCompleto } from '../relatorios/RelatorioClientes';
 import { exportarClientesExcel } from '../relatorios/exportarExcel';
+import FichaClientePDF from '../relatorios/RelatorioFichaCliente';
+import FichaClienteDinamica from '../relatorios/FichaClienteDinamica';
+import { CampoLayout } from '../relatorios/tipoLayout';
 
 const { Title } = Typography;
 
@@ -100,6 +103,7 @@ export default function Clientes() {
   const [ocorrenciaModalOpen, setOcorrenciaModalOpen] = useState(false);
   const [ocorrenciaEditando, setOcorrenciaEditando] = useState<any | null>(null);
   const [formOcorrencia] = Form.useForm();
+  const [layoutFichaAtivo, setLayoutFichaAtivo] = useState<CampoLayout[] | null>(null);
 
   const carregar = async (b = '') => {
     setLoading(true);
@@ -308,6 +312,9 @@ export default function Clientes() {
     carregarClassificacoes();
     api.get('/usuarios').then(r =>
       setUsuarios(r.data.map((u: any) => ({ value: u.id, label: u.nomexx }))));
+    api.get('/relatorio-layouts/ativo/ficha_cliente')
+      .then(r => setLayoutFichaAtivo(r.data?.conteudo || null))
+      .catch(() => setLayoutFichaAtivo(null));
   }, []);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -343,6 +350,7 @@ export default function Clientes() {
         verVencimentos: d.verVencimentos === 'S',
       });
       setEditando(d);
+      carregarPropriedades(d.id);
     } else {
       form.resetFields();
       form.setFieldsValue({
@@ -1210,7 +1218,25 @@ export default function Clientes() {
         onClose={() => setDrawerOpen(false)}
         styles={{ wrapper: { width: 'min(860px, 100vw)' } }}
         extra={
-          <Space>
+          <Space wrap>
+            {editando && (
+              <BlobProvider document={<FichaClientePDF cliente={editando} propriedades={propriedades} empresa={config.empresa} logoBase64={config.logoBase64} />}>
+                {({ url, loading }) => (
+                  <Button icon={<FileTextOutlined />} loading={loading} disabled={!url} onClick={() => url && window.open(url, '_blank')}>
+                    Ficha de Cliente
+                  </Button>
+                )}
+              </BlobProvider>
+            )}
+            {editando && layoutFichaAtivo && (
+              <BlobProvider document={<FichaClienteDinamica cliente={editando} propriedades={propriedades} layout={layoutFichaAtivo} empresa={config.empresa} logoBase64={config.logoBase64} />}>
+                {({ url, loading }) => (
+                  <Button icon={<EyeOutlined />} loading={loading} disabled={!url} onClick={() => url && window.open(url, '_blank')}>
+                    Ficha (modelo personalizado)
+                  </Button>
+                )}
+              </BlobProvider>
+            )}
             <Button onClick={() => setDrawerOpen(false)}>Cancelar</Button>
             <Button type="primary" onClick={() => form.submit()}>Salvar</Button>
           </Space>

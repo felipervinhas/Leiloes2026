@@ -14,6 +14,10 @@ export interface LoteOrdemPDF {
   nomeRaca?: string;
   catego?: string;
   ordem: string;
+  dataLeilao?: string;
+  enderecoLeilao?: string;
+  horaInicioLeilao?: string;
+  leiloeiro?: string;
 }
 
 interface Props {
@@ -50,6 +54,7 @@ const s = StyleSheet.create({
   headerEsquerda: { flexDirection: 'column', justifyContent: 'center' },
   headerLogo: { width: 110, height: 34, objectFit: 'contain', marginBottom: 2 },
   headerSub: { color: '#aaa', fontSize: 8, marginTop: 2 },
+  headerInfoLeilao: { color: '#ccc', fontSize: 6.5, marginTop: 2 },
   headerDireita: { alignItems: 'flex-end' },
   headerData: { color: '#aaa', fontSize: 7 },
   headerTotal: { color: '#fff', fontSize: 8, fontFamily: 'Helvetica-Bold', marginTop: 2 },
@@ -103,11 +108,27 @@ const s = StyleSheet.create({
   footerText: { fontSize: 6.5, color: '#aaa' },
 });
 
+function dataBr(v?: string): string {
+  if (!v) return '';
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
+}
+
 function OrdemEntradaPDF({ lotes, titulo, empresa, orientacao = 'paisagem' }: Props & { orientacao?: Orientacao }) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
   const subtitulo = titulo ? `Ordem de Entrada — ${titulo}` : 'Ordem de Entrada';
   const pageSize: any = orientacao === 'paisagem' ? [841.89, 595.28] : 'A4';
+
+  const primeiro = lotes[0];
+  const infoLeilao = primeiro
+    ? [
+        dataBr(primeiro.dataLeilao) && `Data: ${dataBr(primeiro.dataLeilao)}`,
+        primeiro.horaInicioLeilao && `Início: ${primeiro.horaInicioLeilao}`,
+        primeiro.enderecoLeilao && `Local: ${primeiro.enderecoLeilao}`,
+        primeiro.leiloeiro && `Leiloeiro: ${primeiro.leiloeiro}`,
+      ].filter(Boolean).join('   ·   ')
+    : '';
 
   return (
     <Document title={subtitulo} author={nomeEmpresa}>
@@ -118,6 +139,7 @@ function OrdemEntradaPDF({ lotes, titulo, empresa, orientacao = 'paisagem' }: Pr
           <View style={s.headerEsquerda}>
             <Image src={logotipoLocal} style={s.headerLogo} />
             <Text style={s.headerSub}>{subtitulo}</Text>
+            {infoLeilao ? <Text style={s.headerInfoLeilao}>{infoLeilao}</Text> : null}
           </View>
           <View style={s.headerDireita}>
             <Text style={s.headerData}>Gerado em: {agora}</Text>

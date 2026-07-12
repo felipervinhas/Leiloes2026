@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Button, Input, message, Modal, Popconfirm, Select, Space, Tag, Typography,
 } from 'antd';
@@ -19,6 +19,9 @@ import { ORDEM_ENTRADA_CAMPOS, COLUNAS_LOTES_PADRAO, LoteOrdemPDF } from '../rel
 import OrdemEntradaDinamica from '../relatorios/OrdemEntradaDinamica';
 import RelatorioFaturaCompradorDinamico from '../relatorios/RelatorioFaturaCompradorDinamico';
 import EditorBlocoCartao from '../components/relatorioEditor/EditorBlocoCartao';
+import { FICHA_CLIENTE_CAMPOS, COLUNAS_PROPRIEDADES_PADRAO, PropriedadeFichaPDF } from '../relatorios/fichaClienteCampos';
+import { ClienteFichaPDF } from '../relatorios/fichaClienteContext';
+import FichaClienteDinamica from '../relatorios/FichaClienteDinamica';
 
 const { Title } = Typography;
 
@@ -26,6 +29,19 @@ const GRID_MM = 4;
 
 const novoId = () =>
   (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `c${Date.now()}_${Math.random()}`;
+
+type EstiloTexto = Pick<CampoLayout, 'fontFamily' | 'fontSize' | 'color' | 'align' | 'bold' | 'italic' | 'underline' | 'verticalAlign'>;
+const CAMPOS_ESTILO: (keyof EstiloTexto)[] = ['fontFamily', 'fontSize', 'color', 'align', 'bold', 'italic', 'underline', 'verticalAlign'];
+const CHAVE_ULTIMO_ESTILO = 'relatorio-editor:ultimo-estilo-texto';
+
+function carregarUltimoEstilo(): Partial<EstiloTexto> {
+  try {
+    const salvo = localStorage.getItem(CHAVE_ULTIMO_ESTILO);
+    return salvo ? JSON.parse(salvo) : {};
+  } catch {
+    return {};
+  }
+}
 
 interface TemplateResumo {
   id: number;
@@ -38,7 +54,7 @@ interface TemplateResumo {
 interface TipoRelatorioConfig {
   tipo: string;
   label: string;
-  familia: 'fatura' | 'ordem_entrada';
+  familia: 'fatura' | 'ordem_entrada' | 'ficha_cliente';
   campos: CampoDisponivel[];
   tituloDocumento: string;
   larguraMM: number;
@@ -46,6 +62,7 @@ interface TipoRelatorioConfig {
   suportaBlocoParcelas?: boolean;
   suportaBlocoCompradores?: boolean;
   suportaTabelaLotes?: boolean;
+  suportaTabelaPropriedades?: boolean;
 }
 
 const TIPOS_RELATORIO: TipoRelatorioConfig[] = [
@@ -67,6 +84,11 @@ const TIPOS_RELATORIO: TipoRelatorioConfig[] = [
   {
     tipo: 'fatura_comprador', label: 'Fatura de Comprador', familia: 'fatura',
     campos: PROMISSORIA_CAMPOS, tituloDocumento: 'Fatura de Comprador', suportaBlocoCompradores: true,
+    larguraMM: 210, alturaMM: 297,
+  },
+  {
+    tipo: 'ficha_cliente', label: 'Ficha de Cliente', familia: 'ficha_cliente',
+    campos: FICHA_CLIENTE_CAMPOS, tituloDocumento: 'Ficha de Cliente', suportaTabelaPropriedades: true,
     larguraMM: 210, alturaMM: 297,
   },
 ];
@@ -93,6 +115,44 @@ export default function EditorRelatorios() {
   const [leilaoTesteId, setLeilaoTesteId] = useState<number | null>(null);
   const [leilaoTesteNome, setLeilaoTesteNome] = useState<string>('');
   const [lotesTeste, setLotesTeste] = useState<LoteOrdemPDF[]>([]);
+
+  const [clienteOptions, setClienteOptions] = useState<{ value: number; label: string }[]>([]);
+  const [clienteTesteId, setClienteTesteId] = useState<number | null>(null);
+  const [clienteTeste, setClienteTeste] = useState<ClienteFichaPDF | null>(null);
+  const [propriedadesTeste, setPropriedadesTeste] = useState<PropriedadeFichaPDF[]>([]);
+
+  const [ultimoEstiloTexto, setUltimoEstiloTexto] = useState<Partial<EstiloTexto>>(carregarUltimoEstilo);
+
+  // Rastreamento de alterações não salvas: compara o layout atual com o "baseline"
+  // (último layout carregado/salvo) para decidir se precisa confirmar antes de descartar.
+  const baselineLayoutRef = useRef<string>('[]');
+  const [sujo, setSujo] = useState(false);
+
+  useEffect(() => {
+    setSujo(JSON.stringify(layout) !== baselineLayoutRef.current);
+  }, [layout]);
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!sujo) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [sujo]);
+
+  const confirmarSeSujo = (acao: () => void) => {
+    if (!sujo) { acao(); return; }
+    Modal.confirm({
+      title: 'Descartar alterações não salvas?',
+      content: 'Este modelo tem alterações que ainda não foram salvas. Se continuar, elas serão perdidas.',
+      okText: 'Descartar e continuar',
+      okButtonProps: { danger: true },
+      cancelText: 'Cancelar',
+      onOk: acao,
+    });
+  };
 
   const campoSelecionado = layout.find(c => c.id === selecionadoId) || null;
 
@@ -121,6 +181,17 @@ export default function EditorRelatorios() {
       setLotesTeste((r.data || []).map((l: any) => ({
         id: l.id, lotexx: l.lotexx, deslot: l.deslot, nomeVendedor: l.nomeVendedor,
         nomeRaca: l.nomeRaca, catego: l.catego, ordem: l.ordem || '',
+        dataLeilao: l.dataLeilao, enderecoLeilao: l.enderecoLeilao,
+        cidadeLeilao: l.cidadeLeilao, estadoLeilao: l.estadoLeilao,
+        horaInicioLeilao: l.horaInicioLeilao, horaFechamentoPreLeilao: l.horaFechamentoPreLeilao,
+        leiloeiro: l.leiloeiro, categoriaLeilao: l.categoriaLeilao, tipoLeilao: l.tipoLeilao,
+        transmissaoLeilao: l.transmissaoLeilao,
+        linkTransmissao1Leilao: l.linkTransmissao1Leilao, linkTransmissao2Leilao: l.linkTransmissao2Leilao,
+        urlCatalogoLeilao: l.urlCatalogoLeilao,
+        comissaoVendedorLeilao: l.comissaoVendedorLeilao, comissaoCompradorLeilao: l.comissaoCompradorLeilao,
+        qtdParcelasLeilao: l.qtdParcelasLeilao, multiploLeilao: l.multiploLeilao,
+        dataSaldoLeilao: l.dataSaldoLeilao, condicaoPagamentoLeilao: l.condicaoPagamentoLeilao,
+        regulamentoLeilao: l.regulamentoLeilao, observacoesLeilao: l.observacoesLeilao,
       })));
     }).catch(() => setLotesTeste([]));
   }, [leilaoTesteId]);
@@ -134,32 +205,36 @@ export default function EditorRelatorios() {
     })));
   };
 
+  const buscarClientes = async (busca: string) => {
+    if (!busca) { setClienteOptions([]); return; }
+    const r = await api.get('/clientes', { params: { busca, filtro: 'nome' } });
+    setClienteOptions((r.data || []).map((c: any) => ({ value: c.id, label: c.nomexx })));
+  };
+
+  useEffect(() => {
+    if (!clienteTesteId) { setClienteTeste(null); setPropriedadesTeste([]); return; }
+    api.get(`/clientes/${clienteTesteId}`).then(r => setClienteTeste(r.data)).catch(() => setClienteTeste(null));
+    api.get(`/clientes/${clienteTesteId}/propriedades`).then(r => setPropriedadesTeste(r.data || [])).catch(() => setPropriedadesTeste([]));
+  }, [clienteTesteId]);
+
   const trocarTipo = (tipo: string) => {
-    if (layout.length > 0) {
-      Modal.confirm({
-        title: 'Trocar tipo de relatório?',
-        content: 'O layout atual não salvo será descartado.',
-        okText: 'Trocar',
-        cancelText: 'Cancelar',
-        onOk: () => { setTipoSelecionado(tipo); abrirNovo(); },
-      });
-      return;
-    }
-    setTipoSelecionado(tipo);
-    abrirNovo();
+    confirmarSeSujo(() => { setTipoSelecionado(tipo); abrirNovo(); });
   };
 
   const abrirNovo = () => {
     setTemplateAtual(null);
     setLayout([]);
     setSelecionadoId(null);
+    baselineLayoutRef.current = '[]';
   };
 
   const abrirTemplate = async (id: number) => {
     const r = await api.get(`/relatorio-layouts/templates/${id}`);
+    const conteudo = (r.data.conteudo || []).map(normalizarCampoLayout);
     setTemplateAtual({ id: r.data.id, nome: r.data.nome });
-    setLayout((r.data.conteudo || []).map(normalizarCampoLayout));
+    setLayout(conteudo);
     setSelecionadoId(null);
+    baselineLayoutRef.current = JSON.stringify(conteudo);
   };
 
   const pedirNomeESalvar = () => {
@@ -180,6 +255,7 @@ export default function EditorRelatorios() {
         setTemplateAtual({ id: r.data.id, nome: nomeInput });
         message.success('Modelo criado');
       }
+      baselineLayoutRef.current = JSON.stringify(layout);
       setNomeModalOpen(false);
       carregarTemplates(tipoSelecionado);
     } finally {
@@ -211,7 +287,7 @@ export default function EditorRelatorios() {
     const novo: CampoLayout = {
       id: novoId(), tipo: 'campo', key: campo.key,
       x: 10, y: 10, largura: 60, altura: 8,
-      ...BASE_CAMPO,
+      ...BASE_CAMPO, ...ultimoEstiloTexto,
     };
     setLayout(l => [...l, novo]);
     setSelecionadoId(novo.id);
@@ -221,7 +297,7 @@ export default function EditorRelatorios() {
     const novo: CampoLayout = {
       id: novoId(), tipo: 'texto_livre', textoFixo: 'Texto',
       x: 10, y: 10, largura: 60, altura: 8,
-      ...BASE_CAMPO,
+      ...BASE_CAMPO, ...ultimoEstiloTexto,
     };
     setLayout(l => [...l, novo]);
     setSelecionadoId(novo.id);
@@ -271,6 +347,21 @@ export default function EditorRelatorios() {
     setSelecionadoId(novo.id);
   };
 
+  const adicionarTabelaPropriedades = () => {
+    if (layout.some(c => c.tipo === 'bloco:tabela-propriedades')) {
+      message.warning('Já existe uma tabela de propriedades neste layout');
+      return;
+    }
+    const novo: CampoLayout = {
+      id: novoId(), tipo: 'bloco:tabela-propriedades',
+      x: 10, y: 200, largura: 190, altura: 60,
+      ...BASE_CAMPO, fontSize: 8,
+      colunas: COLUNAS_PROPRIEDADES_PADRAO.map(c => ({ ...c })),
+    };
+    setLayout(l => [...l, novo]);
+    setSelecionadoId(novo.id);
+  };
+
   const adicionarLogo = () => {
     if (layout.some(c => c.tipo === 'logo')) {
       message.warning('Já existe um logotipo neste layout');
@@ -311,6 +402,22 @@ export default function EditorRelatorios() {
 
   const atualizarCampo = (id: string, patch: Partial<CampoLayout>) => {
     setLayout(l => l.map(c => (c.id === id ? { ...c, ...patch } : c)));
+
+    const campo = layout.find(c => c.id === id);
+    if (campo && (campo.tipo === 'campo' || campo.tipo === 'texto_livre')) {
+      const patchEstilo: Partial<EstiloTexto> = {};
+      let mudou = false;
+      for (const chave of CAMPOS_ESTILO) {
+        if (chave in patch) { (patchEstilo as any)[chave] = (patch as any)[chave]; mudou = true; }
+      }
+      if (mudou) {
+        setUltimoEstiloTexto(prev => {
+          const novo = { ...prev, ...patchEstilo };
+          try { localStorage.setItem(CHAVE_ULTIMO_ESTILO, JSON.stringify(novo)); } catch { /* localStorage indisponível */ }
+          return novo;
+        });
+      }
+    }
   };
 
   const removerCampo = (id: string) => {
@@ -339,6 +446,7 @@ export default function EditorRelatorios() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <Space wrap>
           <Title level={4} style={{ margin: 0 }}>Editor de Relatórios</Title>
+          {sujo && <Tag color="orange">Alterações não salvas</Tag>}
           <Select
             style={{ width: 200 }}
             value={tipoSelecionado}
@@ -351,15 +459,15 @@ export default function EditorRelatorios() {
             placeholder="Modelos salvos"
             style={{ width: 220 }}
             value={templateAtual?.id}
-            onChange={abrirTemplate}
+            onChange={id => confirmarSeSujo(() => abrirTemplate(id))}
             options={templates.map(t => ({
               value: t.id,
               label: <>{t.nome} {t.ativo ? <Tag color="green" style={{ marginLeft: 4 }}>ativo</Tag> : null}</>,
             }))}
             allowClear
-            onClear={abrirNovo}
+            onClear={() => confirmarSeSujo(abrirNovo)}
           />
-          <Button icon={<PlusOutlined />} onClick={abrirNovo}>Novo</Button>
+          <Button icon={<PlusOutlined />} onClick={() => confirmarSeSujo(abrirNovo)}>Novo</Button>
           <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={pedirNomeESalvar}>
             Salvar
           </Button>
@@ -393,6 +501,46 @@ export default function EditorRelatorios() {
             />
             {leilaoTesteId && (
               <BlobProvider document={<OrdemEntradaDinamica lotes={lotesTeste} layout={layout} titulo={leilaoTesteNome} empresa={config.empresa} logoBase64={config.logoBase64} />}>
+                {({ url, loading }) => (
+                  <Button
+                    icon={<EyeOutlined />}
+                    loading={loading}
+                    disabled={!url || layout.length === 0}
+                    onClick={() => url && window.open(url, '_blank')}
+                  >
+                    Pré-visualizar PDF
+                  </Button>
+                )}
+              </BlobProvider>
+            )}
+          </>
+        ) : tipoConfig.familia === 'ficha_cliente' ? (
+          <>
+            <span style={{ fontSize: 13, color: '#666' }}>Pré-visualizar com cliente:</span>
+            <Select
+              showSearch
+              placeholder="Buscar cliente…"
+              style={{ width: 260 }}
+              value={clienteTesteId ?? undefined}
+              filterOption={false}
+              onSearch={buscarClientes}
+              onChange={setClienteTesteId}
+              options={clienteOptions}
+              allowClear
+              onClear={() => setClienteTesteId(null)}
+            />
+            {clienteTeste && (
+              <BlobProvider
+                document={
+                  <FichaClienteDinamica
+                    cliente={clienteTeste}
+                    propriedades={propriedadesTeste}
+                    layout={layout}
+                    empresa={config.empresa}
+                    logoBase64={config.logoBase64}
+                  />
+                }
+              >
                 {({ url, loading }) => (
                   <Button
                     icon={<EyeOutlined />}
@@ -457,6 +605,7 @@ export default function EditorRelatorios() {
             onAdicionarBlocoParcelas={tipoConfig.suportaBlocoParcelas ? adicionarBlocoParcelas : undefined}
             onAdicionarTabelaLotes={tipoConfig.suportaTabelaLotes ? adicionarTabelaLotes : undefined}
             onAdicionarBlocoCompradores={tipoConfig.suportaBlocoCompradores ? adicionarBlocoCompradores : undefined}
+            onAdicionarTabelaPropriedades={tipoConfig.suportaTabelaPropriedades ? adicionarTabelaPropriedades : undefined}
           />
         </div>
 

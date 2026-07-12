@@ -25,6 +25,7 @@ const RESERVADO_PARA_BLOCO: Record<string, string> = {
   'bloco:parcelas': 'Tabela de Parcelas',
   'bloco:tabela-lotes': 'Tabela de Lotes',
   'bloco:compradores': 'Cartão de Comprador (repete)',
+  'bloco:tabela-propriedades': 'Tabela de Propriedades',
 };
 
 export default function CampoBox({ campo, scale, grid, selecionado, logoSrc, rotuloCampo, onSelecionar, onMover, onRedimensionar }: Props) {

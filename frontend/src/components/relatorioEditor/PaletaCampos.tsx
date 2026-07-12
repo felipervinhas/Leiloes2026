@@ -12,11 +12,12 @@ interface Props {
   onAdicionarBlocoParcelas?: () => void;
   onAdicionarTabelaLotes?: () => void;
   onAdicionarBlocoCompradores?: () => void;
+  onAdicionarTabelaPropriedades?: () => void;
 }
 
 export default function PaletaCampos({
   camposDisponiveis, onAdicionarCampo, onAdicionarTextoLivre, onAdicionarLogo, onAdicionarRetangulo, onAdicionarMarcaDagua,
-  onAdicionarBlocoParcelas, onAdicionarTabelaLotes, onAdicionarBlocoCompradores,
+  onAdicionarBlocoParcelas, onAdicionarTabelaLotes, onAdicionarBlocoCompradores, onAdicionarTabelaPropriedades,
 }: Props) {
   const grupos = Array.from(new Set(camposDisponiveis.map(c => c.grupo)));
 
@@ -39,6 +40,11 @@ export default function PaletaCampos({
         {onAdicionarBlocoCompradores && (
           <Button block icon={<TeamOutlined />} onClick={onAdicionarBlocoCompradores}>
             Bloco de compradores
+          </Button>
+        )}
+        {onAdicionarTabelaPropriedades && (
+          <Button block icon={<TableOutlined />} onClick={onAdicionarTabelaPropriedades}>
+            Tabela de propriedades
           </Button>
         )}
         {onAdicionarLogo && (

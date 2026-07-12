@@ -11,8 +11,43 @@ function mapRow(c: any): Lote {
     multiplo: c.MULTIPLO, vendido: c.VENDIDO, publica: c.PUBLICA,
     tipoSecao: c.TIPO_SECAO, condic: c.CONDIC,
     nomeRaca: c.DESCRICAO, nomeVendedor: c.NOMEXX, nomeLeilao: c.LEILAO,
+    dataLeilao: c.LEI_DATLEI, enderecoLeilao: c.LEI_ENDERE,
+    horaInicioLeilao: c.LEI_HORA_INICIO, leiloeiro: c.LEI_LEILOE,
+    horaFechamentoPreLeilao: c.LEI_HORA_FECHAMENTO_PRE,
+    regulamentoLeilao: c.LEI_REGULAMENTO, observacoesLeilao: c.LEI_OBSERVACOES,
+    categoriaLeilao: c.LEI_TIPO, tipoLeilao: c.LEI_TIPO_LEILAO,
+    transmissaoLeilao: c.LEI_TRANSMISSAO,
+    linkTransmissao1Leilao: c.LEI_LINKTRANSMISSAO1, linkTransmissao2Leilao: c.LEI_LINKTRANSMISSAO2,
+    urlCatalogoLeilao: c.LEI_URLCATALOGO,
+    comissaoVendedorLeilao: c.LEI_COMVEN, comissaoCompradorLeilao: c.LEI_COMCOM,
+    qtdParcelasLeilao: c.LEI_QTDPAR, multiploLeilao: c.LEI_MULTIPLO,
+    dataSaldoLeilao: c.LEI_DATA_SALDO,
+    cidadeLeilao: c.LEI_CIDADE, estadoLeilao: c.LEI_ESTADO,
+    condicaoPagamentoLeilao: c.LEI_CONDICAO_DESC,
   };
 }
+
+const SELECT_LOTE = `
+    SELECT L.*, R.DESCRICAO, C.NOMEXX, LEI.LEILAO,
+      LEI.DATLEI AS LEI_DATLEI, LEI.ENDERE AS LEI_ENDERE,
+      LEI.HORA_INICIO AS LEI_HORA_INICIO, LEI.LEILOE AS LEI_LEILOE,
+      LEI.HORA_FECHAMENTO_PRE AS LEI_HORA_FECHAMENTO_PRE,
+      LEI.rEGULAMENTO AS LEI_REGULAMENTO, LEI.OBSERVACOES AS LEI_OBSERVACOES,
+      LEI.TIPO AS LEI_TIPO, LEI.TIPO_LEILAO AS LEI_TIPO_LEILAO,
+      LEI.TRANSMISSAO AS LEI_TRANSMISSAO,
+      LEI.LINKTRANSMISSAO1 AS LEI_LINKTRANSMISSAO1, LEI.LINKTRANSMISSAO2 AS LEI_LINKTRANSMISSAO2,
+      LEI.URLCATALOGO AS LEI_URLCATALOGO,
+      LEI.COMVEN AS LEI_COMVEN, LEI.COMCOM AS LEI_COMCOM,
+      LEICP.QTDPAR AS LEI_QTDPAR, LEI.MULTIPLO AS LEI_MULTIPLO,
+      LEI.DATA_SALDO AS LEI_DATA_SALDO,
+      LEICID.CIDADE AS LEI_CIDADE, LEICID.ESTADO AS LEI_ESTADO,
+      LEICP.DESFIN AS LEI_CONDICAO_DESC
+    FROM Lotes L
+    LEFT JOIN Racas R ON R.ID = L.RACAXX
+    LEFT JOIN Clientes C ON C.ID = L.CODVEN
+    LEFT JOIN Leiloes LEI ON LEI.ID = L.IDLEILAO
+    LEFT JOIN Cidades LEICID ON LEICID.ID = TRY_CAST(LEI.CODCID AS INT)
+    LEFT JOIN CondicaoPagtos LEICP ON LEICP.ID = LEI.CONDIC`;
 
 export async function listarLotes(idLeilao?: number, busca?: string): Promise<Lote[]> {
   const pool = await getPool();
@@ -21,25 +56,13 @@ export async function listarLotes(idLeilao?: number, busca?: string): Promise<Lo
   if (idLeilao) { req.input('idLeilao', sql.Int, idLeilao); filtros.push(`L.IDLEILAO = @idLeilao`); }
   if (busca) { req.input('busca', sql.VarChar, `%${busca}%`); filtros.push(`(L.DESLOT LIKE @busca OR L.LOTEXX LIKE @busca)`); }
   const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
-  const r = await req.query(`
-    SELECT L.*, R.DESCRICAO, C.NOMEXX, LEI.LEILAO
-    FROM Lotes L
-    LEFT JOIN Racas R ON R.ID = L.RACAXX
-    LEFT JOIN Clientes C ON C.ID = L.CODVEN
-    LEFT JOIN Leiloes LEI ON LEI.ID = L.IDLEILAO
-    ${where} ORDER BY L.IDLEILAO, TRY_CAST(L.LOTEXX AS INT), L.LOTEXX`);
+  const r = await req.query(`${SELECT_LOTE} ${where} ORDER BY L.IDLEILAO, TRY_CAST(L.LOTEXX AS INT), L.LOTEXX`);
   return r.recordset.map(mapRow);
 }
 
 export async function buscarLotePorId(id: number): Promise<Lote | null> {
   const pool = await getPool();
-  const r = await pool.request().input('id', sql.Int, id).query(`
-    SELECT L.*, R.DESCRICAO, C.NOMEXX, LEI.LEILAO
-    FROM Lotes L
-    LEFT JOIN Racas R ON R.ID = L.RACAXX
-    LEFT JOIN Clientes C ON C.ID = L.CODVEN
-    LEFT JOIN Leiloes LEI ON LEI.ID = L.IDLEILAO
-    WHERE L.ID=@id`);
+  const r = await pool.request().input('id', sql.Int, id).query(`${SELECT_LOTE} WHERE L.ID=@id`);
   if (!r.recordset.length) return null;
   return mapRow(r.recordset[0]);
 }

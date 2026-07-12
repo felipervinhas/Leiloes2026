@@ -27,4 +27,25 @@ export interface Lote {
   nomeRaca?: string;
   nomeVendedor?: string;
   nomeLeilao?: string;
+  dataLeilao?: Date | string;
+  enderecoLeilao?: string;
+  horaInicioLeilao?: string;
+  leiloeiro?: string;
+  horaFechamentoPreLeilao?: string;
+  regulamentoLeilao?: string;
+  observacoesLeilao?: string;
+  categoriaLeilao?: string;
+  tipoLeilao?: string;
+  transmissaoLeilao?: string;
+  linkTransmissao1Leilao?: string;
+  linkTransmissao2Leilao?: string;
+  urlCatalogoLeilao?: string;
+  comissaoVendedorLeilao?: number;
+  comissaoCompradorLeilao?: number;
+  qtdParcelasLeilao?: number;
+  multiploLeilao?: number;
+  dataSaldoLeilao?: Date | string;
+  cidadeLeilao?: string;
+  estadoLeilao?: string;
+  condicaoPagamentoLeilao?: string;
 }

@@ -18,6 +18,27 @@ interface LoteOrdem {
   nomeRaca?: string;
   catego?: string;
   ordem?: string;
+  dataLeilao?: string;
+  enderecoLeilao?: string;
+  cidadeLeilao?: string;
+  estadoLeilao?: string;
+  horaInicioLeilao?: string;
+  horaFechamentoPreLeilao?: string;
+  leiloeiro?: string;
+  categoriaLeilao?: string;
+  tipoLeilao?: string;
+  transmissaoLeilao?: string;
+  linkTransmissao1Leilao?: string;
+  linkTransmissao2Leilao?: string;
+  urlCatalogoLeilao?: string;
+  comissaoVendedorLeilao?: number;
+  comissaoCompradorLeilao?: number;
+  qtdParcelasLeilao?: number;
+  multiploLeilao?: number;
+  dataSaldoLeilao?: string;
+  condicaoPagamentoLeilao?: string;
+  regulamentoLeilao?: string;
+  observacoesLeilao?: string;
 }
 
 const CATEGO_COR: Record<string, string> = { M: 'blue', F: 'magenta', N: 'default', C: 'orange' };
