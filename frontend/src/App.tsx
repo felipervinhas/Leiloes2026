@@ -4,7 +4,7 @@ import { ConfigProvider as AntConfigProvider, Result } from 'antd';
 import ptBR from 'antd/locale/pt_BR';
 import { AuthProvider } from './context/AuthContext';
 import { BancoProvider } from './context/BancoContext';
-import { ConfigProvider, useConfig } from './context/ConfigContext';
+import { ConfigProvider } from './context/ConfigContext';
 import MainLayout from './components/layout/MainLayout';
 import PrivateRoute from './components/layout/PrivateRoute';
 import Login from './pages/Login';
@@ -43,12 +43,11 @@ function UrlInvalida() {
 }
 
 function ThemedOutlet() {
-  const config = useConfig();
   return (
     <AntConfigProvider
       locale={ptBR}
       theme={{
-        token: { colorPrimary: config.corMenuTop },
+        token: { colorPrimary: '#1677ff' },
         components: {
           Form: {
             labelColor: 'rgba(0, 0, 0, 0.85)',

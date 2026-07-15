@@ -184,7 +184,7 @@ export default function MainLayout() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: `linear-gradient(135deg, ${cor1} 0%, #faad14 100%)`,
+        background: cor1,
         padding: collapsed && !isMobile ? '12px 8px' : '14px 16px',
         overflow: 'hidden',
         flexShrink: 0,
@@ -421,7 +421,7 @@ export default function MainLayout() {
       <Layout style={{ display: 'flex', flexDirection: 'column', minWidth: 0, background: shellBg }}>
         <Header style={{
           padding: isMobile ? '0 12px' : '0 22px',
-          background: `linear-gradient(135deg, ${cor1} 0%, #faad14 100%)`,
+          background: cor1,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',

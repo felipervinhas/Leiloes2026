@@ -25,7 +25,7 @@ export async function login(req: Request, res: Response) {
       controles: usuario.controles 
     },
     process.env.JWT_SECRET!,
-    { expiresIn: '8h' }
+    { expiresIn: (process.env.JWT_EXPIRES_IN || '4h') as any }
   );
 
   return res.json({
