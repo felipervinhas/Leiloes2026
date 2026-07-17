@@ -703,10 +703,10 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
 // WIZARD
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FORMAS_PAGAMENTO = ['PROMISSORIA', 'CHEQUE', 'DINHEIRO', 'FINANCIAMENTO', 'PIX'];
+const FORMAS_PAGAMENTO = ['PROMISSORIA', 'CHEQUE', 'DINHEIRO', 'FINANCIAMENTO', 'PIX', 'ACERTO_DIRETO'];
 const FORMA_PAGAMENTO_LABEL: Record<string, string> = {
   PROMISSORIA: 'Promissória', CHEQUE: 'Cheque', DINHEIRO: 'Dinheiro',
-  FINANCIAMENTO: 'Financiamento', PIX: 'PIX',
+  FINANCIAMENTO: 'Financiamento', PIX: 'PIX', ACERTO_DIRETO: 'Acerto Direto',
 };
 const FORMA_PAGAMENTO_OPTS = FORMAS_PAGAMENTO.map(f => ({ value: f, label: FORMA_PAGAMENTO_LABEL[f] }));
 
@@ -964,7 +964,11 @@ function Wizard({ editId, onConcluir, onCancelar }: {
   };
 
   const onCondicaoChange = (id: number) => {
-    setCondicaoSel(condicoes.find(c => c.id === id) ?? null);
+    const condicao = condicoes.find(c => c.id === id) ?? null;
+    setCondicaoSel(condicao);
+    if (condicao?.avista === 'S') {
+      form2.setFieldValue('formaPagamento', undefined);
+    }
   };
 
   const adicionarComprador = async () => {
@@ -1533,8 +1537,9 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                 </Col>
                 <Col xs={12} sm={6} md={4}>
                   <Form.Item name="formaPagamento" label="Forma de Pagamento"
-                    rules={[{ required: true }]} initialValue="PROMISSORIA">
-                    <Select options={FORMA_PAGAMENTO_OPTS} />
+                    rules={[{ required: condicaoSel?.avista !== 'S' }]} initialValue="PROMISSORIA">
+                    <Select options={FORMA_PAGAMENTO_OPTS} disabled={condicaoSel?.avista === 'S'}
+                      placeholder={condicaoSel?.avista === 'S' ? 'Não se aplica (à vista)' : undefined} />
                   </Form.Item>
                 </Col>
                 {pisteiros.length > 0 && (
