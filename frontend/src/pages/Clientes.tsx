@@ -1087,7 +1087,7 @@ export default function Clientes() {
             onClick={() => exportarClientesExcel(clientesCompletos)}>
             Excel
           </Button>,
-          <BotaoBaixarPDF key="pdf" clientes={clientesCompletos} empresa={config.empresa} />,
+          <BotaoBaixarPDF key="pdf" clientes={clientesCompletos} empresa={config.empresa} logo={config.logoBase64 ?? undefined} />,
         ]}
       >
         <Table
@@ -1124,7 +1124,7 @@ export default function Clientes() {
               <div><strong>Vendedor:</strong> {faturaData.lote?.nomeVendedor || '—'}</div>
               <div><strong>Parcelas:</strong> {faturaData.compradores.reduce((t: number, c: any) => t + c.parcelas.length, 0)}</div>
             </div>
-            <BlobProvider document={<FaturaCompraPDF dados={faturaData} empresa={config.empresa} />}>
+            <BlobProvider document={<FaturaCompraPDF dados={faturaData} empresa={config.empresa} logoBase64={config.logoBase64} />}>
               {({ url, loading }: { url: string | null; loading: boolean }) => (
                 <Button
                   type="primary" size="large" icon={<EyeOutlined />}
@@ -1157,7 +1157,7 @@ export default function Clientes() {
               <div><strong>Compradores:</strong> {promissoriaData.compradores.map((c: any) => c.nomexx).filter(Boolean).join(', ')}</div>
               <div><strong>Total de promissórias:</strong> {promissoriaData.compradores.reduce((t: number, c: any) => t + (c.qtdparCond ?? c.parcelas.length), 0)} parcelas</div>
             </div>
-            <BlobProvider document={<PromissoriaPDF dados={promissoriaData} empresa={config.empresa} />}>
+            <BlobProvider document={<PromissoriaPDF dados={promissoriaData} empresa={config.empresa} logoBase64={config.logoBase64} />}>
               {({ url, loading }: { url: string | null; loading: boolean }) => (
                 <Button
                   type="primary" size="large" icon={<EyeOutlined />}

@@ -47,6 +47,7 @@ interface Props {
   titulo?: string;
   empresa?: string;
   filtrosDesc?: string;
+  logoBase64?: string | null;
 }
 
 const ESCURO = '#222';
@@ -210,7 +211,7 @@ const s = StyleSheet.create({
 });
 
 function ConsultaVendasPDF({
-  vendas, totais, titulo, empresa, filtrosDesc, orientacao = 'paisagem',
+  vendas, totais, titulo, empresa, filtrosDesc, logoBase64, orientacao = 'paisagem',
 }: Props & { orientacao?: Orientacao }) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
@@ -224,7 +225,7 @@ function ConsultaVendasPDF({
         {/* Cabeçalho */}
         <View style={s.header} fixed>
           <View style={s.headerLeft}>
-            <Image src={logotipoLocal} style={s.headerLogo} />
+            <Image src={logoBase64 || logotipoLocal} style={s.headerLogo} />
             <View style={s.headerTitleBox}>
               <Text style={s.headerTitle}>Relatório de Consulta de Vendas</Text>
               <Text style={s.headerSub}>{subtitulo}</Text>
@@ -398,7 +399,7 @@ function ConsultaVendasPDF({
   );
 }
 
-export function BotaoBaixarPDFVendas({ vendas, totais, titulo, empresa, filtrosDesc }: Props) {
+export function BotaoBaixarPDFVendas({ vendas, totais, titulo, empresa, filtrosDesc, logoBase64 }: Props) {
   const [orientacao, setOrientacao] = useState<Orientacao>('paisagem');
   const nomeArquivo = `consulta-vendas-${new Date().toISOString().slice(0, 10)}.pdf`;
   return (
@@ -421,6 +422,7 @@ export function BotaoBaixarPDFVendas({ vendas, totais, titulo, empresa, filtrosD
             titulo={titulo}
             empresa={empresa}
             filtrosDesc={filtrosDesc}
+            logoBase64={logoBase64}
             orientacao={orientacao}
           />
         }

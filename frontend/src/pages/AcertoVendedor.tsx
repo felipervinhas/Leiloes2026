@@ -205,7 +205,7 @@ export default function AcertoVendedor() {
             <div>
               <Text type="secondary">{acerto.leilao}</Text> — <Text strong>{acerto.vendedor}</Text>
             </div>
-            <BlobProvider document={<RelatorioAcertoVendedor dados={acerto} empresa={config.empresa} />}>
+            <BlobProvider document={<RelatorioAcertoVendedor dados={acerto} empresa={config.empresa} logoBase64={config.logoBase64} />}>
               {({ url, loading: gerandoPdf }) => (
                 <Button
                   icon={<EyeOutlined />}
@@ -304,7 +304,7 @@ export default function AcertoVendedor() {
         width={400}
       >
         {recibo && (
-          <BlobProvider document={<RelatorioReciboDespesa dados={recibo} empresa={config.empresa} />}>
+          <BlobProvider document={<RelatorioReciboDespesa dados={recibo} empresa={config.empresa} logoBase64={config.logoBase64} />}>
             {({ url, loading: gerandoPdf, error }) => (
               <>
                 <Button

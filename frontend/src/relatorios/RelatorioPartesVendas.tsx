@@ -43,6 +43,7 @@ interface Props {
   titulo?: string;
   empresa?: string;
   filtrosDesc?: string;
+  logoBase64?: string | null;
 }
 
 const ESCURO = '#222';
@@ -307,7 +308,7 @@ function ColunaComprador({ v }: { v: VendaPartesPDF }) {
 }
 
 function PartesVendasPDF({
-  vendas, titulo, empresa, filtrosDesc, orientacao = 'paisagem',
+  vendas, titulo, empresa, filtrosDesc, logoBase64, orientacao = 'paisagem',
 }: Props & { orientacao?: Orientacao }) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
@@ -321,7 +322,7 @@ function PartesVendasPDF({
         {/* Cabeçalho */}
         <View style={s.header} fixed>
           <View style={s.headerLeft}>
-            <Image src={logotipoLocal} style={s.headerLogo} />
+            <Image src={logoBase64 || logotipoLocal} style={s.headerLogo} />
             <View style={s.headerTitleBox}>
               <Text style={s.headerTitle}>Vendedores e Compradores</Text>
               <Text style={s.headerSub}>{subtitulo}</Text>
@@ -368,7 +369,7 @@ function PartesVendasPDF({
   );
 }
 
-export function BotaoBaixarPDFPartes({ vendas, titulo, empresa, filtrosDesc }: Props) {
+export function BotaoBaixarPDFPartes({ vendas, titulo, empresa, filtrosDesc, logoBase64 }: Props) {
   const [orientacao, setOrientacao] = useState<Orientacao>('paisagem');
   const nomeArquivo = `partes-vendas-${new Date().toISOString().slice(0, 10)}.pdf`;
   return (
@@ -390,6 +391,7 @@ export function BotaoBaixarPDFPartes({ vendas, titulo, empresa, filtrosDesc }: P
             titulo={titulo}
             empresa={empresa}
             filtrosDesc={filtrosDesc}
+            logoBase64={logoBase64}
             orientacao={orientacao}
           />
         }

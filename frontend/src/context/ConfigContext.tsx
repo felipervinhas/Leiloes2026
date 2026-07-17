@@ -1,6 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '../services/api';
 import { useBanco } from './BancoContext';
+import logotipoMacedo from '../assets/LogotipoMacedoLeiloes.png';
+import logotipoKnorr from '../assets/LogotipoKnorrLeiloes.png';
+import logotipoAgenda from '../assets/LogotipoAgendaRemates.png';
+
+// Fallback local usado quando o banco do tenant ainda não tem um Logotipo configurado
+// (ou o cadastro em Configuracoes/S3 falha) — evita cair no logo genérico da Macedo
+// para tenants que já têm identidade visual própria.
+const LOGOS_POR_BANCO: Record<string, string> = {
+  knorr: logotipoKnorr,
+  agendaremates: logotipoAgenda,
+};
+
+function logoFallbackPorBanco(banco: string): string {
+  return LOGOS_POR_BANCO[banco.toLowerCase()] || logotipoMacedo;
+}
 
 export interface Configuracoes {
   empresa: string;
@@ -41,8 +56,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       .then(r => setConfig(cfg => ({ ...cfg, ...r.data })))
       .catch(() => {});
     api.get('/configuracoes/logo')
-      .then(r => setConfig(cfg => ({ ...cfg, logoBase64: r.data?.logo ?? null })))
-      .catch(() => {});
+      .then(r => setConfig(cfg => ({ ...cfg, logoBase64: r.data?.logo ?? logoFallbackPorBanco(banco) })))
+      .catch(() => setConfig(cfg => ({ ...cfg, logoBase64: logoFallbackPorBanco(banco) })));
   }, [banco]);
 
   return <ConfigContext.Provider value={config}>{children}</ConfigContext.Provider>;

@@ -6,6 +6,7 @@ import { valorExtenso } from './RelatorioPromissoria';
 interface Props {
   dados: FaturaData;
   empresa?: string;
+  logoBase64?: string | null;
 }
 
 const PRETO  = '#000';
@@ -70,7 +71,7 @@ const s = StyleSheet.create({
   footerText: { fontSize: 6, color: CINZA },
 });
 
-function NotaVendaPagina({ dados, comp, empresa }: { dados: FaturaData; comp: FaturaData['compradores'][0]; empresa: string }) {
+function NotaVendaPagina({ dados, comp, empresa, logoBase64 }: { dados: FaturaData; comp: FaturaData['compradores'][0]; empresa: string; logoBase64?: string | null }) {
   const lote  = dados.lote;
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
   const totalParcelas = comp.parcelas.reduce((a, p) => a + (p.vlrpar ?? 0), 0);
@@ -80,7 +81,7 @@ function NotaVendaPagina({ dados, comp, empresa }: { dados: FaturaData; comp: Fa
     <Page size="A4" style={s.page}>
       <View style={s.header}>
         <View style={s.headerEsq}>
-          <Image src={logotipoLocal} style={s.logo} />
+          <Image src={logoBase64 || logotipoLocal} style={s.logo} />
           <Text style={s.empresa}>{empresa}</Text>
         </View>
         <View style={s.headerDir}>
@@ -172,12 +173,12 @@ function NotaVendaPagina({ dados, comp, empresa }: { dados: FaturaData; comp: Fa
   );
 }
 
-function NotaVendaPDF({ dados, empresa }: Props) {
+function NotaVendaPDF({ dados, empresa, logoBase64 }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   return (
     <Document title={`Nota de Venda — Nota ${dados.codnot || dados.id}`} author={nomeEmpresa}>
       {dados.compradores.map(comp => (
-        <NotaVendaPagina key={comp.id} dados={dados} comp={comp} empresa={nomeEmpresa} />
+        <NotaVendaPagina key={comp.id} dados={dados} comp={comp} empresa={nomeEmpresa} logoBase64={logoBase64} />
       ))}
     </Document>
   );

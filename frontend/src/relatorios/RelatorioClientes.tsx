@@ -268,7 +268,7 @@ function CardCliente({ cliente: c, index }: { cliente: ClienteCompleto; index: n
   );
 }
 
-function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', empresa, orientacao = 'retrato' }: Props & { orientacao?: Orientacao }) {
+function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', empresa, logo, logoUrl, orientacao = 'retrato' }: Props & { orientacao?: Orientacao }) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
   const pageSize: any = orientacao === 'paisagem' ? [841.89, 595.28] : 'A4';
@@ -280,7 +280,7 @@ function RelatorioClientesPDF({ clientes, titulo = 'Relatório de Clientes', emp
         {/* Cabeçalho do documento */}
         <View style={s.docHeader} fixed>
           <View style={s.docHeaderEsquerda}>
-            <Image src={logotipoLocal} style={s.docHeaderLogo} />
+            <Image src={logo || logoUrl || logotipoLocal} style={s.docHeaderLogo} />
             <Text style={s.docHeaderSub}>{titulo}</Text>
           </View>
           <View style={s.docHeaderDireita}>

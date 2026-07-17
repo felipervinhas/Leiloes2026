@@ -203,6 +203,7 @@ export default function Lances() {
             lances={lancesRelatorio}
             leilao={leilaoLabel}
             empresa={config.empresa}
+            logoBase64={config.logoBase64}
           />
         </div>
       </Modal>

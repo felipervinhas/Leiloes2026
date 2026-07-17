@@ -58,6 +58,7 @@ export interface FaturaUnificadaGrupo {
 interface Props {
   grupos: FaturaUnificadaGrupo[];
   empresa?: string;
+  logoBase64?: string | null;
 }
 
 const PRETO  = '#000';
@@ -213,7 +214,7 @@ function InfoItem({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: string, agora: string) {
+function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: string, agora: string, logoBase64?: string | null) {
   const comp = grupo.comprador;
   const ven  = grupo.vendedor;
   const enderecoComp = [comp.endere, comp.bairro].filter(Boolean).join(', ');
@@ -251,7 +252,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
 
       <View style={s.docHeader}>
         <View style={s.docHeaderLeft}>
-          <Image src={logotipoLocal} style={s.docLogo} />
+          <Image src={logoBase64 || logotipoLocal} style={s.docLogo} />
           <Text style={s.docEmpresa}>{nomeEmpresa}</Text>
         </View>
         <View style={s.docHeaderRight}>
@@ -413,13 +414,13 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
   );
 }
 
-function RelatorioFaturaUnificada({ grupos, empresa }: Props) {
+function RelatorioFaturaUnificada({ grupos, empresa, logoBase64 }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
   return (
     <Document title="Fatura Unificada" author={nomeEmpresa}>
-      {grupos.map((grupo, i) => paginaFatura(grupo, i, nomeEmpresa, agora))}
+      {grupos.map((grupo, i) => paginaFatura(grupo, i, nomeEmpresa, agora, logoBase64))}
     </Document>
   );
 }

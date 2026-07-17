@@ -9,6 +9,7 @@ import { valorExtenso, fmtR, fmtData, CATEGO } from './promissoriaUtils';
 interface Props {
   dados: FaturaData;
   empresa?: string;
+  logoBase64?: string | null;
 }
 
 export { valorExtenso };
@@ -200,7 +201,7 @@ function InfoItem({ label, value, style }: { label: string; value?: string | nul
 
 // ─── Documento ───────────────────────────────────────────────────────────────
 
-function PromissoriaPDF({ dados, empresa }: Props) {
+function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
@@ -220,7 +221,7 @@ function PromissoriaPDF({ dados, empresa }: Props) {
             {/* ── CABEÇALHO ── */}
             <View style={s.header}>
               <View style={s.headerEsq}>
-                <Image src={logotipoLocal} style={s.logo} />
+                <Image src={logoBase64 || logotipoLocal} style={s.logo} />
                 <View>
                   <Text style={s.empresa}>{nomeEmpresa}</Text>
 

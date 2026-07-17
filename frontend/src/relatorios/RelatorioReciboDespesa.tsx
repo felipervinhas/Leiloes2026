@@ -15,6 +15,7 @@ export interface ReciboDespesaPDF {
 interface Props {
   dados: ReciboDespesaPDF;
   empresa?: string;
+  logoBase64?: string | null;
 }
 
 const PRETO  = '#000';
@@ -94,7 +95,7 @@ const s = StyleSheet.create({
   footerText: { fontSize: 6.5, color: CINZA },
 });
 
-function RelatorioReciboDespesa({ dados, empresa }: Props) {
+function RelatorioReciboDespesa({ dados, empresa, logoBase64 }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const info = TIPO_INFO[dados.dc] || TIPO_INFO.D;
   const dataFmt = dados.dataInclusao ? new Date(dados.dataInclusao).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
@@ -104,7 +105,7 @@ function RelatorioReciboDespesa({ dados, empresa }: Props) {
       <Page size="A4" style={s.page}>
 
         <View style={s.header}>
-          <Image src={logotipoLocal} style={s.logo} />
+          <Image src={logoBase64 || logotipoLocal} style={s.logo} />
           <Text style={s.titulo}>{info.titulo}</Text>
         </View>
 

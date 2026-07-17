@@ -18,6 +18,7 @@ interface DocProps {
   lances: LancePDF[];
   leilao: string;
   empresa?: string;
+  logoBase64?: string | null;
 }
 
 const ESCURO = '#222';
@@ -109,7 +110,7 @@ const s = StyleSheet.create({
   footerText: { fontSize: 6.5, color: '#999' },
 });
 
-function LancesDoc({ lances, leilao, empresa }: DocProps) {
+function LancesDoc({ lances, leilao, empresa, logoBase64 }: DocProps) {
   // Agrupa por lote mantendo a ordem recebida (API já ordena por IDLOTE)
   const mapaGrupos = new Map<number, { lotexx: string; deslot: string; lances: LancePDF[] }>();
   for (const l of lances) {
@@ -138,7 +139,7 @@ function LancesDoc({ lances, leilao, empresa }: DocProps) {
         {/* Cabeçalho */}
         <View style={s.headerRow} fixed>
           <View style={s.headerLeft}>
-            <Image src={logotipoLocal} style={s.headerLogo} />
+            <Image src={logoBase64 || logotipoLocal} style={s.headerLogo} />
             <View style={s.headerTitleBox}>
               <Text style={s.headerTitle}>Relatório de Lances</Text>
               <Text style={s.headerSub}>{leilao}</Text>
@@ -196,13 +197,14 @@ interface BotaoProps {
   lances: LancePDF[];
   leilao: string;
   empresa?: string;
+  logoBase64?: string | null;
 }
 
-export default function BotaoBaixarLancesPDF({ lances, leilao, empresa }: BotaoProps) {
+export default function BotaoBaixarLancesPDF({ lances, leilao, empresa, logoBase64 }: BotaoProps) {
   const nomeArquivo = `lances-${leilao.replace(/[^a-zA-Z0-9À-ú]/g, '-').toLowerCase()}.pdf`;
   return (
     <PDFDownloadLink
-      document={<LancesDoc lances={lances} leilao={leilao} empresa={empresa} />}
+      document={<LancesDoc lances={lances} leilao={leilao} empresa={empresa} logoBase64={logoBase64} />}
       fileName={nomeArquivo}
       style={{ textDecoration: 'none' }}
     >

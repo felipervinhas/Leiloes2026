@@ -19,6 +19,7 @@ export interface AcertoVendedorPDF {
 interface Props {
   dados: AcertoVendedorPDF;
   empresa?: string;
+  logoBase64?: string | null;
 }
 
 const PRETO  = '#000';
@@ -136,7 +137,7 @@ function LinhaTabela({ lote, comp, det, tipo, dc, valor, alt }: {
   );
 }
 
-function RelatorioAcertoVendedor({ dados, empresa }: Props) {
+function RelatorioAcertoVendedor({ dados, empresa, logoBase64 }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
 
   let alt = false;
@@ -148,7 +149,7 @@ function RelatorioAcertoVendedor({ dados, empresa }: Props) {
 
         <View style={s.docHeader}>
           <View style={s.docHeaderLeft}>
-            <Image src={logotipoLocal} style={s.docLogo} />
+            <Image src={logoBase64 || logotipoLocal} style={s.docLogo} />
             <Text style={s.docEmpresa}>{nomeEmpresa}</Text>
           </View>
           <View style={s.docHeaderRight}>

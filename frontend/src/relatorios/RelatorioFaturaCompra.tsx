@@ -82,6 +82,7 @@ interface Props {
   dados: FaturaData;
   empresa?: string;
   variante?: VarianteFatura;
+  logoBase64?: string | null;
 }
 
 const PRETO  = '#000';
@@ -473,7 +474,7 @@ function SecaoComprador({ comp, index, variante }: { comp: FaturaData['comprador
   );
 }
 
-function FaturaCompraPDF({ dados, empresa, variante = 'comprador' }: Props) {
+function FaturaCompraPDF({ dados, empresa, variante = 'comprador', logoBase64 }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
@@ -487,7 +488,7 @@ function FaturaCompraPDF({ dados, empresa, variante = 'comprador' }: Props) {
         {/* Cabeçalho */}
         <View style={s.docHeader}>
           <View style={s.docHeaderLeft}>
-            <Image src={logotipoLocal} style={s.docLogo} />
+            <Image src={logoBase64 || logotipoLocal} style={s.docLogo} />
             <Text style={s.docEmpresa}>{nomeEmpresa}</Text>
           </View>
           <View style={s.docHeaderRight}>

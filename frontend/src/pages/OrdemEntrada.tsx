@@ -261,6 +261,7 @@ export default function OrdemEntrada() {
                 lotes={lotesParaPDF}
                 titulo={nomeLeilao}
                 empresa={config.empresa}
+                logoBase64={config.logoBase64}
               />
               {layoutAtivo && (
                 <BlobProvider

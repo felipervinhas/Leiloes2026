@@ -365,7 +365,7 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
               document={
                 faturaLayout
                   ? <RelatorioFaturaCompradorDinamico dados={faturaData} layout={faturaLayout} empresa={config.empresa} logoBase64={config.logoBase64} titulo={TITULO_FATURA_VARIANTE[faturaVariante]} />
-                  : <FaturaCompraPDF dados={faturaData} empresa={config.empresa} variante={faturaVariante} />
+                  : <FaturaCompraPDF dados={faturaData} empresa={config.empresa} variante={faturaVariante} logoBase64={config.logoBase64} />
               }
             >
               {({ url, loading }) => (
@@ -418,7 +418,7 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
               document={
                 promissoriaLayout
                   ? <PromissoriaDinamica dados={promissoriaData} layout={promissoriaLayout} empresa={config.empresa} logoBase64={config.logoBase64} />
-                  : <PromissoriaPDF dados={promissoriaData} empresa={config.empresa} />
+                  : <PromissoriaPDF dados={promissoriaData} empresa={config.empresa} logoBase64={config.logoBase64} />
               }
             >
               {({ url, loading }) => (
@@ -467,7 +467,7 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
               document={
                 notaVendaLayout
                   ? <PromissoriaDinamica dados={notaVendaData} layout={notaVendaLayout} empresa={config.empresa} logoBase64={config.logoBase64} titulo="Nota de Venda" />
-                  : <NotaVendaPDF dados={notaVendaData} empresa={config.empresa} />
+                  : <NotaVendaPDF dados={notaVendaData} empresa={config.empresa} logoBase64={config.logoBase64} />
               }
             >
               {({ url, loading }) => (

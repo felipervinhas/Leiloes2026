@@ -483,6 +483,7 @@ export default function ConsultaVendas() {
                         titulo={nomeLeilaoSel}
                         empresa={config.empresa}
                         filtrosDesc={filtrosDesc}
+                        logoBase64={config.logoBase64}
                         orientacao={orientacaoImp}
                       />
                     : <PartesVendasPDF
@@ -490,6 +491,7 @@ export default function ConsultaVendas() {
                         titulo={nomeLeilaoSel}
                         empresa={config.empresa}
                         filtrosDesc={filtrosDesc}
+                        logoBase64={config.logoBase64}
                         orientacao={orientacaoImp}
                       />
                 }
@@ -609,7 +611,7 @@ export default function ConsultaVendas() {
                 </li>
               ))}
             </ul>
-            <BlobProvider document={<RelatorioFaturaUnificada grupos={faturasUnificadas} empresa={config.empresa} />}>
+            <BlobProvider document={<RelatorioFaturaUnificada grupos={faturasUnificadas} empresa={config.empresa} logoBase64={config.logoBase64} />}>
               {({ url, loading }) => (
                 <Button
                   type="primary"

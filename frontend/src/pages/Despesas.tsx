@@ -26,31 +26,43 @@ const DC_INFO: Record<string, { label: string; color: string; sinal: 1 | -1 }> =
 };
 const dcInfo = (v: string) => DC_INFO[v] || { label: v || '—', color: 'default', sinal: 1 as const };
 
+const FILTRO_STORAGE_KEY = 'despesas_filtro';
+
+function lerFiltroSalvo(): { busca: string; leilaoFiltro?: number } {
+  try {
+    const raw = sessionStorage.getItem(FILTRO_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : { busca: '' };
+  } catch { return { busca: '' }; }
+}
+
 export default function Despesas() {
   const config = useConfig();
+  const filtroSalvo = lerFiltroSalvo();
   const [dados, setDados]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando]   = useState<any | null>(null);
-  const [busca, setBusca]         = useState('');
+  const [busca, setBusca]         = useState(filtroSalvo.busca);
   const [leiloes, setLeiloes]     = useState<{ value: number; label: string }[]>([]);
   const [clientes, setClientes]   = useState<{ value: number; label: string }[]>([]);
-  const [leilaoFiltro, setLeilaoFiltro] = useState<number | undefined>();
+  const [leilaoFiltro, setLeilaoFiltro] = useState<number | undefined>(filtroSalvo.leilaoFiltro);
   const [recibo, setRecibo]       = useState<any | null>(null);
   const [form] = Form.useForm();
 
   const carregar = async (b = '', idLeilao?: number) => {
     setLoading(true);
     try {
+      sessionStorage.setItem(FILTRO_STORAGE_KEY, JSON.stringify({ busca: b, leilaoFiltro: idLeilao }));
       const r = await api.get('/despesas', { params: { busca: b, idLeilao } });
       setDados(r.data);
     } finally { setLoading(false); }
   };
 
   useEffect(() => {
-    carregar();
+    carregar(filtroSalvo.busca, filtroSalvo.leilaoFiltro);
     api.get('/leiloes').then(r => setLeiloes(r.data.map((l: any) => ({ value: l.id, label: l.leilao }))));
     api.get('/clientes').then(r => setClientes(r.data.map((c: any) => ({ value: c.id, label: c.nomexx }))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const abrirModal = (item?: any) => {
@@ -140,6 +152,7 @@ export default function Despesas() {
             placeholder="Filtrar por leilão"
             style={{ width: '100%' }}
             allowClear
+            value={leilaoFiltro}
             options={leiloes}
             onChange={v => { setLeilaoFiltro(v); carregar(busca, v); }}
             showSearch
@@ -238,7 +251,7 @@ export default function Despesas() {
         width={400}
       >
         {recibo && (
-          <BlobProvider document={<RelatorioReciboDespesa dados={recibo} empresa={config.empresa} />}>
+          <BlobProvider document={<RelatorioReciboDespesa dados={recibo} empresa={config.empresa} logoBase64={config.logoBase64} />}>
             {({ url, loading: gerandoPdf, error }) => (
               <>
                 <Button

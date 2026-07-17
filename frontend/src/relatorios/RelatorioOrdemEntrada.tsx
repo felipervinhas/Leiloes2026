@@ -24,6 +24,7 @@ interface Props {
   lotes: LoteOrdemPDF[];
   titulo?: string;
   empresa?: string;
+  logoBase64?: string | null;
 }
 
 const ESCURO = '#222';
@@ -114,7 +115,7 @@ function dataBr(v?: string): string {
   return isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
 }
 
-function OrdemEntradaPDF({ lotes, titulo, empresa, orientacao = 'paisagem' }: Props & { orientacao?: Orientacao }) {
+function OrdemEntradaPDF({ lotes, titulo, empresa, logoBase64, orientacao = 'paisagem' }: Props & { orientacao?: Orientacao }) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
   const subtitulo = titulo ? `Ordem de Entrada — ${titulo}` : 'Ordem de Entrada';
@@ -137,7 +138,7 @@ function OrdemEntradaPDF({ lotes, titulo, empresa, orientacao = 'paisagem' }: Pr
         {/* Cabeçalho */}
         <View style={s.header} fixed>
           <View style={s.headerEsquerda}>
-            <Image src={logotipoLocal} style={s.headerLogo} />
+            <Image src={logoBase64 || logotipoLocal} style={s.headerLogo} />
             <Text style={s.headerSub}>{subtitulo}</Text>
             {infoLeilao ? <Text style={s.headerInfoLeilao}>{infoLeilao}</Text> : null}
           </View>
@@ -180,7 +181,7 @@ function OrdemEntradaPDF({ lotes, titulo, empresa, orientacao = 'paisagem' }: Pr
   );
 }
 
-export function BotaoBaixarPDFOrdem({ lotes, titulo, empresa }: Props) {
+export function BotaoBaixarPDFOrdem({ lotes, titulo, empresa, logoBase64 }: Props) {
   const [orientacao, setOrientacao] = useState<Orientacao>('paisagem');
   const nomeArquivo = `ordem-entrada-${new Date().toISOString().slice(0, 10)}.pdf`;
   return (
@@ -196,7 +197,7 @@ export function BotaoBaixarPDFOrdem({ lotes, titulo, empresa }: Props) {
         <Radio.Button value="paisagem">Paisagem</Radio.Button>
       </Radio.Group>
       <PDFDownloadLink
-        document={<OrdemEntradaPDF lotes={lotes} titulo={titulo} empresa={empresa} orientacao={orientacao} />}
+        document={<OrdemEntradaPDF lotes={lotes} titulo={titulo} empresa={empresa} logoBase64={logoBase64} orientacao={orientacao} />}
         fileName={nomeArquivo}
         style={{ textDecoration: 'none' }}
       >
