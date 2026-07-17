@@ -20,6 +20,7 @@ import OrdemEntradaDinamica from '../relatorios/OrdemEntradaDinamica';
 import RelatorioFaturaCompradorDinamico from '../relatorios/RelatorioFaturaCompradorDinamico';
 import EditorBlocoCartao from '../components/relatorioEditor/EditorBlocoCartao';
 import ImportadorFastReportModal from '../components/relatorioEditor/ImportadorFastReportModal';
+import { DELPHI_FIELD_MAP_FICHA_CLIENTE, DELPHI_FIELD_MAP_PROPRIEDADES } from '../relatorios/importadorFastReport';
 import { FICHA_CLIENTE_CAMPOS, COLUNAS_PROPRIEDADES_PADRAO, PropriedadeFichaPDF } from '../relatorios/fichaClienteCampos';
 import { ClienteFichaPDF } from '../relatorios/fichaClienteContext';
 import FichaClienteDinamica from '../relatorios/FichaClienteDinamica';
@@ -68,6 +69,10 @@ interface TipoRelatorioConfig {
   suportaTabelaLotes?: boolean;
   suportaTabelaPropriedades?: boolean;
   suportaTabelaLotesFatura?: boolean;
+  /** Dicionário código Delphi → chave do catálogo deste tipo, usado pelo importador de .fr3 (default: DELPHI_FIELD_MAP). */
+  mapaCamposImportacao?: Record<string, string>;
+  /** Dicionário código Delphi → chave de coluna da tabela repetida (ex. propriedades), usado pelo importador de .fr3. */
+  mapaColunasTabelaImportacao?: Record<string, string>;
 }
 
 const TIPOS_RELATORIO: TipoRelatorioConfig[] = [
@@ -94,6 +99,7 @@ const TIPOS_RELATORIO: TipoRelatorioConfig[] = [
   {
     tipo: 'ficha_cliente', label: 'Ficha de Cliente', familia: 'ficha_cliente',
     campos: FICHA_CLIENTE_CAMPOS, tituloDocumento: 'Ficha de Cliente', suportaTabelaPropriedades: true,
+    mapaCamposImportacao: DELPHI_FIELD_MAP_FICHA_CLIENTE, mapaColunasTabelaImportacao: DELPHI_FIELD_MAP_PROPRIEDADES,
     larguraMM: 210, alturaMM: 297,
   },
   {
@@ -731,6 +737,9 @@ export default function EditorRelatorios() {
         larguraMM={tipoConfig.larguraMM}
         alturaMM={tipoConfig.alturaMM}
         suportaBlocoParcelas={tipoConfig.suportaBlocoParcelas}
+        suportaTabelaPropriedades={tipoConfig.suportaTabelaPropriedades}
+        mapaCampos={tipoConfig.mapaCamposImportacao}
+        mapaColunasTabela={tipoConfig.mapaColunasTabelaImportacao}
         onClose={() => setImportadorAberto(false)}
         onImportar={novoLayout => confirmarSeSujo(() => {
           setTemplateAtual(null);

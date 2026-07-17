@@ -15,12 +15,16 @@ interface Props {
   larguraMM: number;
   alturaMM: number;
   suportaBlocoParcelas?: boolean;
+  suportaTabelaPropriedades?: boolean;
+  mapaCampos?: Record<string, string>;
+  mapaColunasTabela?: Record<string, string>;
   onClose: () => void;
   onImportar: (layout: CampoLayout[]) => void;
 }
 
 export default function ImportadorFastReportModal({
-  open, camposDisponiveis, larguraMM, alturaMM, suportaBlocoParcelas, onClose, onImportar,
+  open, camposDisponiveis, larguraMM, alturaMM, suportaBlocoParcelas,
+  suportaTabelaPropriedades, mapaCampos, mapaColunasTabela, onClose, onImportar,
 }: Props) {
   const [xml, setXml] = useState('');
   const [avisos, setAvisos] = useState<AvisoImportacao[] | null>(null);
@@ -46,6 +50,7 @@ export default function ImportadorFastReportModal({
     try {
       const resultado = importarFastReport(xml, camposDisponiveis, {
         larguraEsperadaMM: larguraMM, alturaEsperadaMM: alturaMM, suportaBlocoParcelas,
+        suportaTabelaPropriedades, mapaCampos, mapaColunasTabela,
       });
       onImportar(resultado.layout);
       setAvisos(resultado.avisos);

@@ -30,6 +30,42 @@ export const DELPHI_FIELD_MAP: Record<string, string> = {
   VLRTOT: 'comp.valorOriginal', VLRLIQ: 'comp.valorPagar', DESFIN: 'comp.desfin',
 };
 
+/**
+ * Dicionário equivalente ao DELPHI_FIELD_MAP, mas para o catálogo (flat, sem dot-path) da
+ * Ficha de Cliente. Códigos conferidos contra as colunas reais da tabela `Clientes`
+ * (backend/src/models/cliente.ts) — CIDADE_1/ESTADO_1 são os campos de Cidades duplicados
+ * pelo JOIN no dataset original do Delphi (Clientes.CIDADE é FK int, por isso o relatório
+ * usa os campos textuais vindos do join, renomeados com sufixo "_1" pelo próprio Delphi).
+ */
+export const DELPHI_FIELD_MAP_FICHA_CLIENTE: Record<string, string> = {
+  NOMEXX: 'nome', DATNAS: 'nascimento', CPFXXX: 'cpf', CNPJXX: 'cnpj', RGXXXX: 'rg',
+  ENDERE: 'endereco', BAIRRO: 'bairro', CIDADE_1: 'cidade', ESTADO_1: 'uf', CEPXXX: 'cep',
+  TELRES: 'telefoneResidencial', TELCOM: 'telefoneComercial', CELU_1: 'celular1', CELU_2: 'celular2',
+  EMAILX: 'email', EMAIL2: 'email2', ESTCIV: 'estadoCivil', PROFISS: 'profissao',
+  OBSXXX: 'observacoes', DATCAD: 'dataCadastro',
+};
+
+/** Colunas da banda repetida de propriedades (tabela CLIENTES_PROPRIEDADES) para a Ficha de Cliente. */
+export const DELPHI_FIELD_MAP_PROPRIEDADES: Record<string, string> = {
+  NOME_PROPRIEDADE: 'nomePropriedade', INSCRICAO: 'inscricao', CIDADE: 'cidade',
+  ESTADO: 'estado', LOCALIDADE: 'localidade', CODIGO_PROPRIEDADE: 'codigoPropriedade',
+};
+
+const LABEL_COLUNA_PROPRIEDADE: Record<string, string> = {
+  nomePropriedade: 'Propriedade', inscricao: 'IE', cidade: 'Cidade', estado: 'UF',
+  localidade: 'Localidade', codigoPropriedade: 'Código',
+};
+
+/**
+ * Extrai o código do campo a partir do DataField do FastReport, removendo eventual
+ * qualificação de dataset (ex. `FICHA."DATNAS"` ou `FICHA.DATNAS` → `DATNAS`).
+ */
+function extrairCodigoCampo(dataField: string): string {
+  const semAspas = dataField.replace(/"/g, '');
+  const partes = semAspas.split('.');
+  return partes[partes.length - 1].toUpperCase();
+}
+
 export interface AvisoImportacao {
   tipo: 'nao_mapeado' | 'banda_ignorada' | 'elemento_ignorado' | 'pagina_diferente';
   mensagem: string;
@@ -44,6 +80,11 @@ export interface OpcoesImportacaoFastReport {
   larguraEsperadaMM?: number;
   alturaEsperadaMM?: number;
   suportaBlocoParcelas?: boolean;
+  suportaTabelaPropriedades?: boolean;
+  /** Dicionário código Delphi → chave do catálogo de campos deste tipo de relatório (default: DELPHI_FIELD_MAP). */
+  mapaCampos?: Record<string, string>;
+  /** Dicionário código Delphi → chave de coluna da tabela repetida (ex. propriedades). */
+  mapaColunasTabela?: Record<string, string>;
 }
 
 const PX_TO_MM = 25.4 / 96;
@@ -79,9 +120,10 @@ function mapVAlign(vAlign: string | null): NonNullable<CampoLayout['verticalAlig
 
 /**
  * Importa um relatório FastReport (.fr3, formato XML do Delphi) como ponto de partida
- * para o editor. Campos com correspondência conhecida (DELPHI_FIELD_MAP) viram campos
- * vinculados; os demais viram texto livre "[CODIGO]" para o usuário revisar e reatribuir.
- * Bandas repetidas de parcelas viram o bloco pronto "bloco:parcelas" (a banda em si não é
+ * para o editor. Campos com correspondência conhecida (opcoes.mapaCampos, default
+ * DELPHI_FIELD_MAP) viram campos vinculados; os demais viram texto livre "[CODIGO]" para
+ * o usuário revisar e reatribuir. Bandas repetidas de parcelas e de propriedades viram os
+ * blocos prontos "bloco:parcelas" / "bloco:tabela-propriedades" (a banda em si não é
  * replicada campo a campo, pois o bloco já resolve a repetição das linhas).
  */
 export function importarFastReport(
@@ -102,6 +144,8 @@ export function importarFastReport(
   const avisos: AvisoImportacao[] = [];
   const layout: CampoLayout[] = [];
   const chavesConhecidas = new Set(camposDisponiveis.map(c => c.key));
+  const mapaCampos = opcoes.mapaCampos || DELPHI_FIELD_MAP;
+  const mapaColunasTabela = opcoes.mapaColunasTabela;
 
   const paperWidth = parseFloat(page.getAttribute('PaperWidth') || '210');
   const paperHeight = parseFloat(page.getAttribute('PaperHeight') || '297');
@@ -152,7 +196,7 @@ export function importarFastReport(
     };
 
     if (dataField) {
-      const chave = DELPHI_FIELD_MAP[dataField.toUpperCase()];
+      const chave = mapaCampos[extrairCodigoCampo(dataField)];
       if (chave && chavesConhecidas.has(chave)) {
         pushCampo({ tipo: 'campo', key: chave, ...base });
         return;
@@ -220,6 +264,61 @@ export function importarFastReport(
         });
       }
       return; // não replica os campos individuais da banda, o bloco já resolve a repetição
+    }
+
+    const ehBandaDePropriedades = /propriedade/i.test(datasetName);
+    if (ehBandaDePropriedades) {
+      if (opcoes.suportaTabelaPropriedades && mapaColunasTabela) {
+        if (!layout.some(c => c.tipo === 'bloco:tabela-propriedades')) {
+          const wPx = parseFloat(bandEl.getAttribute('Width') || '0');
+          const colunas = Array.from(bandEl.children)
+            .filter((el): el is Element => el.tagName === 'TfrxMemoView')
+            .map(el => {
+              const dataField = el.getAttribute('DataField');
+              const key = dataField ? mapaColunasTabela[extrairCodigoCampo(dataField)] : undefined;
+              if (!key) {
+                if (dataField) {
+                  avisos.push({
+                    tipo: 'nao_mapeado',
+                    mensagem: `Coluna "${dataField}" da tabela de propriedades não tem correspondente conhecido — adicione a coluna correta manualmente no editor.`,
+                  });
+                }
+                return null;
+              }
+              return {
+                left: parseFloat(el.getAttribute('Left') || '0'),
+                key,
+                label: LABEL_COLUNA_PROPRIEDADE[key] || key,
+                largura: round2(Math.max(parseFloat(el.getAttribute('Width') || '0') * PX_TO_MM, 10)),
+                visivel: true,
+              };
+            })
+            .filter((c): c is NonNullable<typeof c> => c !== null)
+            .sort((a, b) => a.left - b.left)
+            .map(({ left, ...coluna }) => coluna);
+
+          pushCampo({
+            tipo: 'bloco:tabela-propriedades',
+            x: round2(leftMargin + bandLeftPx * PX_TO_MM),
+            y: round2(topMargin + bandTopPx * PX_TO_MM),
+            largura: round2(Math.max(wPx * PX_TO_MM, 100)),
+            altura: 40,
+            colunas,
+            fontFamily: 'Helvetica', fontSize: 8, color: '#000000', align: 'left',
+            bold: false, italic: false, underline: false, verticalAlign: 'top', opacity: 1, rotacao: 0,
+          });
+          avisos.push({
+            tipo: 'elemento_ignorado',
+            mensagem: 'A tabela de propriedades foi posicionada com uma altura inicial padrão (40mm) — redimensione conforme a quantidade real de propriedades.',
+          });
+        }
+      } else {
+        avisos.push({
+          tipo: 'banda_ignorada',
+          mensagem: `A banda de propriedades ("${datasetName}") foi ignorada — este tipo de relatório não suporta tabela de propriedades.`,
+        });
+      }
+      return;
     }
 
     Array.from(bandEl.children).forEach(el => {
