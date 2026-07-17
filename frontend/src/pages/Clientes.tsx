@@ -86,6 +86,11 @@ export default function Clientes() {
   const [historicoVendas, setHistoricoVendas] = useState<any[]>([]);
   const [historicoLoading, setHistoricoLoading] = useState(false);
   const [historicoCarregado, setHistoricoCarregado] = useState(false);
+  const [totalPorLeilaoLegado, setTotalPorLeilaoLegado] = useState<any[]>([]);
+  const [boletosLegado, setBoletosLegado] = useState<any[]>([]);
+  const [legadoLoading, setLegadoLoading] = useState(false);
+  const [legadoCarregado, setLegadoCarregado] = useState(false);
+  const [leilaoLegadoSelecionado, setLeilaoLegadoSelecionado] = useState<number | null>(null);
   const [drawerActiveTab, setDrawerActiveTab] = useState('1');
   const [faturaLoading, setFaturaLoading] = useState<number | null>(null);
   const [faturaData, setFaturaData] = useState<FaturaData | null>(null);
@@ -142,6 +147,21 @@ export default function Clientes() {
       message.error(`Erro ao carregar histórico: ${err?.response?.data?.error || err?.message || 'desconhecido'}`);
     } finally {
       setHistoricoLoading(false);
+    }
+  };
+
+  const carregarHistoricoLegado = async (id: number) => {
+    setLegadoLoading(true);
+    try {
+      const r = await api.get(`/clientes/${id}/historico-legado`);
+      setTotalPorLeilaoLegado(r.data.totalPorLeilao ?? []);
+      setBoletosLegado(r.data.boletos ?? []);
+      setLeilaoLegadoSelecionado(null);
+      setLegadoCarregado(true);
+    } catch (err: any) {
+      message.error(`Erro ao carregar histórico legado: ${err?.response?.data?.error || err?.message || 'desconhecido'}`);
+    } finally {
+      setLegadoLoading(false);
     }
   };
 
@@ -370,6 +390,10 @@ export default function Clientes() {
     setHistoricoCarregado(false);
     setHistoricoCompras([]);
     setHistoricoVendas([]);
+    setLegadoCarregado(false);
+    setTotalPorLeilaoLegado([]);
+    setBoletosLegado([]);
+    setLeilaoLegadoSelecionado(null);
     setDrawerActiveTab('1');
     setDrawerOpen(true);
   };
@@ -859,8 +883,73 @@ export default function Clientes() {
     </>
   );
 
+  const colunasTotalLegado = [
+    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true },
+    { title: 'Total Vendas', dataIndex: 'totalVendas', width: 130, align: 'right' as const, render: fmt },
+    { title: 'Total Compras', dataIndex: 'totalCompras', width: 130, align: 'right' as const, render: fmt },
+  ];
+
+  const colunasBoletosLegado = [
+    { title: 'Leilão', dataIndex: 'leilao', width: 160, ellipsis: true },
+    { title: 'Vendedor', dataIndex: 'nomeVendedor', width: 160, ellipsis: true },
+    { title: 'Comprador', dataIndex: 'nomeComprador', width: 160, ellipsis: true },
+    { title: 'Boleto', dataIndex: 'boleto', width: 80 },
+    { title: 'Raça', dataIndex: 'descricao', width: 120, ellipsis: true },
+    { title: 'Qtd', dataIndex: 'quantidade', width: 60 },
+    { title: 'Peso', dataIndex: 'peso', width: 80 },
+    { title: 'Lote 1', dataIndex: 'lote1', width: 70 },
+    { title: 'Lote 2', dataIndex: 'lote2', width: 70 },
+    { title: 'Lote 3', dataIndex: 'lote3', width: 70 },
+    { title: 'Total', dataIndex: 'total', width: 110, align: 'right' as const, render: fmt },
+    { title: 'Vlr. Líquido', dataIndex: 'valorLiquido', width: 110, align: 'right' as const, render: fmt },
+    { title: 'Desconto', dataIndex: 'desconto', width: 90, align: 'right' as const },
+    { title: 'R$ Desconto', dataIndex: 'valorDesconto', width: 110, align: 'right' as const, render: fmt },
+    { title: 'Com.Venda', dataIndex: 'comissaoVenda', width: 100, align: 'right' as const },
+    { title: 'R$ Com.Venda', dataIndex: 'valorComissaoVenda', width: 110, align: 'right' as const, render: fmt },
+    { title: 'Com.Compra', dataIndex: 'comissaoCompra', width: 100, align: 'right' as const },
+    { title: 'R$ Com.Compra', dataIndex: 'valorComissaoCompra', width: 120, align: 'right' as const, render: fmt },
+  ];
+
+  const boletosLegadoFiltrados = leilaoLegadoSelecionado
+    ? boletosLegado.filter(b => b.remate === leilaoLegadoSelecionado)
+    : boletosLegado;
+
+  const tabLegado = (
+    <>
+      <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
+        Dados do sistema legado (pré-migração). Clique num leilão no resumo para filtrar os boletos abaixo.
+      </Typography.Paragraph>
+      <Table
+        rowKey="id" size="small" loading={legadoLoading} dataSource={totalPorLeilaoLegado}
+        columns={colunasTotalLegado}
+        pagination={false}
+        locale={{ emptyText: 'Nenhum negócio legado encontrado' }}
+        scroll={{ x: 400 }}
+        onRow={record => ({
+          onClick: () => setLeilaoLegadoSelecionado(prev => prev === record.id ? null : record.id),
+          style: { cursor: 'pointer', background: leilaoLegadoSelecionado === record.id ? '#e6f4ff' : undefined },
+        })}
+      />
+      <Divider plain>
+        Boletos {leilaoLegadoSelecionado ? `— ${totalPorLeilaoLegado.find(t => t.id === leilaoLegadoSelecionado)?.leilao || ''}` : '(todos os leilões)'}
+      </Divider>
+      <Table
+        rowKey="key" size="small" loading={legadoLoading} dataSource={boletosLegadoFiltrados}
+        columns={colunasBoletosLegado}
+        pagination={{ pageSize: 10, showTotal: t => `${t} registros`, simple: true }}
+        locale={{ emptyText: 'Nenhum boleto encontrado' }}
+        scroll={{ x: 1600 }}
+      />
+    </>
+  );
+
   const tabHistorico = (
-    <Tabs size="small" items={[
+    <Tabs
+      size="small"
+      onChange={key => {
+        if (key === 'legado' && editando && !legadoCarregado) carregarHistoricoLegado(editando.id);
+      }}
+      items={[
       {
         key: 'compras',
         label: `Compras (${historicoCompras.length})`,
@@ -930,6 +1019,11 @@ export default function Clientes() {
             />
           </>
         ),
+      },
+      {
+        key: 'legado',
+        label: `Legado (${totalPorLeilaoLegado.length})`,
+        children: tabLegado,
       },
     ]} />
   );

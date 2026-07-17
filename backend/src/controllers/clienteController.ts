@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as svc from '../services/clienteService';
 import { DuplicidadeError } from '../services/clienteService';
 import { consultarVendas } from '../services/consultaVendasService';
+import { buscarHistoricoLegado } from '../services/clienteLegadoService';
 
 export const listar = async (req: Request, res: Response) => {
   res.json(await svc.listarClientes(req.query.busca as string, req.query.filtro as string, req.query.filtroValor as string, req.query.classificacoes as string));
@@ -68,6 +69,16 @@ export const historico = async (req: Request, res: Response) => {
     res.json({ compras, vendas });
   } catch (err) {
     console.error('[historico] erro:', err);
+    res.status(500).json({ error: String(err) });
+  }
+};
+
+export const historicoLegado = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    res.json(await buscarHistoricoLegado(id));
+  } catch (err) {
+    console.error('[historicoLegado] erro:', err);
     res.status(500).json({ error: String(err) });
   }
 };
