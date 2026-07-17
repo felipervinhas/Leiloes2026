@@ -4,7 +4,7 @@ import { getBanco } from './bancoContext';
 
 dotenv.config();
 
-const BANCOS_PERMITIDOS = ['knorr', 'MacedoLeiloes', 'LoteRural', 'G2'];
+const BANCOS_PERMITIDOS = ['knorr', 'MacedoLeiloes', 'LoteRural', 'G2', 'MacedoBkp'];
 
 function buildConfig(database: string): sql.config {
   return {
