@@ -36,6 +36,14 @@ const fmt = (v?: number | null) =>
 const fmtData = (v?: string | Date | null) =>
   v ? dayjs(v).format('DD/MM/YYYY') : '—';
 
+/** Ordena numericamente quando os dois valores são números (ex. boleto, lote), com fallback para texto. */
+const sortNumericOuTexto = (a: unknown, b: unknown) => {
+  const na = parseFloat(String(a));
+  const nb = parseFloat(String(b));
+  if (!isNaN(na) && !isNaN(nb)) return na - nb;
+  return String(a ?? '').localeCompare(String(b ?? ''));
+};
+
 const TITULO_FATURA_VARIANTE: Record<VarianteFatura, string> = {
   comprador: 'Fatura de Comprador',
   sindicato: 'Fatura Sindicato',
@@ -247,14 +255,14 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
         ? <Tag color="green">Vendido</Tag>
         : <Tag color="orange">Pendente</Tag>,
     },
-    { title: 'Boleto', dataIndex: 'codnot', ...rzV('codnot'), sorter: (a: any, b: any) => String(a.codnot).localeCompare(String(b.codnot)) },
+    { title: 'Boleto', dataIndex: 'codnot', ...rzV('codnot'), sorter: (a: any, b: any) => sortNumericOuTexto(a.codnot, b.codnot) },
     { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, ...rzV('leilao'), sorter: (a: any, b: any) => String(a.leilao).localeCompare(String(b.leilao)) },
     {
       title: 'Data', dataIndex: 'datlan', ...rzV('datlan'),
       sorter: (a: any, b: any) => new Date(a.datlan).getTime() - new Date(b.datlan).getTime(),
       render: fmtData,
     },
-    { title: 'Lote', dataIndex: 'lotexx', ...rzV('lotexx'), sorter: (a: any, b: any) => String(a.lotexx).localeCompare(String(b.lotexx)) },
+    { title: 'Lote', dataIndex: 'lotexx', ...rzV('lotexx'), sorter: (a: any, b: any) => sortNumericOuTexto(a.lotexx, b.lotexx) },
     { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzV('deslot') },
     {
       title: 'Comprador', dataIndex: 'nomexx', ellipsis: true, ...rzV('nomexx'),
