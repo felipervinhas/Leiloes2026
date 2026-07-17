@@ -53,8 +53,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!banco) return;
     api.get('/configuracoes')
-      .then(r => setConfig(cfg => ({ ...cfg, ...r.data })))
-      .catch(() => {});
+      .then(r => setConfig(cfg => ({ ...cfg, ...r.data, logoUrl: r.data?.logoUrl || logoFallbackPorBanco(banco) })))
+      .catch(() => setConfig(cfg => ({ ...cfg, logoUrl: logoFallbackPorBanco(banco) })));
     api.get('/configuracoes/logo')
       .then(r => setConfig(cfg => ({ ...cfg, logoBase64: r.data?.logo ?? logoFallbackPorBanco(banco) })))
       .catch(() => setConfig(cfg => ({ ...cfg, logoBase64: logoFallbackPorBanco(banco) })));
