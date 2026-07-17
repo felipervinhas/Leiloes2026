@@ -8,6 +8,7 @@ import { useConfig } from '../context/ConfigContext';
 import dayjs from 'dayjs';
 import api from '../services/api';
 import ImageUpload from '../components/ImageUpload';
+import { labelRP, labelSBB } from '../utils/lote';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -27,12 +28,14 @@ export default function Lotes() {
   const [busca, setBusca] = useState('');
   const [leiloes, setLeiloes] = useState<{ value: number; label: string }[]>([]);
   const [leilaoFiltro, setLeilaoFiltro] = useState<number | undefined>();
-  const [racas, setRacas] = useState<{ value: number; label: string }[]>([]);
+  const [racas, setRacas] = useState<{ value: number; label: string; especies?: string }[]>([]);
   const [clientes, setClientes] = useState<{ value: number; label: string }[]>([]);
   const [condicoes, setCondicoes] = useState<{ value: number; label: string }[]>([]);
   const [imagens, setImagens] = useState<LoteImagem[]>([]);
   const [form] = Form.useForm();
   const config = useConfig();
+  const racaxxSelecionada = Form.useWatch('racaxx', form);
+  const especiesLote = racas.find(r => r.value === racaxxSelecionada)?.especies;
 
   const imgLoteUrl = (id: number) =>
     config.bucket
@@ -52,7 +55,7 @@ export default function Lotes() {
       api.get('/leiloes'), api.get('/racas'), api.get('/clientes'), api.get('/condicoes-pagamento')
     ]);
     setLeiloes(lei.data.map((l: any) => ({ value: l.id, label: l.leilao })));
-    setRacas(rac.data.map((r: any) => ({ value: r.id, label: `${r.descricao}${r.especies ? ` (${r.especies})` : ''}` })));
+    setRacas(rac.data.map((r: any) => ({ value: r.id, label: `${r.descricao}${r.especies ? ` (${r.especies})` : ''}`, especies: r.especies })));
     setClientes(cli.data.map((c: any) => ({ value: c.id, label: c.nomexx })));
     setCondicoes(cond.data.map((c: any) => ({ value: c.id, label: c.desfin })));
   };
@@ -183,8 +186,8 @@ export default function Lotes() {
                 <Select showSearch options={condicoes} filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} allowClear />
               </Form.Item>
             </Col>
-            <Col xs={12} md={6}><Form.Item name="rpxxx" label="RP"><Input /></Form.Item></Col>
-            <Col xs={12} md={6}><Form.Item name="sbbxxx" label="SBB"><Input /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="rpxxx" label={labelRP(especiesLote)}><Input /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="sbbxxx" label={labelSBB(especiesLote)}><Input /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="tatxxx" label="TAT"><Input /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="pesoxx" label="Peso"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
             <Col xs={24} sm={12}><Form.Item name="pelage" label="Pelagem"><Input /></Form.Item></Col>

@@ -281,13 +281,17 @@ function ConsultaVendasPDF({
               {fmtR(totais.totalValor)}
             </Text>
           </View>
-          <View style={s.resumoSep} />
-          <View style={s.resumoItem}>
-            <Text style={s.resumoLabel}>Comissão</Text>
-            <Text style={[s.resumoValor, { color: ESCURO }]}>
-              {fmtR(totais.totalComissao)}
-            </Text>
-          </View>
+          {v('comissao') && (
+            <>
+              <View style={s.resumoSep} />
+              <View style={s.resumoItem}>
+                <Text style={s.resumoLabel}>Comissão</Text>
+                <Text style={[s.resumoValor, { color: ESCURO }]}>
+                  {fmtR(totais.totalComissao)}
+                </Text>
+              </View>
+            </>
+          )}
           <View style={s.resumoSep} />
           <View style={s.resumoItem}>
             <Text style={s.resumoLabel}>Descontos</Text>

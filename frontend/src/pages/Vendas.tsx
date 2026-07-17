@@ -27,6 +27,7 @@ import { useConfig } from '../context/ConfigContext';
 import ContratoEditor from '../components/ContratoEditor';
 import api from '../services/api';
 import dayjs, { Dayjs } from 'dayjs';
+import { labelRP, labelSBB } from '../utils/lote';
 
 const { Title, Text } = Typography;
 
@@ -737,7 +738,8 @@ function Wizard({ editId, onConcluir, onCancelar }: {
   const [leilaoInfo, setLeilaoInfo]     = useState<any>(null);
   const [loteSimpModal, setLoteSimpModal] = useState(false);
   const [formLoteSimp]  = Form.useForm();
-  const [racas, setRacas] = useState<{ value: number; label: string }[]>([]);
+  const racaxxLoteSimp = Form.useWatch('racaxx', formLoteSimp);
+  const [racas, setRacas] = useState<{ value: number; label: string; especies?: string }[]>([]);
   const [vendedores, setVendedores] = useState<{ value: number; label: string }[]>([]);
 
   // ── step 2 ──────────────────────────────────────────────────────────────
@@ -890,7 +892,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
     formLoteSimp.resetFields();
     if (racas.length === 0) {
       const r = await api.get('/racas');
-      setRacas(r.data.map((x: any) => ({ value: x.id, label: `${x.descricao}${x.especies ? ` (${x.especies})` : ''}` })));
+      setRacas(r.data.map((x: any) => ({ value: x.id, label: `${x.descricao}${x.especies ? ` (${x.especies})` : ''}`, especies: x.especies })));
     }
     if (vendedores.length === 0) {
       const r = await api.get('/clientes');
@@ -1286,7 +1288,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                   <div>{loteDetalhes.descricaoRaca || '—'}</div>
                 </Col>
                 <Col xs={12} sm={4}>
-                  <Text type="secondary">SBB / RP</Text>
+                  <Text type="secondary">{labelSBB(loteDetalhes.especies)} / {labelRP(loteDetalhes.especies)}</Text>
                   <div>{loteDetalhes.sbbxxx || '—'} / {loteDetalhes.rpxxx || '—'}</div>
                 </Col>
                 <Col xs={12} sm={4}>
@@ -1479,10 +1481,10 @@ function Wizard({ editId, onConcluir, onCancelar }: {
                   </Form.Item>
                 </Col>
                 <Col span={8}>
-                  <Form.Item name="rpxxx" label="RP"><Input /></Form.Item>
+                  <Form.Item name="rpxxx" label={labelRP(racas.find(r => r.value === racaxxLoteSimp)?.especies)}><Input /></Form.Item>
                 </Col>
                 <Col span={8}>
-                  <Form.Item name="sbbxxx" label="SBB"><Input /></Form.Item>
+                  <Form.Item name="sbbxxx" label={labelSBB(racas.find(r => r.value === racaxxLoteSimp)?.especies)}><Input /></Form.Item>
                 </Col>
                 <Col span={8}>
                   <Form.Item name="pesoxx" label="Peso"><InputNumber style={{ width: '100%' }} /></Form.Item>

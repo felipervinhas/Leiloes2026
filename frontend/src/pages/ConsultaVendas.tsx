@@ -17,6 +17,7 @@ import PartesVendasPDF from '../relatorios/RelatorioPartesVendas';
 import MediasLeilaoPDF from '../relatorios/RelatorioMediasLeilao';
 import RelatorioFaturaUnificada, { FaturaUnificadaGrupo } from '../relatorios/RelatorioFaturaUnificada';
 import { useConfig } from '../context/ConfigContext';
+import { labelRP, labelSBB } from '../utils/lote';
 
 type Orientacao = 'retrato' | 'paisagem';
 type TipoRelatorio = 'vendas' | 'partes' | 'medias';
@@ -232,14 +233,19 @@ export default function ConsultaVendas() {
   const dadosImpressao = selectedRowKeys.length > 0 ? dados.filter(d => selectedRowKeys.includes(d.id)) : dados;
   const totaisImpressao = calcularTotais(dadosImpressao);
 
+  // Espécie predominante da consulta atual — decide se as colunas abaixo mostram
+  // RP/SBB (equinos) ou Tatuagem/Registro (demais espécies). Uma tabela não pode
+  // ter cabeçalho diferente por linha, então usamos a espécie do primeiro lote.
+  const especiesPredominante = dados[0]?.especies;
+
   const colunas: any[] = [
     { title: 'Lote', dataIndex: 'lotexx', ...rzCV('lotexx'), fixed: 'left' as const,
       sorter: (a: any, b: any) => (a.lotexx || '').localeCompare(b.lotexx || '') },
     { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzCV('deslot') },
     { title: 'Raça', dataIndex: 'descricaoRaca', ...rzCV('descricaoRaca'), ellipsis: true },
     { title: 'Espécie', dataIndex: 'especies', ...rzCV('especies'), ellipsis: true },
-    { title: 'RP', dataIndex: 'rpxxx', ...rzCV('rpxxx') },
-    { title: 'SBB', dataIndex: 'sbbxxx', ...rzCV('sbbxxx') },
+    { title: labelRP(especiesPredominante), dataIndex: 'rpxxx', ...rzCV('rpxxx') },
+    { title: labelSBB(especiesPredominante), dataIndex: 'sbbxxx', ...rzCV('sbbxxx') },
     { title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, ...rzCV('nomeVendedor') },
     { title: 'Comprador', dataIndex: 'nomeComprador', ellipsis: true, ...rzCV('nomeComprador') },
     { title: 'Qtd', dataIndex: 'qtdxxx', ...rzCV('qtdxxx'), align: 'right' as const,

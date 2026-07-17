@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import lacrePromissoria from '../assets/lacre_promissoria.png';
+import { labelRP, labelSBB } from '../utils/lote';
 import { FaturaData } from './RelatorioFaturaCompra';
 import { montarContextoPromissoria } from './promissoriaContext';
 import TabelaParcelasBloco from './TabelaParcelasBloco';
@@ -258,8 +259,8 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
                     <Text style={s.loteInfo}>{dados.lote.descricaoRaca}{dados.lote.especies ? ` / ${dados.lote.especies}` : ''}</Text>
                   ) : null}
                   {dados.lote.catego  ? <Text style={s.loteInfo}>Sexo: {CATEGO[dados.lote.catego] || dados.lote.catego}</Text> : null}
-                  {dados.lote.rpxxx   ? <Text style={s.loteInfo}>RP: {dados.lote.rpxxx}</Text> : null}
-                  {dados.lote.sbbxxx  ? <Text style={s.loteInfo}>SBB: {dados.lote.sbbxxx}</Text> : null}
+                  {dados.lote.rpxxx   ? <Text style={s.loteInfo}>{labelRP(dados.lote.especies)}: {dados.lote.rpxxx}</Text> : null}
+                  {dados.lote.sbbxxx  ? <Text style={s.loteInfo}>{labelSBB(dados.lote.especies)}: {dados.lote.sbbxxx}</Text> : null}
                   {dados.lote.pesoxx  ? <Text style={s.loteInfo}>Peso: {dados.lote.pesoxx} kg</Text> : null}
                   {dados.lote.qtdxxx  ? (
                     <Text style={s.loteInfo}>

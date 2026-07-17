@@ -2,6 +2,7 @@ import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/render
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { FaturaData } from './RelatorioFaturaCompra';
 import { valorExtenso } from './RelatorioPromissoria';
+import { labelRP, labelSBB } from '../utils/lote';
 
 interface Props {
   dados: FaturaData;
@@ -115,7 +116,7 @@ function NotaVendaPagina({ dados, comp, empresa, logoBase64 }: { dados: FaturaDa
           <View style={s.gridItem}><Text style={s.gridLabel}>Lote</Text><Text style={s.gridValor}>{lote?.lotexx || '—'}</Text></View>
           <View style={[s.gridItem, { width: '67%' }]}><Text style={s.gridLabel}>Descrição</Text><Text style={s.gridValor}>{lote?.deslot || '—'}</Text></View>
           <View style={s.gridItem}><Text style={s.gridLabel}>Raça</Text><Text style={s.gridValor}>{lote?.descricaoRaca || '—'}</Text></View>
-          <View style={s.gridItem}><Text style={s.gridLabel}>SBB / RP</Text><Text style={s.gridValor}>{lote?.sbbxxx || '—'} / {lote?.rpxxx || '—'}</Text></View>
+          <View style={s.gridItem}><Text style={s.gridLabel}>{labelSBB(lote?.especies)} / {labelRP(lote?.especies)}</Text><Text style={s.gridValor}>{lote?.sbbxxx || '—'} / {lote?.rpxxx || '—'}</Text></View>
           <View style={s.gridItem}><Text style={s.gridLabel}>Pelagem</Text><Text style={s.gridValor}>{lote?.pelagem || '—'}</Text></View>
           <View style={s.gridItem}><Text style={s.gridLabel}>Dt. Nasc.</Text><Text style={s.gridValor}>{lote?.datnas || '—'}</Text></View>
           <View style={s.gridItem}><Text style={s.gridLabel}>Sexo</Text><Text style={s.gridValor}>{lote?.catego ? (CATEGO[lote.catego] || lote.catego) : '—'}</Text></View>

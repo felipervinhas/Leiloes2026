@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
+import { labelRP, labelSBB } from '../utils/lote';
 
 export interface FaturaData {
   id: number;
@@ -334,8 +335,8 @@ function SecaoLote({ lote }: { lote: NonNullable<FaturaData['lote']> }) {
       <Text style={s.loteNum}>{lote.lotexx || '—'}</Text>
       <Text style={s.loteDes}>{lote.deslot || '—'}</Text>
       <Text style={s.loteRaca}>{[lote.descricaoRaca, lote.especies].filter(Boolean).join(' / ') || ''}</Text>
-      {lote.rpxxx   ? <Text style={s.loteInfo}>RP: {lote.rpxxx}</Text> : null}
-      {lote.sbbxxx  ? <Text style={s.loteInfo}>SBB: {lote.sbbxxx}</Text> : null}
+      {lote.rpxxx   ? <Text style={s.loteInfo}>{labelRP(lote.especies)}: {lote.rpxxx}</Text> : null}
+      {lote.sbbxxx  ? <Text style={s.loteInfo}>{labelSBB(lote.especies)}: {lote.sbbxxx}</Text> : null}
       {lote.catego  ? <Text style={s.loteInfo}>Sexo: {CATEGO[lote.catego] || lote.catego}</Text> : null}
       {lote.pesoxx  ? <Text style={s.loteInfo}>Peso: {lote.pesoxx} kg</Text> : null}
       <Text style={s.loteInfo}>

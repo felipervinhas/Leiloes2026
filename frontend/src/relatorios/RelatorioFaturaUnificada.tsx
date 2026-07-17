@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { valorExtenso } from './promissoriaUtils';
+import { labelRP, labelSBB } from '../utils/lote';
 
 export interface FaturaUnificadaLote {
   idMc: number;
@@ -318,7 +319,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
               <View style={s.cDesc}>
                 <Text style={s.td}>{l.deslot || '—'}</Text>
                 <Text style={{ fontSize: 6, color: MEDIO }}>
-                  {[l.descricaoRaca, l.catego ? CATEGO[l.catego] || l.catego : null, l.sbbxxx ? `SBB ${l.sbbxxx}` : null, l.rpxxx ? `RP ${l.rpxxx}` : null]
+                  {[l.descricaoRaca, l.catego ? CATEGO[l.catego] || l.catego : null, l.sbbxxx ? `${labelSBB(l.especies)} ${l.sbbxxx}` : null, l.rpxxx ? `${labelRP(l.especies)} ${l.rpxxx}` : null]
                     .filter(Boolean).join(' · ')}
                 </Text>
               </View>
