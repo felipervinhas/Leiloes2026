@@ -4,6 +4,7 @@ import { Table, Button, Modal, Form, Input, InputNumber, DatePicker,
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, LineChartOutlined } from '@ant-design/icons';
 import api from '../services/api';
 import dayjs from 'dayjs';
+import { formatarMoeda, parseMoeda } from '../utils/moeda';
 
 const { Title } = Typography;
 
@@ -128,8 +129,8 @@ export default function Cotacoes() {
                   min={0}
                   precision={2}
                   decimalSeparator=","
-                  formatter={v => `R$ ${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
-                  parser={v => v!.replace(/R\$\s?|(\.)/g, '').replace(',', '.') as any}
+                  formatter={formatarMoeda}
+                  parser={v => parseMoeda(v) as any}
                 />
               </Form.Item>
             </Col>

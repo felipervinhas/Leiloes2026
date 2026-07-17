@@ -6,6 +6,7 @@ import { BlobProvider } from '@react-pdf/renderer';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
 import RelatorioReciboDespesa from '../relatorios/RelatorioReciboDespesa';
+import { formatarMoeda, parseMoeda } from '../utils/moeda';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -207,8 +208,8 @@ export default function Despesas() {
                   min={0}
                   precision={2}
                   decimalSeparator=","
-                  formatter={v => `R$ ${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
-                  parser={v => v!.replace(/R\$\s?|(\.)/g, '').replace(',', '.') as any}
+                  formatter={formatarMoeda}
+                  parser={v => parseMoeda(v) as any}
                 />
               </Form.Item>
             </Col>
