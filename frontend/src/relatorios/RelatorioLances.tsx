@@ -22,6 +22,7 @@ interface DocProps {
 }
 
 const ESCURO = '#222';
+const MEDIO  = '#555';
 const CINZA  = '#f0f0f0';
 
 const fmtR = (v?: number | null) =>
@@ -41,8 +42,8 @@ const s = StyleSheet.create({
   },
 
   headerRow: {
-    backgroundColor: ESCURO,
-    borderRadius: 4,
+    borderBottomColor: ESCURO,
+    borderBottomWidth: 2,
     paddingHorizontal: 14,
     paddingVertical: 9,
     marginBottom: 10,
@@ -53,11 +54,11 @@ const s = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   headerLogo: { width: 108, height: 33, objectFit: 'contain', marginRight: 14 },
   headerTitleBox: { flexDirection: 'column' },
-  headerTitle: { color: '#fff', fontSize: 11, fontFamily: 'Helvetica-Bold' },
-  headerSub:   { color: '#aaa', fontSize: 7.5, marginTop: 2 },
+  headerTitle: { color: ESCURO, fontSize: 11, fontFamily: 'Helvetica-Bold' },
+  headerSub:   { color: MEDIO, fontSize: 7.5, marginTop: 2 },
   headerRight: { alignItems: 'flex-end' },
-  headerDate:  { color: '#aaa', fontSize: 7 },
-  headerCount: { color: '#fff', fontSize: 8.5, fontFamily: 'Helvetica-Bold', marginTop: 3 },
+  headerDate:  { color: MEDIO, fontSize: 7 },
+  headerCount: { color: ESCURO, fontSize: 8.5, fontFamily: 'Helvetica-Bold', marginTop: 3 },
 
   loteHeader: {
     flexDirection: 'row',

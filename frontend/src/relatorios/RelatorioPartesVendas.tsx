@@ -47,6 +47,7 @@ interface Props {
 }
 
 const ESCURO = '#222';
+const MEDIO  = '#555';
 const CINZA  = '#bbb';
 const CLARO  = '#f0f0f0';
 
@@ -76,8 +77,8 @@ const s = StyleSheet.create({
 
   // Cabeçalho
   header: {
-    backgroundColor: ESCURO,
-    borderRadius: 4,
+    borderBottomColor: ESCURO,
+    borderBottomWidth: 2,
     paddingHorizontal: 14,
     paddingVertical: 9,
     marginBottom: 8,
@@ -88,12 +89,12 @@ const s = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   headerLogo: { width: 108, height: 33, objectFit: 'contain', marginRight: 14 },
   headerTitleBox: { flexDirection: 'column', justifyContent: 'center' },
-  headerTitle: { color: '#ffffff', fontSize: 11, fontFamily: 'Helvetica-Bold' },
-  headerSub: { color: '#aaa', fontSize: 7.5, marginTop: 2 },
-  headerFiltro: { color: '#aaa', fontSize: 7, marginTop: 2, fontStyle: 'italic' },
+  headerTitle: { color: ESCURO, fontSize: 11, fontFamily: 'Helvetica-Bold' },
+  headerSub: { color: MEDIO, fontSize: 7.5, marginTop: 2 },
+  headerFiltro: { color: MEDIO, fontSize: 7, marginTop: 2, fontStyle: 'italic' },
   headerRight: { alignItems: 'flex-end' },
-  headerDate: { color: '#aaa', fontSize: 7 },
-  headerCount: { color: '#ffffff', fontSize: 8.5, fontFamily: 'Helvetica-Bold', marginTop: 3 },
+  headerDate: { color: MEDIO, fontSize: 7 },
+  headerCount: { color: ESCURO, fontSize: 8.5, fontFamily: 'Helvetica-Bold', marginTop: 3 },
 
   // Card por venda
   card: {

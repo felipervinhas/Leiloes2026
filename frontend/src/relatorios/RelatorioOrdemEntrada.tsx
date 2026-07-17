@@ -28,6 +28,7 @@ interface Props {
 }
 
 const ESCURO = '#222';
+const MEDIO  = '#555';
 const CINZA  = '#bbb';
 
 const SEXO: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C: 'Castrado' };
@@ -44,9 +45,9 @@ const s = StyleSheet.create({
   },
 
   header: {
-    backgroundColor: ESCURO,
-    borderRadius: 4,
-    padding: '8 14',
+    borderBottomColor: ESCURO,
+    borderBottomWidth: 2,
+    paddingBottom: 6,
     marginBottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -54,11 +55,11 @@ const s = StyleSheet.create({
   },
   headerEsquerda: { flexDirection: 'column', justifyContent: 'center' },
   headerLogo: { width: 110, height: 34, objectFit: 'contain', marginBottom: 2 },
-  headerSub: { color: '#aaa', fontSize: 8, marginTop: 2 },
-  headerInfoLeilao: { color: '#ccc', fontSize: 6.5, marginTop: 2 },
+  headerSub: { color: MEDIO, fontSize: 8, marginTop: 2 },
+  headerInfoLeilao: { color: MEDIO, fontSize: 6.5, marginTop: 2 },
   headerDireita: { alignItems: 'flex-end' },
-  headerData: { color: '#aaa', fontSize: 7 },
-  headerTotal: { color: '#fff', fontSize: 8, fontFamily: 'Helvetica-Bold', marginTop: 2 },
+  headerData: { color: MEDIO, fontSize: 7 },
+  headerTotal: { color: ESCURO, fontSize: 8, fontFamily: 'Helvetica-Bold', marginTop: 2 },
 
   tableHeader: {
     flexDirection: 'row',

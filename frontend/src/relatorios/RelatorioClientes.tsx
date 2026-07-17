@@ -60,21 +60,21 @@ const s = StyleSheet.create({
 
   // ---- Cabeçalho do documento ----
   docHeader: {
-    backgroundColor: ESCURO,
-    borderRadius: 4,
-    padding: '10 14',
+    borderBottomColor: ESCURO,
+    borderBottomWidth: 2,
+    paddingBottom: 8,
     marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   docHeaderEsquerda: { flexDirection: 'column', justifyContent: 'center' },
-  docHeaderLogo: { width: 40, height: 40, objectFit: 'contain', marginBottom: 2 },
-  docHeaderTitulo: { color: '#fff', fontSize: 13, fontFamily: 'Helvetica-Bold' },
-  docHeaderSub: { color: '#aaa', fontSize: 8, marginTop: 2 },
+  docHeaderLogo: { width: 56, height: 56, objectFit: 'contain', marginBottom: 2 },
+  docHeaderTitulo: { color: ESCURO, fontSize: 13, fontFamily: 'Helvetica-Bold' },
+  docHeaderSub: { color: MEDIO, fontSize: 8, marginTop: 2 },
   docHeaderDireita: { alignItems: 'flex-end' },
-  docHeaderData: { color: '#aaa', fontSize: 7.5 },
-  docHeaderTotal: { color: '#fff', fontSize: 8, fontFamily: 'Helvetica-Bold', marginTop: 2 },
+  docHeaderData: { color: MEDIO, fontSize: 7.5 },
+  docHeaderTotal: { color: ESCURO, fontSize: 8, fontFamily: 'Helvetica-Bold', marginTop: 2 },
 
   // ---- Card de cliente ----
   card: {
