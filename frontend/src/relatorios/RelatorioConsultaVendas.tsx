@@ -48,7 +48,22 @@ interface Props {
   empresa?: string;
   filtrosDesc?: string;
   logoBase64?: string | null;
+  /** Chaves de COLUNAS_CONSULTA_VENDAS a exibir no PDF. Se omitido, mostra todas (comportamento atual). */
+  colunasVisiveis?: string[];
 }
+
+/** Catálogo de colunas que o usuário pode ocultar/mostrar no PDF de Consulta de Vendas. */
+export const COLUNAS_CONSULTA_VENDAS = [
+  { key: 'lote', label: 'Lote' },
+  { key: 'descricao', label: 'Descrição' },
+  { key: 'raca', label: 'Raça / Espécie' },
+  { key: 'vendedor', label: 'Vendedor' },
+  { key: 'comprador', label: 'Comprador' },
+  { key: 'qtd', label: 'Qtd' },
+  { key: 'valorPagar', label: 'Vlr. a Pagar' },
+  { key: 'comissao', label: 'Comissão' },
+  { key: 'liquido', label: 'Vlr. Líquido' },
+];
 
 const ESCURO = '#222';
 const MEDIO  = '#555';
@@ -212,12 +227,13 @@ const s = StyleSheet.create({
 });
 
 function ConsultaVendasPDF({
-  vendas, totais, titulo, empresa, filtrosDesc, logoBase64, orientacao = 'paisagem',
+  vendas, totais, titulo, empresa, filtrosDesc, logoBase64, colunasVisiveis, orientacao = 'paisagem',
 }: Props & { orientacao?: Orientacao }) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
   const pageSize: any = orientacao === 'paisagem' ? [841.89, 595.28] : 'A4';
   const subtitulo = titulo || 'Todas as vendas';
+  const v = (chave: string) => !colunasVisiveis || colunasVisiveis.includes(chave);
 
   return (
     <Document title={`Relatório de Vendas — ${subtitulo}`} author={nomeEmpresa}>
@@ -317,72 +333,98 @@ function ConsultaVendasPDF({
         ) : null}
 
         <View style={s.tableHeader} fixed>
-          <View style={s.cLote}><Text style={s.th}>Lote</Text></View>
-          <View style={s.cDes}><Text style={s.th}>Descrição</Text></View>
-          <View style={s.cRaca}><Text style={s.th}>Raça / Espécie</Text></View>
-          <View style={s.cVend}><Text style={s.th}>Vendedor</Text></View>
-          <View style={s.cComp}><Text style={s.th}>Comprador</Text></View>
-          <View style={s.cQtd}><Text style={s.thRight}>Qtd</Text></View>
-          <View style={s.cPagar}><Text style={s.thRight}>Vlr. a Pagar</Text></View>
-          <View style={s.cComissao}><Text style={s.thRight}>Comissão</Text></View>
-          <View style={s.cLiquido}><Text style={s.thRight}>Vlr. Líquido</Text></View>
+          {v('lote') && <View style={s.cLote}><Text style={s.th}>Lote</Text></View>}
+          {v('descricao') && <View style={s.cDes}><Text style={s.th}>Descrição</Text></View>}
+          {v('raca') && <View style={s.cRaca}><Text style={s.th}>Raça / Espécie</Text></View>}
+          {v('vendedor') && <View style={s.cVend}><Text style={s.th}>Vendedor</Text></View>}
+          {v('comprador') && <View style={s.cComp}><Text style={s.th}>Comprador</Text></View>}
+          {v('qtd') && <View style={s.cQtd}><Text style={s.thRight}>Qtd</Text></View>}
+          {v('valorPagar') && <View style={s.cPagar}><Text style={s.thRight}>Vlr. a Pagar</Text></View>}
+          {v('comissao') && <View style={s.cComissao}><Text style={s.thRight}>Comissão</Text></View>}
+          {v('liquido') && <View style={s.cLiquido}><Text style={s.thRight}>Vlr. Líquido</Text></View>}
         </View>
 
         {/* Linhas */}
-        {vendas.map((v, i) => (
-          <View key={v.id} style={[s.row, i % 2 === 1 ? s.rowAlt : {}]} wrap={false}>
-            <View style={s.cLote}>
-              <Text style={[s.tdBold, { color: ESCURO }]}>{v.lotexx || '—'}</Text>
-            </View>
-            <View style={s.cDes}>
-              <Text style={s.tdNormal}>{v.deslot || '—'}</Text>
-            </View>
-            <View style={s.cRaca}>
-              <Text style={s.tdSmall}>
-                {[v.descricaoRaca, v.especies].filter(Boolean).join(' / ') || '—'}
-              </Text>
-            </View>
-            <View style={s.cVend}>
-              <Text style={s.tdNormal}>{v.nomeVendedor || '—'}</Text>
-            </View>
-            <View style={s.cComp}>
-              <Text style={s.tdNormal}>{v.nomeComprador || '—'}</Text>
-            </View>
-            <View style={s.cQtd}>
-              <Text style={s.tdNormalRight}>{fmtN(v.qtdxxx)}</Text>
-            </View>
-            <View style={s.cPagar}>
-              <Text style={s.tdBoldRight}>{fmtR(v.valorPagar)}</Text>
-            </View>
-            <View style={s.cComissao}>
-              <Text style={[s.tdNormalRight, { color: ESCURO }]}>{fmtR(v.valorComissao)}</Text>
-            </View>
-            <View style={s.cLiquido}>
-              <Text style={[s.tdBoldRight, { color: '#000' }]}>{fmtR(v.valorLiquido)}</Text>
-            </View>
+        {vendas.map((venda, i) => (
+          <View key={venda.id} style={[s.row, i % 2 === 1 ? s.rowAlt : {}]} wrap={false}>
+            {v('lote') && (
+              <View style={s.cLote}>
+                <Text style={[s.tdBold, { color: ESCURO }]}>{venda.lotexx || '—'}</Text>
+              </View>
+            )}
+            {v('descricao') && (
+              <View style={s.cDes}>
+                <Text style={s.tdNormal}>{venda.deslot || '—'}</Text>
+              </View>
+            )}
+            {v('raca') && (
+              <View style={s.cRaca}>
+                <Text style={s.tdSmall}>
+                  {[venda.descricaoRaca, venda.especies].filter(Boolean).join(' / ') || '—'}
+                </Text>
+              </View>
+            )}
+            {v('vendedor') && (
+              <View style={s.cVend}>
+                <Text style={s.tdNormal}>{venda.nomeVendedor || '—'}</Text>
+              </View>
+            )}
+            {v('comprador') && (
+              <View style={s.cComp}>
+                <Text style={s.tdNormal}>{venda.nomeComprador || '—'}</Text>
+              </View>
+            )}
+            {v('qtd') && (
+              <View style={s.cQtd}>
+                <Text style={s.tdNormalRight}>{fmtN(venda.qtdxxx)}</Text>
+              </View>
+            )}
+            {v('valorPagar') && (
+              <View style={s.cPagar}>
+                <Text style={s.tdBoldRight}>{fmtR(venda.valorPagar)}</Text>
+              </View>
+            )}
+            {v('comissao') && (
+              <View style={s.cComissao}>
+                <Text style={[s.tdNormalRight, { color: ESCURO }]}>{fmtR(venda.valorComissao)}</Text>
+              </View>
+            )}
+            {v('liquido') && (
+              <View style={s.cLiquido}>
+                <Text style={[s.tdBoldRight, { color: '#000' }]}>{fmtR(venda.valorLiquido)}</Text>
+              </View>
+            )}
           </View>
         ))}
 
         {/* Linha de totais */}
         {vendas.length > 0 && (
           <View style={s.totaisRow}>
-            <View style={s.cLote}><Text style={s.tdTotLabel} /></View>
-            <View style={s.cDes}><Text style={s.tdTotLabel}>TOTAIS</Text></View>
-            <View style={s.cRaca}><Text style={s.tdTotLabel} /></View>
-            <View style={s.cVend}><Text style={s.tdTotLabel} /></View>
-            <View style={s.cComp}><Text style={s.tdTotLabel} /></View>
-            <View style={s.cQtd}>
-              <Text style={s.tdTotVal}>{fmtN(totais.totalQtd)}</Text>
-            </View>
-            <View style={s.cPagar}>
-              <Text style={s.tdTotVal}>{fmtR(totais.totalValor)}</Text>
-            </View>
-            <View style={s.cComissao}>
-              <Text style={s.tdTotOrange}>{fmtR(totais.totalComissao)}</Text>
-            </View>
-            <View style={s.cLiquido}>
-              <Text style={s.tdTotGreen}>{fmtR(totais.totalLiquido)}</Text>
-            </View>
+            {v('lote') && <View style={s.cLote}><Text style={s.tdTotLabel} /></View>}
+            {v('descricao') && <View style={s.cDes}><Text style={s.tdTotLabel}>TOTAIS</Text></View>}
+            {v('raca') && <View style={s.cRaca}><Text style={s.tdTotLabel} /></View>}
+            {v('vendedor') && <View style={s.cVend}><Text style={s.tdTotLabel} /></View>}
+            {v('comprador') && <View style={s.cComp}><Text style={s.tdTotLabel} /></View>}
+            {v('qtd') && (
+              <View style={s.cQtd}>
+                <Text style={s.tdTotVal}>{fmtN(totais.totalQtd)}</Text>
+              </View>
+            )}
+            {v('valorPagar') && (
+              <View style={s.cPagar}>
+                <Text style={s.tdTotVal}>{fmtR(totais.totalValor)}</Text>
+              </View>
+            )}
+            {v('comissao') && (
+              <View style={s.cComissao}>
+                <Text style={s.tdTotOrange}>{fmtR(totais.totalComissao)}</Text>
+              </View>
+            )}
+            {v('liquido') && (
+              <View style={s.cLiquido}>
+                <Text style={s.tdTotGreen}>{fmtR(totais.totalLiquido)}</Text>
+              </View>
+            )}
           </View>
         )}
 

@@ -1,24 +1,25 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Table, Button, Select, Row, Col, Typography, Tag, Space,
-  Card, Divider, message, Spin, Radio, Modal,
+  Card, Divider, message, Spin, Radio, Modal, Dropdown, Checkbox,
 } from 'antd';
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import {
   SearchOutlined, FileExcelOutlined, FileSearchOutlined, ClearOutlined, PrinterOutlined,
-  CheckCircleFilled, CloseOutlined, FileTextOutlined, EyeOutlined,
+  CheckCircleFilled, CloseOutlined, FileTextOutlined, EyeOutlined, SettingOutlined,
 } from '@ant-design/icons';
 import { PDFDownloadLink, BlobProvider } from '@react-pdf/renderer';
 import api from '../services/api';
 import dayjs from 'dayjs';
-import ConsultaVendasPDF from '../relatorios/RelatorioConsultaVendas';
+import ConsultaVendasPDF, { COLUNAS_CONSULTA_VENDAS } from '../relatorios/RelatorioConsultaVendas';
 import PartesVendasPDF from '../relatorios/RelatorioPartesVendas';
+import MediasLeilaoPDF from '../relatorios/RelatorioMediasLeilao';
 import RelatorioFaturaUnificada, { FaturaUnificadaGrupo } from '../relatorios/RelatorioFaturaUnificada';
 import { useConfig } from '../context/ConfigContext';
 
 type Orientacao = 'retrato' | 'paisagem';
-type TipoRelatorio = 'vendas' | 'partes';
+type TipoRelatorio = 'vendas' | 'partes' | 'medias';
 type MediaCategoria = {
   key: string;
   categoria: string;
@@ -66,6 +67,7 @@ export default function ConsultaVendas() {
   const [consultou, setConsultou] = useState(false);
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [colunasVisiveis, setColunasVisiveis] = useState<string[]>(COLUNAS_CONSULTA_VENDAS.map(c => c.key));
   const [gerandoFaturaUnificada, setGerandoFaturaUnificada] = useState(false);
   const [faturasUnificadas, setFaturasUnificadas] = useState<FaturaUnificadaGrupo[] | null>(null);
   const [modalFaturaOpen, setModalFaturaOpen] = useState(false);
@@ -202,24 +204,33 @@ export default function ConsultaVendas() {
   ].filter(Boolean).join(' | ') || undefined;
 
   // Totalizadores
-  const totalLotes      = dados.length;
-  const totalValor      = dados.reduce((a, d) => a + (d.valorPagar     || 0), 0);
-  const totalComissao   = dados.reduce((a, d) => a + (d.valorComissao  || 0), 0);
-  const totalLiquido    = dados.reduce((a, d) => a + (d.valorLiquido   || 0), 0);
-  const totalDesconto   = dados.reduce((a, d) => a + (d.valorDesconto  || 0), 0);
-  const totalQtd        = dados.reduce((a, d) => a + (d.qtdxxx         || 0), 0);
-  const mediaGeral      = totalQtd > 0 ? totalValor / totalQtd : 0;
-  const mediasCategoria: MediaCategoria[] = Array.from(
-    dados.reduce<Map<string, MediaCategoria>>((map, d) => {
-      const key = String(d.idCategoria ?? d.descricaoRaca ?? 'sem-categoria');
-      const categoria = [d.descricaoRaca, d.especies].filter(Boolean).join(' / ') || 'Sem categoria';
-      const atual = map.get(key) ?? { key, categoria, qtd: 0, valor: 0, media: 0 };
-      atual.qtd += Number(d.qtdxxx || 0);
-      atual.valor += Number(d.valorPagar || 0);
-      atual.media = atual.qtd > 0 ? atual.valor / atual.qtd : 0;
-      return map.set(key, atual);
-    }, new Map<string, MediaCategoria>()).values()
-  ).sort((a, b) => a.categoria.localeCompare(b.categoria));
+  function calcularTotais(lista: typeof dados) {
+    const totalLotes      = lista.length;
+    const totalValor      = lista.reduce((a, d) => a + (d.valorPagar     || 0), 0);
+    const totalComissao   = lista.reduce((a, d) => a + (d.valorComissao  || 0), 0);
+    const totalLiquido    = lista.reduce((a, d) => a + (d.valorLiquido   || 0), 0);
+    const totalDesconto   = lista.reduce((a, d) => a + (d.valorDesconto  || 0), 0);
+    const totalQtd        = lista.reduce((a, d) => a + (d.qtdxxx         || 0), 0);
+    const mediaGeral      = totalQtd > 0 ? totalValor / totalQtd : 0;
+    const mediasCategoria: MediaCategoria[] = Array.from(
+      lista.reduce<Map<string, MediaCategoria>>((map, d) => {
+        const key = String(d.idCategoria ?? d.descricaoRaca ?? 'sem-categoria');
+        const categoria = [d.descricaoRaca, d.especies].filter(Boolean).join(' / ') || 'Sem categoria';
+        const atual = map.get(key) ?? { key, categoria, qtd: 0, valor: 0, media: 0 };
+        atual.qtd += Number(d.qtdxxx || 0);
+        atual.valor += Number(d.valorPagar || 0);
+        atual.media = atual.qtd > 0 ? atual.valor / atual.qtd : 0;
+        return map.set(key, atual);
+      }, new Map<string, MediaCategoria>()).values()
+    ).sort((a, b) => a.categoria.localeCompare(b.categoria));
+    return { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalQtd, mediaGeral, mediasCategoria };
+  }
+
+  const { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalQtd, mediaGeral, mediasCategoria } = calcularTotais(dados);
+
+  // Impressão respeita a seleção da tabela: nada marcado -> imprime tudo; com seleção -> só os marcados.
+  const dadosImpressao = selectedRowKeys.length > 0 ? dados.filter(d => selectedRowKeys.includes(d.id)) : dados;
+  const totaisImpressao = calcularTotais(dadosImpressao);
 
   const colunas: any[] = [
     { title: 'Lote', dataIndex: 'lotexx', ...rzCV('lotexx'), fixed: 'left' as const,
@@ -461,41 +472,88 @@ export default function ConsultaVendas() {
                 options={[
                   { value: 'vendas', label: 'Consulta de Vendas' },
                   { value: 'partes', label: 'Vendedores / Compradores' },
+                  { value: 'medias', label: 'Médias' },
                 ]}
               />
-              <Radio.Group
-                value={orientacaoImp}
-                onChange={e => setOrientacaoImp(e.target.value)}
-                optionType="button"
-                buttonStyle="solid"
-                size="small"
-              >
-                <Radio.Button value="retrato">Retrato</Radio.Button>
-                <Radio.Button value="paisagem">Paisagem</Radio.Button>
-              </Radio.Group>
+              {tipoRelatorio !== 'medias' && (
+                <Radio.Group
+                  value={orientacaoImp}
+                  onChange={e => setOrientacaoImp(e.target.value)}
+                  optionType="button"
+                  buttonStyle="solid"
+                  size="small"
+                >
+                  <Radio.Button value="retrato">Retrato</Radio.Button>
+                  <Radio.Button value="paisagem">Paisagem</Radio.Button>
+                </Radio.Group>
+              )}
+              {tipoRelatorio === 'vendas' && (
+                <Dropdown
+                  trigger={['click']}
+                  popupRender={() => (
+                    <Card size="small" style={{ width: 220 }}>
+                      <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography.Text strong style={{ fontSize: 12 }}>Colunas visíveis</Typography.Text>
+                        <a
+                          style={{ fontSize: 12 }}
+                          onClick={() => setColunasVisiveis(
+                            colunasVisiveis.length === COLUNAS_CONSULTA_VENDAS.length
+                              ? []
+                              : COLUNAS_CONSULTA_VENDAS.map(c => c.key)
+                          )}
+                        >
+                          {colunasVisiveis.length === COLUNAS_CONSULTA_VENDAS.length ? 'Limpar' : 'Marcar todas'}
+                        </a>
+                      </div>
+                      <Checkbox.Group
+                        value={colunasVisiveis}
+                        onChange={vals => setColunasVisiveis(vals as string[])}
+                        style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
+                      >
+                        {COLUNAS_CONSULTA_VENDAS.map(c => (
+                          <Checkbox key={c.key} value={c.key}>{c.label}</Checkbox>
+                        ))}
+                      </Checkbox.Group>
+                    </Card>
+                  )}
+                >
+                  <Button icon={<SettingOutlined />}>
+                    Colunas ({colunasVisiveis.length}/{COLUNAS_CONSULTA_VENDAS.length})
+                  </Button>
+                </Dropdown>
+              )}
               <PDFDownloadLink
-                key={`${tipoRelatorio}-${orientacaoImp}`}
+                key={`${tipoRelatorio}-${orientacaoImp}-${colunasVisiveis.join(',')}`}
                 document={
                   tipoRelatorio === 'vendas'
                     ? <ConsultaVendasPDF
-                        vendas={dados}
-                        totais={{ totalLotes, totalValor, totalComissao, totalDesconto, totalLiquido, totalQtd, mediaGeral, mediasCategoria }}
+                        vendas={dadosImpressao}
+                        totais={totaisImpressao}
+                        titulo={nomeLeilaoSel}
+                        empresa={config.empresa}
+                        filtrosDesc={filtrosDesc}
+                        logoBase64={config.logoBase64}
+                        colunasVisiveis={colunasVisiveis}
+                        orientacao={orientacaoImp}
+                      />
+                    : tipoRelatorio === 'partes'
+                    ? <PartesVendasPDF
+                        vendas={dadosImpressao}
                         titulo={nomeLeilaoSel}
                         empresa={config.empresa}
                         filtrosDesc={filtrosDesc}
                         logoBase64={config.logoBase64}
                         orientacao={orientacaoImp}
                       />
-                    : <PartesVendasPDF
-                        vendas={dados}
+                    : <MediasLeilaoPDF
+                        totais={totaisImpressao}
                         titulo={nomeLeilaoSel}
                         empresa={config.empresa}
                         filtrosDesc={filtrosDesc}
                         logoBase64={config.logoBase64}
-                        orientacao={orientacaoImp}
                       />
                 }
-                fileName={`${tipoRelatorio === 'vendas' ? 'consulta-vendas' : 'partes-vendas'}-${new Date().toISOString().slice(0, 10)}.pdf`}
+                fileName={`${{ vendas: 'consulta-vendas', partes: 'partes-vendas', medias: 'medias-leilao' }[tipoRelatorio]}-${new Date().toISOString().slice(0, 10)}.pdf`}
                 style={{ textDecoration: 'none' }}
               >
                 {({ loading }) => (
@@ -505,7 +563,11 @@ export default function ConsultaVendas() {
                     loading={loading}
                     disabled={!dados.length}
                   >
-                    {loading ? 'Gerando PDF...' : 'Imprimir PDF'}
+                    {loading
+                      ? 'Gerando PDF...'
+                      : selectedRowKeys.length > 0
+                        ? `Imprimir PDF (${selectedRowKeys.length} selecionado${selectedRowKeys.length !== 1 ? 's' : ''})`
+                        : 'Imprimir PDF (todos)'}
                   </Button>
                 )}
               </PDFDownloadLink>
