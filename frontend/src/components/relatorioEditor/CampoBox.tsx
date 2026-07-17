@@ -48,13 +48,17 @@ export default function CampoBox({ campo, scale, grid, selecionado, logoSrc, rot
 
   const corFundo = ehRetangulo
     ? (campo.backgroundColor || 'transparent')
-    : ehTexto
-      ? (campo.backgroundColor || (selecionado ? 'rgba(22,119,255,0.08)' : 'rgba(0,0,0,0.02)'))
-      : (selecionado ? 'rgba(22,119,255,0.08)' : 'rgba(0,0,0,0.02)');
+    : campo.naoMapeado
+      ? 'rgba(255,77,79,0.12)'
+      : ehTexto
+        ? (campo.backgroundColor || (selecionado ? 'rgba(22,119,255,0.08)' : 'rgba(0,0,0,0.02)'))
+        : (selecionado ? 'rgba(22,119,255,0.08)' : 'rgba(0,0,0,0.02)');
 
   const borda = ehRetangulo
     ? `${campo.borderWidth ?? 1}px solid ${campo.borderColor || '#000'}`
-    : (selecionado ? '1.5px solid #1677ff' : '1px dashed #999');
+    : campo.naoMapeado
+      ? '1.5px dashed #ff4d4f'
+      : (selecionado ? '1.5px solid #1677ff' : '1px dashed #999');
 
   return (
     <Rnd
@@ -92,6 +96,19 @@ export default function CampoBox({ campo, scale, grid, selecionado, logoSrc, rot
       }}
       onMouseDown={onSelecionar}
     >
+      {campo.naoMapeado && (
+        <span
+          title="Campo importado sem correspondência conhecida — troque por um campo válido na paleta"
+          style={{
+            position: 'absolute', top: -8, right: -8, width: 16, height: 16,
+            borderRadius: '50%', background: '#ff4d4f', color: '#fff',
+            fontSize: 11, fontWeight: 700, lineHeight: '16px', textAlign: 'center',
+            boxShadow: '0 0 0 1px #fff', zIndex: 1,
+          }}
+        >
+          !
+        </span>
+      )}
       {ehLogo ? (
         logoSrc
           ? <img src={logoSrc} alt="Logotipo" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />

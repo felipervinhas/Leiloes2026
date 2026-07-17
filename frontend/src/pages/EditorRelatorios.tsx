@@ -3,7 +3,7 @@ import {
   Button, Input, message, Modal, Popconfirm, Select, Space, Tag, Typography,
 } from 'antd';
 import {
-  DeleteOutlined, EyeOutlined, PlusOutlined, SaveOutlined, CheckCircleOutlined,
+  DeleteOutlined, EyeOutlined, PlusOutlined, SaveOutlined, CheckCircleOutlined, ImportOutlined,
 } from '@ant-design/icons';
 import { BlobProvider } from '@react-pdf/renderer';
 import api from '../services/api';
@@ -19,6 +19,7 @@ import { ORDEM_ENTRADA_CAMPOS, COLUNAS_LOTES_PADRAO, LoteOrdemPDF } from '../rel
 import OrdemEntradaDinamica from '../relatorios/OrdemEntradaDinamica';
 import RelatorioFaturaCompradorDinamico from '../relatorios/RelatorioFaturaCompradorDinamico';
 import EditorBlocoCartao from '../components/relatorioEditor/EditorBlocoCartao';
+import ImportadorFastReportModal from '../components/relatorioEditor/ImportadorFastReportModal';
 import { FICHA_CLIENTE_CAMPOS, COLUNAS_PROPRIEDADES_PADRAO, PropriedadeFichaPDF } from '../relatorios/fichaClienteCampos';
 import { ClienteFichaPDF } from '../relatorios/fichaClienteContext';
 import FichaClienteDinamica from '../relatorios/FichaClienteDinamica';
@@ -115,6 +116,7 @@ export default function EditorRelatorios() {
   const [nomeModalOpen, setNomeModalOpen] = useState(false);
   const [nomeInput, setNomeInput] = useState('');
   const [cartaoAberto, setCartaoAberto] = useState(false);
+  const [importadorAberto, setImportadorAberto] = useState(false);
 
   const [vendaOptions, setVendaOptions] = useState<{ value: number; label: string }[]>([]);
   const [vendaTesteId, setVendaTesteId] = useState<number | null>(null);
@@ -437,7 +439,13 @@ export default function EditorRelatorios() {
   };
 
   const atualizarCampo = (id: string, patch: Partial<CampoLayout>) => {
-    setLayout(l => l.map(c => (c.id === id ? { ...c, ...patch } : c)));
+    setLayout(l => l.map(c => {
+      if (c.id !== id) return c;
+      const atualizado = { ...c, ...patch };
+      // corrigir manualmente o texto ou o campo vinculado dispensa o alerta de campo importado sem correspondência
+      if (c.naoMapeado && ('textoFixo' in patch || 'key' in patch)) atualizado.naoMapeado = false;
+      return atualizado;
+    }));
 
     const campo = layout.find(c => c.id === id);
     if (campo && (campo.tipo === 'campo' || campo.tipo === 'texto_livre')) {
@@ -504,6 +512,7 @@ export default function EditorRelatorios() {
             onClear={() => confirmarSeSujo(abrirNovo)}
           />
           <Button icon={<PlusOutlined />} onClick={() => confirmarSeSujo(abrirNovo)}>Novo</Button>
+          <Button icon={<ImportOutlined />} onClick={() => setImportadorAberto(true)}>Importar .fr3</Button>
           <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={pedirNomeESalvar}>
             Salvar
           </Button>
@@ -715,6 +724,21 @@ export default function EditorRelatorios() {
           }}
         />
       )}
+
+      <ImportadorFastReportModal
+        open={importadorAberto}
+        camposDisponiveis={tipoConfig.campos}
+        larguraMM={tipoConfig.larguraMM}
+        alturaMM={tipoConfig.alturaMM}
+        suportaBlocoParcelas={tipoConfig.suportaBlocoParcelas}
+        onClose={() => setImportadorAberto(false)}
+        onImportar={novoLayout => confirmarSeSujo(() => {
+          setTemplateAtual(null);
+          setLayout(novoLayout);
+          setSelecionadoId(null);
+          baselineLayoutRef.current = '[]';
+        })}
+      />
 
       <Modal
         title={templateAtual ? 'Salvar alterações' : 'Novo modelo'}

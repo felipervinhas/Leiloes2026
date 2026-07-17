@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, ColorPicker, Empty, Form, Input, InputNumber, Segmented, Select, Space, Switch, Tooltip } from 'antd';
+import { Alert, Button, ColorPicker, Empty, Form, Input, InputNumber, Segmented, Select, Space, Switch, Tooltip } from 'antd';
 import {
   DeleteOutlined, BoldOutlined, ItalicOutlined, UnderlineOutlined,
   VerticalAlignTopOutlined, VerticalAlignMiddleOutlined, VerticalAlignBottomOutlined,
@@ -77,6 +77,16 @@ export default function PainelPropriedades({
           </Tooltip>
         </Space>
       </div>
+
+      {campo.naoMapeado && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message="Campo importado sem correspondência"
+          description="Este campo veio de uma importação (.fr3) e não tem um campo equivalente no catálogo atual. Escolha um campo válido abaixo para substituir o texto — o alerta some assim que você editar o texto ou trocar o campo."
+        />
+      )}
 
       {campo.tipo === 'texto_livre' && (
         <>

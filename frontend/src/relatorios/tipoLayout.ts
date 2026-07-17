@@ -54,6 +54,8 @@ export interface CampoLayout {
   alturaCartao?: number;
   /** espaço vertical entre cartões repetidos, em mm */
   espacamentoCartao?: number;
+  /** marcado por importações (ex. .fr3) quando o campo original não tem correspondência no catálogo atual — sinaliza no canvas que o usuário precisa trocar por um campo válido */
+  naoMapeado?: boolean;
 }
 
 export const FONTES_BASE: { value: string; label: string }[] = [
