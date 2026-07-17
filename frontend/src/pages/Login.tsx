@@ -39,8 +39,8 @@ export default function Login() {
     }}>
       <Card style={{ width: 380, boxShadow: '0 4px 24px rgba(0,0,0,0.25)', borderRadius: 10 }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 28 }}>
-          {config.logoUrl ? (
-            <img src={config.logoUrl} alt={config.empresa}
+          {config.logoBase64 ? (
+            <img src={config.logoBase64} alt={config.empresa}
               style={{ maxHeight: 90, maxWidth: 300, objectFit: 'contain', marginBottom: 10 }} />
           ) : (
             <Title level={3} style={{ marginBottom: 4, textAlign: 'center' }}>{config.empresa || 'Leilões 2026'}</Title>

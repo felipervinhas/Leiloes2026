@@ -203,9 +203,9 @@ export default function MainLayout() {
           boxShadow: '0 4px 14px rgba(0,0,0,0.14)',
           padding: collapsed && !isMobile ? 6 : '6px 10px',
         }}>
-        {config.logoUrl ? (
+        {config.logoBase64 ? (
           <img
-            src={config.logoUrl}
+            src={config.logoBase64}
             alt={config.empresa}
             style={{
               maxHeight: collapsed && !isMobile ? 32 : 42,
