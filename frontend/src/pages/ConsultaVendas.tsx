@@ -42,6 +42,11 @@ const DEFESA_OPTS = [
   { value: 'N', label: 'Não vendido' },
 ];
 
+// V.ID (id) não é único por comprador quando o lote é rateado entre vários
+// compradores — a consulta retorna uma linha por comprador com o mesmo id.
+// A combinação id+idCli identifica cada linha de forma única.
+const rowKeyOf = (d: any) => `${d.id}_${d.idCli}`;
+
 export default function ConsultaVendas() {
   const config = useConfig();
   const [tipoRelatorio, setTipoRelatorio] = useState<TipoRelatorio>('vendas');
@@ -147,11 +152,8 @@ export default function ConsultaVendas() {
   const gerarFaturaUnificada = async () => {
     setGerandoFaturaUnificada(true);
     try {
-      // rowKey da tabela é MOVIMENTO.ID (id), mas a fatura unificada precisa do ID
-      // real de MOVIMENTO_COMPRADOR — que é o que de fato identifica "este comprador
-      // neste lote" de forma única (um lote pode ter mais de um comprador).
       const idsMc = dados
-        .filter(d => selectedRowKeys.includes(d.id))
+        .filter(d => selectedRowKeys.includes(rowKeyOf(d)))
         .map(d => d.idMovimentoComprador)
         .filter((id): id is number => id != null);
       if (!idsMc.length) { message.warning('Nenhum lote válido selecionado'); return; }
@@ -230,7 +232,7 @@ export default function ConsultaVendas() {
   const { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalQtd, mediaGeral, mediasCategoria } = calcularTotais(dados);
 
   // Impressão respeita a seleção da tabela: nada marcado -> imprime tudo; com seleção -> só os marcados.
-  const dadosImpressao = selectedRowKeys.length > 0 ? dados.filter(d => selectedRowKeys.includes(d.id)) : dados;
+  const dadosImpressao = selectedRowKeys.length > 0 ? dados.filter(d => selectedRowKeys.includes(rowKeyOf(d))) : dados;
   const totaisImpressao = calcularTotais(dadosImpressao);
 
   // Espécie predominante da consulta atual — decide se as colunas abaixo mostram
@@ -588,7 +590,7 @@ export default function ConsultaVendas() {
           </Row>
 
           <Table
-            rowKey="id"
+            rowKey={rowKeyOf}
             components={{ header: { cell: ResizableTitle } }}
             columns={colunas}
             dataSource={dados}
