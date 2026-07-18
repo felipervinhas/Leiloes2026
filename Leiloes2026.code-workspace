@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../../../../../TRANSFERENCIAS/PROJETOS/uMacedo/MacedoAdministrativo"
+		},
+		{
+			"path": "../MacedoLeiloes"
+		},
+		{
+			"path": "../macedoApp"
+		},
+		{
+			"path": "../../../../../../TRANSFERENCIAS/PROJETOS/APILeiloes"
+		}
+	],
+	"settings": {}
+}
