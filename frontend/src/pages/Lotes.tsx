@@ -75,6 +75,22 @@ export default function Lotes() {
       form.setFieldsValue({ ...d, datnas: d.datnas ? dayjs(d.datnas) : null, publica: d.publica === 'S', vendido: d.vendido === 'S' });
       setEditando(d);
       setImagens(imgs.data);
+      // Um Select cujo value não bate com nenhuma option mostra o código
+      // bruto em vez de um nome — acontece tanto quando a opção existe mas
+      // não foi carregada (Vendedor só lista os 500 primeiros clientes, ver
+      // clienteService.listarClientes) quanto quando o próprio dado é
+      // legado/órfão (ex.: lotes antigos com RACAXX apontando para uma raça
+      // que não existe mais). Garantimos sempre uma option com um label
+      // legível nesses casos.
+      if (d.codven && !clientes.some(c => c.value === d.codven)) {
+        setClientes(prev => [...prev, { value: d.codven, label: d.nomeVendedor || `Cliente #${d.codven} (não encontrado)` }]);
+      }
+      if (d.racaxx && !racas.some(r => r.value === d.racaxx)) {
+        setRacas(prev => [...prev, { value: d.racaxx, label: d.nomeRaca || `Raça #${d.racaxx} (não encontrada)` }]);
+      }
+      if (d.idleilao && !leiloes.some(l => l.value === d.idleilao)) {
+        setLeiloes(prev => [...prev, { value: d.idleilao, label: d.nomeLeilao || `Leilão #${d.idleilao} (não encontrado)` }]);
+      }
     } else {
       form.resetFields();
       form.setFieldsValue({ catego: 'M', publica: false, vendido: false });
