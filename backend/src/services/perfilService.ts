@@ -17,12 +17,19 @@ export async function buscarPerfilPorId(id: number): Promise<Perfil | null> {
 
 export async function criarPerfil(dados: Omit<Perfil, 'id'>): Promise<number> {
   const pool = await getPool();
+  // A coluna ID de Perfil não é IDENTITY (tabela legada do Delphi, onde o ID
+  // era atribuído manualmente pela aplicação) — precisamos calcular o
+  // próximo valor aqui, senão o INSERT grava ID = NULL.
   const r = await pool.request()
     .input('perfil', sql.VarChar, dados.perfil)
     .input('inserir', sql.Char, dados.inserir || 'N')
     .input('alterar', sql.Char, dados.alterar || 'N')
     .input('deletar', sql.Char, dados.deletar || 'N')
-    .query(`INSERT INTO Perfil (PERFIL, INSERIR, ALTERAR, DELETAR) OUTPUT INSERTED.ID VALUES (@perfil, @inserir, @alterar, @deletar)`);
+    .query(`
+      INSERT INTO Perfil (ID, PERFIL, INSERIR, ALTERAR, DELETAR)
+      OUTPUT INSERTED.ID
+      VALUES ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Perfil WITH (UPDLOCK, HOLDLOCK)), @perfil, @inserir, @alterar, @deletar)
+    `);
   return r.recordset[0].ID;
 }
 
