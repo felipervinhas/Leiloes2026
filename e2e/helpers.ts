@@ -36,13 +36,20 @@ export async function loginUI(page: Page) {
 /**
  * Abre um Select do AntD (showSearch), digita um texto e confirma com Enter
  * — mais robusto que clicar na opção da lista, que às vezes fica coberta
- * pelo overlay de erro do webpack-dev-server em modo headless.
+ * pelo overlay de erro do webpack-dev-server em modo headless. Espera a
+ * opção realmente aparecer (busca costuma ser debounced/assíncrona) em vez
+ * de um tempo fixo, que sob carga (várias abas Select em sequência) às
+ * vezes não é suficiente e faz o Enter cair no vazio.
  */
 export async function selecionarPorDigitacao(page: Page, seletor: string, texto: string) {
   const el = page.locator(seletor);
   await el.click({ force: true });
   await el.pressSequentially(texto, { delay: 30 });
-  await page.waitForTimeout(700);
+  // Dropdowns já fechados deixam suas opções ocultas no DOM (portal no fim do
+  // <body>, não desmontado) — filtramos só as visíveis, senão .first() pode
+  // pegar a opção de um Select anterior que já fechou.
+  await page.locator('.ant-select-item-option-content:visible').first().waitFor({ state: 'visible', timeout: 8000 });
+  await page.waitForTimeout(150);
   await page.keyboard.press('Enter');
   await page.waitForTimeout(200);
 }

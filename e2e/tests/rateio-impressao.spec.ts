@@ -47,6 +47,7 @@ test('lote rateado entre 2 compradores: marcar 1 não afeta o outro, e impressã
   page,
   request,
 }) => {
+  test.setTimeout(90_000);
   const token = await login(request);
   const { leilao } = await encontrarLeilaoComLoteDisponivel(request, token);
 
@@ -132,8 +133,12 @@ test('lote rateado entre 2 compradores: marcar 1 não afeta o outro, e impressã
   await expect(rowComprador1.locator('input[type="checkbox"]')).toBeChecked();
   await expect(rowComprador2.locator('input[type="checkbox"]')).not.toBeChecked();
   await expect(page.locator('button:has-text("Imprimir PDF")')).toContainText('1 selecionado');
+  // O link de download (@react-pdf/renderer) regenera o blob do PDF a cada
+  // mudança de seleção; dar uma folga aqui evita clicar antes do href ficar
+  // pronto e o evento "download" nunca disparar.
+  await page.waitForTimeout(500);
 
-  const downloadPromise = page.waitForEvent('download');
+  const downloadPromise = page.waitForEvent('download', { timeout: 20000 });
   await page.click('a:has-text("Imprimir PDF")', { force: true });
   const download = await downloadPromise;
   const pdfPath = await download.path();
