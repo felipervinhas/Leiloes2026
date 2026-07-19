@@ -60,6 +60,45 @@ export async function listarLotes(idLeilao?: number, busca?: string): Promise<Lo
   return r.recordset.map(mapRow);
 }
 
+/**
+ * Versão paginada de listarLotes — a tabela Lotes tem ~17 mil registros e a
+ * consulta sem filtro (usada ao abrir a tela sem buscar nada) chegava a levar
+ * minutos pra trafegar o resultado inteiro pela rede até o SQL Server na AWS,
+ * derrubando o backend por timeout. Só usada pela tela de Lotes (que navega
+ * a base toda); as demais telas (Lances, Ordem de Entrada, Editor de
+ * Relatórios) sempre filtram por idLeilao e continuam usando listarLotes().
+ */
+export async function listarLotesPaginado(
+  idLeilao?: number, busca?: string, page = 1, pageSize = 15
+): Promise<{ items: Lote[]; total: number }> {
+  const pool = await getPool();
+  const filtros: string[] = [];
+  if (idLeilao) filtros.push(`L.IDLEILAO = @idLeilao`);
+  if (busca)    filtros.push(`(L.DESLOT LIKE @busca OR L.LOTEXX LIKE @busca)`);
+  const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
+
+  const bindFiltros = (r: sql.Request) => {
+    if (idLeilao) r.input('idLeilao', sql.Int, idLeilao);
+    if (busca)    r.input('busca', sql.VarChar, `%${busca}%`);
+    return r;
+  };
+
+  const totalResult = await bindFiltros(pool.request()).query(`SELECT COUNT(*) as total FROM Lotes L ${where}`);
+  const total = totalResult.recordset[0].total;
+
+  const offset = Math.max(0, (page - 1) * pageSize);
+  const r = await bindFiltros(pool.request())
+    .input('offset', sql.Int, offset)
+    .input('pageSize', sql.Int, pageSize)
+    .query(`
+      ${SELECT_LOTE} ${where}
+      ORDER BY L.IDLEILAO, TRY_CAST(L.LOTEXX AS INT), L.LOTEXX
+      OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY
+    `);
+
+  return { items: r.recordset.map(mapRow), total };
+}
+
 export async function buscarLotePorId(id: number): Promise<Lote | null> {
   const pool = await getPool();
   const r = await pool.request().input('id', sql.Int, id).query(`${SELECT_LOTE} WHERE L.ID=@id`);

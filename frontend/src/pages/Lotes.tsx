@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker,
-  Space, Popconfirm, Typography, Row, Col, message, Switch, Tabs, Divider, Image, Grid } from 'antd';
+  Space, Popconfirm, Typography, Row, Col, message, Switch, Tabs, Divider, Image, Grid, Spin } from 'antd';
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
+import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CopyOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { useConfig } from '../context/ConfigContext';
 import dayjs from 'dayjs';
@@ -16,17 +17,21 @@ const CATEGO = ['M', 'F', 'N'].map(v => ({ value: v, label: v === 'M' ? 'Macho' 
 
 interface LoteImagem { num: number; url: string; key: string; }
 
+const PAGE_SIZE = 15;
+
 export default function Lotes() {
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false;
   const { rz: rzLot } = useColumnWidths('lotes', { lotexx: 70, deslot: 300, nomeVendedor: 160 });
 
   const [dados, setDados] = useState<any[]>([]);
+  const [totalLotes, setTotalLotes] = useState(0);
+  const [pagina, setPagina] = useState(1);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<any | null>(null);
   const [busca, setBusca] = useState('');
-  const [leiloes, setLeiloes] = useState<{ value: number; label: string }[]>([]);
+  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes, garantirOpcao: garantirOpcaoLeilao } = useBuscaLeiloes();
   const [leilaoFiltro, setLeilaoFiltro] = useState<number | undefined>();
   const [racas, setRacas] = useState<{ value: number; label: string; especies?: string }[]>([]);
   const [clientes, setClientes] = useState<{ value: number; label: string }[]>([]);
@@ -42,19 +47,20 @@ export default function Lotes() {
       ? `https://${config.bucket}.s3.us-east-2.amazonaws.com/lote_1_img_${id}.jpg`
       : '';
 
-  const carregar = async (b = '') => {
+  const carregar = async (b = '', pag = 1) => {
     setLoading(true);
     try {
-      const r = await api.get('/lotes', { params: { busca: b, idLeilao: leilaoFiltro } });
-      setDados(r.data);
+      const r = await api.get('/lotes', { params: { busca: b, idLeilao: leilaoFiltro, page: pag, pageSize: PAGE_SIZE } });
+      setDados(r.data.items);
+      setTotalLotes(r.data.total);
+      setPagina(pag);
     } finally { setLoading(false); }
   };
 
   const carregarAuxiliares = async () => {
-    const [lei, rac, cli, cond] = await Promise.all([
-      api.get('/leiloes'), api.get('/racas'), api.get('/clientes'), api.get('/condicoes-pagamento')
+    const [rac, cli, cond] = await Promise.all([
+      api.get('/racas'), api.get('/clientes'), api.get('/condicoes-pagamento')
     ]);
-    setLeiloes(lei.data.map((l: any) => ({ value: l.id, label: l.leilao })));
     setRacas(rac.data.map((r: any) => ({ value: r.id, label: `${r.descricao}${r.especies ? ` (${r.especies})` : ''}`, especies: r.especies })));
     setClientes(cli.data.map((c: any) => ({ value: c.id, label: c.nomexx })));
     setCondicoes(cond.data.map((c: any) => ({ value: c.id, label: c.desfin })));
@@ -88,9 +94,7 @@ export default function Lotes() {
       if (d.racaxx && !racas.some(r => r.value === d.racaxx)) {
         setRacas(prev => [...prev, { value: d.racaxx, label: d.nomeRaca || `Raça #${d.racaxx} (não encontrada)` }]);
       }
-      if (d.idleilao && !leiloes.some(l => l.value === d.idleilao)) {
-        setLeiloes(prev => [...prev, { value: d.idleilao, label: d.nomeLeilao || `Leilão #${d.idleilao} (não encontrado)` }]);
-      }
+      garantirOpcaoLeilao(d.idleilao, d.nomeLeilao);
     } else {
       form.resetFields();
       form.setFieldsValue({ catego: 'M', publica: false, vendido: false });
@@ -111,12 +115,12 @@ export default function Lotes() {
       else await api.post('/lotes', payload);
       message.success('Salvo com sucesso');
       setModalOpen(false);
-      carregar(busca);
+      carregar(busca, pagina);
     } catch { message.error('Erro ao salvar'); }
   };
 
   const deletar = async (id: number) => {
-    try { await api.delete(`/lotes/${id}`); message.success('Excluído'); carregar(busca); }
+    try { await api.delete(`/lotes/${id}`); message.success('Excluído'); carregar(busca, pagina); }
     catch { message.error('Erro ao excluir'); }
   };
 
@@ -130,7 +134,7 @@ export default function Lotes() {
       form.setFieldsValue({ ...d, datnas: d.datnas ? dayjs(d.datnas) : null, publica: d.publica === 'S', vendido: d.vendido === 'S' });
       setEditando(d);
       setImagens(imgs.data);
-      carregar(busca);
+      carregar(busca, pagina);
       setModalOpen(true);
     } catch { message.error('Erro ao duplicar lote'); }
   };
@@ -184,7 +188,9 @@ export default function Lotes() {
             <Col span={24}><Form.Item name="deslot" label="Descrição"><Input /></Form.Item></Col>
             <Col xs={24} sm={12}>
               <Form.Item name="idleilao" label="Leilão" rules={[{ required: true }]}>
-                <Select showSearch options={leiloes} filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
+                <Select showSearch options={leiloes} onSearch={buscarLeiloes} filterOption={false}
+                  loading={carregandoLeiloes} placeholder="Digite para buscar..."
+                  notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -263,9 +269,10 @@ export default function Lotes() {
       {/* ── Filtros ── */}
       <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={{ flex: '0 0 220px' }}>
-          <Select placeholder="Filtrar por leilão" allowClear style={{ width: '100%' }}
-            options={leiloes} onChange={v => setLeilaoFiltro(v)}
-            showSearch filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
+          <Select placeholder="Digite para buscar o leilão..." allowClear style={{ width: '100%' }}
+            options={leiloes} onChange={v => setLeilaoFiltro(v)} onSearch={buscarLeiloes}
+            showSearch filterOption={false} loading={carregandoLeiloes}
+            notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'} />
         </Col>
         <Col xs={24} sm={{ flex: 'auto' }}>
           <Input.Search placeholder="Buscar lote..." value={busca} onChange={e => setBusca(e.target.value)}
@@ -274,7 +281,11 @@ export default function Lotes() {
       </Row>
       <Table rowKey="id" columns={colunas} dataSource={dados} loading={loading}
         components={{ header: { cell: ResizableTitle } }}
-        pagination={{ pageSize: 15, showTotal: t => `${t} registros`, simple: isMobile }}
+        pagination={{
+          current: pagina, pageSize: PAGE_SIZE, total: totalLotes,
+          showTotal: t => `${t} registros`, simple: isMobile,
+          onChange: novaPagina => carregar(busca, novaPagina),
+        }}
         size="small" scroll={{ x: 'max-content' }} />
 
       <Modal title={editando ? `Editar Lote ${editando.lotexx}` : 'Novo Lote'}

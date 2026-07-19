@@ -4,7 +4,17 @@ import { registrarLog } from '../services/logService';
 
 export const listar = async (req: Request, res: Response) => {
   const idLeilao = req.query.idLeilao ? Number(req.query.idLeilao) : undefined;
-  res.json(await svc.listarLotes(idLeilao, req.query.busca as string));
+  const busca = req.query.busca as string;
+  // page só é enviado pela tela de Lotes (que navega a base toda, ~17 mil
+  // registros); as demais telas sempre filtram por idLeilao e continuam
+  // recebendo o array simples de antes.
+  if (req.query.page) {
+    const page = Number(req.query.page) || 1;
+    const pageSize = Number(req.query.pageSize) || 15;
+    res.json(await svc.listarLotesPaginado(idLeilao, busca, page, pageSize));
+  } else {
+    res.json(await svc.listarLotes(idLeilao, busca));
+  }
 };
 export const buscar = async (req: Request, res: Response) => {
   const data = await svc.buscarLotePorId(Number(req.params.id));
