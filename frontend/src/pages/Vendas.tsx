@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useBanco } from '../context/BancoContext';
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
+import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import {
   Alert, Badge, Button, Card, Checkbox, Col, DatePicker, Divider, Dropdown, Form, Grid, Input,
   InputNumber, message, Modal, Popconfirm, Radio, Row, Select, Space, Spin,
@@ -167,29 +168,27 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
 
   const [tipoBusca, setTipoBusca] = useState('todos');
   const [busca, setBusca]         = useState('');
-  const [leiloes, setLeiloes]     = useState<any[]>([]);
+  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes } = useBuscaLeiloes();
   const [idLeilao, setIdLeilao]   = useState<number | undefined>();
   const [dados, setDados]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(false);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    api.get('/leiloes').then(r =>
-      setLeiloes(r.data.map((l: any) => ({ value: l.id, label: l.leilao }))));
-    carregar();
-  }, []);
+  const [jaBuscou, setJaBuscou]   = useState(false);
 
   // Recarrega ao voltar do wizard (após salvar/cancelar) mantendo o filtro aplicado —
   // não usar isso como "key" do componente, senão o filtro é perdido no remount.
+  // Não busca nada ao montar: a tabela de vendas só é carregada quando o
+  // usuário escolhe um filtro (leilão ou outro tipo de busca) e clica em
+  // Buscar — trazer tudo sem filtro já derrubou o backend por timeout antes.
   const primeiraVez = useRef(true);
   useEffect(() => {
     if (primeiraVez.current) { primeiraVez.current = false; return; }
-    carregar();
+    if (jaBuscou) carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reloadSignal]);
 
   const carregar = async () => {
     setLoading(true);
+    setJaBuscou(true);
     try {
       const params: any = { tipoBusca };
       if (busca)    params.busca    = busca;
@@ -671,8 +670,10 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
             <Col xs={24} sm={14} md={10}>
               <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Leilão</div>
               <Select style={{ width: '100%' }} allowClear showSearch value={idLeilao}
-                options={leiloes} onChange={setIdLeilao}
-                filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
+                options={leiloes} onChange={setIdLeilao} onSearch={buscarLeiloes}
+                filterOption={false} loading={carregandoLeiloes}
+                placeholder="Digite para buscar..."
+                notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'} />
             </Col>
           )}
           <Col xs={24} sm="auto" style={{ marginLeft: isMobile ? 0 : 'auto' }}>
@@ -680,7 +681,7 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
               <Button icon={<SearchOutlined />} onClick={carregar} loading={loading} block={isMobile}>Buscar</Button>
               <Button icon={<ReloadOutlined />} block={isMobile} onClick={() => {
                 setTipoBusca('todos'); setBusca(''); setIdLeilao(undefined);
-                setTimeout(carregar, 0);
+                setDados([]); setJaBuscou(false);
               }}>Limpar</Button>
               <Button icon={<FileExcelOutlined />} block={isMobile}
                 onClick={() => exportarVendasExcel(dados)}>Excel</Button>
@@ -694,7 +695,7 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
         components={{ header: { cell: ResizableTitle } }}
         size="small" scroll={{ x: 1600 }}
         pagination={{ pageSize: 20, showTotal: t => `${t} registros`, showSizeChanger: !isMobile, simple: isMobile }}
-        locale={{ emptyText: 'Nenhuma venda encontrada' }}
+        locale={{ emptyText: jaBuscou ? 'Nenhuma venda encontrada' : 'Escolha um filtro (ex.: Leilão) e clique em Buscar' }}
       />
     </>
   );
@@ -728,7 +729,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
 
   // ── step 0 ──────────────────────────────────────────────────────────────
   const [form0]   = Form.useForm();
-  const [leiloes, setLeiloes] = useState<any[]>([]);
+  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes, garantirOpcao: garantirOpcaoLeilao } = useBuscaLeiloes();
 
   // ── step 1 ──────────────────────────────────────────────────────────────
   const [form1]         = Form.useForm();
@@ -767,8 +768,6 @@ function Wizard({ editId, onConcluir, onCancelar }: {
 
   // ── inicialização ────────────────────────────────────────────────────────
   useEffect(() => {
-    api.get('/leiloes').then(r =>
-      setLeiloes(r.data.map((l: any) => ({ value: l.id, label: l.leilao }))));
     api.get('/condicoes-pagamento').then(r => setCondicoes(r.data));
     api.get('/usuarios', { params: { tipo: 'PISTEIRO' } }).then(r =>
       setPisteiros(r.data.map((u: any) => ({ value: u.id, label: u.nomexx }))));
@@ -782,6 +781,7 @@ function Wizard({ editId, onConcluir, onCancelar }: {
       const mv = r.data;
       setMov(mv);
       form0.setFieldsValue({ idLeilao: mv.idLeilao, codnot: mv.codnot, defesa: mv.defesa !== 'N' });
+      garantirOpcaoLeilao(mv.idLeilao, mv.leilao);
       await carregarLotesDisp(mv.idLeilao);
 
       const rl = await api.get(`/vendas/${editId}/lote`);
@@ -1243,9 +1243,10 @@ function Wizard({ editId, onConcluir, onCancelar }: {
           <Form form={form0} layout="vertical" style={{ maxWidth: 600 }} initialValues={{ defesa: true }}>
             <Form.Item name="idLeilao" label="Leilão"
               rules={[{ required: true, message: 'Selecione o leilão' }]}>
-              <Select showSearch placeholder="Escolha o leilão" options={leiloes}
-                onChange={onLeilaoChange}
-                filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
+              <Select showSearch placeholder="Digite para buscar o leilão..." options={leiloes}
+                onChange={onLeilaoChange} onSearch={buscarLeiloes}
+                filterOption={false} loading={carregandoLeiloes}
+                notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'} />
             </Form.Item>
             <Form.Item name="codnot" label="Nº do Boleto / Nota"
               rules={[{ required: true, message: 'Informe o número do boleto' }]}

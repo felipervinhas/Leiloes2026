@@ -5,6 +5,7 @@ import {
 } from 'antd';
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
+import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import {
   SearchOutlined, FileExcelOutlined, FileSearchOutlined, ClearOutlined, PrinterOutlined,
   CheckCircleFilled, CloseOutlined, FileTextOutlined, EyeOutlined, SettingOutlined,
@@ -51,7 +52,7 @@ export default function ConsultaVendas() {
   const config = useConfig();
   const [tipoRelatorio, setTipoRelatorio] = useState<TipoRelatorio>('vendas');
   const [orientacaoImp, setOrientacaoImp] = useState<Orientacao>('paisagem');
-  const [leiloes, setLeiloes]   = useState<{ value: number; label: string }[]>([]);
+  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes } = useBuscaLeiloes();
   const [lotes, setLotes]       = useState<{ value: number; label: string }[]>([]);
   const [vendedores, setVendedores] = useState<{ value: number; label: string }[]>([]);
   const [compradores, setCompradores] = useState<{ value: number; label: string }[]>([]);
@@ -84,11 +85,6 @@ export default function ConsultaVendas() {
     valorComissao: 110, valorDesconto: 110, valorLiquido: 120, desfin: 130,
     parcelaInicial: 110, primeiroVencimentoData: 110, datlan: 120, defesa: 100,
   });
-
-  useEffect(() => {
-    api.get('/leiloes').then(r =>
-      setLeiloes(r.data.map((l: any) => ({ value: l.id, label: l.leilao }))));
-  }, []);
 
   const buscarVendedores = useCallback((busca: string) => {
     clearTimeout(timerVend.current);
@@ -130,6 +126,7 @@ export default function ConsultaVendas() {
   };
 
   const consultar = async () => {
+    if (!leilaoSel) { message.warning('Selecione um leilão para consultar'); return; }
     setLoading(true);
     setConsultou(true);
     setSelectedRowKeys([]);
@@ -292,14 +289,17 @@ export default function ConsultaVendas() {
           <Col span={8}>
             <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Leilão</div>
             <Select
-              placeholder="Todos os leilões"
+              placeholder="Digite para buscar o leilão..."
               style={{ width: '100%' }}
               allowClear
               showSearch
               value={leilaoSel}
               options={leiloes}
               onChange={onLeilao}
-              filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())}
+              onSearch={buscarLeiloes}
+              filterOption={false}
+              loading={carregandoLeiloes}
+              notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
             />
           </Col>
           <Col span={8}>

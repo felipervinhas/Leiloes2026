@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { Select, Button, Table, Input, Space, message, Typography, Row, Col, Tag, Grid, Tooltip } from 'antd';
+import { Select, Button, Table, Input, Space, message, Typography, Row, Col, Tag, Grid, Tooltip, Spin } from 'antd';
 import {
   SaveOutlined, OrderedListOutlined, ClearOutlined, CalendarOutlined, EyeOutlined, HolderOutlined,
 } from '@ant-design/icons';
@@ -9,6 +9,7 @@ import { BotaoBaixarPDFOrdem, LoteOrdemPDF } from '../relatorios/RelatorioOrdemE
 import OrdemEntradaDinamica from '../relatorios/OrdemEntradaDinamica';
 import { CampoLayout } from '../relatorios/tipoLayout';
 import { useConfig } from '../context/ConfigContext';
+import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 
 interface LoteOrdem {
   id: number;
@@ -49,7 +50,7 @@ export default function OrdemEntrada() {
   const screens = Grid.useBreakpoint();
   const sm = !!screens.sm;
 
-  const [leiloes, setLeiloes] = useState<{ value: number; label: string }[]>([]);
+  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes } = useBuscaLeiloes();
   const [leilaoId, setLeilaoId] = useState<number | undefined>();
   const [nomeLeilao, setNomeLeilao] = useState<string | undefined>();
   const [lotes, setLotes] = useState<LoteOrdem[]>([]);
@@ -62,9 +63,6 @@ export default function OrdemEntrada() {
   const dragIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    api.get('/leiloes').then(r => {
-      setLeiloes(r.data.map((l: any) => ({ value: l.id, label: l.leilao || `Leilão #${l.id}` })));
-    });
     api.get('/relatorio-layouts/ativo/ordem_entrada')
       .then(r => setLayoutAtivo(r.data?.conteudo || null))
       .catch(() => setLayoutAtivo(null));
@@ -226,15 +224,16 @@ export default function OrdemEntrada() {
       <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
         <Col xs={24} md={14}>
           <Select
-            placeholder="Selecione o leilão..."
+            placeholder="Digite para buscar o leilão..."
             options={leiloes}
             value={leilaoId}
             onChange={onChangeLeilao}
+            onSearch={buscarLeiloes}
             style={{ width: '100%' }}
             showSearch
-            filterOption={(input, opt) =>
-              (opt?.label as string)?.toLowerCase().includes(input.toLowerCase())
-            }
+            filterOption={false}
+            loading={carregandoLeiloes}
+            notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
           />
         </Col>
 

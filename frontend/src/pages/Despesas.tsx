@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, InputNumber, Select,
+import { Table, Button, Modal, Form, Input, InputNumber, Select, Spin,
   Space, Popconfirm, Typography, Row, Col, message, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, WalletOutlined, PrinterOutlined } from '@ant-design/icons';
 import { BlobProvider } from '@react-pdf/renderer';
@@ -7,6 +7,7 @@ import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
 import RelatorioReciboDespesa from '../relatorios/RelatorioReciboDespesa';
 import { formatarMoeda, parseMoeda } from '../utils/moeda';
+import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -44,7 +45,7 @@ export default function Despesas() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando]   = useState<any | null>(null);
   const [busca, setBusca]         = useState(filtroSalvo.busca);
-  const [leiloes, setLeiloes]     = useState<{ value: number; label: string }[]>([]);
+  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes, garantirOpcao: garantirOpcaoLeilao } = useBuscaLeiloes();
   const [clientes, setClientes]   = useState<{ value: number; label: string }[]>([]);
   const [leilaoFiltro, setLeilaoFiltro] = useState<number | undefined>(filtroSalvo.leilaoFiltro);
   const [recibo, setRecibo]       = useState<any | null>(null);
@@ -61,7 +62,12 @@ export default function Despesas() {
 
   useEffect(() => {
     carregar(filtroSalvo.busca, filtroSalvo.leilaoFiltro);
-    api.get('/leiloes').then(r => setLeiloes(r.data.map((l: any) => ({ value: l.id, label: l.leilao }))));
+    // Se um filtro de leilão foi restaurado da sessão, busca só esse
+    // registro pra mostrar o nome no Select (que agora busca por digitação
+    // em vez de pré-carregar todos os leilões).
+    if (filtroSalvo.leilaoFiltro) {
+      api.get(`/leiloes/${filtroSalvo.leilaoFiltro}`).then(r => garantirOpcaoLeilao(r.data.id, r.data.leilao)).catch(() => {});
+    }
     api.get('/clientes').then(r => setClientes(r.data.map((c: any) => ({ value: c.id, label: c.nomexx }))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -71,6 +77,7 @@ export default function Despesas() {
     form.setFieldsValue(item
       ? { ...item }
       : { dc: 'D', valor: 0 });
+    if (item) garantirOpcaoLeilao(item.codLei, item.leilao);
     setModalOpen(true);
   };
 
@@ -150,14 +157,17 @@ export default function Despesas() {
       <Row gutter={8} style={{ marginBottom: 16 }}>
         <Col style={{ width: 240 }}>
           <Select
-            placeholder="Filtrar por leilão"
+            placeholder="Digite para buscar o leilão..."
             style={{ width: '100%' }}
             allowClear
             value={leilaoFiltro}
             options={leiloes}
             onChange={v => { setLeilaoFiltro(v); carregar(busca, v); }}
+            onSearch={buscarLeiloes}
             showSearch
-            filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())}
+            filterOption={false}
+            loading={carregandoLeiloes}
+            notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
           />
         </Col>
         <Col flex="auto">
@@ -218,9 +228,12 @@ export default function Despesas() {
                 <Select
                   showSearch
                   allowClear
-                  placeholder="Selecione o leilão (opcional)"
+                  placeholder="Digite para buscar o leilão (opcional)..."
                   options={leiloes}
-                  filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())}
+                  onSearch={buscarLeiloes}
+                  filterOption={false}
+                  loading={carregandoLeiloes}
+                  notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
                 />
               </Form.Item>
             </Col>

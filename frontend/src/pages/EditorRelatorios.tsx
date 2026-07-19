@@ -8,6 +8,7 @@ import {
 import { BlobProvider } from '@react-pdf/renderer';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
+import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import PaletaCampos from '../components/relatorioEditor/PaletaCampos';
 import PainelPropriedades from '../components/relatorioEditor/PainelPropriedades';
 import CanvasEditor from '../components/relatorioEditor/CanvasEditor';
@@ -128,7 +129,7 @@ export default function EditorRelatorios() {
   const [vendaTesteId, setVendaTesteId] = useState<number | null>(null);
   const [vendaDados, setVendaDados] = useState<FaturaData | null>(null);
 
-  const [leilaoOptions, setLeilaoOptions] = useState<{ value: number; label: string }[]>([]);
+  const { opcoes: leilaoOptions, carregando: carregandoLeiloes, buscar: buscarLeiloes } = useBuscaLeiloes();
   const [leilaoTesteId, setLeilaoTesteId] = useState<number | null>(null);
   const [leilaoTesteNome, setLeilaoTesteNome] = useState<string>('');
   const [lotesTeste, setLotesTeste] = useState<LoteOrdemPDF[]>([]);
@@ -186,13 +187,6 @@ export default function EditorRelatorios() {
     if (!vendaTesteId) { setVendaDados(null); return; }
     api.get(`/vendas/${vendaTesteId}/fatura`).then(r => setVendaDados(r.data)).catch(() => setVendaDados(null));
   }, [vendaTesteId]);
-
-  useEffect(() => {
-    if (tipoConfig.familia !== 'ordem_entrada' && tipoConfig.familia !== 'fatura_unificada') return;
-    api.get('/leiloes').then(r => setLeilaoOptions((r.data || []).map((l: any) => ({
-      value: l.id, label: l.leilao || `Leilão #${l.id}`,
-    })))).catch(() => setLeilaoOptions([]));
-  }, [tipoConfig.familia]);
 
   useEffect(() => {
     if (tipoConfig.familia !== 'fatura_unificada' || !leilaoTesteId) { setGruposFaturaTeste([]); return; }
@@ -541,10 +535,12 @@ export default function EditorRelatorios() {
             <span style={{ fontSize: 13, color: '#666' }}>Pré-visualizar com leilão:</span>
             <Select
               showSearch
-              placeholder="Escolher leilão…"
+              placeholder="Digite para buscar o leilão..."
               style={{ width: 260 }}
               value={leilaoTesteId ?? undefined}
-              optionFilterProp="label"
+              filterOption={false}
+              onSearch={buscarLeiloes}
+              loading={carregandoLeiloes}
               onChange={(id, option: any) => { setLeilaoTesteId(id); setLeilaoTesteNome(option?.label || ''); }}
               options={leilaoOptions}
               allowClear
@@ -610,10 +606,12 @@ export default function EditorRelatorios() {
             <span style={{ fontSize: 13, color: '#666' }}>Pré-visualizar com leilão:</span>
             <Select
               showSearch
-              placeholder="Escolher leilão…"
+              placeholder="Digite para buscar o leilão..."
               style={{ width: 260 }}
               value={leilaoTesteId ?? undefined}
-              optionFilterProp="label"
+              filterOption={false}
+              onSearch={buscarLeiloes}
+              loading={carregandoLeiloes}
               onChange={setLeilaoTesteId}
               options={leilaoOptions}
               allowClear

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Select, Typography, Row, Col, Tag, Statistic, Card, Space, Button, Modal } from 'antd';
+import React, { useState } from 'react';
+import { Table, Select, Typography, Row, Col, Tag, Statistic, Card, Space, Button, Modal, Spin } from 'antd';
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
+import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import { TrophyOutlined, FileDoneOutlined } from '@ant-design/icons';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
@@ -13,7 +14,7 @@ const { Title, Text } = Typography;
 export default function Lances() {
   const config = useConfig();
 
-  const [leiloes, setLeiloes] = useState<{ value: number; label: string }[]>([]);
+  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes } = useBuscaLeiloes();
   const [lotes, setLotes]     = useState<{ value: number; label: string }[]>([]);
   const [leilaoSel, setLeilaoSel]   = useState<number | undefined>();
   const [leilaoLabel, setLeilaoLabel] = useState('');
@@ -29,10 +30,6 @@ export default function Lances() {
 
   const { rz: rzR } = useColumnWidths('lances_resumo', { lotexx: 80, deslot: 200, qtdLances: 110, maiorLance: 130, menorLance: 130 });
   const { rz: rzL } = useColumnWidths('lances_detalhes', { data: 150, lotexx: 80, deslot: 180, nomeCliente: 200, celu1: 130, valor: 130, origemLance: 100 });
-
-  useEffect(() => {
-    api.get('/leiloes').then(r => setLeiloes(r.data.map((l: any) => ({ value: l.id, label: l.leilao }))));
-  }, []);
 
   const onLeilao = async (idLeilao: number) => {
     setLeilaoSel(idLeilao);
@@ -104,12 +101,15 @@ export default function Lances() {
       <Row gutter={12} style={{ marginBottom: 16 }} align="middle">
         <Col span={11}>
           <Select
-            placeholder="Selecione o leilão"
+            placeholder="Digite para buscar o leilão..."
             style={{ width: '100%' }}
             options={leiloes}
             onChange={onLeilao}
+            onSearch={buscarLeiloes}
             showSearch
-            filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())}
+            filterOption={false}
+            loading={carregandoLeiloes}
+            notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
           />
         </Col>
         <Col span={11}>

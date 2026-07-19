@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Select, Row, Col, Typography, Button, Table, Card, Space, Spin, Tag,
   Modal, Form, Input, InputNumber, Popconfirm, message, Empty,
@@ -12,6 +12,7 @@ import RelatorioAcertoVendedor from '../relatorios/RelatorioAcertoVendedor';
 import RelatorioReciboDespesa from '../relatorios/RelatorioReciboDespesa';
 import { formatarMoeda, parseMoeda } from '../utils/moeda';
 import { useConfig } from '../context/ConfigContext';
+import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -49,7 +50,7 @@ interface Acerto {
 
 export default function AcertoVendedor() {
   const config = useConfig();
-  const [leiloes, setLeiloes] = useState<{ value: number; label: string }[]>([]);
+  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes } = useBuscaLeiloes();
   const [leilaoSel, setLeilaoSel] = useState<number | undefined>();
   const [vendedores, setVendedores] = useState<{ value: number; label: string }[]>([]);
   const [vendedorSel, setVendedorSel] = useState<number | undefined>();
@@ -63,10 +64,6 @@ export default function AcertoVendedor() {
   const [editando, setEditando] = useState<any | null>(null);
   const [recibo, setRecibo] = useState<any | null>(null);
   const [form] = Form.useForm();
-
-  useEffect(() => {
-    api.get('/leiloes').then(r => setLeiloes(r.data.map((l: any) => ({ value: l.id, label: l.leilao }))));
-  }, []);
 
   const buscarVendedores = useCallback((busca: string) => {
     clearTimeout(timerVend.current);
@@ -161,14 +158,17 @@ export default function AcertoVendedor() {
       <Row gutter={8} style={{ marginBottom: 16 }}>
         <Col xs={24} md={10}>
           <Select
-            placeholder="Selecione o leilão..."
+            placeholder="Digite para buscar o leilão..."
             style={{ width: '100%' }}
             allowClear
             showSearch
             value={leilaoSel}
             options={leiloes}
             onChange={setLeilaoSel}
-            filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())}
+            onSearch={buscarLeiloes}
+            filterOption={false}
+            loading={carregandoLeiloes}
+            notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
           />
         </Col>
         <Col xs={24} md={10}>
