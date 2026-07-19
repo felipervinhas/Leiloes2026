@@ -6,7 +6,7 @@ import {
   CreditCardOutlined, SafetyOutlined, SettingOutlined, MenuFoldOutlined,
   MenuUnfoldOutlined, TrophyOutlined, BellOutlined, LineChartOutlined,
   DollarOutlined, WalletOutlined, FileSearchOutlined, OrderedListOutlined,
-  FileTextOutlined, MenuOutlined, TagsOutlined,
+  FileTextOutlined, MenuOutlined, TagsOutlined, SoundOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -25,6 +25,7 @@ const ALL_MENU_ITEMS = [
       { key: '/lotes', icon: <ShoppingOutlined />, label: 'Lotes', controle: 'Lotes' },
       { key: '/lances', icon: <TrophyOutlined />, label: 'Lances', controle: 'Lançes' },
       { key: '/ordem-entrada', icon: <OrderedListOutlined />, label: 'Ordem de Entrada', controle: 'Ordem de Entrada' },
+      { key: '/painel-leiloeiro', icon: <SoundOutlined />, label: 'Painel do Leiloeiro', controle: 'Painel do Leiloeiro' },
     ],
   },
   {

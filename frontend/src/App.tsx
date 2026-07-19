@@ -28,6 +28,7 @@ import Contratos from './pages/Contratos';
 import Despesas from './pages/Despesas';
 import AcertoVendedor from './pages/AcertoVendedor';
 import EditorRelatorios from './pages/EditorRelatorios';
+import PainelLeiloeiro from './pages/PainelLeiloeiro';
 import { BANCOS_PERMITIDOS } from './config/bancos';
 
 function UrlInvalida() {
@@ -82,6 +83,9 @@ function App() {
             <Route index element={<Navigate to="login" replace />} />
             <Route path="login" element={<Login />} />
             <Route element={<PrivateRoute />}>
+              {/* Tela cheia, sem o menu/abas do MainLayout — feita pra ficar
+                  aberta durante o leilão ao vivo. */}
+              <Route path="painel-leiloeiro" element={<PainelLeiloeiro />} />
               <Route element={<MainLayout />}>
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />

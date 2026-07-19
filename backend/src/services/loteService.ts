@@ -149,6 +149,22 @@ export async function atualizarLote(id: number, d: Lote): Promise<void> {
       CONDIC=@condic WHERE ID=@id`);
 }
 
+/**
+ * Atualização parcial (só Vendido/Público) — usada pelo Painel do Leiloeiro,
+ * que não carrega o registro inteiro como o formulário de edição. Diferente
+ * de atualizarLote() (substitui todas as colunas), aqui só altera os campos
+ * informados, pra não arriscar apagar o resto do lote com um payload parcial.
+ */
+export async function atualizarStatusLote(id: number, dados: { vendido?: string; publica?: string }): Promise<void> {
+  const pool = await getPool();
+  const sets: string[] = [];
+  const req = pool.request().input('id', sql.Int, id);
+  if (dados.vendido !== undefined) { req.input('vendido', sql.Char, dados.vendido); sets.push('VENDIDO=@vendido'); }
+  if (dados.publica !== undefined) { req.input('publica', sql.Char, dados.publica); sets.push('PUBLICA=@publica'); }
+  if (!sets.length) return;
+  await req.query(`UPDATE Lotes SET ${sets.join(', ')} WHERE ID=@id`);
+}
+
 export async function salvarOrdensLotes(lotes: Array<{ id: number; ordem: string | null }>): Promise<void> {
   if (!lotes.length) return;
   const pool = await getPool();

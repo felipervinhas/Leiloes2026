@@ -32,6 +32,13 @@ export const atualizar = async (req: Request, res: Response) => {
   await registrarLog((req as any).usuario, 'Alterar', 'Lotes', id);
   res.json({ ok: true });
 };
+export const atualizarStatus = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const { vendido, publica } = req.body;
+  await svc.atualizarStatusLote(id, { vendido, publica });
+  await registrarLog((req as any).usuario, 'Alterar', 'Lotes', id);
+  res.json({ ok: true });
+};
 export const deletar = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   await svc.deletarLote(id);

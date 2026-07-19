@@ -126,6 +126,7 @@ bancoRouter.post('/lotes/salvar-ordens', lote.salvarOrdens);
 bancoRouter.get('/lotes/:id', lote.buscar);
 bancoRouter.post('/lotes', lote.criar);
 bancoRouter.put('/lotes/:id', lote.atualizar);
+bancoRouter.patch('/lotes/:id/status', lote.atualizarStatus);
 bancoRouter.delete('/lotes/:id', lote.deletar);
 bancoRouter.post('/lotes/:id/duplicar', lote.duplicar);
 bancoRouter.get('/lotes/:id/imagens', upload.getImagensLote);

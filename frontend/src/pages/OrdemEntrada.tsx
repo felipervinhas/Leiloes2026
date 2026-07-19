@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Select, Button, Table, Input, Space, message, Typography, Row, Col, Tag, Grid, Tooltip, Spin } from 'antd';
 import {
-  SaveOutlined, OrderedListOutlined, ClearOutlined, CalendarOutlined, EyeOutlined, HolderOutlined,
+  SaveOutlined, OrderedListOutlined, ClearOutlined, CalendarOutlined, EyeOutlined, HolderOutlined, SoundOutlined,
 } from '@ant-design/icons';
 import { BlobProvider } from '@react-pdf/renderer';
 import api from '../services/api';
@@ -9,6 +10,7 @@ import { BotaoBaixarPDFOrdem, LoteOrdemPDF } from '../relatorios/RelatorioOrdemE
 import OrdemEntradaDinamica from '../relatorios/OrdemEntradaDinamica';
 import { CampoLayout } from '../relatorios/tipoLayout';
 import { useConfig } from '../context/ConfigContext';
+import { useBanco } from '../context/BancoContext';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 
 interface LoteOrdem {
@@ -47,6 +49,8 @@ const CATEGO_LABEL: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neut
 
 export default function OrdemEntrada() {
   const config = useConfig();
+  const navigate = useNavigate();
+  const { banco } = useBanco();
   const screens = Grid.useBreakpoint();
   const sm = !!screens.sm;
 
@@ -255,6 +259,12 @@ export default function OrdemEntrada() {
                 loading={salvando}
               >
                 Salvar
+              </Button>
+              <Button
+                icon={<SoundOutlined />}
+                onClick={() => leilaoId && navigate(`/${banco}/painel-leiloeiro`, { state: { idLeilao: leilaoId, nomeLeilao } })}
+              >
+                Painel do Leiloeiro
               </Button>
               <BotaoBaixarPDFOrdem
                 lotes={lotesParaPDF}
