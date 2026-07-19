@@ -17,6 +17,12 @@ function buildConfig(database: string): sql.config {
       encrypt: process.env.DB_ENCRYPT === 'true',
       trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true',
     },
+    // Algumas listagens sem filtro (ex.: Lotes, ~17 mil registros) já levam
+    // uns 12s pela rede até o SQL Server na AWS — o padrão do driver (15s)
+    // fica justo demais e derruba a query por timeout com qualquer variação
+    // de latência.
+    requestTimeout: 60_000,
+    connectionTimeout: 30_000,
     pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
   };
 }

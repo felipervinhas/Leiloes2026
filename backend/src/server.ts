@@ -1,3 +1,4 @@
+import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -7,6 +8,16 @@ import routes from './routes';
 import { errorHandler } from './middleware/errorHandler';
 
 dotenv.config();
+
+// Última linha de defesa: um erro não tratado (ex.: timeout de query) não
+// deve derrubar o processo inteiro e tirar a API do ar para todo mundo —
+// já aconteceu (RequestError: Timeout de 15s numa listagem grande). Só loga.
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+});
 
 const app = express();
 const PORT = process.env.PORT || 8500;
