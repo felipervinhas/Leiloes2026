@@ -66,7 +66,11 @@ const TIPO_BUSCA = [
   { value: 'vendedor',  label: 'Vendedor' },
 ];
 
-function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEditar: (id: number) => void; reloadSignal?: number }) {
+function Listagem({ onNova, onEditar, reloadSignal }: {
+  onNova: (leilaoAtual?: { id: number; nome: string }) => void;
+  onEditar: (id: number) => void;
+  reloadSignal?: number;
+}) {
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false;
 
@@ -648,7 +652,13 @@ function Listagem({ onNova, onEditar, reloadSignal }: { onNova: () => void; onEd
           </div>
           <Title level={4} style={{ margin: 0, color: '#0f172a' }}>Vendas</Title>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={onNova} style={{ background: '#d97706', borderColor: '#d97706' }}>Nova Venda</Button>
+        <Button type="primary" icon={<PlusOutlined />}
+          onClick={() => onNova(
+            tipoBusca === 'leilao' && idLeilao
+              ? { id: idLeilao, nome: leiloes.find(l => l.value === idLeilao)?.label || '' }
+              : undefined
+          )}
+          style={{ background: '#d97706', borderColor: '#d97706' }}>Nova Venda</Button>
       </div>
 
       <Card size="small" style={{ marginBottom: 16 }}>
@@ -712,8 +722,9 @@ const FORMA_PAGAMENTO_LABEL: Record<string, string> = {
 };
 const FORMA_PAGAMENTO_OPTS = FORMAS_PAGAMENTO.map(f => ({ value: f, label: FORMA_PAGAMENTO_LABEL[f] }));
 
-function Wizard({ editId, onConcluir, onCancelar }: {
+function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   editId?: number;
+  leilaoInicial?: { id: number; nome: string };
   onConcluir: () => void;
   onCancelar: () => void;
 }) {
@@ -806,6 +817,17 @@ function Wizard({ editId, onConcluir, onCancelar }: {
       setParcelas(rp.data);
     })();
   }, [editId]);
+
+  // Se o usuário já tinha escolhido um leilão na listagem (filtro "Leilão")
+  // antes de clicar em "Nova Venda", não faz sentido pedir pra escolher de
+  // novo — pré-preenche e já carrega os lotes disponíveis desse leilão.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (editId || !leilaoInicial) return;
+    form0.setFieldValue('idLeilao', leilaoInicial.id);
+    garantirOpcaoLeilao(leilaoInicial.id, leilaoInicial.nome);
+    onLeilaoChange(leilaoInicial.id);
+  }, []);
 
   // ── step 0: salvar mov ───────────────────────────────────────────────────
 
@@ -1816,6 +1838,7 @@ export default function Vendas() {
   const [editId, setEditId] = useState<number | undefined>();
   const [reloadKey, setReloadKey] = useState(0);
   const [origemClienteId, setOrigemClienteId] = useState<number | undefined>();
+  const [leilaoInicial, setLeilaoInicial] = useState<{ id: number; nome: string } | undefined>();
   const location = useLocation();
   const navigate = useNavigate();
   const { banco } = useBanco();
@@ -1832,7 +1855,9 @@ export default function Vendas() {
     }
   }, []);
 
-  const abrirNova = () => { setEditId(undefined); setModo('wizard'); };
+  const abrirNova = (leilaoAtual?: { id: number; nome: string }) => {
+    setEditId(undefined); setLeilaoInicial(leilaoAtual); setModo('wizard');
+  };
   const abrirEdit = (id: number) => { setEditId(id); setModo('wizard'); };
   const voltar = () => {
     if (origemClienteId) {
@@ -1847,6 +1872,7 @@ export default function Vendas() {
       <Wizard
         key={editId ?? 'novo'}
         editId={editId}
+        leilaoInicial={leilaoInicial}
         onConcluir={voltar}
         onCancelar={voltar}
       />
