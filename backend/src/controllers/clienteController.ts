@@ -3,6 +3,7 @@ import * as svc from '../services/clienteService';
 import { DuplicidadeError } from '../services/clienteService';
 import { consultarVendas } from '../services/consultaVendasService';
 import { buscarHistoricoLegado } from '../services/clienteLegadoService';
+import { registrarLog } from '../services/logService';
 
 export const listar = async (req: Request, res: Response) => {
   res.json(await svc.listarClientes(req.query.busca as string, req.query.filtro as string, req.query.filtroValor as string, req.query.classificacoes as string));
@@ -18,7 +19,9 @@ export const buscar = async (req: Request, res: Response) => {
 export const criar = async (req: Request, res: Response) => {
   try {
     const idUsuario = (req as any).usuario?.id ?? null;
-    res.status(201).json({ id: await svc.criarCliente({ ...req.body, usucad: idUsuario }) });
+    const id = await svc.criarCliente({ ...req.body, usucad: idUsuario });
+    await registrarLog((req as any).usuario, 'Inserir', 'Clientes', id);
+    res.status(201).json({ id });
   } catch (err) {
     if (err instanceof DuplicidadeError) return res.status(409).json({ error: err.message });
     throw err;
@@ -27,7 +30,9 @@ export const criar = async (req: Request, res: Response) => {
 export const atualizar = async (req: Request, res: Response) => {
   try {
     const idUsuario = (req as any).usuario?.id ?? null;
-    await svc.atualizarCliente(Number(req.params.id), { ...req.body, usualt: idUsuario });
+    const id = Number(req.params.id);
+    await svc.atualizarCliente(id, { ...req.body, usualt: idUsuario });
+    await registrarLog((req as any).usuario, 'Alterar', 'Clientes', id);
     res.json({ ok: true });
   } catch (err) {
     if (err instanceof DuplicidadeError) return res.status(409).json({ error: err.message });
@@ -35,11 +40,15 @@ export const atualizar = async (req: Request, res: Response) => {
   }
 };
 export const deletar = async (req: Request, res: Response) => {
-  await svc.deletarCliente(Number(req.params.id));
+  const id = Number(req.params.id);
+  await svc.deletarCliente(id);
+  await registrarLog((req as any).usuario, 'Deletar', 'Clientes', id);
   res.status(204).send();
 };
 export const alterarSenha = async (req: Request, res: Response) => {
-  await svc.alterarSenhaCliente(Number(req.params.id), req.body.senhax);
+  const id = Number(req.params.id);
+  await svc.alterarSenhaCliente(id, req.body.senhax);
+  await registrarLog((req as any).usuario, 'Alterar', 'Clientes', id);
   res.json({ ok: true });
 };
 export const listarPendentes = async (_req: Request, res: Response) => {
@@ -49,15 +58,21 @@ export const contarPendentes = async (_req: Request, res: Response) => {
   res.json({ total: await svc.contarClientesPendentes() });
 };
 export const aprovar = async (req: Request, res: Response) => {
-  await svc.aprovarCliente(Number(req.params.id));
+  const id = Number(req.params.id);
+  await svc.aprovarCliente(id);
+  await registrarLog((req as any).usuario, 'Alterar', 'Clientes', id);
   res.json({ ok: true });
 };
 export const recusar = async (req: Request, res: Response) => {
-  await svc.recusarCliente(Number(req.params.id));
+  const id = Number(req.params.id);
+  await svc.recusarCliente(id);
+  await registrarLog((req as any).usuario, 'Alterar', 'Clientes', id);
   res.json({ ok: true });
 };
 export const analisar = async (req: Request, res: Response) => {
-  await svc.analisarCliente(Number(req.params.id));
+  const id = Number(req.params.id);
+  await svc.analisarCliente(id);
+  await registrarLog((req as any).usuario, 'Alterar', 'Clientes', id);
   res.json({ ok: true });
 };
 export const historico = async (req: Request, res: Response) => {

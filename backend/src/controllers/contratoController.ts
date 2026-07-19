@@ -3,6 +3,7 @@ import {
   listarTemplates, buscarTemplate, criarTemplate, atualizarTemplate,
   deletarTemplate, gerarContrato, VARIAVEIS_DISPONIVEIS,
 } from '../services/contratoService';
+import { registrarLog } from '../services/logService';
 
 export const listar  = async (_req: Request, res: Response) => res.json(await listarTemplates());
 
@@ -13,17 +14,23 @@ export const buscar  = async (req: Request, res: Response) => {
 
 export const criar   = async (req: Request, res: Response) => {
   const { nome, tipo, conteudo } = req.body;
-  res.json(await criarTemplate(nome, tipo ?? null, conteudo));
+  const resultado = await criarTemplate(nome, tipo ?? null, conteudo);
+  await registrarLog((req as any).usuario, 'Inserir', 'Contratos', resultado.id);
+  res.json(resultado);
 };
 
 export const atualizar = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
   const { nome, tipo, conteudo } = req.body;
-  await atualizarTemplate(Number(req.params.id), nome, tipo ?? null, conteudo);
+  await atualizarTemplate(id, nome, tipo ?? null, conteudo);
+  await registrarLog((req as any).usuario, 'Alterar', 'Contratos', id);
   res.json({ ok: true });
 };
 
 export const deletar = async (req: Request, res: Response) => {
-  await deletarTemplate(Number(req.params.id));
+  const id = Number(req.params.id);
+  await deletarTemplate(id);
+  await registrarLog((req as any).usuario, 'Deletar', 'Contratos', id);
   res.json({ ok: true });
 };
 

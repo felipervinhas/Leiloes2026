@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as svc from '../services/usuarioService';
+import { registrarLog } from '../services/logService';
 
 export const listar = async (req: Request, res: Response) => {
   res.json(await svc.listarUsuarios(req.query.busca as string, req.query.tipo as string));
@@ -10,14 +11,20 @@ export const buscar = async (req: Request, res: Response) => {
   res.json(data);
 };
 export const criar = async (req: Request, res: Response) => {
-  res.status(201).json({ id: await svc.criarUsuario(req.body) });
+  const id = await svc.criarUsuario(req.body);
+  await registrarLog((req as any).usuario, 'Inserir', 'Usuários', id);
+  res.status(201).json({ id });
 };
 export const atualizar = async (req: Request, res: Response) => {
-  await svc.atualizarUsuario(Number(req.params.id), req.body);
+  const id = Number(req.params.id);
+  await svc.atualizarUsuario(id, req.body);
+  await registrarLog((req as any).usuario, 'Alterar', 'Usuários', id);
   res.json({ ok: true });
 };
 export const deletar = async (req: Request, res: Response) => {
-  await svc.deletarUsuario(Number(req.params.id));
+  const id = Number(req.params.id);
+  await svc.deletarUsuario(id);
+  await registrarLog((req as any).usuario, 'Deletar', 'Usuários', id);
   res.status(204).send();
 };
 export const getControles = async (req: Request, res: Response) => {

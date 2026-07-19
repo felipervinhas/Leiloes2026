@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as svc from '../services/cidadeService';
+import { registrarLog } from '../services/logService';
 
 export const listar = async (req: Request, res: Response) => {
   const data = await svc.listarCidades(req.query.busca as string);
@@ -12,13 +13,18 @@ export const buscar = async (req: Request, res: Response) => {
 };
 export const criar = async (req: Request, res: Response) => {
   const id = await svc.criarCidade(req.body);
+  await registrarLog((req as any).usuario, 'Inserir', 'Cidades', id);
   res.status(201).json({ id });
 };
 export const atualizar = async (req: Request, res: Response) => {
-  await svc.atualizarCidade(Number(req.params.id), req.body);
+  const id = Number(req.params.id);
+  await svc.atualizarCidade(id, req.body);
+  await registrarLog((req as any).usuario, 'Alterar', 'Cidades', id);
   res.json({ ok: true });
 };
 export const deletar = async (req: Request, res: Response) => {
-  await svc.deletarCidade(Number(req.params.id));
+  const id = Number(req.params.id);
+  await svc.deletarCidade(id);
+  await registrarLog((req as any).usuario, 'Deletar', 'Cidades', id);
   res.status(204).send();
 };

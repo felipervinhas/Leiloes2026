@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as svc from '../services/vendaService';
+import { registrarLog } from '../services/logService';
 
 export const listar = async (req: Request, res: Response) => {
   const { busca, tipoBusca, idLeilao } = req.query;
@@ -14,6 +15,7 @@ export const criar = async (req: Request, res: Response) => {
   const { idLeilao, codnot, defesa } = req.body;
   if (!idLeilao) return res.status(400).json({ error: 'idLeilao obrigatório' });
   const id = await svc.criarMovimento({ idLeilao: Number(idLeilao), codnot: codnot || '', defesa });
+  await registrarLog((req as any).usuario, 'Inserir', 'Vendas', id);
   res.status(201).json({ id });
 };
 
@@ -21,6 +23,7 @@ export const atualizar = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   const { idLeilao, codnot, defesa } = req.body;
   await svc.atualizarMovimento(id, { idLeilao: Number(idLeilao), codnot, defesa });
+  await registrarLog((req as any).usuario, 'Alterar', 'Vendas', id);
   res.json({ ok: true });
 };
 
@@ -32,7 +35,9 @@ export const buscar = async (req: Request, res: Response) => {
 };
 
 export const excluir = async (req: Request, res: Response) => {
-  await svc.excluirVenda(Number(req.params.id));
+  const id = Number(req.params.id);
+  await svc.excluirVenda(id);
+  await registrarLog((req as any).usuario, 'Deletar', 'Vendas', id);
   res.json({ ok: true });
 };
 
@@ -61,6 +66,7 @@ export const salvarLote = async (req: Request, res: Response) => {
     vlrdes: Number(vlrdes) || 0, qtdpar: Number(qtdpar) || 1,
     comiss: Number(comiss) || 0, comissVendedor: Number(comissVendedor) || 0,
   }, datlan || new Date().toISOString().split('T')[0]);
+  await registrarLog((req as any).usuario, 'Alterar', 'Vendas', idMov);
   res.json({ id });
 };
 
@@ -95,6 +101,7 @@ export const adicionarComprador = async (req: Request, res: Response) => {
     id: mov.idLeilao, comcom: mov.comcom ?? 0, comven: mov.comven ?? 0,
     condic: mov.condic ?? 0, codnot: mov.codnot,
   });
+  await registrarLog((req as any).usuario, 'Inserir', 'Vendas', idMov);
   res.status(201).json({ id });
 };
 
@@ -103,6 +110,7 @@ export const excluirComprador = async (req: Request, res: Response) => {
   const idComp = Number(req.params.idComp);
   const lote   = await svc.buscarLoteMovimento(idMov);
   await svc.excluirComprador(idMov, idComp, lote?.qtdxxx ?? 1);
+  await registrarLog((req as any).usuario, 'Deletar', 'Vendas', idMov);
   res.json({ ok: true });
 };
 
@@ -125,13 +133,16 @@ export const atualizarComprador = async (req: Request, res: Response) => {
     idPropriedade: idPropriedade ? Number(idPropriedade) : null,
     idPisteiro: idPisteiro ? Number(idPisteiro) : null,
   });
+  await registrarLog((req as any).usuario, 'Alterar', 'Vendas', idMov);
   res.json({ ok: true });
 };
 
 export const atualizarComissaoComprador = async (req: Request, res: Response) => {
+  const idMov  = Number(req.params.id);
   const idComp = Number(req.params.idComp);
   const { valorComissao, valorComissaoVendedor } = req.body;
   await svc.atualizarComissaoManual(idComp, Number(valorComissao) || 0, Number(valorComissaoVendedor) || 0);
+  await registrarLog((req as any).usuario, 'Alterar', 'Vendas', idMov);
   res.json({ ok: true });
 };
 
@@ -179,10 +190,12 @@ export const gerarParcelas = async (req: Request, res: Response) => {
     pInvertValor:     Number(invertValor) || 0,
   });
 
+  await registrarLog((req as any).usuario, 'Inserir', 'Vendas', idMov);
   res.json({ ok: true });
 };
 
 export const atualizarParcela = async (req: Request, res: Response) => {
+  const idMov = Number(req.params.id);
   const id = Number(req.params.idParc);
   const { datven, vlrpar } = req.body;
   await svc.atualizarParcela(
@@ -190,6 +203,7 @@ export const atualizarParcela = async (req: Request, res: Response) => {
     datven   !== undefined ? String(datven)   : undefined,
     vlrpar   !== undefined ? Number(vlrpar)   : undefined,
   );
+  await registrarLog((req as any).usuario, 'Alterar', 'Vendas', idMov);
   res.json({ ok: true });
 };
 
@@ -217,6 +231,7 @@ export const salvarPropriedade = async (req: Request, res: Response) => {
   const idComp = Number(req.params.idComp);
   const { idCli, idPropriedade } = req.body;
   await svc.salvarPropriedadeComprador(idMov, Number(idCli), Number(idPropriedade));
+  await registrarLog((req as any).usuario, 'Alterar', 'Vendas', idMov);
   res.json({ ok: true });
 };
 
@@ -231,6 +246,7 @@ export const atualizarEncaminhamento = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Campo inválido' });
   }
   await svc.atualizarStatus(id, campo, String(valor));
+  await registrarLog((req as any).usuario, 'Alterar', 'Vendas', id);
   res.json({ ok: true });
 };
 
@@ -238,6 +254,7 @@ export const atualizarFormaPagamento = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   const { forma } = req.body;
   await svc.atualizarFormaPagamentoMovimento(id, String(forma));
+  await registrarLog((req as any).usuario, 'Alterar', 'Vendas', id);
   res.json({ ok: true });
 };
 
@@ -246,5 +263,6 @@ export const atualizarFormaPagamento = async (req: Request, res: Response) => {
 export const atualizarInfo = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   await svc.atualizarInfoLote(id);
+  await registrarLog((req as any).usuario, 'Alterar', 'Vendas', id);
   res.json({ ok: true });
 };
