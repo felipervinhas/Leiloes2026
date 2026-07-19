@@ -61,7 +61,7 @@ test('acerto de vendedor: consultar, lançar crédito, confirmar totais, editar 
   await page.goto(`/${BANCO}/acerto-vendedor`);
 
   // ── Consultar o acerto do leilão auxiliar + vendedor conhecido ──────
-  await selecionarSelectPorPlaceholder(page, 'Selecione o leilão...', nomeLeilaoAux);
+  await selecionarSelectPorPlaceholder(page, 'Digite para buscar o leilão...', nomeLeilaoAux);
   await selecionarSelectPorPlaceholder(page, 'Digite para buscar vendedor...', VENDEDOR);
   await page.click('button:has-text("Consultar")', { force: true });
   await page.waitForTimeout(1200);
