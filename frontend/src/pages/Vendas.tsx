@@ -791,6 +791,11 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
       const r  = await api.get(`/vendas/${editId}`);
       const mv = r.data;
       setMov(mv);
+      // GET /vendas/:id já traz comcom/comven/qtdpar do leilão (join) — é
+      // exatamente o que leilaoInfo precisa, sem chamada extra. Sem isso,
+      // leilaoInfo ficava null ao editar e a Comissão Leiloeiro/Vendedor
+      // (e o painel de info do leilão) apareciam em branco.
+      setLeilaoInfo(mv);
       form0.setFieldsValue({ idLeilao: mv.idLeilao, codnot: mv.codnot, defesa: mv.defesa !== 'N' });
       garantirOpcaoLeilao(mv.idLeilao, mv.leilao);
       await carregarLotesDisp(mv.idLeilao);
@@ -802,6 +807,9 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
           idLote: rl.data.idLote, qtdxxx: rl.data.qtdxxx,
           vlrpar: rl.data.vlrpar, vlrtot: rl.data.vlrtot, vlrdes: rl.data.vlrdes ?? 0,
           qtdparOverride: rl.data.qtdpar,
+          // Comissão já persistida no lançamento original — não recalcular
+          // pelo percentual atual do leilão, que pode ter mudado desde então.
+          _comiss: rl.data.comiss ?? 0, _comissVend: rl.data.comissVendedor ?? 0,
         });
         // O lote desta venda não vem na lista de "disponíveis" (já está vendido a ela mesma) —
         // injeta manualmente para o Select conseguir exibir o rótulo em vez do código bruto.
