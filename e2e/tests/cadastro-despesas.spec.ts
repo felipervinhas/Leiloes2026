@@ -3,6 +3,13 @@ import { API_URL, BANCO, exigirCredenciais, login, loginUI, selecionarPorDigitac
 
 const COMPRADOR_1 = process.env.E2E_COMPRADOR_1 || 'ALEX JUNIOR SILVA LUNA';
 
+async function buscarNomeDeUmLeilao(request: import('@playwright/test').APIRequestContext, token: string) {
+  const r = await request.get(`${API_URL}/api/${BANCO}/leiloes`, { headers: { Authorization: `Bearer ${token}` } });
+  const leiloes = await r.json();
+  if (!leiloes.length) throw new Error('Nenhum leilão cadastrado em ' + BANCO);
+  return leiloes[0].leilao as string;
+}
+
 /**
  * Cobre o cadastro de Despesas (lançamentos de Despesa/Crédito/Fechamento)
  * de ponta a ponta: cria um lançamento vinculando um cliente existente,
@@ -24,6 +31,9 @@ test('cadastro de despesas: criar, confirmar persistência, editar e excluir', a
   const obsUnica = `E2E DESPESA ${sufixo}`;
   const obsEditada = `${obsUnica} EDITADA`;
 
+  const tokenSetup = await login(request);
+  const nomeLeilao = await buscarNomeDeUmLeilao(request, tokenSetup);
+
   await loginUI(page);
   await page.goto(`/${BANCO}/despesas`);
 
@@ -32,6 +42,8 @@ test('cadastro de despesas: criar, confirmar persistência, editar e excluir', a
   await page.waitForTimeout(600);
   await expect(page.locator('text=Novo Lançamento').first()).toBeVisible();
 
+  // Leilão é obrigatório pra salvar
+  await selecionarPorDigitacao(page, '#codLei', nomeLeilao);
   await modal(page).locator('#valor').fill('1500,00');
   await selecionarPorDigitacao(page, '#codigoCliente', COMPRADOR_1);
   await modal(page).locator('#observacoes').fill(obsUnica);
