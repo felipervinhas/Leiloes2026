@@ -86,7 +86,11 @@ test('lote rateado entre 2 compradores: marcar 1 não afeta o outro, e impressã
   await page.keyboard.press('Enter');
   await page.locator('#percen').fill('50');
   await page.click('button:has-text("Adicionar")', { force: true });
-  await page.waitForTimeout(1200);
+  // O form de "Adicionar comprador" re-renderiza (reset dos campos) logo após
+  // o 1º comprador ser salvo — digitar rápido demais nesse instante faz o
+  // Select do 2º comprador perder parte do texto digitado. 1200ms não é
+  // suficiente pra esse re-render assentar; 3s cobre com folga.
+  await page.waitForTimeout(3000);
 
   // comprador 2: 50%
   await selecionarPorDigitacao(page, '#idCli', COMPRADOR_2);
@@ -111,11 +115,7 @@ test('lote rateado entre 2 compradores: marcar 1 não afeta o outro, e impressã
   // sido reaproveitado em execuções anteriores, então filtrar só por leilão
   // e nome de comprador não é suficiente para isolar esta venda.
   await page.goto(`/${BANCO}/consulta-vendas`);
-  await page.locator('text=Todos os leilões').click({ force: true });
-  await page.keyboard.type(leilao, { delay: 20 });
-  await page.waitForTimeout(800);
-  await page.keyboard.press('Enter');
-  await page.waitForTimeout(300);
+  await selecionarPorDigitacao(page, '.ant-select:has-text("Digite para buscar o leilão")', leilao);
   await page.locator('text=Todos os lotes').click({ force: true });
   await page.keyboard.type(lotexx, { delay: 20 });
   await page.waitForTimeout(800);
