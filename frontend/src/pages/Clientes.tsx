@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Table, Button, Modal, Drawer, Form, Input, Select, DatePicker, Space, Popconfirm,
   Typography, Row, Col, message, Tag, Tabs, Divider, Grid, Checkbox, Card, Radio } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined,
@@ -101,6 +101,11 @@ export default function Clientes() {
   const [historicoCompras, setHistoricoCompras] = useState<any[]>([]);
   const [historicoVendas, setHistoricoVendas] = useState<any[]>([]);
   const [historicoLoading, setHistoricoLoading] = useState(false);
+  // Precisa ficar em estado (não como literal recriado a cada render) — senão
+  // o objeto de paginação novo a cada render força o antd Table a voltar
+  // pro pageSize do prop, desfazendo a escolha do usuário no seletor.
+  const [historicoPageSize, setHistoricoPageSize] = useState(10);
+  const [boletosLegadoPageSize, setBoletosLegadoPageSize] = useState(10);
   const [historicoCarregado, setHistoricoCarregado] = useState(false);
   const [totalPorLeilaoLegado, setTotalPorLeilaoLegado] = useState<any[]>([]);
   const [boletosLegado, setBoletosLegado] = useState<any[]>([]);
@@ -126,7 +131,11 @@ export default function Clientes() {
   const [formOcorrencia] = Form.useForm();
   const [layoutFichaAtivo, setLayoutFichaAtivo] = useState<CampoLayout[] | null>(null);
 
+  const carregarSeqRef = useRef(0);
+  const carregarRankingSeqRef = useRef(0);
+
   const carregar = async (pag = 1) => {
+    const seq = ++carregarSeqRef.current;
     setLoading(true);
     try {
       const r = await api.get('/clientes', {
@@ -139,13 +148,19 @@ export default function Clientes() {
           page: pag, pageSize: PAGE_SIZE,
         },
       });
+      // Requisições podem voltar fora de ordem (ex.: a listagem sem filtro,
+      // mais lenta por contar todos os registros, responder depois de uma
+      // busca filtrada mais rápida) — só aplica a resposta da requisição
+      // mais recente, senão uma resposta antiga sobrescreve o resultado certo.
+      if (seq !== carregarSeqRef.current) return;
       setDados(r.data.items);
       setTotalClientes(r.data.total);
       setPagina(pag);
-    } finally { setLoading(false); }
+    } finally { if (seq === carregarSeqRef.current) setLoading(false); }
   };
 
   const carregarRanking = async () => {
+    const seq = ++carregarRankingSeqRef.current;
     setLoading(true);
     try {
       const r = await api.get('/clientes/faturamento', {
@@ -157,8 +172,9 @@ export default function Clientes() {
           classificacoes: filtroClassificacoes.length ? filtroClassificacoes.join(',') : undefined,
         },
       });
+      if (seq !== carregarRankingSeqRef.current) return;
       setDadosRanking(r.data);
-    } finally { setLoading(false); }
+    } finally { if (seq === carregarRankingSeqRef.current) setLoading(false); }
   };
 
   const carregarHistorico = async (id: number) => {
@@ -973,7 +989,10 @@ export default function Clientes() {
       <Table
         rowKey="key" size="small" loading={legadoLoading} dataSource={boletosLegadoFiltrados}
         columns={colunasBoletosLegado}
-        pagination={{ pageSize: 10, showTotal: t => `${t} registros`, simple: true }}
+        pagination={{
+          pageSize: boletosLegadoPageSize, showTotal: t => `${t} registros`, simple: true,
+          onShowSizeChange: (_, size) => setBoletosLegadoPageSize(size),
+        }}
         locale={{ emptyText: 'Nenhum boleto encontrado' }}
         scroll={{ x: 1600 }}
       />
@@ -1016,7 +1035,10 @@ export default function Clientes() {
             )}
             <Table rowKey="id" size="small" loading={historicoLoading} dataSource={historicoCompras}
               components={{ header: { cell: ResizableTitle } }}
-              pagination={{ pageSize: 10, showTotal: t => `${t} registros`, simple: true }}
+              pagination={{
+                pageSize: historicoPageSize, showTotal: t => `${t} registros`, simple: true,
+                onShowSizeChange: (_, size) => setHistoricoPageSize(size),
+              }}
               scroll={{ x: 900 }} columns={colunasHistCompras}
             />
           </>
@@ -1051,7 +1073,10 @@ export default function Clientes() {
             )}
             <Table rowKey="id" size="small" loading={historicoLoading} dataSource={historicoVendas}
               components={{ header: { cell: ResizableTitle } }}
-              pagination={{ pageSize: 10, showTotal: t => `${t} registros`, simple: true }}
+              pagination={{
+                pageSize: historicoPageSize, showTotal: t => `${t} registros`, simple: true,
+                onShowSizeChange: (_, size) => setHistoricoPageSize(size),
+              }}
               scroll={{ x: 900 }} columns={colunasHistVendas}
             />
           </>
