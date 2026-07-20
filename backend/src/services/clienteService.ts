@@ -83,24 +83,47 @@ function mapRow(c: any): Cliente {
   };
 }
 
-export async function listarClientesFaturamento(busca?: string, filtro?: string, filtroValor?: string, classificacoes?: string) {
+export interface FiltrosCliente {
+  nome?: string; cpf?: string; cnpj?: string; cidade?: string; estado?: string; situacao?: string;
+}
+
+const EXISTS_COMPRAS = `EXISTS (SELECT 1 FROM MOVIMENTO_COMPRADOR MC WHERE TRY_CAST(MC.IDCLI AS INT) = C.ID)`;
+const EXISTS_VENDAS  = `EXISTS (SELECT 1 FROM MOVIMENTO_LOTE ML WHERE ML.CODVEN = C.ID)`;
+
+function condicaoFiltrosCliente(req: any, filtros?: FiltrosCliente): string[] {
+  const conditions: string[] = [];
+  if (filtros?.nome)   { req.input('fnome',   sql.VarChar, `%${filtros.nome}%`);  conditions.push(`C.NOMEXX LIKE @fnome`); }
+  if (filtros?.cpf)    { req.input('fcpf',    sql.VarChar, `%${filtros.cpf}%`);   conditions.push(`C.CPFXXX LIKE @fcpf`); }
+  if (filtros?.cnpj)   { req.input('fcnpj',   sql.VarChar, `%${filtros.cnpj}%`);  conditions.push(`C.CNPJXX LIKE @fcnpj`); }
+  if (filtros?.cidade) { req.input('fcidade', sql.Int, Number(filtros.cidade));   conditions.push(`C.CIDADE = @fcidade`); }
+  if (filtros?.estado) { req.input('festado', sql.VarChar, filtros.estado);       conditions.push(`CID.ESTADO = @festado`); }
+  if (filtros?.situacao === 'compradores')        conditions.push(EXISTS_COMPRAS);
+  if (filtros?.situacao === 'vendedores')         conditions.push(EXISTS_VENDAS);
+  if (filtros?.situacao === 'semComercializacao') conditions.push(`NOT ${EXISTS_COMPRAS} AND NOT ${EXISTS_VENDAS}`);
+  if (filtros?.situacao === 'bloqueado')          conditions.push(`C.ACESSO_APP = '2 - Bloqueado'`);
+  if (filtros?.situacao === 'reprovado')          conditions.push(`C.ACESSO_APP = '4 - Reprovado'`);
+  return conditions;
+}
+
+const FAIXAS_FATURAMENTO: Record<string, (tot: string) => string> = {
+  ate10k:    tot => `${tot} BETWEEN 1 AND 10000`,
+  ate20k:    tot => `${tot} BETWEEN 1 AND 20000`,
+  ate30k:    tot => `${tot} BETWEEN 1 AND 30000`,
+  ate50k:    tot => `${tot} BETWEEN 1 AND 50000`,
+  acima50k:  tot => `${tot} > 50000`,
+  ate100k:   tot => `${tot} BETWEEN 1 AND 100000`,
+  acima100k: tot => `${tot} > 100000`,
+};
+
+export async function listarClientesFaturamento(filtros?: FiltrosCliente, filtroValor?: string, classificacoes?: string) {
   await garantirTabelasClassificacao();
   const pool = await getPool();
   const req = pool.request();
-  const conditions: string[] = [];
-  if (busca && filtro) {
-    req.input('busca', sql.VarChar, `%${busca}%`);
-    const col: Record<string, string> = {
-      nome: 'C.NOMEXX', cpf: 'C.CPFXXX', cnpj: 'C.CNPJXX', email: 'C.EMAILX',
-    };
-    conditions.push(`${col[filtro] || 'C.NOMEXX'} LIKE @busca`);
-  }
+  const conditions: string[] = condicaoFiltrosCliente(req, filtros);
   const condClassificacoes = condicaoClassificacoes(req, classificacoes);
   if (condClassificacoes) conditions.push(condClassificacoes);
   const tot = `(ISNULL(COMP.TOTAL, 0) + ISNULL(VEN.TOTAL, 0))`;
-  if (filtroValor === 'ate10k')   conditions.push(`${tot} BETWEEN 1 AND 10000`);
-  if (filtroValor === 'ate20k')   conditions.push(`${tot} BETWEEN 1 AND 20000`);
-  if (filtroValor === 'acima30k') conditions.push(`${tot} > 30000`);
+  if (filtroValor && FAIXAS_FATURAMENTO[filtroValor]) conditions.push(FAIXAS_FATURAMENTO[filtroValor](tot));
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const r = await req.query(`
     SELECT TOP 500
@@ -154,27 +177,19 @@ export async function listarClientesFaturamento(busca?: string, filtro?: string,
   }));
 }
 
-export async function listarClientes(busca?: string, filtro?: string, filtroValor?: string, classificacoes?: string): Promise<Cliente[]> {
-  await garantirTabelasClassificacao();
-  const pool = await getPool();
-  const req = pool.request();
-  const conditions: string[] = [];
+const SELECT_CLIENTE_COLUNAS = `
+      C.ID,C.NOMEXX,C.CPFXXX,C.CNPJXX,C.EMAILX,C.CELU_1,
+      C.ATIVOX,C.BLOCLI,C.ADM,C.ACESSO_APP,C.DATCAD,C.CIDADE,
+      ISNULL(C.VER_COMISSOES, 'S') AS VER_COMISSOES,
+      ISNULL(C.VER_VALORES_LIQUIDOS, 'S') AS VER_VALORES_LIQUIDOS,
+      ISNULL(C.VER_INFO_FINANCEIRA, 'S') AS VER_INFO_FINANCEIRA,
+      ISNULL(C.VER_TOP_COMPRADORES, 'S') AS VER_TOP_COMPRADORES,
+      ISNULL(C.VER_TOP_VENDEDORES, 'S') AS VER_TOP_VENDEDORES,
+      ISNULL(C.VER_VENCIMENTOS, 'S') AS VER_VENCIMENTOS,
+      CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO,
+      CLS.DESCRICOES AS CLASSIFICACOES_DESC`;
 
-  if (busca && filtro) {
-    req.input('busca', sql.VarChar, `%${busca}%`);
-    const col: Record<string, string> = {
-      nome: 'C.NOMEXX', cpf: 'C.CPFXXX', cnpj: 'C.CNPJXX', email: 'C.EMAILX',
-    };
-    conditions.push(`${col[filtro] || 'C.NOMEXX'} LIKE @busca`);
-  }
-
-  const condClassificacoes = condicaoClassificacoes(req, classificacoes);
-  if (condClassificacoes) conditions.push(condClassificacoes);
-
-  const tot = `(ISNULL(COMP_V.TOTAL, 0) + ISNULL(VEN_V.TOTAL, 0))`;
-  let joinValor = '';
-  if (filtroValor) {
-    joinValor = `
+const JOIN_VALOR = `
       LEFT JOIN (
         SELECT TRY_CAST(IDCLI AS INT) AS IDCLI, SUM(ISNULL(VALORPAGAR,0)) AS TOTAL
         FROM MOVIMENTO_COMPRADOR WHERE TRY_CAST(IDCLI AS INT) IS NOT NULL
@@ -185,29 +200,74 @@ export async function listarClientes(busca?: string, filtro?: string, filtroValo
         FROM MOVIMENTO_LOTE WHERE CODVEN IS NOT NULL
         GROUP BY CODVEN
       ) VEN_V ON VEN_V.CODVEN = C.ID`;
-    if (filtroValor === 'ate10k')   conditions.push(`${tot} BETWEEN 1 AND 10000`);
-    if (filtroValor === 'ate20k')   conditions.push(`${tot} BETWEEN 1 AND 20000`);
-    if (filtroValor === 'acima30k') conditions.push(`${tot} > 30000`);
-  }
 
-  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+function montarWhereClientes(req: any, filtros?: FiltrosCliente, filtroValor?: string, classificacoes?: string): string {
+  const conditions = condicaoFiltrosCliente(req, filtros);
+  const condClassificacoes = condicaoClassificacoes(req, classificacoes);
+  if (condClassificacoes) conditions.push(condClassificacoes);
+  if (filtroValor && FAIXAS_FATURAMENTO[filtroValor]) {
+    conditions.push(FAIXAS_FATURAMENTO[filtroValor](`(ISNULL(COMP_V.TOTAL, 0) + ISNULL(VEN_V.TOTAL, 0))`));
+  }
+  return conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+}
+
+export async function listarClientes(filtros?: FiltrosCliente, filtroValor?: string, classificacoes?: string): Promise<Cliente[]> {
+  await garantirTabelasClassificacao();
+  const pool = await getPool();
+  const req = pool.request();
+  const where = montarWhereClientes(req, filtros, filtroValor, classificacoes);
+  const joinValor = filtroValor ? JOIN_VALOR : '';
+
   const r = await req.query(`
-    SELECT TOP 500 C.ID,C.NOMEXX,C.CPFXXX,C.CNPJXX,C.EMAILX,C.CELU_1,
-      C.ATIVOX,C.BLOCLI,C.ADM,C.ACESSO_APP,C.DATCAD,C.CIDADE,
-      ISNULL(C.VER_COMISSOES, 'S') AS VER_COMISSOES,
-      ISNULL(C.VER_VALORES_LIQUIDOS, 'S') AS VER_VALORES_LIQUIDOS,
-      ISNULL(C.VER_INFO_FINANCEIRA, 'S') AS VER_INFO_FINANCEIRA,
-      ISNULL(C.VER_TOP_COMPRADORES, 'S') AS VER_TOP_COMPRADORES,
-      ISNULL(C.VER_TOP_VENDEDORES, 'S') AS VER_TOP_VENDEDORES,
-      ISNULL(C.VER_VENCIMENTOS, 'S') AS VER_VENCIMENTOS,
-      CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO,
-      CLS.DESCRICOES AS CLASSIFICACOES_DESC
+    SELECT TOP 500 ${SELECT_CLIENTE_COLUNAS}
     FROM Clientes C
     LEFT JOIN Cidades CID ON CID.ID = C.CIDADE
     ${JOIN_CLASSIFICACOES}
     ${joinValor}
     ${where} ORDER BY C.NOMEXX`);
   return r.recordset.map((c: any) => ({ ...mapRow(c), classificacoesDescricao: c.CLASSIFICACOES_DESC }));
+}
+
+/**
+ * Versão paginada de listarClientes — a base de Clientes tem +11 mil
+ * registros e o TOP 500 sem paginação cortava resultados incompletos assim
+ * que um filtro (Compradores, Bloqueado, Sem Comercializações etc.) batia
+ * mais de 500 clientes. Só usada pela tela de Clientes; os demais
+ * consumidores de listarClientes() (ex.: Select de vendedor em Lotes)
+ * continuam recebendo o array simples de antes.
+ */
+export async function listarClientesPaginado(
+  filtros?: FiltrosCliente, filtroValor?: string, classificacoes?: string, page = 1, pageSize = 20
+): Promise<{ items: Cliente[]; total: number }> {
+  await garantirTabelasClassificacao();
+  const pool = await getPool();
+  const joinValor = filtroValor ? JOIN_VALOR : '';
+
+  const reqCount = pool.request();
+  const whereCount = montarWhereClientes(reqCount, filtros, filtroValor, classificacoes);
+  const totalResult = await reqCount.query(`
+    SELECT COUNT(*) AS total
+    FROM Clientes C
+    LEFT JOIN Cidades CID ON CID.ID = C.CIDADE
+    ${JOIN_CLASSIFICACOES}
+    ${joinValor}
+    ${whereCount}`);
+  const total = totalResult.recordset[0].total;
+
+  const offset = Math.max(0, (page - 1) * pageSize);
+  const reqSelect = pool.request();
+  const whereSelect = montarWhereClientes(reqSelect, filtros, filtroValor, classificacoes);
+  reqSelect.input('offset', sql.Int, offset).input('pageSize', sql.Int, pageSize);
+  const r = await reqSelect.query(`
+    SELECT ${SELECT_CLIENTE_COLUNAS}
+    FROM Clientes C
+    LEFT JOIN Cidades CID ON CID.ID = C.CIDADE
+    ${JOIN_CLASSIFICACOES}
+    ${joinValor}
+    ${whereSelect}
+    ORDER BY C.NOMEXX
+    OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY`);
+  return { items: r.recordset.map((c: any) => ({ ...mapRow(c), classificacoesDescricao: c.CLASSIFICACOES_DESC })), total };
 }
 
 export async function buscarClientePorId(id: number): Promise<Cliente | null> {

@@ -44,7 +44,17 @@ const STATUS_COLOR: Record<string, string> = { S: 'green', N: 'red' };
 const SN = [{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }];
 const ESTADO_CIVIL = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'União Estável'].map(v => ({ value: v, label: v }));
 const ACESSO = ['1 - Liberado', '2 - Bloqueado', '3 - Pendente', '4 - Reprovado'].map(v => ({ value: v, label: v }));
-const FILTROS = [{ value: 'nome', label: 'Nome' }, { value: 'cpf', label: 'CPF' }, { value: 'cnpj', label: 'CNPJ' }, { value: 'email', label: 'E-mail' }];
+const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB',
+  'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'].map(v => ({ value: v, label: v }));
+const SITUACOES = [
+  { value: 'compradores', label: 'Compradores' },
+  { value: 'vendedores', label: 'Vendedores' },
+  { value: 'semComercializacao', label: 'Sem Comercializações' },
+  { value: 'bloqueado', label: 'Bloqueado Website/App' },
+  { value: 'reprovado', label: 'Reprovados' },
+];
+
+const PAGE_SIZE = 20;
 
 export default function Clientes() {
   const config = useConfig();
@@ -63,11 +73,17 @@ export default function Clientes() {
   const podeEditarPermissoes = usuarioLogado?.perfis?.some(p => p.id === 1) && usuarioLogado?.perfis?.some(p => p.perfil?.includes('ADM') || p.perfil?.includes('adm'));
 
   const [dados, setDados] = useState<Cliente[]>([]);
+  const [totalClientes, setTotalClientes] = useState(0);
+  const [pagina, setPagina] = useState(1);
   const [loading, setLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editando, setEditando] = useState<any | null>(null);
-  const [busca, setBusca] = useState('');
-  const [filtroCampo, setFiltroCampo] = useState('nome');
+  const [filtroNome, setFiltroNome] = useState('');
+  const [filtroCpf, setFiltroCpf] = useState('');
+  const [filtroCnpj, setFiltroCnpj] = useState('');
+  const [filtroCidade, setFiltroCidade] = useState<number | undefined>(undefined);
+  const [filtroEstado, setFiltroEstado] = useState<string | undefined>(undefined);
+  const [filtroSituacao, setFiltroSituacao] = useState<string | undefined>(undefined);
   const [cidades, setCidades] = useState<{ value: number; label: string }[]>([]);
   const [classificacoesOpcoes, setClassificacoesOpcoes] = useState<{ value: number; label: string }[]>([]);
   const [usuarios, setUsuarios] = useState<{ value: number; label: string }[]>([]);
@@ -110,25 +126,34 @@ export default function Clientes() {
   const [formOcorrencia] = Form.useForm();
   const [layoutFichaAtivo, setLayoutFichaAtivo] = useState<CampoLayout[] | null>(null);
 
-  const carregar = async (b = '') => {
+  const carregar = async (pag = 1) => {
     setLoading(true);
     try {
       const r = await api.get('/clientes', {
         params: {
-          busca: b, filtro: filtroCampo, filtroValor,
+          nome: filtroNome || undefined, cpf: filtroCpf || undefined,
+          cnpj: filtroCnpj || undefined, cidade: filtroCidade,
+          estado: filtroEstado, situacao: filtroSituacao,
+          filtroValor,
           classificacoes: filtroClassificacoes.length ? filtroClassificacoes.join(',') : undefined,
+          page: pag, pageSize: PAGE_SIZE,
         },
       });
-      setDados(r.data);
+      setDados(r.data.items);
+      setTotalClientes(r.data.total);
+      setPagina(pag);
     } finally { setLoading(false); }
   };
 
-  const carregarRanking = async (b = '') => {
+  const carregarRanking = async () => {
     setLoading(true);
     try {
       const r = await api.get('/clientes/faturamento', {
         params: {
-          busca: b, filtro: filtroCampo, filtroValor,
+          nome: filtroNome || undefined, cpf: filtroCpf || undefined,
+          cnpj: filtroCnpj || undefined, cidade: filtroCidade,
+          estado: filtroEstado, situacao: filtroSituacao,
+          filtroValor,
           classificacoes: filtroClassificacoes.length ? filtroClassificacoes.join(',') : undefined,
         },
       });
@@ -288,8 +313,8 @@ export default function Clientes() {
   const alternarRanking = () => {
     const proximo = !rankingMode;
     setRankingMode(proximo);
-    if (proximo) carregarRanking(busca);
-    else carregar(busca);
+    if (proximo) carregarRanking();
+    else carregar();
   };
 
   const carregarCidades = async () => {
@@ -339,9 +364,11 @@ export default function Clientes() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (rankingMode) carregarRanking(busca);
-    else carregar(busca);
-  }, [filtroValor, filtroClassificacoes]);
+    if (rankingMode) carregarRanking();
+    else carregar();
+  }, [filtroValor, filtroClassificacoes, filtroCidade, filtroEstado, filtroSituacao]);
+
+  const buscar = () => rankingMode ? carregarRanking() : carregar();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -352,25 +379,30 @@ export default function Clientes() {
     }
   }, []);
 
+  const preencherFormCliente = async (id: number) => {
+    const r = await api.get(`/clientes/${id}`);
+    const d = r.data;
+    form.setFieldsValue({
+      ...d,
+      datnas: d.datnas ? dayjs(d.datnas) : null,
+      datcad: d.datcad ? dayjs(d.datcad).format('DD/MM/YYYY') : '',
+      datalt: d.datalt ? dayjs(d.datalt).format('DD/MM/YYYY') : '',
+      // Converter S/N para true/false para checkboxes
+      verComissoes: d.verComissoes === 'S',
+      verValoresLiquidos: d.verValoresLiquidos === 'S',
+      verInfoFinanceira: d.verInfoFinanceira === 'S',
+      verTopCompradores: d.verTopCompradores === 'S',
+      verTopVendedores: d.verTopVendedores === 'S',
+      verVencimentos: d.verVencimentos === 'S',
+    });
+    setEditando(d);
+    carregarPropriedades(d.id);
+    return d;
+  };
+
   const abrirDrawer = async (item?: Cliente) => {
     if (item) {
-      const r = await api.get(`/clientes/${item.id}`);
-      const d = r.data;
-      form.setFieldsValue({
-        ...d,
-        datnas: d.datnas ? dayjs(d.datnas) : null,
-        datcad: d.datcad ? dayjs(d.datcad).format('DD/MM/YYYY') : '',
-        datalt: d.datalt ? dayjs(d.datalt).format('DD/MM/YYYY') : '',
-        // Converter S/N para true/false para checkboxes
-        verComissoes: d.verComissoes === 'S',
-        verValoresLiquidos: d.verValoresLiquidos === 'S',
-        verInfoFinanceira: d.verInfoFinanceira === 'S',
-        verTopCompradores: d.verTopCompradores === 'S',
-        verTopVendedores: d.verTopVendedores === 'S',
-        verVencimentos: d.verVencimentos === 'S',
-      });
-      setEditando(d);
-      carregarPropriedades(d.id);
+      await preencherFormCliente(item.id);
     } else {
       form.resetFields();
       form.setFieldsValue({
@@ -411,11 +443,12 @@ export default function Clientes() {
       verVencimentos: values.verVencimentos ? 'S' : 'N',
     };
     try {
-      if (editando) await api.put(`/clientes/${editando.id}`, payload);
-      else await api.post('/clientes', payload);
+      let id = editando?.id;
+      if (id) await api.put(`/clientes/${id}`, payload);
+      else id = (await api.post('/clientes', payload)).data.id;
       message.success('Salvo com sucesso');
-      setDrawerOpen(false);
-      carregar(busca);
+      await preencherFormCliente(id);
+      carregar(pagina);
     } catch (err: any) {
       const msg = err?.response?.data?.error;
       message.error(msg || 'Erro ao salvar', msg ? 6 : 3);
@@ -423,7 +456,7 @@ export default function Clientes() {
   };
 
   const deletar = async (id: number) => {
-    try { await api.delete(`/clientes/${id}`); message.success('Excluído'); carregar(busca); }
+    try { await api.delete(`/clientes/${id}`); message.success('Excluído'); carregar(); }
     catch { message.error('Erro ao excluir'); }
   };
 
@@ -760,8 +793,10 @@ export default function Clientes() {
   })() : <Typography.Text type="secondary">Disponível apenas ao editar um cliente existente.</Typography.Text>;
 
   const colunasHistCompras = [
-    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, ...rzHC('leilao') },
-    { title: 'Lote', dataIndex: 'lotexx', ...rzHC('lotexx') },
+    { title: 'Data', dataIndex: 'datlan', width: 100, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—',
+      sorter: (a: any, b: any) => new Date(a.datlan || 0).getTime() - new Date(b.datlan || 0).getTime() },
+    { title: 'Lote', dataIndex: 'lotexx', ...rzHC('lotexx'),
+      sorter: (a: any, b: any) => (parseInt(a.lotexx, 10) || 0) - (parseInt(b.lotexx, 10) || 0) },
     { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzHC('deslot') },
     { title: 'Raça', dataIndex: 'descricaoRaca', ellipsis: true, ...rzHC('descricaoRaca') },
     { title: 'Qtd', dataIndex: 'qtdxxx', ...rzHC('qtdxxx'), align: 'right' as const, render: (v: number) => v?.toLocaleString('pt-BR') },
@@ -788,8 +823,10 @@ export default function Clientes() {
   ];
 
   const colunasHistVendas = [
-    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, ...rzHV('leilao') },
-    { title: 'Lote', dataIndex: 'lotexx', ...rzHV('lotexx') },
+    { title: 'Data', dataIndex: 'datlan', width: 100, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—',
+      sorter: (a: any, b: any) => new Date(a.datlan || 0).getTime() - new Date(b.datlan || 0).getTime() },
+    { title: 'Lote', dataIndex: 'lotexx', ...rzHV('lotexx'),
+      sorter: (a: any, b: any) => (parseInt(a.lotexx, 10) || 0) - (parseInt(b.lotexx, 10) || 0) },
     { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzHV('deslot') },
     { title: 'Raça', dataIndex: 'descricaoRaca', ellipsis: true, ...rzHV('descricaoRaca') },
     { title: 'Qtd', dataIndex: 'qtdxxx', ...rzHV('qtdxxx'), align: 'right' as const, render: (v: number) => v?.toLocaleString('pt-BR') },
@@ -1039,7 +1076,7 @@ export default function Clientes() {
           <div>
             <Title level={4} style={{ margin: 0, color: '#0f172a' }}>Clientes</Title>
             <span style={{ fontSize: 12, color: '#94a3b8' }}>
-              {(rankingMode ? dadosRanking : dados).length} registro{(rankingMode ? dadosRanking : dados).length !== 1 ? 's' : ''}
+              {(rankingMode ? dadosRanking.length : totalClientes)} registro{(rankingMode ? dadosRanking.length : totalClientes) !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
@@ -1060,8 +1097,47 @@ export default function Clientes() {
 
       {/* ── Busca ── */}
       <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
-        <Col xs={24} sm="auto" style={{ minWidth: 130 }}>
-          <Select value={filtroCampo} onChange={setFiltroCampo} options={FILTROS} style={{ width: '100%' }} />
+        <Col xs={24} sm={6} md={5}>
+          <Input placeholder="Nome" value={filtroNome} onChange={e => setFiltroNome(e.target.value)} onPressEnter={buscar} allowClear />
+        </Col>
+        <Col xs={12} sm={5} md={4}>
+          <Input placeholder="CPF" value={filtroCpf} onChange={e => setFiltroCpf(e.target.value)} onPressEnter={buscar} allowClear />
+        </Col>
+        <Col xs={12} sm={5} md={4}>
+          <Input placeholder="CNPJ" value={filtroCnpj} onChange={e => setFiltroCnpj(e.target.value)} onPressEnter={buscar} allowClear />
+        </Col>
+        <Col xs={24} sm={8} md={5}>
+          <Select
+            value={filtroCidade}
+            onChange={setFiltroCidade}
+            allowClear
+            showSearch
+            placeholder="Cidade..."
+            style={{ width: '100%' }}
+            options={cidades}
+            filterOption={(input, opt) => (opt?.label as string)?.toLowerCase().includes(input.toLowerCase())}
+          />
+        </Col>
+        <Col xs={12} sm={6} md={4}>
+          <Select
+            value={filtroEstado}
+            onChange={setFiltroEstado}
+            allowClear
+            showSearch
+            placeholder="Estado (UF)..."
+            style={{ width: '100%' }}
+            options={UFS}
+          />
+        </Col>
+        <Col xs={24} sm="auto" style={{ minWidth: 190 }}>
+          <Select
+            value={filtroSituacao}
+            onChange={setFiltroSituacao}
+            allowClear
+            placeholder="Situação..."
+            style={{ width: '100%' }}
+            options={SITUACOES}
+          />
         </Col>
         <Col xs={24} sm="auto" style={{ minWidth: 160 }}>
           <Select
@@ -1071,9 +1147,13 @@ export default function Clientes() {
             placeholder="Faturamento..."
             style={{ width: '100%' }}
             options={[
-              { value: 'ate10k',   label: 'Até R$ 10 mil' },
-              { value: 'ate20k',   label: 'Até R$ 20 mil' },
-              { value: 'acima30k', label: 'Acima de R$ 30 mil' },
+              { value: 'ate10k',    label: 'Até R$ 10 mil' },
+              { value: 'ate20k',    label: 'Até R$ 20 mil' },
+              { value: 'ate30k',    label: 'Até R$ 30 mil' },
+              { value: 'ate50k',    label: 'Até R$ 50 mil' },
+              { value: 'acima50k',  label: 'Acima de R$ 50 mil' },
+              { value: 'ate100k',   label: 'Até R$ 100 mil' },
+              { value: 'acima100k', label: 'Acima de R$ 100 mil' },
             ]}
           />
         </Col>
@@ -1091,16 +1171,8 @@ export default function Clientes() {
             filterOption={(input, opt) => (opt?.label as string)?.toLowerCase().includes(input.toLowerCase())}
           />
         </Col>
-        <Col xs={24} sm={undefined} flex="auto">
-          <Input.Search
-            placeholder="Buscar..."
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            onSearch={b => rankingMode ? carregarRanking(b) : carregar(b)}
-            enterButton={<SearchOutlined />}
-            allowClear
-            onClear={() => rankingMode ? carregarRanking('') : carregar('')}
-          />
+        <Col xs={24} sm="auto">
+          <Button type="primary" icon={<SearchOutlined />} onClick={buscar}>Buscar</Button>
         </Col>
       </Row>
 
@@ -1116,7 +1188,10 @@ export default function Clientes() {
             ? (_, i) => ({ style: i === 0 ? { background: '#fffbe6' } : i === 1 ? { background: '#fafafa' } : i === 2 ? { background: '#fff7e6' } : {} })
             : (r) => ({ onDoubleClick: () => abrirDrawer(r as Cliente) })
           }
-          pagination={{ pageSize: 20, showTotal: t => `${t} registros`, simple: !sm }}
+          pagination={rankingMode
+            ? { pageSize: 20, showTotal: t => `${t} registros`, simple: !sm }
+            : { current: pagina, pageSize: PAGE_SIZE, total: totalClientes, onChange: carregar, showTotal: t => `${t} registros`, simple: !sm }
+          }
           size="small"
           scroll={{ x: rankingMode ? (md ? 1000 : 600) : (md ? 900 : 400) }}
         />

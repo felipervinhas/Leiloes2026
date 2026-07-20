@@ -5,11 +5,29 @@ import { consultarVendas } from '../services/consultaVendasService';
 import { buscarHistoricoLegado } from '../services/clienteLegadoService';
 import { registrarLog } from '../services/logService';
 
+const filtrosDaQuery = (req: Request): svc.FiltrosCliente => ({
+  nome: req.query.nome as string, cpf: req.query.cpf as string,
+  cnpj: req.query.cnpj as string, cidade: req.query.cidade as string,
+  estado: req.query.estado as string, situacao: req.query.situacao as string,
+});
+
 export const listar = async (req: Request, res: Response) => {
-  res.json(await svc.listarClientes(req.query.busca as string, req.query.filtro as string, req.query.filtroValor as string, req.query.classificacoes as string));
+  const filtros = filtrosDaQuery(req);
+  const filtroValor = req.query.filtroValor as string;
+  const classificacoes = req.query.classificacoes as string;
+  // page só é enviado pela tela de Clientes (que navega a base toda, +11 mil
+  // registros); outros consumidores (ex.: Select de vendedor em Lotes)
+  // continuam recebendo o array simples de antes.
+  if (req.query.page) {
+    const page = Number(req.query.page) || 1;
+    const pageSize = Number(req.query.pageSize) || 20;
+    res.json(await svc.listarClientesPaginado(filtros, filtroValor, classificacoes, page, pageSize));
+  } else {
+    res.json(await svc.listarClientes(filtros, filtroValor, classificacoes));
+  }
 };
 export const listarFaturamento = async (req: Request, res: Response) => {
-  res.json(await svc.listarClientesFaturamento(req.query.busca as string, req.query.filtro as string, req.query.filtroValor as string, req.query.classificacoes as string));
+  res.json(await svc.listarClientesFaturamento(filtrosDaQuery(req), req.query.filtroValor as string, req.query.classificacoes as string));
 };
 export const buscar = async (req: Request, res: Response) => {
   const data = await svc.buscarClientePorId(Number(req.params.id));
