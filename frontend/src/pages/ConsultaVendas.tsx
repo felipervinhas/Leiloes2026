@@ -126,7 +126,10 @@ export default function ConsultaVendas() {
   };
 
   const consultar = async () => {
-    if (!leilaoSel) { message.warning('Selecione um leilão para consultar'); return; }
+    if (!leilaoSel && !vendedorSel && !compradorSel) {
+      message.warning('Selecione ao menos um filtro: Leilão, Vendedor ou Comprador');
+      return;
+    }
     setLoading(true);
     setConsultou(true);
     setSelectedRowKeys([]);
