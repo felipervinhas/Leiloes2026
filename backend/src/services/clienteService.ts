@@ -218,13 +218,24 @@ export async function listarClientes(filtros?: FiltrosCliente, filtroValor?: str
   const where = montarWhereClientes(req, filtros, filtroValor, classificacoes);
   const joinValor = filtroValor ? JOIN_VALOR : '';
 
+  // Busca por nome usa LIKE '%texto%' (acha em qualquer posição), então sem
+  // isso um nome que só contém o texto buscado no meio aparece antes, na
+  // ordem alfabética, de um nome que começa exatamente com o texto digitado
+  // — confuso nos campos de busca de comprador/vendedor. Prioriza quem
+  // começa com o texto buscado, mantendo alfabética dentro de cada grupo.
+  let orderBy = 'C.NOMEXX';
+  if (filtros?.nome) {
+    req.input('fnomeInicio', sql.VarChar, `${filtros.nome}%`);
+    orderBy = 'CASE WHEN C.NOMEXX LIKE @fnomeInicio THEN 0 ELSE 1 END, C.NOMEXX';
+  }
+
   const r = await req.query(`
     SELECT TOP 500 ${SELECT_CLIENTE_COLUNAS}
     FROM Clientes C
     LEFT JOIN Cidades CID ON CID.ID = C.CIDADE
     ${JOIN_CLASSIFICACOES}
     ${joinValor}
-    ${where} ORDER BY C.NOMEXX`);
+    ${where} ORDER BY ${orderBy}`);
   return r.recordset.map((c: any) => ({ ...mapRow(c), classificacoesDescricao: c.CLASSIFICACOES_DESC }));
 }
 
