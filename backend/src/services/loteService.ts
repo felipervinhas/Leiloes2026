@@ -1,6 +1,17 @@
 import { getPool, sql } from '../config/database';
 import { Lote } from '../models/lote';
 
+let colunaQtdAnimaisCriada = false;
+async function garantirColunaQtdAnimais() {
+  if (colunaQtdAnimaisCriada) return;
+  const pool = await getPool();
+  await pool.request().query(`
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Lotes' AND COLUMN_NAME='QTDANIMAIS')
+      ALTER TABLE Lotes ADD QTDANIMAIS INT NULL
+  `);
+  colunaQtdAnimaisCriada = true;
+}
+
 function mapRow(c: any): Lote {
   return {
     id: c.ID, lotexx: c.LOTEXX, deslot: c.DESLOT, rpxxx: c.RPXXX, sbbxxx: c.SBBXXX,
@@ -8,7 +19,7 @@ function mapRow(c: any): Lote {
     codven: c.CODVEN, ordem: c.ORDEM, catego: c.CATEGO, vlrins: c.VLRINS,
     pelage: c.PELAGE, datnas: c.DATNAS, obslot: c.OBSLOT, filiacao: c.FILIACAO,
     lanmax: c.LANMAX, urlvideo: c.URLVideo, comentario: c.Comentario,
-    multiplo: c.MULTIPLO, vendido: c.VENDIDO, publica: c.PUBLICA,
+    multiplo: c.MULTIPLO, vendido: c.VENDIDO, publica: c.PUBLICA, qtdAnimais: c.QTDANIMAIS,
     tipoSecao: c.TIPO_SECAO, condic: c.CONDIC,
     nomeRaca: c.DESCRICAO, nomeVendedor: c.NOMEXX, nomeLeilao: c.LEILAO,
     dataLeilao: c.LEI_DATLEI, enderecoLeilao: c.LEI_ENDERE,
@@ -50,6 +61,7 @@ const SELECT_LOTE = `
     LEFT JOIN CondicaoPagtos LEICP ON LEICP.ID = LEI.CONDIC`;
 
 export async function listarLotes(idLeilao?: number, busca?: string): Promise<Lote[]> {
+  await garantirColunaQtdAnimais();
   const pool = await getPool();
   const req = pool.request();
   const filtros: string[] = [];
@@ -71,6 +83,7 @@ export async function listarLotes(idLeilao?: number, busca?: string): Promise<Lo
 export async function listarLotesPaginado(
   idLeilao?: number, busca?: string, page = 1, pageSize = 15
 ): Promise<{ items: Lote[]; total: number }> {
+  await garantirColunaQtdAnimais();
   const pool = await getPool();
   const filtros: string[] = [];
   if (idLeilao) filtros.push(`L.IDLEILAO = @idLeilao`);
@@ -100,6 +113,7 @@ export async function listarLotesPaginado(
 }
 
 export async function buscarLotePorId(id: number): Promise<Lote | null> {
+  await garantirColunaQtdAnimais();
   const pool = await getPool();
   const r = await pool.request().input('id', sql.Int, id).query(`${SELECT_LOTE} WHERE L.ID=@id`);
   if (!r.recordset.length) return null;
@@ -107,6 +121,7 @@ export async function buscarLotePorId(id: number): Promise<Lote | null> {
 }
 
 export async function criarLote(d: Lote): Promise<number> {
+  await garantirColunaQtdAnimais();
   const pool = await getPool();
   const r = await pool.request()
     .input('lotexx', sql.VarChar, d.lotexx).input('deslot', sql.VarChar, d.deslot||null)
@@ -120,14 +135,15 @@ export async function criarLote(d: Lote): Promise<number> {
     .input('lanmax', sql.Float, d.lanmax||null).input('urlvideo', sql.VarChar, d.urlvideo||null)
     .input('comentario', sql.VarChar, d.comentario||null).input('multiplo', sql.Int, d.multiplo||null)
     .input('vendido', sql.Char, d.vendido||'N').input('publica', sql.Char, d.publica||'N')
-    .input('condic', sql.Int, d.condic||null)
-    .query(`INSERT INTO Lotes (LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,RACAXX,IDLEILAO,CODVEN,ORDEM,CATEGO,VLRINS,PELAGE,DATNAS,OBSLOT,FILIACAO,LANMAX,URLVideo,Comentario,MULTIPLO,VENDIDO,PUBLICA,CONDIC)
+    .input('condic', sql.Int, d.condic||null).input('qtdAnimais', sql.Int, d.qtdAnimais||null)
+    .query(`INSERT INTO Lotes (LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,RACAXX,IDLEILAO,CODVEN,ORDEM,CATEGO,VLRINS,PELAGE,DATNAS,OBSLOT,FILIACAO,LANMAX,URLVideo,Comentario,MULTIPLO,VENDIDO,PUBLICA,CONDIC,QTDANIMAIS)
       OUTPUT INSERTED.ID
-      VALUES (@lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@racaxx,@idleilao,@codven,@ordem,@catego,@vlrins,@pelage,@datnas,@obslot,@filiacao,@lanmax,@urlvideo,@comentario,@multiplo,@vendido,@publica,@condic)`);
+      VALUES (@lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@racaxx,@idleilao,@codven,@ordem,@catego,@vlrins,@pelage,@datnas,@obslot,@filiacao,@lanmax,@urlvideo,@comentario,@multiplo,@vendido,@publica,@condic,@qtdAnimais)`);
   return r.recordset[0].ID;
 }
 
 export async function atualizarLote(id: number, d: Lote): Promise<void> {
+  await garantirColunaQtdAnimais();
   const pool = await getPool();
   await pool.request()
     .input('id', sql.Int, id).input('lotexx', sql.VarChar, d.lotexx)
@@ -142,11 +158,12 @@ export async function atualizarLote(id: number, d: Lote): Promise<void> {
     .input('urlvideo', sql.VarChar, d.urlvideo||null).input('comentario', sql.VarChar, d.comentario||null)
     .input('multiplo', sql.Int, d.multiplo||null).input('vendido', sql.Char, d.vendido||'N')
     .input('publica', sql.Char, d.publica||'N').input('condic', sql.Int, d.condic||null)
+    .input('qtdAnimais', sql.Int, d.qtdAnimais||null)
     .query(`UPDATE Lotes SET LOTEXX=@lotexx,DESLOT=@deslot,RPXXX=@rpxxx,SBBXXX=@sbbxxx,PESOXX=@pesoxx,
       TATXXX=@tatxxx,RACAXX=@racaxx,IDLEILAO=@idleilao,CODVEN=@codven,ORDEM=@ordem,CATEGO=@catego,
       VLRINS=@vlrins,PELAGE=@pelage,DATNAS=@datnas,OBSLOT=@obslot,FILIACAO=@filiacao,LANMAX=@lanmax,
       URLVideo=@urlvideo,Comentario=@comentario,MULTIPLO=@multiplo,VENDIDO=@vendido,PUBLICA=@publica,
-      CONDIC=@condic WHERE ID=@id`);
+      CONDIC=@condic,QTDANIMAIS=@qtdAnimais WHERE ID=@id`);
 }
 
 /**

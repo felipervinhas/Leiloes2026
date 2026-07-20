@@ -249,6 +249,12 @@ export default function Lotes() {
             <Col xs={12} md={6}><Form.Item name="vlrins" label="Valor Inscrição"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="lanmax" label="Lance Máximo"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="multiplo" label="Múltiplo"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={12} md={6}>
+              <Form.Item name="qtdAnimais" label="Qtd. Animais do Lote"
+                tooltip="Total de animais que compõem o lote. Se preenchido, esse valor é sugerido ao lançar a venda e o lote continua disponível pra novas vendas até esgotar essa quantidade (ex.: vender em partes pra compradores diferentes).">
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
             <Col xs={6} md={3}><Form.Item name="publica" label="Público" valuePropName="checked"><Switch /></Form.Item></Col>
             <Col xs={6} md={3}><Form.Item name="vendido" label="Vendido" valuePropName="checked"><Switch /></Form.Item></Col>
             <Col span={24}><Form.Item name="urlvideo" label="URL Vídeo"><Input /></Form.Item></Col>

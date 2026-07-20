@@ -212,20 +212,40 @@ export async function excluirVenda(id: number): Promise<void> {
 
 // ─── lotes disponíveis ───────────────────────────────────────────────────────
 
+/**
+ * Um lote com QTDANIMAIS preenchido (quantidade total de animais que o
+ * compõem) pode ser vendido em vendas separadas até esgotar essa
+ * quantidade (ex.: lote de 10 animais, um comprador leva 5, outro leva os
+ * 5 restantes numa venda diferente) — continua "disponível" enquanto a
+ * soma vendida (MOVIMENTO_LOTE.QTDXXX de todas as vendas desse lote) for
+ * menor que o total. Lotes sem QTDANIMAIS preenchido mantêm o
+ * comportamento antigo: somem da lista assim que qualquer venda existir
+ * (não dá pra saber "quanto resta" sem saber o total).
+ * Agrega direto em MOVIMENTO_LOTE (não via VWVendas) porque VWVendas
+ * multiplica a linha por comprador quando o lote é rateado — somar por ali
+ * contaria o mesmo QTDXXX várias vezes.
+ */
 export async function lotesDisponiveis(idLeilao: number) {
   const pool = await getPool();
   const r = await pool.request()
     .input('idLeilao', sql.Int, idLeilao)
     .query(`
       SELECT L.*, C.NOMEXX, R.DESCRICAO AS DESCRICAORACA, R.ESPECIES, R.RACA,
-             CP.DESFIN AS CONDICAO_DESFIN
+             CP.DESFIN AS CONDICAO_DESFIN, ISNULL(MLV.QTD_VENDIDA, 0) AS QTD_VENDIDA
       FROM LOTES L
       LEFT JOIN CLIENTES C   ON C.ID = L.CODVEN
       LEFT JOIN RACAS R      ON R.ID = L.RACAXX
       LEFT JOIN CONDICAOPAGTOS CP ON CP.ID = L.CONDIC
-      LEFT JOIN VWVENDAS V   ON V.IDLOTE = L.ID
+      LEFT JOIN (
+        SELECT IDLOTE, SUM(ISNULL(QTDXXX, 0)) AS QTD_VENDIDA
+        FROM MOVIMENTO_LOTE
+        GROUP BY IDLOTE
+      ) MLV ON MLV.IDLOTE = L.ID
       WHERE L.IDLEILAO = @idLeilao
-        AND V.ID IS NULL
+        AND (
+          MLV.QTD_VENDIDA IS NULL
+          OR (L.QTDANIMAIS IS NOT NULL AND MLV.QTD_VENDIDA < L.QTDANIMAIS)
+        )
       ORDER BY TRY_CAST(L.ORDEM AS INT), L.ORDEM
     `);
   return r.recordset.map((row: any) => ({
@@ -249,6 +269,9 @@ export async function lotesDisponiveis(idLeilao: number) {
     filiacoa:    row.FILIACAO,
     ordem:       row.ORDEM,
     obslot:      row.OBSLOT,
+    qtdAnimais:  row.QTDANIMAIS,
+    qtdVendida:  row.QTD_VENDIDA,
+    qtdRestante: row.QTDANIMAIS != null ? row.QTDANIMAIS - row.QTD_VENDIDA : undefined,
   }));
 }
 
@@ -322,7 +345,7 @@ export async function buscarLoteMovimento(idMov: number) {
         ML.QTDXXX, ML.CODVEN AS CODVEN_ML, ML.LOTEXX AS LOTEXX_ML,
         ML.COMISS_VENDEDOR,
         L.LOTEXX, L.DESLOT, L.RPXXX, L.SBBXXX, L.PESOXX,
-        L.PELAGE, L.DATNAS, L.RACAXX, L.CODVEN,
+        L.PELAGE, L.DATNAS, L.RACAXX, L.CODVEN, L.QTDANIMAIS,
         C.NOMEXX AS NOME_VENDEDOR,
         R.DESCRICAO AS DESCRICAORACA, R.ESPECIES
       FROM MOVIMENTO_LOTE ML
@@ -333,6 +356,24 @@ export async function buscarLoteMovimento(idMov: number) {
     `);
   if (!r.recordset.length) return null;
   const row = r.recordset[0];
+
+  // Quanto essa venda pode ter em QTDXXX sem estourar o total do lote —
+  // soma tudo que já foi vendido do mesmo lote (outras vendas) e subtrai
+  // do total cadastrado; a própria quantidade desta venda não conta como
+  // "consumida" pra esse cálculo, senão o teto encolheria a cada edição.
+  let qtdRestante: number | undefined;
+  if (row.QTDANIMAIS != null && row.IDLOTE != null) {
+    const rSoma = await pool.request()
+      .input('idLote', sql.Int, row.IDLOTE)
+      .input('idMov', sql.Int, idMov)
+      .query(`
+        SELECT SUM(ISNULL(QTDXXX, 0)) AS QTD_OUTRAS
+        FROM MOVIMENTO_LOTE WHERE IDLOTE = @idLote AND IDMOV <> @idMov
+      `);
+    const vendidoPorOutras = rSoma.recordset[0]?.QTD_OUTRAS || 0;
+    qtdRestante = row.QTDANIMAIS - vendidoPorOutras;
+  }
+
   return {
     id:            row.ID,
     idMov:         row.IDMOV,
@@ -356,6 +397,8 @@ export async function buscarLoteMovimento(idMov: number) {
     comiss:        row.COMISS,
     comissVendedor: row.COMISS_VENDEDOR,
     datlan:        row.DATLAN,
+    qtdAnimais:    row.QTDANIMAIS,
+    qtdRestante,
   };
 }
 

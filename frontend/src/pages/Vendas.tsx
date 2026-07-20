@@ -864,6 +864,10 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     const comcom = leilaoInfo?.comcom ?? 0;
     const comven = leilaoInfo?.comven ?? 0;
 
+    // Se o lote tem quantidade de animais cadastrada, sugere o que resta
+    // vender (o lote pode já ter sido parcialmente vendido em outra venda).
+    const qtdSugerida = det?.qtdRestante ?? 1;
+
     // Se o lote tem lance online (vlrins), usa como valor parcela
     const vlrpar = det?.vlrins ?? 0;
     const vlrtot = vlrpar * qtdpar;
@@ -871,7 +875,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     const comissVend = vlrtot * (comven / 100);
 
     form1.setFieldsValue({
-      idLote: id, qtdxxx: 1, vlrpar, vlrtot, vlrdes: 0,
+      idLote: id, qtdxxx: qtdSugerida, vlrpar, vlrtot, vlrdes: 0,
       _comiss: comiss, _comissVend: comissVend,
     });
   };
@@ -936,6 +940,18 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   const salvarStep1 = async () => {
     const vals = await form1.validateFields();
     if (!movId) return;
+
+    // Aviso não bloqueante: o lote tem quantidade de animais cadastrada e o
+    // usuário está lançando mais do que resta disponível (outras vendas já
+    // consumiram parte). Só avisa — o usuário pode ter um motivo legítimo
+    // pra prosseguir mesmo assim (ex.: correção de cadastro).
+    if (loteDetalhes?.qtdRestante != null && vals.qtdxxx > loteDetalhes.qtdRestante) {
+      message.warning(
+        `Atenção: restam ${loteDetalhes.qtdRestante} animal(is) neste lote, mas ${vals.qtdxxx} foram informados.`,
+        6,
+      );
+    }
+
     setSalvando(true);
     try {
       const comcom = leilaoInfo?.comcom ?? 0;

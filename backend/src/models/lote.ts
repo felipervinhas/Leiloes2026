@@ -22,6 +22,7 @@ export interface Lote {
   multiplo?: number;
   vendido?: string;
   publica?: string;
+  qtdAnimais?: number;
   tipoSecao?: string;
   condic?: number;
   nomeRaca?: string;
