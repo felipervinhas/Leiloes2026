@@ -29,6 +29,7 @@ import Despesas from './pages/Despesas';
 import AcertoVendedor from './pages/AcertoVendedor';
 import EditorRelatorios from './pages/EditorRelatorios';
 import PainelLeiloeiro from './pages/PainelLeiloeiro';
+import Chamados from './pages/Chamados';
 import { BANCOS_PERMITIDOS } from './config/bancos';
 
 function UrlInvalida() {
@@ -108,6 +109,7 @@ function App() {
                 <Route path="despesas" element={<Despesas />} />
                 <Route path="acerto-vendedor" element={<AcertoVendedor />} />
                 <Route path="editor-relatorios" element={<EditorRelatorios />} />
+                <Route path="chamados" element={<Chamados />} />
               </Route>
             </Route>
           </Route>

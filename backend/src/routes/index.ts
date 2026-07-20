@@ -1,6 +1,8 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { bancoMiddleware } from '../middleware/banco';
+import { bancoStorage } from '../config/bancoContext';
+import { resolveBancoReal } from '../config/bancoAliases';
 import authRoutes from './auth';
 import * as cidade from '../controllers/cidadeController';
 import * as raca from '../controllers/racaController';
@@ -27,10 +29,21 @@ import * as permissaoDash from '../controllers/permissaoDashboardController';
 import * as contrato  from '../controllers/contratoController';
 import * as relatorioLayout from '../controllers/relatorioLayoutController';
 import * as preferencia from '../controllers/preferenciaController';
+import * as chamado from '../controllers/chamadoController';
 import { chatAI } from '../controllers/aiController';
 import multer from 'multer';
 
 const memStorage = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+// O multer processa o corpo multipart de forma assíncrona (busboy) e isso
+// perde o contexto do AsyncLocalStorage que guarda qual banco está em uso
+// nesta requisição — sem isso, getBanco() cai no fallback (banco padrão do
+// .env) e a query roda no tenant errado. Reafirma o contexto logo depois do
+// multer, antes do controller, em qualquer rota que combine upload + banco.
+function reafirmarBanco(req: Request, res: Response, next: NextFunction) {
+  const banco = resolveBancoReal(req.params.banco);
+  bancoStorage.run(banco, next);
+}
 
 const router = Router();
 
@@ -95,6 +108,12 @@ bancoRouter.get('/condicoes-pagamento/:id', condicao.buscar);
 bancoRouter.post('/condicoes-pagamento', condicao.criar);
 bancoRouter.put('/condicoes-pagamento/:id', condicao.atualizar);
 bancoRouter.delete('/condicoes-pagamento/:id', condicao.deletar);
+
+bancoRouter.get('/chamados', chamado.listar);
+bancoRouter.get('/chamados/:id', chamado.buscar);
+bancoRouter.post('/chamados', memStorage.single('imagem'), reafirmarBanco, chamado.criar);
+bancoRouter.patch('/chamados/:id/status', chamado.atualizarStatus);
+bancoRouter.delete('/chamados/:id', chamado.deletar);
 
 bancoRouter.get('/perfis', perfil.listar);
 bancoRouter.get('/perfis/:id', perfil.buscar);

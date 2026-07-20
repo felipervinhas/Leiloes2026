@@ -6,7 +6,7 @@ import {
   CreditCardOutlined, SafetyOutlined, SettingOutlined, MenuFoldOutlined,
   MenuUnfoldOutlined, TrophyOutlined, BellOutlined, LineChartOutlined,
   DollarOutlined, WalletOutlined, FileSearchOutlined, OrderedListOutlined,
-  FileTextOutlined, MenuOutlined, TagsOutlined, SoundOutlined,
+  FileTextOutlined, MenuOutlined, TagsOutlined, SoundOutlined, BugOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +18,7 @@ const { Header, Sider, Content } = Layout;
 
 const ALL_MENU_ITEMS = [
   { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard', controle: undefined },
+  { key: '/chamados', icon: <BugOutlined />, label: 'Chamados', controle: undefined },
   {
     key: 'leiloes-group', icon: <CalendarOutlined />, label: 'Leilões', controle: 'Leilões',
     children: [
@@ -67,6 +68,7 @@ const ALL_MENU_ITEMS = [
 
 const ROUTE_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
   '/dashboard': { label: 'Dashboard', icon: <DashboardOutlined /> },
+  '/chamados': { label: 'Chamados', icon: <BugOutlined /> },
   '/leiloes': { label: 'Leilões', icon: <CalendarOutlined /> },
   '/lotes': { label: 'Lotes', icon: <ShoppingOutlined /> },
   '/lances': { label: 'Lances', icon: <TrophyOutlined /> },

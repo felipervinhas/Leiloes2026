@@ -34,4 +34,5 @@ export const s3Keys = {
   leilaoMobile:  (id: number) => `mobile_leilao_img_${id}.png`,
   leilaoMedia:   (id: number) => `leilao_media_${id}.jpg`,
   loteImagem:    (id: number, num: 1 | 2 | 3 | 4) => `lote_${num}_img_${id}.jpg`,
+  chamadoImagem: (id: number) => `chamados/chamado_${id}.jpg`,
 };
