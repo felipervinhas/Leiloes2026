@@ -85,10 +85,15 @@ test('cadastro de clientes: criar com dados completos, confirmar persistência, 
 
   await page.click('button:has-text("Salvar")', { force: true });
   await expect(page.locator('text=Salvo com sucesso')).toBeVisible();
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(1500);
+
+  // A gaveta agora permanece aberta (em modo edição) após salvar — precisa
+  // fechar explicitamente antes de mexer no filtro da listagem por trás.
+  await page.click('button:has-text("Cancelar")', { force: true });
+  await page.waitForTimeout(500);
 
   // ── Confirmar na listagem ────────────────────────────────────────────
-  await page.fill('input[placeholder="Buscar..."]', nomeUnico);
+  await page.fill('input[placeholder="Nome"]', nomeUnico);
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1200);
 
@@ -120,9 +125,11 @@ test('cadastro de clientes: criar com dados completos, confirmar persistência, 
   await drawer(page).locator('#nomexx').fill(nomeEditado);
   await page.click('button:has-text("Salvar")', { force: true });
   await expect(page.locator('text=Salvo com sucesso')).toBeVisible();
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(1500);
+  await page.click('button:has-text("Cancelar")', { force: true });
+  await page.waitForTimeout(500);
 
-  await page.fill('input[placeholder="Buscar..."]', nomeEditado);
+  await page.fill('input[placeholder="Nome"]', nomeEditado);
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1200);
   await expect(page.locator('table tbody tr', { hasText: nomeEditado })).toHaveCount(1);
@@ -131,7 +138,7 @@ test('cadastro de clientes: criar com dados completos, confirmar persistência, 
   const token = await login(request);
   const buscaRes = await request.get(`${API_URL}/api/${BANCO}/clientes`, {
     headers: { Authorization: `Bearer ${token}` },
-    params: { busca: nomeEditado, filtro: 'nome' },
+    params: { nome: nomeEditado },
   });
   const encontrados = await buscaRes.json();
   expect(encontrados.length, 'deveria achar o cliente de teste para limpar').toBeGreaterThan(0);
