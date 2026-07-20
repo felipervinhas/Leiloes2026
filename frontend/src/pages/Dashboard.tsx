@@ -174,7 +174,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [pieActive, setPieActive] = useState(0);
 
-  const [selectedCategoria, setSelectedCategoria] = useState<number | undefined>(undefined);
+  const [selectedCategorias, setSelectedCategorias] = useState<(number | null)[]>([]);
   const [topsPorCategoria, setTopsPorCategoria] = useState<TopsPorCategoria | null>(null);
   const [topsCategoryLoading, setTopsCategoryLoading] = useState(false);
 
@@ -233,23 +233,31 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!banco || !data || data.categorias.length === 0) return;
-    
-    // Define categoria padrão como primeira categoria se não houver selecionada
-    if (!selectedCategoria) {
-      setSelectedCategoria(data.categorias[0].id ?? undefined);
-      return;
+
+    // Define categoria padrão como primeira categoria se não houver nenhuma selecionada
+    if (selectedCategorias.length === 0) {
+      setSelectedCategorias([data.categorias[0].id]);
     }
-  }, [data, banco, selectedCategoria]);
+  }, [data, banco]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleCategoria = (id: number | null) => {
+    setSelectedCategorias(prev =>
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    );
+  };
 
   useEffect(() => {
-    if (!banco || !selectedCategoria) return;
-    
+    if (!banco) return;
+
+    const idsValidos = selectedCategorias.filter((id): id is number => id != null);
     setTopsCategoryLoading(true);
-    api.get(`/${banco}/dashboard/tops-categoria`, { params: { categoria: selectedCategoria } })
+    api.get(`/${banco}/dashboard/tops-categoria`, {
+      params: idsValidos.length ? { categorias: idsValidos.join(',') } : {},
+    })
       .then(r => setTopsPorCategoria(r.data))
       .catch(() => setTopsPorCategoria(null))
       .finally(() => setTopsCategoryLoading(false));
-  }, [banco, selectedCategoria]);
+  }, [banco, selectedCategorias]);
 
   const abrirDrawer = async () => {
     setDrawerOpen(true);
@@ -584,9 +592,9 @@ export default function Dashboard() {
                 {data.categorias.map((cat) => (
                   <Button
                     key={cat.id}
-                    type={selectedCategoria === cat.id ? 'primary' : 'default'}
+                    type={selectedCategorias.includes(cat.id) ? 'primary' : 'default'}
                     size="small"
-                    onClick={() => setSelectedCategoria(cat.id ?? undefined)}
+                    onClick={() => toggleCategoria(cat.id)}
                     style={{
                       borderRadius: 6,
                     }}

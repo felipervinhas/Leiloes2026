@@ -43,8 +43,10 @@ export const cadastrosIncompletos = async (req: Request, res: Response) => {
 
 export const topsPorCategoria = async (req: Request, res: Response) => {
   try {
-    const idCategoria = req.query.categoria ? Number(req.query.categoria) : undefined;
-    const data = await getTopsPorCategoria(idCategoria);
+    const idsCategoria = req.query.categorias
+      ? String(req.query.categorias).split(',').map(Number).filter(n => !isNaN(n))
+      : undefined;
+    const data = await getTopsPorCategoria(idsCategoria);
     res.json(data);
   } catch (err: any) {
     res.status(500).json({ erro: err.message });

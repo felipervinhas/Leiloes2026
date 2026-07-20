@@ -232,14 +232,23 @@ export async function getCadastrosIncompletos() {
   }));
 }
 
-export async function getTopsPorCategoria(idCategoria?: number) {
+export async function getTopsPorCategoria(idsCategoria?: number[]) {
   const pool = await getPool();
+  const ids = idsCategoria && idsCategoria.length ? idsCategoria : undefined;
+
+  const reqCompradores = pool.request();
+  const filtroCompradores = ids
+    ? `LO.RACAXX IN (${ids.map((id, i) => { reqCompradores.input(`cat${i}`, sql.Int, id); return `@cat${i}`; }).join(',')})`
+    : '1=1';
+
+  const reqVendedores = pool.request();
+  const filtroVendedores = ids
+    ? `LO.RACAXX IN (${ids.map((id, i) => { reqVendedores.input(`cat${i}`, sql.Int, id); return `@cat${i}`; }).join(',')})`
+    : '1=1';
 
   const [rCompradores, rVendedores] = await Promise.all([
-    // Top 5 compradores por categoria
-    pool.request()
-      .input('idCategoria', sql.Int, idCategoria ?? null)
-      .query(`
+    // Top 5 compradores por categoria(s)
+    reqCompradores.query(`
         SELECT TOP 5
           C.ID,
           C.NOMEXX AS NOME,
@@ -251,15 +260,13 @@ export async function getTopsPorCategoria(idCategoria?: number) {
         INNER JOIN MOVIMENTO_LOTE ML ON ML.IDMOV = MC.IDMOV
         INNER JOIN LOTES LO ON LO.ID = ML.IDLOTE
         WHERE MC.VALORORIGINAL > 0
-          AND (LO.RACAXX = @idCategoria OR @idCategoria IS NULL)
+          AND ${filtroCompradores}
         GROUP BY MC.IDCLI, C.NOMEXX, C.ID
         ORDER BY VALOR_TOTAL DESC
       `),
 
-    // Top 5 vendedores por categoria
-    pool.request()
-      .input('idCategoria', sql.Int, idCategoria ?? null)
-      .query(`
+    // Top 5 vendedores por categoria(s)
+    reqVendedores.query(`
         SELECT TOP 5
           V.ID,
           V.NOMEXX AS NOME,
@@ -272,7 +279,7 @@ export async function getTopsPorCategoria(idCategoria?: number) {
         INNER JOIN MOVIMENTO_COMPRADOR MC ON MC.IDMOV = M.ID
         INNER JOIN CLIENTES V ON V.ID = LO.CODVEN
         WHERE MC.VALORORIGINAL > 0 AND LO.CODVEN IS NOT NULL
-          AND (LO.RACAXX = @idCategoria OR @idCategoria IS NULL)
+          AND ${filtroVendedores}
         GROUP BY LO.CODVEN, V.NOMEXX, V.ID
         ORDER BY VALOR_TOTAL DESC
       `),
