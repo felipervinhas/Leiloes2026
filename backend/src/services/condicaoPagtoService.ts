@@ -34,38 +34,59 @@ export async function buscarCondicaoPorId(id: number): Promise<CondicaoPagto | n
   return mapRow(r.recordset[0]);
 }
 
+type ParcKey = keyof Omit<CondicaoPagto, 'id'>;
+const PARC_KEYS = Array.from({ length: 15 }, (_, i) => `parc${String(i + 1).padStart(2, '0')}`) as ParcKey[];
+
+function bindParcelas(req: sql.Request, d: Omit<CondicaoPagto, 'id'>) {
+  for (const key of PARC_KEYS) {
+    req.input(key, sql.VarChar, (d[key] as string) || null);
+  }
+}
+
 export async function criarCondicao(d: Omit<CondicaoPagto, 'id'>): Promise<number> {
   const pool = await getPool();
-  const r = await pool.request()
+  const req = pool.request()
     .input('desfin', sql.VarChar, d.desfin).input('przmed', sql.Int, d.przmed || null)
     .input('qtdpar', sql.VarChar, d.qtdpar || null).input('avista', sql.VarChar, d.avista || null)
     .input('entrad', sql.VarChar, d.entrad || null).input('invert', sql.VarChar, d.invert || null)
     .input('safrax', sql.VarChar, d.safrax || null).input('descon', sql.VarChar, d.descon || null)
     .input('salpar', sql.VarChar, d.salpar || null)
-    .input('parc01', sql.VarChar, d.parc01||null).input('parc02', sql.VarChar, d.parc02||null)
-    .input('parc03', sql.VarChar, d.parc03||null).input('parc04', sql.VarChar, d.parc04||null)
-    .input('parc05', sql.VarChar, d.parc05||null).input('parc06', sql.VarChar, d.parc06||null)
-    .query(`INSERT INTO CondicaoPagtos (DESFIN,PRZMED,QTDPAR,AVISTA,ENTRAD,INVERT,SAFRAX,DESCON,SALPAR,PARC01,PARC02,PARC03,PARC04,PARC05,PARC06)
+    .input('entradaSafra', sql.Decimal, d.entradaSafra || null)
+    .input('descontoEntradaSafra', sql.Decimal, d.descontoEntradaSafra || null)
+    .input('saldoSafra', sql.Decimal, d.saldoSafra || null)
+    .input('descontoSaldoSafra', sql.Decimal, d.descontoSaldoSafra || null);
+  bindParcelas(req, d);
+  const parcCols = PARC_KEYS.map(k => k.toUpperCase()).join(',');
+  const parcVals = PARC_KEYS.map(k => `@${k}`).join(',');
+  const r = await req.query(`INSERT INTO CondicaoPagtos
+      (DESFIN,PRZMED,QTDPAR,AVISTA,ENTRAD,INVERT,SAFRAX,DESCON,SALPAR,
+       ENTRADA_SAFRA,DESCONTO_ENTRADA_SAFRA,SALDO_SAFRA,DESCONTO_SALDO_SAFRA,${parcCols})
       OUTPUT INSERTED.ID
-      VALUES (@desfin,@przmed,@qtdpar,@avista,@entrad,@invert,@safrax,@descon,@salpar,@parc01,@parc02,@parc03,@parc04,@parc05,@parc06)`);
+      VALUES (@desfin,@przmed,@qtdpar,@avista,@entrad,@invert,@safrax,@descon,@salpar,
+              @entradaSafra,@descontoEntradaSafra,@saldoSafra,@descontoSaldoSafra,${parcVals})`);
   return r.recordset[0].ID;
 }
 
 export async function atualizarCondicao(id: number, d: Omit<CondicaoPagto, 'id'>): Promise<void> {
   const pool = await getPool();
-  await pool.request()
+  const req = pool.request()
     .input('id', sql.Int, id)
     .input('desfin', sql.VarChar, d.desfin).input('przmed', sql.Int, d.przmed || null)
     .input('qtdpar', sql.VarChar, d.qtdpar || null).input('avista', sql.VarChar, d.avista || null)
     .input('entrad', sql.VarChar, d.entrad || null).input('invert', sql.VarChar, d.invert || null)
     .input('safrax', sql.VarChar, d.safrax || null).input('descon', sql.VarChar, d.descon || null)
     .input('salpar', sql.VarChar, d.salpar || null)
-    .input('parc01', sql.VarChar, d.parc01||null).input('parc02', sql.VarChar, d.parc02||null)
-    .input('parc03', sql.VarChar, d.parc03||null).input('parc04', sql.VarChar, d.parc04||null)
-    .input('parc05', sql.VarChar, d.parc05||null).input('parc06', sql.VarChar, d.parc06||null)
-    .query(`UPDATE CondicaoPagtos SET DESFIN=@desfin,PRZMED=@przmed,QTDPAR=@qtdpar,AVISTA=@avista,ENTRAD=@entrad,
+    .input('entradaSafra', sql.Decimal, d.entradaSafra || null)
+    .input('descontoEntradaSafra', sql.Decimal, d.descontoEntradaSafra || null)
+    .input('saldoSafra', sql.Decimal, d.saldoSafra || null)
+    .input('descontoSaldoSafra', sql.Decimal, d.descontoSaldoSafra || null);
+  bindParcelas(req, d);
+  const parcSets = PARC_KEYS.map(k => `${k.toUpperCase()}=@${k}`).join(',');
+  await req.query(`UPDATE CondicaoPagtos SET DESFIN=@desfin,PRZMED=@przmed,QTDPAR=@qtdpar,AVISTA=@avista,ENTRAD=@entrad,
       INVERT=@invert,SAFRAX=@safrax,DESCON=@descon,SALPAR=@salpar,
-      PARC01=@parc01,PARC02=@parc02,PARC03=@parc03,PARC04=@parc04,PARC05=@parc05,PARC06=@parc06
+      ENTRADA_SAFRA=@entradaSafra,DESCONTO_ENTRADA_SAFRA=@descontoEntradaSafra,
+      SALDO_SAFRA=@saldoSafra,DESCONTO_SALDO_SAFRA=@descontoSaldoSafra,
+      ${parcSets}
       WHERE ID=@id`);
 }
 

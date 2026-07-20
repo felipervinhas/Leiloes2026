@@ -5,7 +5,11 @@ import api from '../services/api';
 
 const { Title } = Typography;
 
-interface Condicao { id: number; desfin: string; przmed?: number; qtdpar?: string; avista?: string; entrad?: string; descon?: string; }
+interface Condicao {
+  id: number; desfin: string; przmed?: number; qtdpar?: string; avista?: string; entrad?: string; descon?: string;
+  salpar?: string; invert?: string; safrax?: string;
+  entradaSafra?: number; descontoEntradaSafra?: number; saldoSafra?: number; descontoSaldoSafra?: number;
+}
 
 export default function CondicoesPagamento() {
   const [dados, setDados] = useState<Condicao[]>([]);
@@ -14,6 +18,7 @@ export default function CondicoesPagamento() {
   const [editando, setEditando] = useState<Condicao | null>(null);
   const [busca, setBusca] = useState('');
   const [form] = Form.useForm();
+  const safraxAtivo = Form.useWatch('safrax', form) === 'S';
 
   const carregar = async (b = '') => {
     setLoading(true);
@@ -69,7 +74,7 @@ export default function CondicoesPagamento() {
     },
   ];
 
-  const parcFields = Array.from({ length: 6 }, (_, i) => `parc0${i + 1}`);
+  const parcFields = Array.from({ length: 15 }, (_, i) => `parc${String(i + 1).padStart(2, '0')}`);
 
   return (
     <>
@@ -95,27 +100,44 @@ export default function CondicoesPagamento() {
             <Input />
           </Form.Item>
           <Row gutter={12}>
-            <Col xs={24} sm={8}><Form.Item name="qtdpar" label="Qtd. Parcelas"><Input /></Form.Item></Col>
-            <Col xs={24} sm={8}><Form.Item name="przmed" label="Prazo Médio (dias)"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-            <Col xs={24} sm={8}><Form.Item name="descon" label="Desconto (%)"><Input /></Form.Item></Col>
+            <Col xs={24} sm={6}><Form.Item name="qtdpar" label="Qtd. Parcelas"><Input /></Form.Item></Col>
+            <Col xs={24} sm={6}><Form.Item name="przmed" label="Prazo Médio (dias)"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={24} sm={6}><Form.Item name="descon" label="Desconto (%)"><Input /></Form.Item></Col>
+            <Col xs={24} sm={6}><Form.Item name="salpar" label="Parc. Saldo" tooltip="Quantidade de parcelas do saldo restante"><Input /></Form.Item></Col>
           </Row>
           <Row gutter={12}>
-            <Col xs={24} sm={8}>
+            <Col xs={24} sm={6}>
               <Form.Item name="avista" label="À Vista">
                 <Select options={[{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }]} />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={8}>
+            <Col xs={24} sm={6}>
               <Form.Item name="entrad" label="Entrada">
                 <Select options={[{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }]} />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={8}>
+            <Col xs={24} sm={6}>
               <Form.Item name="invert" label="Inverter Qtd.">
                 <Select options={[{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }]} />
               </Form.Item>
             </Col>
+            <Col xs={24} sm={6}>
+              <Form.Item name="safrax" label="Plano Safra">
+                <Select options={[{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }]} />
+              </Form.Item>
+            </Col>
           </Row>
+          {safraxAtivo && (
+            <>
+              <Divider plain>Plano Safra</Divider>
+              <Row gutter={12}>
+                <Col xs={12} sm={6}><Form.Item name="entradaSafra" label="% Entrada"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                <Col xs={12} sm={6}><Form.Item name="descontoEntradaSafra" label="% Desconto Entrada"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                <Col xs={12} sm={6}><Form.Item name="saldoSafra" label="% Saldo"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                <Col xs={12} sm={6}><Form.Item name="descontoSaldoSafra" label="% Desconto Saldo"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+              </Row>
+            </>
+          )}
           <Divider plain>Vencimentos das Parcelas (dias)</Divider>
           <Row gutter={12}>
             {parcFields.map((f, i) => (
