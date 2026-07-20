@@ -86,8 +86,8 @@ function NotaVendaPagina({ dados, comp, empresa, logoBase64 }: { dados: FaturaDa
           <Text style={s.empresa}>{empresa}</Text>
         </View>
         <View style={s.headerDir}>
-          <Text style={s.titulo}>NOTA DE VENDA</Text>
-          <Text style={s.subTitulo}>Nota de Leilão — {dados.leilao || '—'}</Text>
+          <Text style={s.titulo}>NOTA DE LEILÃO</Text>
+          <Text style={s.subTitulo}>{dados.leilao || '—'}</Text>
           <Text style={s.subTitulo}>Nº Nota: {dados.codnot || dados.id}   ·   Data: {dados.datlan}</Text>
         </View>
       </View>
@@ -177,7 +177,7 @@ function NotaVendaPagina({ dados, comp, empresa, logoBase64 }: { dados: FaturaDa
 function NotaVendaPDF({ dados, empresa, logoBase64 }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   return (
-    <Document title={`Nota de Venda — Nota ${dados.codnot || dados.id}`} author={nomeEmpresa}>
+    <Document title={`Nota de Leilão — Nota ${dados.codnot || dados.id}`} author={nomeEmpresa}>
       {dados.compradores.map(comp => (
         <NotaVendaPagina key={comp.id} dados={dados} comp={comp} empresa={nomeEmpresa} logoBase64={logoBase64} />
       ))}

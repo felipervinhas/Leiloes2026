@@ -299,7 +299,7 @@ function Listagem({
                   children: [
                     { key: 'fatura',          label: 'Fatura de Compras',  icon: <FileDoneOutlined />, onClick: () => abrirFatura(row.id) },
                     { key: 'promissoria',     label: 'Promissórias',       icon: <AuditOutlined />,    onClick: () => abrirPromissoria(row.id) },
-                    { key: 'notaVenda',       label: 'Nota de Venda',      onClick: () => abrirNotaVenda(row.id) },
+                    { key: 'notaVenda',       label: 'Nota de Leilão',     onClick: () => abrirNotaVenda(row.id) },
                     { key: 'faturaSindicato', label: 'Fatura Sindicatos',  onClick: () => abrirFatura(row.id, 'sindicato') },
                     { key: 'faturaVendedor',  label: 'Fatura de Vendedor', onClick: () => abrirFatura(row.id, 'vendedor') },
                     { key: 'contrato',        label: 'Contrato',           onClick: () => abrirContrato(row) },
@@ -431,7 +431,7 @@ function Listagem({
         )}
       </Modal>
 
-      {/* Modal Nota de Venda */}
+      {/* Modal Nota de Leilão */}
       <Modal
         open={notaVendaModal}
         onCancel={() => { setNotaVendaModal(false); setNotaVendaData(null); setNotaVendaLayout(null); }}
@@ -439,7 +439,7 @@ function Listagem({
         title={
           <Space>
             <FileTextOutlined />
-            <span>Nota de Venda {notaVendaData ? `— Boleto ${notaVendaData.codnot || notaVendaData.id}` : ''}</span>
+            <span>Nota de Leilão {notaVendaData ? `— Boleto ${notaVendaData.codnot || notaVendaData.id}` : ''}</span>
           </Space>
         }
         width={480}
@@ -458,7 +458,7 @@ function Listagem({
             <BlobProvider
               document={
                 notaVendaLayout
-                  ? <PromissoriaDinamica dados={notaVendaData} layout={notaVendaLayout} empresa={config.empresa} logoBase64={config.logoBase64} titulo="Nota de Venda" />
+                  ? <PromissoriaDinamica dados={notaVendaData} layout={notaVendaLayout} empresa={config.empresa} logoBase64={config.logoBase64} titulo="Nota de Leilão" />
                   : <NotaVendaPDF dados={notaVendaData} empresa={config.empresa} logoBase64={config.logoBase64} />
               }
             >
@@ -472,7 +472,7 @@ function Listagem({
                   onClick={() => url && window.open(url, '_blank')}
                   style={{ width: '100%' }}
                 >
-                  {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Nota de Venda'}
+                  {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Nota de Leilão'}
                 </Button>
               )}
             </BlobProvider>

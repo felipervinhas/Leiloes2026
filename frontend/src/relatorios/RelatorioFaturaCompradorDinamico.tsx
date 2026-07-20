@@ -65,7 +65,7 @@ function CampoTexto({ campo, texto, altura }: { campo: CampoLayout; texto: strin
 
 /**
  * Renderiza a Fatura de Comprador a partir de um layout salvo pelo editor visual.
- * Diferente da Promissória/Nota de Venda: é UMA página única, com campos fixos
+ * Diferente da Promissória/Nota de Leilão: é UMA página única, com campos fixos
  * (cabeçalho, lote, vendedor) mais um bloco "de compradores" que se repete em
  * fluxo normal do documento (empilhado, com quebra de página automática).
  */

@@ -12,7 +12,7 @@ interface Props {
   empresa?: string;
   /** Logotipo da empresa em data URI; se ausente, usa o logotipo padrão do sistema. */
   logoBase64?: string | null;
-  /** título usado no Document (metadado do PDF) — este motor serve tanto a Promissória quanto a Nota de Venda */
+  /** título usado no Document (metadado do PDF) — este motor serve tanto a Promissória quanto a Nota de Leilão */
   titulo?: string;
 }
 

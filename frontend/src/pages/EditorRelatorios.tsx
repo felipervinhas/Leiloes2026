@@ -83,8 +83,8 @@ const TIPOS_RELATORIO: TipoRelatorioConfig[] = [
     larguraMM: 210, alturaMM: 297,
   },
   {
-    tipo: 'nota_venda', label: 'Nota de Venda', familia: 'fatura',
-    campos: PROMISSORIA_CAMPOS, tituloDocumento: 'Nota de Venda', suportaBlocoParcelas: true,
+    tipo: 'nota_venda', label: 'Nota de Leilão', familia: 'fatura',
+    campos: PROMISSORIA_CAMPOS, tituloDocumento: 'Nota de Leilão', suportaBlocoParcelas: true,
     larguraMM: 210, alturaMM: 297,
   },
   {
