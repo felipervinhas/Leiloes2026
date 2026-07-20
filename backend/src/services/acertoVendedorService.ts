@@ -99,7 +99,7 @@ export async function calcularAcertoVendedor(idLeilao: number, idVendedor: numbe
   return {
     idLeilao,
     leilao: rLeilao.recordset[0]?.LEILAO,
-    datlei: rLeilao.recordset[0]?.DATLEI ? new Date(rLeilao.recordset[0].DATLEI).toLocaleDateString('pt-BR') : undefined,
+    datlei: rLeilao.recordset[0]?.DATLEI ? new Date(rLeilao.recordset[0].DATLEI).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : undefined,
     idVendedor,
     vendedor: rVendedor.recordset[0]?.NOMEXX,
     entradas,

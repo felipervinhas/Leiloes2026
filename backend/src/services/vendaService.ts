@@ -956,9 +956,9 @@ export async function dadosFatura(idMov: number) {
   return {
     id:       mov.ID,
     codnot:   mov.CODNOT,
-    datlan:   mov.DATLAN ? new Date(mov.DATLAN).toLocaleDateString('pt-BR') : '—',
+    datlan:   mov.DATLAN ? new Date(mov.DATLAN).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—',
     leilao:   mov.LEILAO,
-    datlei:   mov.DATLEI ? new Date(mov.DATLEI).toLocaleDateString('pt-BR') : '—',
+    datlei:   mov.DATLEI ? new Date(mov.DATLEI).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—',
     lote: l ? {
       lotexx:        l.LOTEXX,
       deslot:        l.DESLOT,
@@ -974,7 +974,7 @@ export async function dadosFatura(idMov: number) {
       vlrdes:        l.VLRDES,
       comiss:        l.COMISS,
       comissVendedor: l.COMISS_VENDEDOR,
-      datnas:        l.DATNAS ? new Date(l.DATNAS).toLocaleDateString('pt-BR') : undefined,
+      datnas:        l.DATNAS ? new Date(l.DATNAS).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : undefined,
       obslot:        l.OBSLOT,
       pelagem:       l.PELAGE,
       nomeVendedor:  l.NOME_VENDEDOR,
@@ -1141,7 +1141,7 @@ export async function dadosFaturaUnificada(ids: number[]): Promise<FaturaUnifica
       grupos.set(chave, {
         idLeilao: r.IDLEILAO,
         leilao: r.LEILAO,
-        datlei: r.DATLEI ? new Date(r.DATLEI).toLocaleDateString('pt-BR') : undefined,
+        datlei: r.DATLEI ? new Date(r.DATLEI).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : undefined,
         vendedor: {
           id: idVendedor, nomexx: r.NOME_VENDEDOR, cpfxxx: r.CPF_VENDEDOR, cnpjxx: r.CNPJ_VENDEDOR,
           endere: r.ENDERE_VENDEDOR, bairro: r.BAIRRO_VENDEDOR, cepxxx: r.CEP_VENDEDOR,
@@ -1171,7 +1171,7 @@ export async function dadosFaturaUnificada(ids: number[]): Promise<FaturaUnifica
 
     grupo.lotes.push({
       idMc: r.ID, idMov: r.IDMOV, idMovLote: r.IDMOVLOTE, codnot: r.CODNOT,
-      datlan: r.DATLAN ? new Date(r.DATLAN).toLocaleDateString('pt-BR') : '—',
+      datlan: r.DATLAN ? new Date(r.DATLAN).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—',
       lotexx: r.LOTEXX, deslot: r.DESLOT, rpxxx: r.RPXXX, sbbxxx: r.SBBXXX, pesoxx: r.PESOXX,
       catego: r.CATEGO, descricaoRaca: r.DESCRICAORACA, especies: r.ESPECIES, qtdxxx: r.QTDXXX,
       valorOriginal, valorPagar,
