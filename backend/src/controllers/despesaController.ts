@@ -11,11 +11,13 @@ export const listar = async (req: Request, res: Response) => {
   ));
 };
 export const criar = async (req: Request, res: Response) => {
+  if (!req.body.codLei) return res.status(400).json({ error: 'Selecione o leilão' });
   const id = await svc.criarDespesa(req.body);
   await registrarLog((req as any).usuario, 'Inserir', 'Despesas', id);
   res.status(201).json({ id });
 };
 export const atualizar = async (req: Request, res: Response) => {
+  if (!req.body.codLei) return res.status(400).json({ error: 'Selecione o leilão' });
   const id = Number(req.params.id);
   await svc.atualizarDespesa(id, req.body);
   await registrarLog((req as any).usuario, 'Alterar', 'Despesas', id);

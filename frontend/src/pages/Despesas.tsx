@@ -224,11 +224,11 @@ export default function Despesas() {
               </Form.Item>
             </Col>
             <Col span={24}>
-              <Form.Item name="codLei" label="Leilão">
+              <Form.Item name="codLei" label="Leilão" rules={[{ required: true, message: 'Selecione o leilão' }]}>
                 <Select
                   showSearch
                   allowClear
-                  placeholder="Digite para buscar o leilão (opcional)..."
+                  placeholder="Digite para buscar o leilão..."
                   options={leiloes}
                   onSearch={buscarLeiloes}
                   filterOption={false}
