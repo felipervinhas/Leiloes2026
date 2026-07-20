@@ -49,7 +49,7 @@ export function montarContextoPromissoria(
     dados.lote?.cidadeVendedor?.toUpperCase(),
     dados.lote?.estadoVendedor?.toUpperCase(),
   ].filter(Boolean).join('/') || '___';
-  const localEmissao = comp.nomeCidade?.toUpperCase() || '___';
+  const localEmissao = dados.lote?.cidadeVendedor?.toUpperCase() || '___';
 
   return {
     dados,

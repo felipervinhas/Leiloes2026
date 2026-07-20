@@ -326,8 +326,6 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
               <InfoItem label="Cond. de Pagamento"  value={comp.desfin} />
 
               <InfoItem label="Valor Total"         value={fmtR(comp.valorOriginal)} style={s.acertoValBlue} />
-              <InfoItem label="Comissão Leiloeiro"  value={comp.comissao != null ? `${comp.comissao}%` : '—'} style={s.acertoValOrange} />
-              <InfoItem label="Vlr. Comissão"       value={fmtR(comp.valorComissao)} style={s.acertoValOrange} />
               <InfoItem label="Desconto"            value={fmtR(comp.valorDesconto)} />
               <InfoItem label="Valor Líquido"       value={fmtR(comp.valorPagar)} style={s.acertoValGreen} />
               {comp.percen != null && comp.percen !== 100 ? (
