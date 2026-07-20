@@ -71,7 +71,7 @@ export default function AcertoVendedor() {
     timerVend.current = setTimeout(async () => {
       setLoadingVend(true);
       try {
-        const r = await api.get('/clientes', { params: { busca, filtro: 'nome' } });
+        const r = await api.get('/clientes', { params: { nome: busca } });
         setVendedores(r.data.map((c: any) => ({ value: c.id, label: c.nomexx })));
       } finally { setLoadingVend(false); }
     }, 350);

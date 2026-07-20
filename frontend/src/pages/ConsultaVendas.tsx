@@ -92,7 +92,7 @@ export default function ConsultaVendas() {
     timerVend.current = setTimeout(async () => {
       setLoadingVend(true);
       try {
-        const r = await api.get('/clientes', { params: { busca, filtro: 'nome' } });
+        const r = await api.get('/clientes', { params: { nome: busca } });
         setVendedores(r.data.map((c: any) => ({ value: c.id, label: c.nomexx })));
       } finally { setLoadingVend(false); }
     }, 350);
@@ -104,7 +104,7 @@ export default function ConsultaVendas() {
     timerComp.current = setTimeout(async () => {
       setLoadingComp(true);
       try {
-        const r = await api.get('/clientes', { params: { busca, filtro: 'nome' } });
+        const r = await api.get('/clientes', { params: { nome: busca } });
         setCompradores(r.data.map((c: any) => ({ value: c.id, label: c.nomexx })));
       } finally { setLoadingComp(false); }
     }, 350);

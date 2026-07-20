@@ -989,7 +989,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     timerCli.current = setTimeout(async () => {
       setLoadingCli(true);
       try {
-        const r = await api.get('/clientes', { params: { busca, filtro: 'nome' } });
+        const r = await api.get('/clientes', { params: { nome: busca } });
         setClientes(r.data.map((c: any) => ({ value: c.id, label: c.nomexx })));
       } finally { setLoadingCli(false); }
     }, 350);

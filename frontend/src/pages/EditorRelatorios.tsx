@@ -230,7 +230,7 @@ export default function EditorRelatorios() {
 
   const buscarClientes = async (busca: string) => {
     if (!busca) { setClienteOptions([]); return; }
-    const r = await api.get('/clientes', { params: { busca, filtro: 'nome' } });
+    const r = await api.get('/clientes', { params: { nome: busca } });
     setClienteOptions((r.data || []).map((c: any) => ({ value: c.id, label: c.nomexx })));
   };
 
