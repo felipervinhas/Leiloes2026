@@ -11,3 +11,14 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Labels longos em colunas estreitas (Row/Col do AntD) quebravam linha e
+   desalinhavam o campo em relação aos vizinhos da mesma linha — trunca com
+   "..." em vez de quebrar, mantendo a altura do label sempre igual entre
+   colunas da mesma linha. */
+.ant-form-item-label > label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
