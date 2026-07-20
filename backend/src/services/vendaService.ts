@@ -59,7 +59,8 @@ export interface GerarParcelasParams {
   pCondicaoPagto: number;
   pLeilao: number;
   pClienteVendedor: number;
-  pLote: number;
+  pLote: number;       // LOTES.ID — usado pra ler a condição de pagto do lote e como CODLOT
+  pIdMovLote: number;  // MOVIMENTO_LOTE.ID — FK real de MOVIMENTO_PARCELAMENTO.IDMOVLOTE
   pLoteNumero: string;
   pDataBase: string;       // 'YYYY-MM-DD'
   pDataLeilao: string;     // 'YYYY-MM-DD'
@@ -496,13 +497,10 @@ export async function salvarComprador(
          @formaPagamento,@idPropriedade,@idPisteiro)
     `);
 
-  const idComp = r.recordset[0].ID;
-  await rateiaQtdAnimais(idMov, movLote.qtdxxx);
-  return idComp;
+  return r.recordset[0].ID;
 }
 
 export async function atualizarComprador(
-  idMov: number,
   idComp: number,
   movLote: MovLoteBase,
   d: DadosComprador,
@@ -542,8 +540,6 @@ export async function atualizarComprador(
         FORMA_PAGAMENTO=@formaPagamento, ID_PROPRIEDADE=@idPropriedade, ID_PISTEIRO=@idPisteiro
       WHERE ID=@id
     `);
-
-  await rateiaQtdAnimais(idMov, movLote.qtdxxx);
 }
 
 export async function atualizarComissaoManual(
@@ -561,7 +557,7 @@ export async function atualizarComissaoManual(
     `);
 }
 
-export async function excluirComprador(idMov: number, idComp: number, qtdLote: number): Promise<void> {
+export async function excluirComprador(idMov: number, idComp: number): Promise<void> {
   const pool = await getPool();
   const comp = await pool.request()
     .input('id', sql.Int, idComp)
@@ -577,22 +573,6 @@ export async function excluirComprador(idMov: number, idComp: number, qtdLote: n
   await pool.request()
     .input('id', sql.Int, idComp)
     .query(`DELETE FROM MOVIMENTO_COMPRADOR WHERE ID=@id`);
-  await rateiaQtdAnimais(idMov, qtdLote);
-}
-
-async function rateiaQtdAnimais(idMov: number, qtdLote: number): Promise<void> {
-  if (qtdLote === 1) return;
-  const pool = await getPool();
-  const r = await pool.request()
-    .input('idMov', sql.Int, idMov)
-    .query(`SELECT COUNT(*) AS QTD FROM MOVIMENTO_COMPRADOR WHERE IDMOV=@idMov`);
-  const qtdComp = r.recordset[0].QTD;
-  if (qtdComp === 0) return;
-  const novaQtd = qtdLote / qtdComp;
-  await pool.request()
-    .input('idMov',  sql.Int,     idMov)
-    .input('qtdxxx', sql.Decimal, novaQtd)
-    .query(`UPDATE MOVIMENTO_LOTE SET QTDXXX=@qtdxxx WHERE IDMOV=@idMov`);
 }
 
 // ─── parcelas ────────────────────────────────────────────────────────────────
@@ -664,7 +644,7 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
   await pool.request()
     .input('idMov',     sql.Int, p.pMovimento)
     .input('idCli',     sql.Int, p.pCliente)
-    .input('idMovLote', sql.Int, p.pLote)
+    .input('idMovLote', sql.Int, p.pIdMovLote)
     .query(`DELETE FROM MOVIMENTO_PARCELAMENTO WHERE IDMOV=@idMov AND IDCLI=@idCli AND IDMOVLOTE=@idMovLote`);
 
   // 4. Totpar
@@ -681,7 +661,7 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
     await pool.request()
       .input('idMov',     sql.Int,     p.pMovimento)
       .input('idCli',     sql.Int,     p.pCliente)
-      .input('idMovLote', sql.Int,     p.pLote)
+      .input('idMovLote', sql.Int,     p.pIdMovLote)
       .input('desc',      sql.Decimal, pValorOriginal * (descon / 100))
       .input('pagar',     sql.Decimal, pValorPagar)
       .query(`UPDATE MOVIMENTO_COMPRADOR SET VALORDESCONTO=@desc, VALORPAGAR=@pagar
@@ -719,7 +699,7 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
       req.input(`cl${i}`,  sql.Int,     p.pLeilao);
       req.input(`pp${i}`,  sql.Char,    row.pripar);
       req.input(`cd${i}`,  sql.Int,     p.pLote);
-      req.input(`ml${i}`,  sql.Int,     p.pLote);
+      req.input(`ml${i}`,  sql.Int,     p.pIdMovLote);
       req.input(`dv${i}`,  sql.Date,    row.datven);
       req.input(`vp${i}`,  sql.Decimal, row.vlrpar);
       req.input(`ox${i}`,  sql.VarChar, row.ordxxx);

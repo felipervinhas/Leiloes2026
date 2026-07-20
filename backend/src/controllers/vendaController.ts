@@ -108,8 +108,7 @@ export const adicionarComprador = async (req: Request, res: Response) => {
 export const excluirComprador = async (req: Request, res: Response) => {
   const idMov  = Number(req.params.id);
   const idComp = Number(req.params.idComp);
-  const lote   = await svc.buscarLoteMovimento(idMov);
-  await svc.excluirComprador(idMov, idComp, lote?.qtdxxx ?? 1);
+  await svc.excluirComprador(idMov, idComp);
   await registrarLog((req as any).usuario, 'Deletar', 'Vendas', idMov);
   res.json({ ok: true });
 };
@@ -123,7 +122,7 @@ export const atualizarComprador = async (req: Request, res: Response) => {
   const lote = await svc.buscarLoteMovimento(idMov);
   if (!lote) return res.status(404).json({ error: 'Lote não encontrado' });
 
-  await svc.atualizarComprador(idMov, idComp, {
+  await svc.atualizarComprador(idComp, {
     vlrtot: lote.vlrtot, vlrdes: lote.vlrdes ?? 0,
     comiss: lote.comiss ?? 0, comissVendedor: lote.comissVendedor ?? 0,
     lotexx: lote.lotexx, datlan: String(lote.datlan ?? ''), qtdxxx: lote.qtdxxx,
@@ -179,6 +178,7 @@ export const gerarParcelas = async (req: Request, res: Response) => {
     pLeilao:          mov.idLeilao,
     pClienteVendedor: lote.codven,
     pLote:            lote.idLote,
+    pIdMovLote:       lote.id,
     pLoteNumero:      lote.lotexx || '',
     pDataBase:        dataBase || datalei,
     pDataLeilao:      datalei,
