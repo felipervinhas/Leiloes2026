@@ -66,10 +66,21 @@ const TIPO_BUSCA = [
   { value: 'vendedor',  label: 'Vendedor' },
 ];
 
-function Listagem({ onNova, onEditar, reloadSignal }: {
+function Listagem({
+  onNova, onEditar,
+  tipoBusca, setTipoBusca, busca, setBusca, idLeilao, setIdLeilao,
+  leiloes, carregandoLeiloes, buscarLeiloes,
+  dados, setDados, loading, jaBuscou, setJaBuscou, carregar,
+}: {
   onNova: (leilaoAtual?: { id: number; nome: string }) => void;
   onEditar: (id: number) => void;
-  reloadSignal?: number;
+  tipoBusca: string; setTipoBusca: (v: string) => void;
+  busca: string; setBusca: (v: string) => void;
+  idLeilao: number | undefined; setIdLeilao: (v: number | undefined) => void;
+  leiloes: { value: number; label: string }[]; carregandoLeiloes: boolean; buscarLeiloes: (v: string) => void;
+  dados: any[]; setDados: React.Dispatch<React.SetStateAction<any[]>>;
+  loading: boolean; jaBuscou: boolean; setJaBuscou: (v: boolean) => void;
+  carregar: () => Promise<void>;
 }) {
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false;
@@ -170,37 +181,6 @@ function Listagem({ onNova, onEditar, reloadSignal }: {
     finally { setContratoLoading(false); }
   };
 
-  const [tipoBusca, setTipoBusca] = useState('todos');
-  const [busca, setBusca]         = useState('');
-  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes } = useBuscaLeiloes();
-  const [idLeilao, setIdLeilao]   = useState<number | undefined>();
-  const [dados, setDados]         = useState<any[]>([]);
-  const [loading, setLoading]     = useState(false);
-  const [jaBuscou, setJaBuscou]   = useState(false);
-
-  // Recarrega ao voltar do wizard (após salvar/cancelar) mantendo o filtro aplicado —
-  // não usar isso como "key" do componente, senão o filtro é perdido no remount.
-  // Não busca nada ao montar: a tabela de vendas só é carregada quando o
-  // usuário escolhe um filtro (leilão ou outro tipo de busca) e clica em
-  // Buscar — trazer tudo sem filtro já derrubou o backend por timeout antes.
-  const primeiraVez = useRef(true);
-  useEffect(() => {
-    if (primeiraVez.current) { primeiraVez.current = false; return; }
-    if (jaBuscou) carregar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reloadSignal]);
-
-  const carregar = async () => {
-    setLoading(true);
-    setJaBuscou(true);
-    try {
-      const params: any = { tipoBusca };
-      if (busca)    params.busca    = busca;
-      if (idLeilao) params.idLeilao = idLeilao;
-      const r = await api.get('/vendas', { params });
-      setDados(r.data);
-    } finally { setLoading(false); }
-  };
 
   const excluir = async (id: number) => {
     await api.delete(`/vendas/${id}`);
@@ -1844,12 +1824,36 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
 export default function Vendas() {
   const [modo, setModo]   = useState<'listagem' | 'wizard'>('listagem');
   const [editId, setEditId] = useState<number | undefined>();
-  const [reloadKey, setReloadKey] = useState(0);
   const [origemClienteId, setOrigemClienteId] = useState<number | undefined>();
   const [leilaoInicial, setLeilaoInicial] = useState<{ id: number; nome: string } | undefined>();
   const location = useLocation();
   const navigate = useNavigate();
   const { banco } = useBanco();
+
+  // Estado do filtro da Listagem vive aqui (no componente pai) e não dentro
+  // de Listagem — o pai alterna entre <Wizard> e <Listagem> com returns
+  // diferentes, o que desmonta Listagem por completo a cada troca de modo.
+  // Se o filtro ficasse como estado local de Listagem, ele se perdia toda
+  // vez que o usuário abria o wizard (Nova Venda/Editar) e voltava.
+  const [tipoBusca, setTipoBusca] = useState('todos');
+  const [busca, setBusca]         = useState('');
+  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes } = useBuscaLeiloes();
+  const [idLeilao, setIdLeilao]   = useState<number | undefined>();
+  const [dados, setDados]         = useState<any[]>([]);
+  const [loading, setLoading]     = useState(false);
+  const [jaBuscou, setJaBuscou]   = useState(false);
+
+  const carregar = async () => {
+    setLoading(true);
+    setJaBuscou(true);
+    try {
+      const params: any = { tipoBusca };
+      if (busca)    params.busca    = busca;
+      if (idLeilao) params.idLeilao = idLeilao;
+      const r = await api.get('/vendas', { params });
+      setDados(r.data);
+    } finally { setLoading(false); }
+  };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -1872,7 +1876,11 @@ export default function Vendas() {
       navigate(`/${banco}/clientes`, { state: { abrirClienteId: origemClienteId } });
       return;
     }
-    setModo('listagem'); setEditId(undefined); setReloadKey(k => k + 1);
+    setModo('listagem'); setEditId(undefined);
+    // Recarrega mantendo o filtro aplicado (dados/filtro vivem neste
+    // componente, não são perdidos — só precisa buscar de novo se o
+    // usuário já tinha feito alguma busca antes de abrir o wizard).
+    if (jaBuscou) carregar();
   };
 
   if (modo === 'wizard') {
@@ -1887,5 +1895,16 @@ export default function Vendas() {
     );
   }
 
-  return <Listagem reloadSignal={reloadKey} onNova={abrirNova} onEditar={abrirEdit} />;
+  return (
+    <Listagem
+      onNova={abrirNova} onEditar={abrirEdit}
+      tipoBusca={tipoBusca} setTipoBusca={setTipoBusca}
+      busca={busca} setBusca={setBusca}
+      idLeilao={idLeilao} setIdLeilao={setIdLeilao}
+      leiloes={leiloes} carregandoLeiloes={carregandoLeiloes} buscarLeiloes={buscarLeiloes}
+      dados={dados} setDados={setDados}
+      loading={loading} jaBuscou={jaBuscou} setJaBuscou={setJaBuscou}
+      carregar={carregar}
+    />
+  );
 }
