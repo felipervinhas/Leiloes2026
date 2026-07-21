@@ -17,11 +17,12 @@ import ConsultaVendasPDF, { COLUNAS_CONSULTA_VENDAS } from '../relatorios/Relato
 import PartesVendasPDF from '../relatorios/RelatorioPartesVendas';
 import MediasLeilaoPDF from '../relatorios/RelatorioMediasLeilao';
 import RelatorioFaturaUnificada, { FaturaUnificadaGrupo } from '../relatorios/RelatorioFaturaUnificada';
+import MapaSeguroPDF from '../relatorios/RelatorioMapaSeguro';
 import { useConfig } from '../context/ConfigContext';
 import { labelRP, labelSBB } from '../utils/lote';
 
 type Orientacao = 'retrato' | 'paisagem';
-type TipoRelatorio = 'vendas' | 'partes' | 'medias' | 'fatura';
+type TipoRelatorio = 'vendas' | 'partes' | 'medias' | 'fatura' | 'seguro';
 type MediaCategoria = {
   key: string;
   categoria: string;
@@ -509,6 +510,7 @@ export default function ConsultaVendas() {
                   { value: 'partes', label: 'Vendedores / Compradores' },
                   { value: 'medias', label: 'Médias' },
                   { value: 'fatura', label: 'Fatura Unificada' },
+                  { value: 'seguro', label: 'Mapa de Seguro' },
                 ]}
               />
               {tipoRelatorio !== 'medias' && tipoRelatorio !== 'fatura' && (
@@ -595,15 +597,25 @@ export default function ConsultaVendas() {
                           logoBase64={config.logoBase64}
                           orientacao={orientacaoImp}
                         />
-                      : <MediasLeilaoPDF
+                      : tipoRelatorio === 'medias'
+                      ? <MediasLeilaoPDF
                           totais={totaisImpressao}
                           titulo={nomeLeilaoSel}
                           empresa={config.empresa}
                           filtrosDesc={filtrosDesc}
                           logoBase64={config.logoBase64}
                         />
+                      : <MapaSeguroPDF
+                          vendas={dadosImpressao}
+                          totais={totaisImpressao}
+                          titulo={nomeLeilaoSel}
+                          empresa={config.empresa}
+                          filtrosDesc={filtrosDesc}
+                          logoBase64={config.logoBase64}
+                          orientacao={orientacaoImp}
+                        />
                   }
-                  fileName={`${{ vendas: 'consulta-vendas', partes: 'partes-vendas', medias: 'medias-leilao' }[tipoRelatorio as 'vendas' | 'partes' | 'medias']}-${new Date().toISOString().slice(0, 10)}.pdf`}
+                  fileName={`${{ vendas: 'consulta-vendas', partes: 'partes-vendas', medias: 'medias-leilao', seguro: 'mapa-seguro' }[tipoRelatorio as 'vendas' | 'partes' | 'medias' | 'seguro']}-${new Date().toISOString().slice(0, 10)}.pdf`}
                   style={{ textDecoration: 'none' }}
                 >
                   {({ loading }) => (
