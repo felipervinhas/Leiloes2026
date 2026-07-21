@@ -8,6 +8,7 @@ import { useConfig } from '../context/ConfigContext';
 import RelatorioReciboDespesa from '../relatorios/RelatorioReciboDespesa';
 import { formatarMoeda, parseMoeda } from '../utils/moeda';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
+import { useBuscaClientes } from '../hooks/useBuscaClientes';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -46,7 +47,7 @@ export default function Despesas() {
   const [editando, setEditando]   = useState<any | null>(null);
   const [busca, setBusca]         = useState(filtroSalvo.busca);
   const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes, garantirOpcao: garantirOpcaoLeilao } = useBuscaLeiloes();
-  const [clientes, setClientes]   = useState<{ value: number; label: string }[]>([]);
+  const { opcoes: clientes, carregando: carregandoClientes, buscar: buscarClientes, garantirOpcao: garantirOpcaoCliente } = useBuscaClientes();
   const [leilaoFiltro, setLeilaoFiltro] = useState<number | undefined>(filtroSalvo.leilaoFiltro);
   const [recibo, setRecibo]       = useState<any | null>(null);
   const [form] = Form.useForm();
@@ -68,7 +69,6 @@ export default function Despesas() {
     if (filtroSalvo.leilaoFiltro) {
       api.get(`/leiloes/${filtroSalvo.leilaoFiltro}`).then(r => garantirOpcaoLeilao(r.data.id, r.data.leilao)).catch(() => {});
     }
-    api.get('/clientes').then(r => setClientes(r.data.map((c: any) => ({ value: c.id, label: c.nomexx }))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -77,7 +77,10 @@ export default function Despesas() {
     form.setFieldsValue(item
       ? { ...item }
       : { dc: 'D', valor: 0 });
-    if (item) garantirOpcaoLeilao(item.codLei, item.leilao);
+    if (item) {
+      garantirOpcaoLeilao(item.codLei, item.leilao);
+      garantirOpcaoCliente(item.codigoCliente, item.cliente);
+    }
     setModalOpen(true);
   };
 
@@ -242,9 +245,12 @@ export default function Despesas() {
                 <Select
                   showSearch
                   allowClear
-                  placeholder="Selecione o cliente (opcional)"
+                  placeholder="Digite para buscar o cliente..."
                   options={clientes}
-                  filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())}
+                  onSearch={buscarClientes}
+                  filterOption={false}
+                  loading={carregandoClientes}
+                  notFoundContent={carregandoClientes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
                 />
               </Form.Item>
             </Col>
