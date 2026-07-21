@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Extension } from '@tiptap/core';
+import { Extension, Node, mergeAttributes } from '@tiptap/core';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -7,6 +7,10 @@ import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle } from '@tiptap/extension-text-style';
 import FontFamily from '@tiptap/extension-font-family';
 import Color from '@tiptap/extension-color';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableHeader from '@tiptap/extension-table-header';
+import TableCell from '@tiptap/extension-table-cell';
 import { Button, Space, Divider, Tooltip, Segmented, Input } from 'antd';
 import {
   BoldOutlined, ItalicOutlined, UnderlineOutlined,
@@ -43,6 +47,66 @@ const FontSize = Extension.create({
   },
 });
 
+// Preserva o atributo "style" inteiro (width, border, text-align, padding...)
+// em vez de tentar modelar cada propriedade CSS individualmente — os templates
+// de contrato vêm de HTML colado direto (ex.: layout da Knorr com tabelas de
+// testemunhas), então é mais confiável guardar o style bruto do que recriar
+// cada regra via atributos específicos do Tiptap.
+const rawStyleAttr = {
+  style: {
+    default: null as string | null,
+    parseHTML: (element: HTMLElement) => element.getAttribute('style'),
+    renderHTML: (attributes: { style?: string | null }) =>
+      attributes.style ? { style: attributes.style } : {},
+  },
+};
+
+// <div> genérico com estilo (ex.: o frame de página com largura/fonte do
+// contrato) — o Tiptap não tem um node de div por padrão, então sem isso o
+// wrapper e seu style são descartados ao entrar no modo Visual.
+const DivBlock = Node.create({
+  name: 'divBlock',
+  group: 'block',
+  content: 'block+',
+  addAttributes() {
+    return rawStyleAttr;
+  },
+  parseHTML() {
+    return [{ tag: 'div' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['div', mergeAttributes(HTMLAttributes), 0];
+  },
+});
+
+// <span> vazio usado só como traço/linha em branco (ex.: as linhas de
+// assinatura com border-bottom). Como não tem texto, não dá pra guardar como
+// mark (marks precisam de conteúdo) — vira um node inline "atômico". Spans
+// com texto continuam caindo no TextStyle normalmente (getAttrs devolve
+// `false` e o Tiptap tenta as outras regras de parse).
+const InlineSpan = Node.create({
+  name: 'inlineSpan',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  addAttributes() {
+    return rawStyleAttr;
+  },
+  parseHTML() {
+    return [{
+      tag: 'span',
+      // Prioridade alta: span vazio precisa virar este node atômico ANTES do
+      // TextStyle tentar tratá-lo como mark — mark em elemento sem texto não
+      // gera nenhum conteúdo, e o traço da assinatura simplesmente some.
+      priority: 1000,
+      getAttrs: (element: HTMLElement) => (element.textContent?.trim() === '' ? {} : false),
+    }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes)];
+  },
+});
+
 interface Props {
   content: string;
   onChange?: (html: string) => void;
@@ -64,6 +128,20 @@ export default function ContratoEditor({ content, onChange, onPrint, readOnly }:
       Color.configure({ types: TIPOS_ESTILO_FONTE }),
       FontSize,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      DivBlock,
+      InlineSpan,
+      Table.extend({
+        addAttributes() { return { ...this.parent?.(), ...rawStyleAttr }; },
+      }).configure({ resizable: false }),
+      TableRow.extend({
+        addAttributes() { return { ...this.parent?.(), ...rawStyleAttr }; },
+      }),
+      TableHeader.extend({
+        addAttributes() { return { ...this.parent?.(), ...rawStyleAttr }; },
+      }),
+      TableCell.extend({
+        addAttributes() { return { ...this.parent?.(), ...rawStyleAttr }; },
+      }),
     ],
     content,
     editable: !readOnly,

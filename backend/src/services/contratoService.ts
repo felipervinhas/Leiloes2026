@@ -102,9 +102,9 @@ export async function gerarContrato(idMov: number, idCli: number, idTemplate: nu
           MOV004.IDMOVLOTE,
           FORMAT(MOV002.DATLAN,'dd/MM/yyyy')  AS DATLAN,
           FORMAT(GETDATE(),'dd/MM/yyyy')      AS HOJE,
-          DATEPART(DAY,   GETDATE())          AS DIA,
-          DATEPART(MONTH, GETDATE())          AS MES,
-          DATEPART(YEAR,  GETDATE())          AS ANO,
+          DATEPART(DAY,   CAD003.DATLEI)      AS DIA,
+          DATEPART(MONTH, CAD003.DATLEI)      AS MES,
+          DATEPART(YEAR,  CAD003.DATLEI)      AS ANO,
 
           -- Comprador
           COMPRAD.NOMEXX   AS NOMCOM,
