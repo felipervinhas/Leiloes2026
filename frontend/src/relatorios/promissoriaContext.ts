@@ -45,11 +45,13 @@ export function montarContextoPromissoria(
   ].filter(Boolean).join(', ');
 
   const dataExtenso = fmtDataExtenso(dados.datlei || dados.datlan);
+  // Local de emissão da promissória é onde o leilão acontece, não a cidade
+  // pessoal do vendedor (que pode morar em qualquer lugar).
   const praca = [
-    dados.lote?.cidadeVendedor?.toUpperCase(),
-    dados.lote?.estadoVendedor?.toUpperCase(),
+    dados.cidadeLeilao?.toUpperCase(),
+    dados.estadoLeilao?.toUpperCase(),
   ].filter(Boolean).join('/') || '___';
-  const localEmissao = dados.lote?.cidadeVendedor?.toUpperCase() || '___';
+  const localEmissao = dados.cidadeLeilao?.toUpperCase() || '___';
 
   return {
     dados,

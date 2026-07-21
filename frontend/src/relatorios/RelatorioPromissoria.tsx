@@ -333,7 +333,8 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
               ) : null}
             </View>
 
-            {/* ── TABELA DE PARCELAS (4 grupos por linha) ── */}
+            {/* ── DEMONSTRATIVO DE PARCELAMENTOS (4 grupos por linha) ── */}
+            <Text style={s.secLabel}>Demonstrativo de Parcelamentos</Text>
             <TabelaParcelasBloco parcelas={comp.parcelas} qtdCond={comp.qtdparCond} />
 
             {/* ── NOTA PROMISSÓRIA ÚNICA ── */}
@@ -343,7 +344,7 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
               return (
                 <View style={s.promBox} wrap={false}>
                   {/* Título — largura total */}
-                  <Text style={s.promTitulo}>NOTA PROMISSÓRIA ÚNICA</Text>
+                  <Text style={s.promTitulo}>NOTA PROMISSÓRIA ÚNICA - VINCULADA À NOTA DE LEILÃO</Text>
 
                   {/* Corpo principal: lacre (esq, altura total) | conteúdo (dir) */}
                   <View style={s.promBodyRow}>

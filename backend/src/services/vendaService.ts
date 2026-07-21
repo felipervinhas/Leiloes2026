@@ -888,9 +888,11 @@ export async function dadosFatura(idMov: number) {
 
   const rMov = await pool.request().input('id', sql.Int, idMov).query(`
     SELECT M.ID, M.IDLEILAO, M.CODNOT, M.DATLAN, M.DEFESA,
-           L.LEILAO, L.DATLEI, L.COMCOM, L.COMVEN
+           L.LEILAO, L.DATLEI, L.COMCOM, L.COMVEN,
+           CIDLEI.CIDADE AS CIDADE_LEILAO, CIDLEI.ESTADO AS ESTADO_LEILAO
     FROM MOVIMENTO M
     LEFT JOIN LEILOES L ON L.ID = M.IDLEILAO
+    LEFT JOIN CIDADES CIDLEI ON CIDLEI.ID = L.CODCID
     WHERE M.ID = @id
   `);
   if (!rMov.recordset.length) return null;
@@ -959,6 +961,8 @@ export async function dadosFatura(idMov: number) {
     datlan:   mov.DATLAN ? new Date(mov.DATLAN).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—',
     leilao:   mov.LEILAO,
     datlei:   mov.DATLEI ? new Date(mov.DATLEI).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—',
+    cidadeLeilao: mov.CIDADE_LEILAO,
+    estadoLeilao: mov.ESTADO_LEILAO,
     lote: l ? {
       lotexx:        l.LOTEXX,
       deslot:        l.DESLOT,

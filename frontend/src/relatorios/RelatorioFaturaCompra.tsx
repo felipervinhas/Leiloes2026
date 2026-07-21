@@ -8,6 +8,8 @@ export interface FaturaData {
   datlan: string;
   leilao?: string;
   datlei?: string;
+  cidadeLeilao?: string;
+  estadoLeilao?: string;
   lote?: {
     lotexx?: string;
     deslot?: string;
