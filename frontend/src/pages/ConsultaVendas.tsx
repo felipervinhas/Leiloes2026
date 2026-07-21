@@ -21,7 +21,7 @@ import { useConfig } from '../context/ConfigContext';
 import { labelRP, labelSBB } from '../utils/lote';
 
 type Orientacao = 'retrato' | 'paisagem';
-type TipoRelatorio = 'vendas' | 'partes' | 'medias';
+type TipoRelatorio = 'vendas' | 'partes' | 'medias' | 'fatura';
 type MediaCategoria = {
   key: string;
   categoria: string;
@@ -159,6 +159,30 @@ export default function ConsultaVendas() {
       if (!idsMc.length) { message.warning('Nenhum lote válido selecionado'); return; }
       const r = await api.post('/vendas/fatura-unificada', { ids: idsMc });
       if (!r.data.length) { message.warning('Nenhum dado encontrado para os lotes selecionados'); return; }
+      setFaturasUnificadas(r.data);
+      setModalFaturaOpen(true);
+    } catch { message.error('Erro ao gerar fatura unificada'); }
+    finally { setGerandoFaturaUnificada(false); }
+  };
+
+  // Gera a partir de TODOS os resultados da consulta atual, sem precisar
+  // marcar lote por lote — igual ao "Fatura Unificada" do sistema antigo,
+  // que usava direto o resultado já filtrado (ex.: por Vendedor ou Comprador).
+  // Exige Leilão + Vendedor selecionados juntos — sem isso, um vendedor com
+  // muitos lotes em vários leilões geraria uma fatura enorme sem sentido.
+  const gerarFaturaUnificadaTodos = async () => {
+    if (!leilaoSel || !vendedorSel) {
+      message.warning('Selecione o Leilão e o Vendedor antes de gerar a Fatura Unificada');
+      return;
+    }
+    setGerandoFaturaUnificada(true);
+    try {
+      const idsMc = dados
+        .map(d => d.idMovimentoComprador)
+        .filter((id): id is number => id != null);
+      if (!idsMc.length) { message.warning('Nenhum lote encontrado nos filtros atuais'); return; }
+      const r = await api.post('/vendas/fatura-unificada', { ids: idsMc });
+      if (!r.data.length) { message.warning('Nenhum dado encontrado para os lotes filtrados'); return; }
       setFaturasUnificadas(r.data);
       setModalFaturaOpen(true);
     } catch { message.error('Erro ao gerar fatura unificada'); }
@@ -484,9 +508,10 @@ export default function ConsultaVendas() {
                   { value: 'vendas', label: 'Consulta de Vendas' },
                   { value: 'partes', label: 'Vendedores / Compradores' },
                   { value: 'medias', label: 'Médias' },
+                  { value: 'fatura', label: 'Fatura Unificada' },
                 ]}
               />
-              {tipoRelatorio !== 'medias' && (
+              {tipoRelatorio !== 'medias' && tipoRelatorio !== 'fatura' && (
                 <Radio.Group
                   value={orientacaoImp}
                   onChange={e => setOrientacaoImp(e.target.value)}
@@ -533,55 +558,70 @@ export default function ConsultaVendas() {
                   </Button>
                 </Dropdown>
               )}
-              <PDFDownloadLink
-                key={`${tipoRelatorio}-${orientacaoImp}-${colunasVisiveis.join(',')}`}
-                document={
-                  tipoRelatorio === 'vendas'
-                    ? <ConsultaVendasPDF
-                        vendas={dadosImpressao}
-                        totais={totaisImpressao}
-                        titulo={nomeLeilaoSel}
-                        empresa={config.empresa}
-                        filtrosDesc={filtrosDesc}
-                        logoBase64={config.logoBase64}
-                        colunasVisiveis={colunasVisiveis}
-                        orientacao={orientacaoImp}
-                      />
-                    : tipoRelatorio === 'partes'
-                    ? <PartesVendasPDF
-                        vendas={dadosImpressao}
-                        titulo={nomeLeilaoSel}
-                        empresa={config.empresa}
-                        filtrosDesc={filtrosDesc}
-                        logoBase64={config.logoBase64}
-                        orientacao={orientacaoImp}
-                      />
-                    : <MediasLeilaoPDF
-                        totais={totaisImpressao}
-                        titulo={nomeLeilaoSel}
-                        empresa={config.empresa}
-                        filtrosDesc={filtrosDesc}
-                        logoBase64={config.logoBase64}
-                      />
-                }
-                fileName={`${{ vendas: 'consulta-vendas', partes: 'partes-vendas', medias: 'medias-leilao' }[tipoRelatorio]}-${new Date().toISOString().slice(0, 10)}.pdf`}
-                style={{ textDecoration: 'none' }}
-              >
-                {({ loading }) => (
-                  <Button
-                    type="primary"
-                    icon={<PrinterOutlined />}
-                    loading={loading}
-                    disabled={!dados.length}
-                  >
-                    {loading
-                      ? 'Gerando PDF...'
-                      : selectedRowKeys.length > 0
-                        ? `Imprimir PDF (${selectedRowKeys.length} selecionado${selectedRowKeys.length !== 1 ? 's' : ''})`
-                        : 'Imprimir PDF (todos)'}
-                  </Button>
-                )}
-              </PDFDownloadLink>
+              {tipoRelatorio === 'fatura' ? (
+                <Button
+                  type="primary"
+                  icon={<FileTextOutlined />}
+                  loading={gerandoFaturaUnificada}
+                  onClick={gerarFaturaUnificadaTodos}
+                  disabled={!leilaoSel || !vendedorSel || !dados.length}
+                  title={!leilaoSel || !vendedorSel ? 'Selecione o Leilão e o Vendedor primeiro' : undefined}
+                >
+                  {!leilaoSel || !vendedorSel
+                    ? 'Selecione Leilão e Vendedor'
+                    : `Gerar Fatura Unificada (${dados.length} lote${dados.length !== 1 ? 's' : ''})`}
+                </Button>
+              ) : (
+                <PDFDownloadLink
+                  key={`${tipoRelatorio}-${orientacaoImp}-${colunasVisiveis.join(',')}`}
+                  document={
+                    tipoRelatorio === 'vendas'
+                      ? <ConsultaVendasPDF
+                          vendas={dadosImpressao}
+                          totais={totaisImpressao}
+                          titulo={nomeLeilaoSel}
+                          empresa={config.empresa}
+                          filtrosDesc={filtrosDesc}
+                          logoBase64={config.logoBase64}
+                          colunasVisiveis={colunasVisiveis}
+                          orientacao={orientacaoImp}
+                        />
+                      : tipoRelatorio === 'partes'
+                      ? <PartesVendasPDF
+                          vendas={dadosImpressao}
+                          titulo={nomeLeilaoSel}
+                          empresa={config.empresa}
+                          filtrosDesc={filtrosDesc}
+                          logoBase64={config.logoBase64}
+                          orientacao={orientacaoImp}
+                        />
+                      : <MediasLeilaoPDF
+                          totais={totaisImpressao}
+                          titulo={nomeLeilaoSel}
+                          empresa={config.empresa}
+                          filtrosDesc={filtrosDesc}
+                          logoBase64={config.logoBase64}
+                        />
+                  }
+                  fileName={`${{ vendas: 'consulta-vendas', partes: 'partes-vendas', medias: 'medias-leilao' }[tipoRelatorio as 'vendas' | 'partes' | 'medias']}-${new Date().toISOString().slice(0, 10)}.pdf`}
+                  style={{ textDecoration: 'none' }}
+                >
+                  {({ loading }) => (
+                    <Button
+                      type="primary"
+                      icon={<PrinterOutlined />}
+                      loading={loading}
+                      disabled={!dados.length}
+                    >
+                      {loading
+                        ? 'Gerando PDF...'
+                        : selectedRowKeys.length > 0
+                          ? `Imprimir PDF (${selectedRowKeys.length} selecionado${selectedRowKeys.length !== 1 ? 's' : ''})`
+                          : 'Imprimir PDF (todos)'}
+                    </Button>
+                  )}
+                </PDFDownloadLink>
+              )}
               <Button
                 icon={<FileExcelOutlined />}
                 onClick={exportarCSV}
