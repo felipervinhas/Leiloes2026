@@ -66,7 +66,10 @@ export async function calcularAcertoVendedor(idLeilao: number, idVendedor: numbe
     lotexx: r.LOTEXX,
     deslot: r.DESLOT,
     nomeComprador: r.NOME_COMPRADOR,
-    valorEntrada: r.VALOR_ENTRADA != null ? r.VALOR_ENTRADA : (r.VALORPAGAR || 0),
+    // Sem parcela marcada como PRIPAR='S' (ex.: Acerto Direto, Vencimento
+    // Único), não existe entrada — o valor cheio já está em "promissórias"
+    // (a receber no futuro). Usar VALORPAGAR aqui duplicava esse valor.
+    valorEntrada: r.VALOR_ENTRADA != null ? r.VALOR_ENTRADA : 0,
   }));
 
   const rPromissorias = await pool.request()
