@@ -125,7 +125,11 @@ export async function listarVendas(filtros: FiltrosListagem) {
     nomexx:       row.NOMEXX,
     qtdxxx:       row.QTDXXX,
     vlrpar:       row.VLRPAR,
-    vlrtot:       row.VLRTOT,
+    // VLRTOT vem de Movimento_Lote (valor do lote inteiro) — quando o lote é
+    // rateado entre vários compradores, cada linha do view repete o mesmo
+    // VLRTOT, parecendo um valor duplicado. VALORORIGINAL é a parte de cada
+    // comprador (já vem certo mesmo sem rateio) e é o que a listagem exibe.
+    vlrtot:       row.VALORORIGINAL ?? row.VLRTOT,
     status:       row.STATUS,
     stComissao:   row.ST_COMISSAO,
     stParcela:    row.ST_PARCELA,

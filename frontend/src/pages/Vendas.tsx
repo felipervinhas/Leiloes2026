@@ -681,7 +681,7 @@ function Listagem({
       </Card>
 
       <Table
-        rowKey="id" columns={colunas} dataSource={dados} loading={loading}
+        rowKey={(r: any) => `${r.id}-${r.idcli}`} columns={colunas} dataSource={dados} loading={loading}
         components={{ header: { cell: ResizableTitle } }}
         size="small" scroll={{ x: 1600 }}
         pagination={{ pageSize: 20, showTotal: t => `${t} registros`, showSizeChanger: !isMobile, simple: isMobile }}
