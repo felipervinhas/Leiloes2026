@@ -23,6 +23,7 @@ import * as venda from '../controllers/vendaController';
 import * as cotacao from '../controllers/cotacaoController';
 import * as notificacao from '../controllers/notificacaoController';
 import * as despesa from '../controllers/despesaController';
+import * as recibo from '../controllers/reciboController';
 import * as acertoVendedor from '../controllers/acertoVendedorController';
 import * as dash     from '../controllers/dashboardController';
 import * as permissaoDash from '../controllers/permissaoDashboardController';
@@ -206,6 +207,11 @@ bancoRouter.get('/despesas', despesa.listar);
 bancoRouter.post('/despesas', despesa.criar);
 bancoRouter.put('/despesas/:id', despesa.atualizar);
 bancoRouter.delete('/despesas/:id', despesa.deletar);
+
+bancoRouter.get('/recibos', recibo.listar);
+bancoRouter.post('/recibos', recibo.criar);
+bancoRouter.put('/recibos/:id', recibo.atualizar);
+bancoRouter.delete('/recibos/:id', recibo.deletar);
 
 bancoRouter.get('/acerto-vendedor', acertoVendedor.buscar);
 

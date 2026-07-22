@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, InputNumber, Select, Spin,
-  Space, Popconfirm, Typography, Row, Col, message, Tag } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, WalletOutlined, PrinterOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, InputNumber, Select, Spin, DatePicker,
+  Space, Popconfirm, Typography, Row, Col, message, Tag, Tabs } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, WalletOutlined, PrinterOutlined, FileTextOutlined } from '@ant-design/icons';
 import { BlobProvider } from '@react-pdf/renderer';
+import dayjs from 'dayjs';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
 import RelatorioReciboDespesa from '../relatorios/RelatorioReciboDespesa';
+import RelatorioReciboAvulso from '../relatorios/RelatorioReciboAvulso';
 import { formatarMoeda, parseMoeda } from '../utils/moeda';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import { useBuscaClientes } from '../hooks/useBuscaClientes';
@@ -38,7 +40,7 @@ function lerFiltroSalvo(): { busca: string; leilaoFiltro?: number } {
   } catch { return { busca: '' }; }
 }
 
-export default function Despesas() {
+function AbaDespesas() {
   const config = useConfig();
   const filtroSalvo = lerFiltroSalvo();
   const [dados, setDados]         = useState<any[]>([]);
@@ -135,8 +137,6 @@ export default function Despesas() {
 
   return (
     <>
-      <Title level={4}><WalletOutlined style={{ marginRight: 8 }} />Despesas</Title>
-
       {dados.length > 0 && (
         <Row gutter={12} style={{ marginBottom: 12 }}>
           {[
@@ -290,6 +290,215 @@ export default function Despesas() {
           </BlobProvider>
         )}
       </Modal>
+    </>
+  );
+}
+
+// Recibo avulso: pra dinheiro que a Knorr RECEBE (ex.: comissão), separado
+// de Despesas (que é dinheiro saindo) — chamado #10, aberto porque usar
+// Despesas pra isso gerava um recibo com o texto invertido ("pagamos" em
+// vez de "recebemos") e nem era o conceito certo (despesa x recebimento).
+function AbaRecibos() {
+  const config = useConfig();
+  const [dados, setDados]         = useState<any[]>([]);
+  const [loading, setLoading]     = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editando, setEditando]   = useState<any | null>(null);
+  const [busca, setBusca]         = useState('');
+  const { opcoes: clientes, carregando: carregandoClientes, buscar: buscarClientes, garantirOpcao: garantirOpcaoCliente } = useBuscaClientes();
+  const [recibo, setRecibo]       = useState<any | null>(null);
+  const [form] = Form.useForm();
+
+  const carregar = async (b = '') => {
+    setLoading(true);
+    try {
+      const r = await api.get('/recibos', { params: { busca: b } });
+      setDados(r.data);
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { carregar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  const abrirModal = (item?: any) => {
+    setEditando(item || null);
+    form.setFieldsValue(item
+      ? { ...item, data: item.data ? dayjs(item.data) : dayjs() }
+      : { valor: 0, data: dayjs() });
+    if (item) garantirOpcaoCliente(item.codigoCliente, item.nomeCliente);
+    setModalOpen(true);
+  };
+
+  const clienteSelecionado = (id: number | undefined) => {
+    const c = clientes.find(o => o.value === id);
+    if (c) form.setFieldValue('pagador', c.label);
+  };
+
+  const salvar = async (values: any) => {
+    const payload = { ...values, data: values.data ? values.data.format('YYYY-MM-DD') : undefined };
+    try {
+      if (editando) await api.put(`/recibos/${editando.id}`, payload);
+      else await api.post('/recibos', payload);
+      message.success('Salvo com sucesso');
+      setModalOpen(false);
+      carregar(busca);
+    } catch { message.error('Erro ao salvar'); }
+  };
+
+  const deletar = async (id: number) => {
+    try { await api.delete(`/recibos/${id}`); message.success('Excluído'); carregar(busca); }
+    catch { message.error('Erro ao excluir'); }
+  };
+
+  const colunas = [
+    { title: 'Pagador', dataIndex: 'pagador', ellipsis: true },
+    { title: 'Observações', dataIndex: 'observacoes', ellipsis: true },
+    { title: 'Valor', dataIndex: 'valor', width: 140, align: 'right' as const,
+      render: (v: number) => (
+        <span style={{ color: '#52c41a', fontWeight: 600 }}>
+          + R$ {Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        </span>
+      ),
+    },
+    { title: 'Data', dataIndex: 'data', width: 110,
+      render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
+    {
+      title: 'Ações', width: 130,
+      render: (_: any, r: any) => (
+        <Space>
+          <Button size="small" icon={<PrinterOutlined />} onClick={() => setRecibo(r)} title="Imprimir recibo" />
+          <Button size="small" icon={<EditOutlined />} onClick={() => abrirModal(r)} />
+          <Popconfirm title="Confirma exclusão?" onConfirm={() => deletar(r.id)}>
+            <Button size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      <Row gutter={8} style={{ marginBottom: 16 }}>
+        <Col flex="auto">
+          <Input.Search
+            placeholder="Buscar por pagador ou observação..."
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            onSearch={() => carregar(busca)}
+            enterButton={<SearchOutlined />}
+            allowClear
+            onClear={() => carregar('')}
+          />
+        </Col>
+        <Col>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()}>Novo Recibo</Button>
+        </Col>
+      </Row>
+
+      <Table
+        rowKey="id"
+        columns={colunas}
+        dataSource={dados}
+        loading={loading}
+        size="small"
+        pagination={{ pageSize: 15, showTotal: t => `${t} registros` }}
+        scroll={{ x: 700 }}
+      />
+
+      <Modal
+        title={editando ? 'Editar Recibo' : 'Novo Recibo'}
+        open={modalOpen}
+        onOk={form.submit}
+        onCancel={() => setModalOpen(false)}
+        destroyOnClose
+        width={520}
+      >
+        <Form form={form} layout="vertical" onFinish={salvar}>
+          <Form.Item name="codigoCliente" label="Cliente cadastrado (opcional)">
+            <Select
+              showSearch
+              allowClear
+              placeholder="Digite para buscar o cliente..."
+              options={clientes}
+              onSearch={buscarClientes}
+              onChange={clienteSelecionado}
+              filterOption={false}
+              loading={carregandoClientes}
+              notFoundContent={carregandoClientes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
+            />
+          </Form.Item>
+          <Form.Item
+            name="pagador" label="Pagador"
+            rules={[{ required: true, message: 'Informe o pagador' }]}
+            extra="Selecionar um cliente acima preenche este campo, mas dá pra digitar qualquer nome."
+          >
+            <Input placeholder="Nome de quem está pagando" />
+          </Form.Item>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="valor" label="Valor (R$)" rules={[{ required: true }]}>
+                <InputNumber
+                  style={{ width: '100%' }}
+                  min={0}
+                  precision={2}
+                  decimalSeparator=","
+                  formatter={formatarMoeda}
+                  parser={v => parseMoeda(v) as any}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="data" label="Data" rules={[{ required: true }]}>
+                <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="observacoes" label="Referente a">
+            <TextArea rows={3} placeholder="Ex.: Comissão do leilão X..." />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Recibo"
+        open={!!recibo}
+        onCancel={() => setRecibo(null)}
+        footer={null}
+        width={400}
+      >
+        {recibo && (
+          <BlobProvider document={<RelatorioReciboAvulso dados={recibo} empresa={config.empresa} logoBase64={config.logoBase64} />}>
+            {({ url, loading: gerandoPdf, error }) => (
+              <>
+                <Button
+                  type="primary" icon={<PrinterOutlined />} loading={gerandoPdf} disabled={!url}
+                  onClick={() => url && window.open(url, '_blank')} block size="large"
+                >
+                  {gerandoPdf ? 'Gerando PDF...' : 'Visualizar / Imprimir Recibo'}
+                </Button>
+                {error ? (
+                  <div style={{ marginTop: 8, color: '#ff4d4f', fontSize: 12 }}>
+                    Erro ao gerar PDF: {String((error as any)?.message || error)}
+                  </div>
+                ) : null}
+              </>
+            )}
+          </BlobProvider>
+        )}
+      </Modal>
+    </>
+  );
+}
+
+export default function Despesas() {
+  return (
+    <>
+      <Title level={4}><WalletOutlined style={{ marginRight: 8 }} />Despesas</Title>
+      <Tabs
+        items={[
+          { key: 'despesas', label: 'Despesas', children: <AbaDespesas /> },
+          { key: 'recibos', label: <><FileTextOutlined /> Recibos Avulsos</>, children: <AbaRecibos /> },
+        ]}
+      />
     </>
   );
 }
