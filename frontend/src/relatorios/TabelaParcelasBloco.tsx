@@ -30,7 +30,7 @@ const s = StyleSheet.create({
     paddingVertical: 2, paddingHorizontal: 4,
   },
   tabelaRow: {
-    flexDirection: 'row', paddingVertical: 1.5, paddingHorizontal: 4,
+    flexDirection: 'row', paddingVertical: 3.5, paddingHorizontal: 4,
     borderBottomWidth: 0.5, borderBottomColor: CLARO,
   },
   tabelaRowAlt: { backgroundColor: '#fafafa' },

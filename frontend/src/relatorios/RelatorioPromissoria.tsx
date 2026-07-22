@@ -49,7 +49,7 @@ const s = StyleSheet.create({
   empresa: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: PRETO },
   empresaSub: { fontSize: 6, color: MEDIO, marginTop: 1 },
   headerDir: { alignItems: 'flex-end' },
-  docTitulo: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: PRETO },
+  docTitulo: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: PRETO, textAlign: 'right', width: 220 },
   docNota: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: ESCURO, marginTop: 1 },
   docData: { fontSize: 6.5, color: MEDIO, marginTop: 1 },
 
@@ -229,7 +229,7 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
                 </View>
               </View>
               <View style={s.headerDir}>
-                <Text style={s.docTitulo}>PROMISSÓRIA</Text>
+                <Text style={s.docTitulo}>NOTA PROMISSÓRIA ÚNICA - VINCULADA À NOTA DE LEILÃO</Text>
                 <Text style={s.docNota}>Nota de Leilão Nº {dados.codnot || String(dados.id)}</Text>
                 <Text style={s.docData}>Emitido em {agora}</Text>
               </View>
@@ -344,7 +344,7 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
               return (
                 <View style={s.promBox} wrap={false}>
                   {/* Título — largura total */}
-                  <Text style={s.promTitulo}>NOTA PROMISSÓRIA ÚNICA - VINCULADA À NOTA DE LEILÃO</Text>
+                  <Text style={s.promTitulo}>NOTA PROMISSÓRIA ÚNICA</Text>
 
                   {/* Corpo principal: lacre (esq, altura total) | conteúdo (dir) */}
                   <View style={s.promBodyRow}>
