@@ -169,20 +169,26 @@ export default function ConsultaVendas() {
   // Gera a partir de TODOS os resultados da consulta atual, sem precisar
   // marcar lote por lote — igual ao "Fatura Unificada" do sistema antigo,
   // que usava direto o resultado já filtrado (ex.: por Vendedor ou Comprador).
-  // Exige Leilão + Vendedor selecionados juntos — sem isso, um vendedor com
-  // muitos lotes em vários leilões geraria uma fatura enorme sem sentido.
+  // Exige Leilão + (Vendedor ou Comprador) — sem isso, geraria uma fatura
+  // enorme sem sentido. Se só o Vendedor está selecionado, junta todas as
+  // vendas dele (para compradores diferentes) numa fatura só; se só o
+  // Comprador está selecionado, junta todas as compras dele (de vendedores
+  // diferentes); se os dois estão selecionados, é o par de sempre.
   const gerarFaturaUnificadaTodos = async () => {
-    if (!leilaoSel || !vendedorSel) {
-      message.warning('Selecione o Leilão e o Vendedor antes de gerar a Fatura Unificada');
+    if (!leilaoSel || (!vendedorSel && !compradorSel)) {
+      message.warning('Selecione o Leilão e o Vendedor ou o Comprador antes de gerar a Fatura Unificada');
       return;
     }
+    const modo = vendedorSel && !compradorSel ? 'vendedor'
+               : compradorSel && !vendedorSel ? 'comprador'
+               : 'par';
     setGerandoFaturaUnificada(true);
     try {
       const idsMc = dados
         .map(d => d.idMovimentoComprador)
         .filter((id): id is number => id != null);
       if (!idsMc.length) { message.warning('Nenhum lote encontrado nos filtros atuais'); return; }
-      const r = await api.post('/vendas/fatura-unificada', { ids: idsMc });
+      const r = await api.post('/vendas/fatura-unificada', { ids: idsMc, modo });
       if (!r.data.length) { message.warning('Nenhum dado encontrado para os lotes filtrados'); return; }
       setFaturasUnificadas(r.data);
       setModalFaturaOpen(true);
@@ -566,11 +572,11 @@ export default function ConsultaVendas() {
                   icon={<FileTextOutlined />}
                   loading={gerandoFaturaUnificada}
                   onClick={gerarFaturaUnificadaTodos}
-                  disabled={!leilaoSel || !vendedorSel || !dados.length}
-                  title={!leilaoSel || !vendedorSel ? 'Selecione o Leilão e o Vendedor primeiro' : undefined}
+                  disabled={!leilaoSel || (!vendedorSel && !compradorSel) || !dados.length}
+                  title={!leilaoSel || (!vendedorSel && !compradorSel) ? 'Selecione o Leilão e o Vendedor ou o Comprador primeiro' : undefined}
                 >
-                  {!leilaoSel || !vendedorSel
-                    ? 'Selecione Leilão e Vendedor'
+                  {!leilaoSel || (!vendedorSel && !compradorSel)
+                    ? 'Selecione Leilão e Vendedor/Comprador'
                     : `Gerar Fatura Unificada (${dados.length} lote${dados.length !== 1 ? 's' : ''})`}
                 </Button>
               ) : (
@@ -727,14 +733,18 @@ export default function ConsultaVendas() {
         {faturasUnificadas && faturasUnificadas.length > 0 && (
           <>
             <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-              {faturasUnificadas.length} documento{faturasUnificadas.length !== 1 ? 's' : ''} — agrupado{faturasUnificadas.length !== 1 ? 's' : ''} por comprador e vendedor:
+              {faturasUnificadas.length} documento{faturasUnificadas.length !== 1 ? 's' : ''} — agrupado{faturasUnificadas.length !== 1 ? 's' : ''} por {faturasUnificadas[0]?.modo === 'vendedor' ? 'vendedor' : faturasUnificadas[0]?.modo === 'comprador' ? 'comprador' : 'comprador e vendedor'}:
             </Typography.Paragraph>
             <ul style={{ marginBottom: 16, paddingLeft: 20, fontSize: 12, color: '#666' }}>
-              {faturasUnificadas.map((g, i) => (
-                <li key={i}>
-                  {g.comprador.nomexx || '—'} — {g.vendedor.nomexx || '—'} ({g.lotes.length} lote{g.lotes.length !== 1 ? 's' : ''})
-                </li>
-              ))}
+              {faturasUnificadas.map((g, i) => {
+                const nomeComp = g.comprador ? g.comprador.nomexx || '—' : `${g.contrapartes.length} comprador${g.contrapartes.length !== 1 ? 'es' : ''}`;
+                const nomeVen  = g.vendedor  ? g.vendedor.nomexx  || '—' : `${g.contrapartes.length} vendedor${g.contrapartes.length !== 1 ? 'es' : ''}`;
+                return (
+                  <li key={i}>
+                    {nomeComp} — {nomeVen} ({g.lotes.length} lote{g.lotes.length !== 1 ? 's' : ''})
+                  </li>
+                );
+              })}
             </ul>
             <BlobProvider document={<RelatorioFaturaUnificada grupos={faturasUnificadas} empresa={config.empresa} logoBase64={config.logoBase64} />}>
               {({ url, loading }) => (

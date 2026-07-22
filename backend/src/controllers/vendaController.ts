@@ -216,10 +216,13 @@ export const fatura = async (req: Request, res: Response) => {
   res.json(dados);
 };
 
+const MODOS_FATURA_UNIFICADA = ['par', 'vendedor', 'comprador'] as const;
+
 export const faturaUnificada = async (req: Request, res: Response) => {
   const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter((n: number) => !isNaN(n)) : [];
   if (!ids.length) return res.status(400).json({ error: 'Informe ao menos um lote (ids)' });
-  res.json(await svc.dadosFaturaUnificada(ids));
+  const modo = MODOS_FATURA_UNIFICADA.includes(req.body?.modo) ? req.body.modo : 'par';
+  res.json(await svc.dadosFaturaUnificada(ids, modo));
 };
 
 export const listarPropriedades = async (req: Request, res: Response) => {

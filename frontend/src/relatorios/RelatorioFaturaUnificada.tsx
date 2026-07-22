@@ -3,6 +3,8 @@ import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { valorExtenso } from './promissoriaUtils';
 import { labelRP, labelSBB } from '../utils/lote';
 
+export type ModoFaturaUnificada = 'par' | 'vendedor' | 'comprador';
+
 export interface FaturaUnificadaLote {
   idMc: number;
   idMov: number;
@@ -27,24 +29,38 @@ export interface FaturaUnificadaLote {
   desfin?: string;
   qtdparCond: number;
   parcelas: Array<{ ordxxx?: string; datven?: string; vlrpar?: number; pripar?: string }>;
+  idContraparte?: number;
+  nomeContraparte?: string;
+  documentoContraparte?: string;
+}
+
+export interface FaturaUnificadaParte {
+  id: number;
+  nomexx?: string;
+  cpfxxx?: string;
+  cnpjxx?: string;
+  totalSinal: number;
+  totalComissao: number;
 }
 
 export interface FaturaUnificadaGrupo {
   idLeilao: number;
   leilao?: string;
   datlei?: string;
+  modo: ModoFaturaUnificada;
   vendedor: {
     id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string;
     endere?: string; bairro?: string; cepxxx?: string;
     celu1?: string; telres?: string; emailx?: string;
     nomeCidade?: string; nomeEstado?: string;
-  };
+  } | null;
   comprador: {
     id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string;
     endere?: string; bairro?: string; cepxxx?: string;
     celu1?: string; celu2?: string; telcom?: string; telres?: string; emailx?: string;
     nomeCidade?: string; nomeEstado?: string; nomePropriedade?: string;
-  };
+  } | null;
+  contrapartes: FaturaUnificadaParte[];
   lotes: FaturaUnificadaLote[];
   totais: {
     totalCompra: number;
@@ -150,10 +166,14 @@ const s = StyleSheet.create({
 
   cLote: { width: 28 },
   cDesc: { flex: 1 },
-  cCond: { width: 100 },
+  cParceiro: { width: 90 },
+  cCond: { width: 82 },
   cBruto: { width: 62, textAlign: 'right' as const },
   cLiquido: { width: 62, textAlign: 'right' as const },
   cSinal: { width: 70, textAlign: 'right' as const },
+
+  parceirosLista: { marginTop: 1 },
+  parceiroLinha: { fontSize: 6.5, color: MEDIO, marginBottom: 1 },
 
   parcelasBox: {
     borderRadius: 3, borderColor: CINZA, borderWidth: 0.5, marginBottom: 5, overflow: 'hidden',
@@ -190,10 +210,10 @@ const s = StyleSheet.create({
   reciboExtenso: { fontSize: 7, color: ESCURO, fontStyle: 'italic' },
 
   assinaturas: {
-    flexDirection: 'row', justifyContent: 'space-between',
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between',
     marginTop: 8, paddingTop: 6, borderTopColor: CINZA, borderTopWidth: 0.5,
   },
-  assinaturaItem: { flex: 1, alignItems: 'center', marginHorizontal: 8 },
+  assinaturaItem: { flexGrow: 1, flexBasis: '28%', maxWidth: '48%', alignItems: 'center', marginHorizontal: 8, marginBottom: 8 },
   assinaturaLinha: { borderTopColor: ESCURO, borderTopWidth: 0.5, width: '80%', marginBottom: 3 },
   assinaturaNome: { fontSize: 7, color: ESCURO, textAlign: 'center' as const },
   assinaturaRole: { fontSize: 6.5, color: MEDIO, textAlign: 'center' as const },
@@ -215,13 +235,18 @@ function InfoItem({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
+function docContraparte(p: { cpfxxx?: string; cnpjxx?: string }) {
+  return p.cnpjxx ? `CNPJ: ${p.cnpjxx}` : `CPF: ${p.cpfxxx || 'não informado'}`;
+}
+
 function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: string, agora: string, logoBase64?: string | null) {
   const comp = grupo.comprador;
   const ven  = grupo.vendedor;
-  const enderecoComp = [comp.endere, comp.bairro].filter(Boolean).join(', ');
-  const cidadeComp   = [comp.nomeCidade, comp.nomeEstado].filter(Boolean).join(' — ');
-  const enderecoVen  = [ven.endere, ven.bairro].filter(Boolean).join(', ');
-  const cidadeVen    = [ven.nomeCidade, ven.nomeEstado].filter(Boolean).join(' — ');
+  const enderecoComp = comp ? [comp.endere, comp.bairro].filter(Boolean).join(', ') : '';
+  const cidadeComp   = comp ? [comp.nomeCidade, comp.nomeEstado].filter(Boolean).join(' — ') : '';
+  const enderecoVen  = ven ? [ven.endere, ven.bairro].filter(Boolean).join(', ') : '';
+  const cidadeVen    = ven ? [ven.nomeCidade, ven.nomeEstado].filter(Boolean).join(' — ') : '';
+  const tituloColunaParceiro = grupo.modo === 'vendedor' ? 'Comprador' : grupo.modo === 'comprador' ? 'Vendedor' : null;
 
   // Agrupa as parcelas de todos os lotes por data de vencimento, somando os valores
   // que caem no mesmo dia — sem isso, um comprador com vários lotes parcelados em
@@ -275,28 +300,48 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
 
       <View style={s.duasColunas}>
         <View style={s.colBox}>
-          <Text style={s.secLabel}>Comprador</Text>
-          <Text style={s.nomeXX}>{comp.nomexx || '—'}</Text>
-          <Text style={s.cpfXX}>{comp.cnpjxx ? `CNPJ: ${comp.cnpjxx}` : `CPF: ${comp.cpfxxx || 'não informado'}`}</Text>
-          {enderecoComp ? <Text style={s.endereco}>{enderecoComp}</Text> : null}
-          {cidadeComp   ? <Text style={s.endereco}>{cidadeComp}{comp.cepxxx ? `  CEP ${comp.cepxxx}` : ''}</Text> : null}
-          {(comp.celu1 || comp.telres) ? <Text style={s.telefone}>Tel: {comp.celu1 || comp.telres}</Text> : null}
-          {comp.emailx ? <Text style={s.telefone}>{comp.emailx}</Text> : null}
-          {comp.nomePropriedade ? (
-            <View style={s.propBox}>
-              <Text style={s.propLabel}>Propriedade</Text>
-              <Text style={s.propText}>{comp.nomePropriedade}</Text>
+          <Text style={s.secLabel}>Comprador{grupo.modo === 'vendedor' ? `es (${grupo.contrapartes.length})` : ''}</Text>
+          {comp ? (
+            <>
+              <Text style={s.nomeXX}>{comp.nomexx || '—'}</Text>
+              <Text style={s.cpfXX}>{docContraparte(comp)}</Text>
+              {enderecoComp ? <Text style={s.endereco}>{enderecoComp}</Text> : null}
+              {cidadeComp   ? <Text style={s.endereco}>{cidadeComp}{comp.cepxxx ? `  CEP ${comp.cepxxx}` : ''}</Text> : null}
+              {(comp.celu1 || comp.telres) ? <Text style={s.telefone}>Tel: {comp.celu1 || comp.telres}</Text> : null}
+              {comp.emailx ? <Text style={s.telefone}>{comp.emailx}</Text> : null}
+              {comp.nomePropriedade ? (
+                <View style={s.propBox}>
+                  <Text style={s.propLabel}>Propriedade</Text>
+                  <Text style={s.propText}>{comp.nomePropriedade}</Text>
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <View style={s.parceirosLista}>
+              {grupo.contrapartes.map(p => (
+                <Text key={p.id} style={s.parceiroLinha}>{p.nomexx || '—'} · {docContraparte(p)}</Text>
+              ))}
             </View>
-          ) : null}
+          )}
         </View>
         <View style={s.colBox}>
-          <Text style={s.secLabel}>Vendedor</Text>
-          <Text style={s.nomeXX}>{ven.nomexx || '—'}</Text>
-          <Text style={s.cpfXX}>{ven.cnpjxx ? `CNPJ: ${ven.cnpjxx}` : `CPF: ${ven.cpfxxx || 'não informado'}`}</Text>
-          {enderecoVen ? <Text style={s.endereco}>{enderecoVen}</Text> : null}
-          {cidadeVen   ? <Text style={s.endereco}>{cidadeVen}{ven.cepxxx ? `  CEP ${ven.cepxxx}` : ''}</Text> : null}
-          {(ven.celu1 || ven.telres) ? <Text style={s.telefone}>Tel: {ven.celu1 || ven.telres}</Text> : null}
-          {ven.emailx ? <Text style={s.telefone}>{ven.emailx}</Text> : null}
+          <Text style={s.secLabel}>Vendedor{grupo.modo === 'comprador' ? `es (${grupo.contrapartes.length})` : ''}</Text>
+          {ven ? (
+            <>
+              <Text style={s.nomeXX}>{ven.nomexx || '—'}</Text>
+              <Text style={s.cpfXX}>{docContraparte(ven)}</Text>
+              {enderecoVen ? <Text style={s.endereco}>{enderecoVen}</Text> : null}
+              {cidadeVen   ? <Text style={s.endereco}>{cidadeVen}{ven.cepxxx ? `  CEP ${ven.cepxxx}` : ''}</Text> : null}
+              {(ven.celu1 || ven.telres) ? <Text style={s.telefone}>Tel: {ven.celu1 || ven.telres}</Text> : null}
+              {ven.emailx ? <Text style={s.telefone}>{ven.emailx}</Text> : null}
+            </>
+          ) : (
+            <View style={s.parceirosLista}>
+              {grupo.contrapartes.map(p => (
+                <Text key={p.id} style={s.parceiroLinha}>{p.nomexx || '—'} · {docContraparte(p)}</Text>
+              ))}
+            </View>
+          )}
         </View>
       </View>
 
@@ -305,6 +350,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
         <View style={s.tHeader}>
           <View style={s.cLote}><Text style={s.th}>Lote</Text></View>
           <View style={s.cDesc}><Text style={s.th}>Descrição</Text></View>
+          {tituloColunaParceiro ? <View style={s.cParceiro}><Text style={s.th}>{tituloColunaParceiro}</Text></View> : null}
           <View style={s.cCond}><Text style={s.th}>Cond. Pagamento</Text></View>
           <View style={s.cBruto}><Text style={[s.th, { textAlign: 'right' }]}>Vlr. Bruto</Text></View>
           <View style={s.cLiquido}><Text style={[s.th, { textAlign: 'right' }]}>Vlr. Líquido</Text></View>
@@ -323,6 +369,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
                     .filter(Boolean).join(' · ')}
                 </Text>
               </View>
+              {tituloColunaParceiro ? <View style={s.cParceiro}><Text style={s.td}>{l.nomeContraparte || '—'}</Text></View> : null}
               <View style={s.cCond}><Text style={s.td}>{l.desfin || '—'}</Text></View>
               <View style={s.cBruto}><Text style={s.td}>{fmtR(l.valorOriginal)}</Text></View>
               <View style={s.cLiquido}><Text style={s.td}>{fmtR(l.valorPagar)}</Text></View>
@@ -376,34 +423,77 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
         </View>
       </View>
 
-      {/* Recibos por extenso */}
-      <View wrap={false}>
-        <View style={s.reciboBox}>
-          <Text style={s.reciboLabel}>Recebemos de:</Text>
-          <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
-          <Text style={s.reciboLabel}>a quantia de, referente ao pagamento do sinal - 1ª parcela(s):</Text>
-          <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalSinal)}</Text>
+      {/* Recibos por extenso — o dinheiro sempre vem do comprador; quando ele é
+          único (modo 'par' ou 'comprador') é 1 recibo só, com o total do grupo.
+          Quando o comprador varia (modo 'vendedor'), 1 recibo por comprador,
+          com o valor daquele comprador especificamente. */}
+      {comp ? (
+        <View wrap={false}>
+          <View style={s.reciboBox}>
+            <Text style={s.reciboLabel}>Recebemos de:</Text>
+            <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
+            <Text style={s.reciboLabel}>a quantia de, referente ao pagamento do sinal - 1ª parcela(s):</Text>
+            <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalSinal)}</Text>
+          </View>
+          <View style={s.reciboBox}>
+            <Text style={s.reciboLabel}>Recebemos de:</Text>
+            <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
+            <Text style={s.reciboLabel}>a quantia de, referente ao pagamento da comissão à leiloeira:</Text>
+            <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalComissao)}</Text>
+          </View>
         </View>
-        <View style={s.reciboBox}>
-          <Text style={s.reciboLabel}>Recebemos de:</Text>
-          <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
-          <Text style={s.reciboLabel}>a quantia de, referente ao pagamento da comissão à leiloeira:</Text>
-          <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalComissao)}</Text>
-        </View>
-      </View>
+      ) : (
+        grupo.contrapartes.map(p => (
+          <View key={p.id} wrap={false}>
+            <View style={s.reciboBox}>
+              <Text style={s.reciboLabel}>Recebemos de:</Text>
+              <Text style={s.reciboNome}>{p.nomexx || '—'}</Text>
+              <Text style={s.reciboLabel}>a quantia de, referente ao pagamento do sinal - 1ª parcela(s):</Text>
+              <Text style={s.reciboExtenso}>{valorExtenso(p.totalSinal)}</Text>
+            </View>
+            <View style={s.reciboBox}>
+              <Text style={s.reciboLabel}>Recebemos de:</Text>
+              <Text style={s.reciboNome}>{p.nomexx || '—'}</Text>
+              <Text style={s.reciboLabel}>a quantia de, referente ao pagamento da comissão à leiloeira:</Text>
+              <Text style={s.reciboExtenso}>{valorExtenso(p.totalComissao)}</Text>
+            </View>
+          </View>
+        ))
+      )}
 
-      {/* Assinaturas */}
+      {/* Assinaturas — a âncora (parte única do grupo) sempre assina 1 vez;
+          a contraparte que varia ganha 1 linha de assinatura por pessoa. */}
       <View wrap={false} style={s.assinaturas}>
-        <View style={s.assinaturaItem}>
-          <View style={s.assinaturaLinha} />
-          <Text style={s.assinaturaNome}>{comp.nomexx || 'Comprador'}</Text>
-          <Text style={s.assinaturaRole}>Comprador</Text>
-        </View>
-        <View style={s.assinaturaItem}>
-          <View style={s.assinaturaLinha} />
-          <Text style={s.assinaturaNome}>{ven.nomexx || 'Vendedor'}</Text>
-          <Text style={s.assinaturaRole}>Vendedor</Text>
-        </View>
+        {comp ? (
+          <View style={s.assinaturaItem}>
+            <View style={s.assinaturaLinha} />
+            <Text style={s.assinaturaNome}>{comp.nomexx || 'Comprador'}</Text>
+            <Text style={s.assinaturaRole}>Comprador</Text>
+          </View>
+        ) : (
+          grupo.contrapartes.map(p => (
+            <View key={p.id} style={s.assinaturaItem}>
+              <View style={s.assinaturaLinha} />
+              <Text style={s.assinaturaNome}>{p.nomexx || 'Comprador'}</Text>
+              <Text style={s.assinaturaRole}>Comprador</Text>
+            </View>
+          ))
+        )}
+        {ven ? (
+          <View style={s.assinaturaItem}>
+            <View style={s.assinaturaLinha} />
+            <Text style={s.assinaturaNome}>{ven.nomexx || 'Vendedor'}</Text>
+            <Text style={s.assinaturaRole}>Vendedor</Text>
+          </View>
+        ) : (
+          grupo.contrapartes.map(p => (
+            <View key={p.id} style={s.assinaturaItem}>
+              <View style={s.assinaturaLinha} />
+              <Text style={s.assinaturaNome}>{p.nomexx || 'Vendedor'}</Text>
+              <Text style={s.assinaturaRole}>Vendedor</Text>
+            </View>
+          ))
+        )}
       </View>
 
       <View style={s.footer} fixed>

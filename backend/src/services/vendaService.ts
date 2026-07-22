@@ -1027,7 +1027,10 @@ export async function dadosFatura(idMov: number) {
   };
 }
 
-// ─── fatura unificada (N lotes de um mesmo comprador+vendedor+leilão) ───────
+// ─── fatura unificada (N lotes agrupados por leilão + comprador+vendedor, ──
+// ─── só vendedor, ou só comprador — ver `modo`) ─────────────────────────────
+
+export type ModoFaturaUnificada = 'par' | 'vendedor' | 'comprador';
 
 export interface FaturaUnificadaLote {
   idMc: number;
@@ -1053,24 +1056,44 @@ export interface FaturaUnificadaLote {
   desfin?: string;
   qtdparCond: number;
   parcelas: Array<{ ordxxx?: string; datven?: string; vlrpar?: number; pripar?: string }>;
+  // Preenchidos só quando modo !== 'par' — identifica a contraparte (comprador
+  // quando modo='vendedor', vendedor quando modo='comprador') daquele lote.
+  idContraparte?: number;
+  nomeContraparte?: string;
+  documentoContraparte?: string;
+}
+
+export interface FaturaUnificadaParte {
+  id: number;
+  nomexx?: string;
+  cpfxxx?: string;
+  cnpjxx?: string;
+  totalSinal: number;
+  totalComissao: number;
 }
 
 export interface FaturaUnificadaGrupo {
   idLeilao: number;
   leilao?: string;
   datlei?: string;
+  modo: ModoFaturaUnificada;
+  // null quando modo='comprador' (o vendedor varia por lote, ver lotes[].nomeContraparte / contrapartes)
   vendedor: {
     id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string;
     endere?: string; bairro?: string; cepxxx?: string;
     celu1?: string; telres?: string; emailx?: string;
     nomeCidade?: string; nomeEstado?: string;
-  };
+  } | null;
+  // null quando modo='vendedor' (o comprador varia por lote)
   comprador: {
     id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string;
     endere?: string; bairro?: string; cepxxx?: string;
     celu1?: string; celu2?: string; telcom?: string; telres?: string; emailx?: string;
     nomeCidade?: string; nomeEstado?: string; nomePropriedade?: string;
-  };
+  } | null;
+  // Lista da parte que varia (compradores quando modo='vendedor', vendedores
+  // quando modo='comprador'); vazio quando modo='par'.
+  contrapartes: FaturaUnificadaParte[];
   lotes: FaturaUnificadaLote[];
   totais: {
     totalCompra: number;
@@ -1082,7 +1105,7 @@ export interface FaturaUnificadaGrupo {
   };
 }
 
-export async function dadosFaturaUnificada(ids: number[]): Promise<FaturaUnificadaGrupo[]> {
+export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnificada = 'par'): Promise<FaturaUnificadaGrupo[]> {
   if (!ids.length) return [];
   const pool = await getPool();
   const req = pool.request();
@@ -1140,32 +1163,41 @@ export async function dadosFaturaUnificada(ids: number[]): Promise<FaturaUnifica
   }
 
   const grupos = new Map<string, FaturaUnificadaGrupo>();
+  const contrapartesPorGrupo = new Map<string, Map<number, FaturaUnificadaParte>>();
+
   for (const r of rMc.recordset) {
     const idVendedor  = Number(r.ID_VENDEDOR);
     const idComprador = Number(r.IDCLI);
-    const chave = `${r.IDLEILAO}_${idComprador}_${idVendedor}`;
+    const chave = modo === 'vendedor' ? `${r.IDLEILAO}_V_${idVendedor}`
+                : modo === 'comprador' ? `${r.IDLEILAO}_C_${idComprador}`
+                : `${r.IDLEILAO}_${idComprador}_${idVendedor}`;
 
     if (!grupos.has(chave)) {
+      const vendedorInfo = {
+        id: idVendedor, nomexx: r.NOME_VENDEDOR, cpfxxx: r.CPF_VENDEDOR, cnpjxx: r.CNPJ_VENDEDOR,
+        endere: r.ENDERE_VENDEDOR, bairro: r.BAIRRO_VENDEDOR, cepxxx: r.CEP_VENDEDOR,
+        celu1: r.CELULAR_VENDEDOR, telres: r.TELRES_VENDEDOR, emailx: r.EMAIL_VENDEDOR,
+        nomeCidade: r.CIDADE_VENDEDOR, nomeEstado: r.ESTADO_VENDEDOR,
+      };
+      const compradorInfo = {
+        id: idComprador, nomexx: r.NOMEXX, cpfxxx: r.CPFXXX, cnpjxx: r.CNPJXX,
+        endere: r.ENDERE, bairro: r.BAIRRO, cepxxx: r.CEPXXX,
+        celu1: r.CELU_1, celu2: r.CELU_2, telcom: r.TELCOM, telres: r.TELRES, emailx: r.EMAILX,
+        nomeCidade: r.NOMECIDADE, nomeEstado: r.ESTADO,
+        nomePropriedade: r.NOME_PROPRIEDADE,
+      };
       grupos.set(chave, {
         idLeilao: r.IDLEILAO,
         leilao: r.LEILAO,
         datlei: r.DATLEI ? new Date(r.DATLEI).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : undefined,
-        vendedor: {
-          id: idVendedor, nomexx: r.NOME_VENDEDOR, cpfxxx: r.CPF_VENDEDOR, cnpjxx: r.CNPJ_VENDEDOR,
-          endere: r.ENDERE_VENDEDOR, bairro: r.BAIRRO_VENDEDOR, cepxxx: r.CEP_VENDEDOR,
-          celu1: r.CELULAR_VENDEDOR, telres: r.TELRES_VENDEDOR, emailx: r.EMAIL_VENDEDOR,
-          nomeCidade: r.CIDADE_VENDEDOR, nomeEstado: r.ESTADO_VENDEDOR,
-        },
-        comprador: {
-          id: idComprador, nomexx: r.NOMEXX, cpfxxx: r.CPFXXX, cnpjxx: r.CNPJXX,
-          endere: r.ENDERE, bairro: r.BAIRRO, cepxxx: r.CEPXXX,
-          celu1: r.CELU_1, celu2: r.CELU_2, telcom: r.TELCOM, telres: r.TELRES, emailx: r.EMAILX,
-          nomeCidade: r.NOMECIDADE, nomeEstado: r.ESTADO,
-          nomePropriedade: r.NOME_PROPRIEDADE,
-        },
+        modo,
+        vendedor: modo === 'comprador' ? null : vendedorInfo,
+        comprador: modo === 'vendedor' ? null : compradorInfo,
+        contrapartes: [],
         lotes: [],
         totais: { totalCompra: 0, totalAVista: 0, totalPromissorias: 0, totalSinal: 0, totalComissao: 0, totalDesconto: 0 },
       });
+      contrapartesPorGrupo.set(chave, new Map());
     }
 
     const grupo = grupos.get(chave)!;
@@ -1177,6 +1209,19 @@ export async function dadosFaturaUnificada(ids: number[]): Promise<FaturaUnifica
     const primeiraParcela = parcelas.find(p => p.pripar === 'S');
     const valorSinal = primeiraParcela ? (primeiraParcela.vlrpar || 0) : valorPagar;
 
+    let idContraparte: number | undefined;
+    let nomeContraparte: string | undefined;
+    let documentoContraparte: string | undefined;
+    if (modo === 'vendedor') {
+      idContraparte = idComprador;
+      nomeContraparte = r.NOMEXX;
+      documentoContraparte = r.CNPJXX || r.CPFXXX;
+    } else if (modo === 'comprador') {
+      idContraparte = idVendedor;
+      nomeContraparte = r.NOME_VENDEDOR;
+      documentoContraparte = r.CNPJ_VENDEDOR || r.CPF_VENDEDOR;
+    }
+
     grupo.lotes.push({
       idMc: r.ID, idMov: r.IDMOV, idMovLote: r.IDMOVLOTE, codnot: r.CODNOT,
       datlan: r.DATLAN ? new Date(r.DATLAN).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—',
@@ -1186,6 +1231,7 @@ export async function dadosFaturaUnificada(ids: number[]): Promise<FaturaUnifica
       valorDesconto: r.VALORDESCONTO || 0, valorComissao: r.VALORCOMISSAO || 0, comissao: r.COMISSAO || 0,
       formaPagamento: r.FORMA_PAGAMENTO, desfin: r.DESFIN, qtdparCond,
       parcelas,
+      idContraparte, nomeContraparte, documentoContraparte,
     });
 
     grupo.totais.totalCompra   += valorOriginal;
@@ -1194,6 +1240,24 @@ export async function dadosFaturaUnificada(ids: number[]): Promise<FaturaUnifica
     grupo.totais.totalSinal        += valorSinal;
     grupo.totais.totalPromissorias += valorSinal;
     if (aVista) grupo.totais.totalAVista += valorPagar;
+
+    if (idContraparte != null) {
+      const mapaContrapartes = contrapartesPorGrupo.get(chave)!;
+      const atual = mapaContrapartes.get(idContraparte) || {
+        id: idContraparte, nomexx: nomeContraparte,
+        cpfxxx: modo === 'vendedor' ? r.CPFXXX : r.CPF_VENDEDOR,
+        cnpjxx: modo === 'vendedor' ? r.CNPJXX : r.CNPJ_VENDEDOR,
+        totalSinal: 0, totalComissao: 0,
+      };
+      atual.totalSinal    += valorSinal;
+      atual.totalComissao += r.VALORCOMISSAO || 0;
+      mapaContrapartes.set(idContraparte, atual);
+    }
+  }
+
+  for (const [chave, grupo] of grupos) {
+    grupo.contrapartes = Array.from(contrapartesPorGrupo.get(chave)!.values())
+      .sort((a, b) => (a.nomexx || '').localeCompare(b.nomexx || ''));
   }
 
   return Array.from(grupos.values());

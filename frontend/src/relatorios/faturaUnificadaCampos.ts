@@ -38,7 +38,10 @@ export const FATURA_UNIFICADA_CAMPOS: CampoDisponivel[] = [
   { grupo: 'Totais', key: 'totalComissaoExtenso', label: 'Total da Comissão (por extenso)' },
 ];
 
-/** Colunas padrão sugeridas ao adicionar uma nova Tabela de Lotes (Fatura Unificada) no editor. */
+/** Colunas padrão sugeridas ao adicionar uma nova Tabela de Lotes (Fatura Unificada) no editor.
+ * `nomeContraparte`/`documentoContraparte` só têm dado nos modos 'vendedor' (mostra o
+ * comprador de cada lote) e 'comprador' (mostra o vendedor) — por isso começam ocultas,
+ * o usuário liga pelo Switch no editor quando for montar um layout para esses modos. */
 export const COLUNAS_LOTES_FATURA_PADRAO: ColunaTabela[] = [
   { key: 'lotexx', label: 'Lote', largura: 10, visivel: true },
   { key: 'deslot', label: 'Descrição', largura: 34, visivel: true },
@@ -46,6 +49,8 @@ export const COLUNAS_LOTES_FATURA_PADRAO: ColunaTabela[] = [
   { key: 'valorOriginal', label: 'Vlr. Bruto', largura: 12, visivel: true },
   { key: 'valorPagar', label: 'Vlr. Líquido', largura: 12, visivel: true },
   { key: 'sinal', label: 'Sinal/1ª Parc.', largura: 14, visivel: true },
+  { key: 'nomeContraparte', label: 'Comprador/Vendedor', largura: 24, visivel: false },
+  { key: 'documentoContraparte', label: 'CPF/CNPJ Comprador/Vendedor', largura: 20, visivel: false },
 ];
 
 export function resolverCampoFaturaUnificada(key: string, ctx: FaturaUnificadaContexto): string {
