@@ -1061,6 +1061,8 @@ export interface FaturaUnificadaLote {
   idContraparte?: number;
   nomeContraparte?: string;
   documentoContraparte?: string;
+  comissaoVendedor?: number;
+  valorComissaoVendedor: number;
 }
 
 export interface FaturaUnificadaParte {
@@ -1102,6 +1104,8 @@ export interface FaturaUnificadaGrupo {
     totalSinal: number;
     totalComissao: number;
     totalDesconto: number;
+    totalComissaoVendedor: number;
+    totalLiquidoVendedor: number;
   };
 }
 
@@ -1114,6 +1118,7 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
   const rMc = await req.query(`
     SELECT MC.ID, MC.IDMOV, MC.IDMOVLOTE, MC.IDCLI, MC.VALORORIGINAL, MC.VALORPAGAR,
            MC.VALORDESCONTO, MC.VALORCOMISSAO, MC.COMISSAO, MC.FORMA_PAGAMENTO, MC.IDCONDPAGTO,
+           MC.VALORCOMISSAOVENDEDOR, MC.COMISSAOVENDEDOR,
            M.IDLEILAO, M.CODNOT, M.DATLAN,
            LEI.LEILAO, LEI.DATLEI,
            ML.QTDXXX, ML.CODVEN AS ID_VENDEDOR,
@@ -1195,7 +1200,10 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
         comprador: modo === 'vendedor' ? null : compradorInfo,
         contrapartes: [],
         lotes: [],
-        totais: { totalCompra: 0, totalAVista: 0, totalPromissorias: 0, totalSinal: 0, totalComissao: 0, totalDesconto: 0 },
+        totais: {
+          totalCompra: 0, totalAVista: 0, totalPromissorias: 0, totalSinal: 0, totalComissao: 0, totalDesconto: 0,
+          totalComissaoVendedor: 0, totalLiquidoVendedor: 0,
+        },
       });
       contrapartesPorGrupo.set(chave, new Map());
     }
@@ -1232,6 +1240,7 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
       formaPagamento: r.FORMA_PAGAMENTO, desfin: r.DESFIN, qtdparCond,
       parcelas,
       idContraparte, nomeContraparte, documentoContraparte,
+      comissaoVendedor: r.COMISSAOVENDEDOR, valorComissaoVendedor: r.VALORCOMISSAOVENDEDOR || 0,
     });
 
     grupo.totais.totalCompra   += valorOriginal;
@@ -1240,6 +1249,8 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
     grupo.totais.totalSinal        += valorSinal;
     grupo.totais.totalPromissorias += valorSinal;
     if (aVista) grupo.totais.totalAVista += valorPagar;
+    grupo.totais.totalComissaoVendedor += r.VALORCOMISSAOVENDEDOR || 0;
+    grupo.totais.totalLiquidoVendedor  += valorOriginal - (r.VALORCOMISSAOVENDEDOR || 0);
 
     if (idContraparte != null) {
       const mapaContrapartes = contrapartesPorGrupo.get(chave)!;

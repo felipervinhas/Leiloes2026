@@ -19,7 +19,7 @@ function valorColuna(lote: FaturaUnificadaLote, key: string): string {
     const primeira = lote.parcelas.find(p => p.pripar === 'S');
     return fmtR(primeira ? primeira.vlrpar : lote.valorPagar);
   }
-  if (key === 'valorOriginal' || key === 'valorPagar') return fmtR((lote as any)[key]);
+  if (key === 'valorOriginal' || key === 'valorPagar' || key === 'valorComissaoVendedor') return fmtR((lote as any)[key]);
   const v = (lote as any)[key];
   return v ?? '—';
 }

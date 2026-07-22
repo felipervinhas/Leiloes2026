@@ -35,6 +35,9 @@ export interface FaturaUnificadaContexto {
   totalDesconto: string;
   totalSinalExtenso: string;
   totalComissaoExtenso: string;
+  totalComissaoVendedor: string;
+  totalLiquidoVendedor: string;
+  totalLiquidoVendedorExtenso: string;
 }
 
 const fmtR = (v?: number | null) =>
@@ -81,5 +84,8 @@ export function montarContextoFaturaUnificada(
     totalDesconto: fmtR(grupo.totais.totalDesconto),
     totalSinalExtenso: valorExtenso(grupo.totais.totalSinal),
     totalComissaoExtenso: valorExtenso(grupo.totais.totalComissao),
+    totalComissaoVendedor: fmtR(grupo.totais.totalComissaoVendedor),
+    totalLiquidoVendedor: fmtR(grupo.totais.totalLiquidoVendedor),
+    totalLiquidoVendedorExtenso: valorExtenso(grupo.totais.totalLiquidoVendedor),
   };
 }

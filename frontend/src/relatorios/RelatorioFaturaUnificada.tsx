@@ -32,6 +32,8 @@ export interface FaturaUnificadaLote {
   idContraparte?: number;
   nomeContraparte?: string;
   documentoContraparte?: string;
+  comissaoVendedor?: number;
+  valorComissaoVendedor: number;
 }
 
 export interface FaturaUnificadaParte {
@@ -69,6 +71,8 @@ export interface FaturaUnificadaGrupo {
     totalSinal: number;
     totalComissao: number;
     totalDesconto: number;
+    totalComissaoVendedor: number;
+    totalLiquidoVendedor: number;
   };
 }
 
@@ -171,6 +175,8 @@ const s = StyleSheet.create({
   cBruto: { width: 62, textAlign: 'right' as const },
   cLiquido: { width: 62, textAlign: 'right' as const },
   cSinal: { width: 70, textAlign: 'right' as const },
+  cComVen: { width: 60, textAlign: 'right' as const },
+  cLiqVen: { width: 62, textAlign: 'right' as const },
 
   parceirosLista: { marginTop: 1 },
   parceiroLinha: { fontSize: 6.5, color: MEDIO, marginBottom: 1 },
@@ -247,6 +253,9 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
   const enderecoVen  = ven ? [ven.endere, ven.bairro].filter(Boolean).join(', ') : '';
   const cidadeVen    = ven ? [ven.nomeCidade, ven.nomeEstado].filter(Boolean).join(' — ') : '';
   const tituloColunaParceiro = grupo.modo === 'vendedor' ? 'Comprador' : grupo.modo === 'comprador' ? 'Vendedor' : null;
+  // Fatura de vendedor: documento é do vendedor, não interessa a ele o parcelamento
+  // do comprador — interessa quanto vendeu, quanto de comissão paga e quanto recebe líquido.
+  const isVendedor = grupo.modo === 'vendedor';
 
   // Agrupa as parcelas de todos os lotes por data de vencimento, somando os valores
   // que caem no mesmo dia — sem isso, um comprador com vários lotes parcelados em
@@ -353,12 +362,22 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
           {tituloColunaParceiro ? <View style={s.cParceiro}><Text style={s.th}>{tituloColunaParceiro}</Text></View> : null}
           <View style={s.cCond}><Text style={s.th}>Cond. Pagamento</Text></View>
           <View style={s.cBruto}><Text style={[s.th, { textAlign: 'right' }]}>Vlr. Bruto</Text></View>
-          <View style={s.cLiquido}><Text style={[s.th, { textAlign: 'right' }]}>Vlr. Líquido</Text></View>
-          <View style={s.cSinal}><Text style={[s.th, { textAlign: 'right' }]}>Sinal/1ª Parc.</Text></View>
+          {isVendedor ? (
+            <>
+              <View style={s.cComVen}><Text style={[s.th, { textAlign: 'right' }]}>Comissão Vend.</Text></View>
+              <View style={s.cLiqVen}><Text style={[s.th, { textAlign: 'right' }]}>Líq. Vendedor</Text></View>
+            </>
+          ) : (
+            <>
+              <View style={s.cLiquido}><Text style={[s.th, { textAlign: 'right' }]}>Vlr. Líquido</Text></View>
+              <View style={s.cSinal}><Text style={[s.th, { textAlign: 'right' }]}>Sinal/1ª Parc.</Text></View>
+            </>
+          )}
         </View>
         {grupo.lotes.map((l, i) => {
           const primeira = l.parcelas.find(p => p.pripar === 'S');
           const sinal = primeira ? primeira.vlrpar : l.valorPagar;
+          const liquidoVendedor = l.valorOriginal - (l.valorComissaoVendedor || 0);
           return (
             <View key={l.idMc} style={i % 2 === 1 ? [s.tRow, s.tRowAlt] : s.tRow} wrap={false}>
               <View style={s.cLote}><Text style={s.tdBold}>{l.lotexx || '—'}</Text></View>
@@ -372,15 +391,24 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
               {tituloColunaParceiro ? <View style={s.cParceiro}><Text style={s.td}>{l.nomeContraparte || '—'}</Text></View> : null}
               <View style={s.cCond}><Text style={s.td}>{l.desfin || '—'}</Text></View>
               <View style={s.cBruto}><Text style={s.td}>{fmtR(l.valorOriginal)}</Text></View>
-              <View style={s.cLiquido}><Text style={s.td}>{fmtR(l.valorPagar)}</Text></View>
-              <View style={s.cSinal}><Text style={s.tdBold}>{fmtR(sinal)}</Text></View>
+              {isVendedor ? (
+                <>
+                  <View style={s.cComVen}><Text style={s.td}>{fmtR(l.valorComissaoVendedor)}</Text></View>
+                  <View style={s.cLiqVen}><Text style={s.tdBold}>{fmtR(liquidoVendedor)}</Text></View>
+                </>
+              ) : (
+                <>
+                  <View style={s.cLiquido}><Text style={s.td}>{fmtR(l.valorPagar)}</Text></View>
+                  <View style={s.cSinal}><Text style={s.tdBold}>{fmtR(sinal)}</Text></View>
+                </>
+              )}
             </View>
           );
         })}
       </View>
 
-      {/* Totalizador de parcelamentos — agrupado por data de vencimento */}
-      {parcelasAgrupadas.length > 0 && (
+      {/* Totalizador de parcelamentos — agrupado por data de vencimento (só interessa ao comprador) */}
+      {!isVendedor && parcelasAgrupadas.length > 0 && (
         <View style={s.parcelasBox}>
           <Text style={{ fontSize: 5.5, color: MEDIO, padding: '2 4', fontStyle: 'italic' }}>
             Valores somados de todos os lotes com vencimento na mesma data
@@ -414,55 +442,65 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
       <View style={s.acertoBox}>
         <Text style={[s.secLabel, { marginBottom: 6 }]}>Totais</Text>
         <View style={s.acertoGrid}>
-          <InfoItem label="Total da Compra" value={fmtR(grupo.totais.totalCompra)} />
-          <InfoItem label="Total Pagto. à Vista" value={fmtR(grupo.totais.totalAVista)} />
-          <InfoItem label="Total em Promissórias" value={fmtR(grupo.totais.totalPromissorias)} />
-          <InfoItem label="Total do Sinal / 1ª Parcela(s)" value={fmtR(grupo.totais.totalSinal)} />
-          <InfoItem label="Total da Comissão" value={fmtR(grupo.totais.totalComissao)} />
-          <InfoItem label="Total Desconto p/ Pagto. à Vista" value={fmtR(grupo.totais.totalDesconto)} />
+          {isVendedor ? (
+            <>
+              <InfoItem label="Total Vendido" value={fmtR(grupo.totais.totalCompra)} />
+              <InfoItem label="Total Comissão do Vendedor" value={fmtR(grupo.totais.totalComissaoVendedor)} />
+              <InfoItem label="Total Líquido ao Vendedor" value={fmtR(grupo.totais.totalLiquidoVendedor)} />
+            </>
+          ) : (
+            <>
+              <InfoItem label="Total da Compra" value={fmtR(grupo.totais.totalCompra)} />
+              <InfoItem label="Total Pagto. à Vista" value={fmtR(grupo.totais.totalAVista)} />
+              <InfoItem label="Total em Promissórias" value={fmtR(grupo.totais.totalPromissorias)} />
+              <InfoItem label="Total do Sinal / 1ª Parcela(s)" value={fmtR(grupo.totais.totalSinal)} />
+              <InfoItem label="Total da Comissão" value={fmtR(grupo.totais.totalComissao)} />
+              <InfoItem label="Total Desconto p/ Pagto. à Vista" value={fmtR(grupo.totais.totalDesconto)} />
+            </>
+          )}
         </View>
       </View>
 
-      {/* Recibos por extenso — o dinheiro sempre vem do comprador; quando ele é
-          único (modo 'par' ou 'comprador') é 1 recibo só, com o total do grupo.
-          Quando o comprador varia (modo 'vendedor'), 1 recibo por comprador,
-          com o valor daquele comprador especificamente. */}
-      {comp ? (
+      {isVendedor ? (
+        /* Fatura de vendedor: 1 recibo só, do valor líquido pago a ele (já descontada
+           a comissão do vendedor) — não interessa a ele o que cada comprador pagou. */
         <View wrap={false}>
           <View style={s.reciboBox}>
-            <Text style={s.reciboLabel}>Recebemos de:</Text>
-            <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
-            <Text style={s.reciboLabel}>a quantia de, referente ao pagamento do sinal - 1ª parcela(s):</Text>
-            <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalSinal)}</Text>
-          </View>
-          <View style={s.reciboBox}>
-            <Text style={s.reciboLabel}>Recebemos de:</Text>
-            <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
-            <Text style={s.reciboLabel}>a quantia de, referente ao pagamento da comissão à leiloeira:</Text>
-            <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalComissao)}</Text>
+            <Text style={s.reciboLabel}>Pago a:</Text>
+            <Text style={s.reciboNome}>{ven?.nomexx || '—'}</Text>
+            <Text style={s.reciboLabel}>
+              a quantia de, referente à venda dos lotes acima, já descontada a comissão do vendedor de {fmtR(grupo.totais.totalComissaoVendedor)}:
+            </Text>
+            <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalLiquidoVendedor)}</Text>
           </View>
         </View>
       ) : (
-        grupo.contrapartes.map(p => (
-          <View key={p.id} wrap={false}>
+        /* Recibos por extenso — o dinheiro sempre vem do comprador; quando ele é
+           único (modo 'par' ou 'comprador') é 1 recibo só, com o total do grupo.
+           Quando o comprador varia, 1 recibo por comprador, já tratado acima (isVendedor). */
+        comp ? (
+          <View wrap={false}>
             <View style={s.reciboBox}>
               <Text style={s.reciboLabel}>Recebemos de:</Text>
-              <Text style={s.reciboNome}>{p.nomexx || '—'}</Text>
+              <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
               <Text style={s.reciboLabel}>a quantia de, referente ao pagamento do sinal - 1ª parcela(s):</Text>
-              <Text style={s.reciboExtenso}>{valorExtenso(p.totalSinal)}</Text>
+              <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalSinal)}</Text>
             </View>
             <View style={s.reciboBox}>
               <Text style={s.reciboLabel}>Recebemos de:</Text>
-              <Text style={s.reciboNome}>{p.nomexx || '—'}</Text>
+              <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
               <Text style={s.reciboLabel}>a quantia de, referente ao pagamento da comissão à leiloeira:</Text>
-              <Text style={s.reciboExtenso}>{valorExtenso(p.totalComissao)}</Text>
+              <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalComissao)}</Text>
             </View>
           </View>
-        ))
+        ) : null
       )}
 
-      {/* Assinaturas — a âncora (parte única do grupo) sempre assina 1 vez;
-          a contraparte que varia ganha 1 linha de assinatura por pessoa. */}
+      {/* Assinaturas — só quem é parte única do grupo assina: na fatura de vendedor,
+          só o vendedor; na fatura de comprador, só o comprador; no par de sempre,
+          os dois (nesse caso comp e ven são sempre não-nulos). A contraparte que
+          varia (lista de contrapartes) nunca assina aqui — cada um assinou/assina
+          a própria fatura individual, na hora da compra do respectivo lote. */}
       <View wrap={false} style={s.assinaturas}>
         {comp ? (
           <View style={s.assinaturaItem}>
@@ -470,30 +508,14 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
             <Text style={s.assinaturaNome}>{comp.nomexx || 'Comprador'}</Text>
             <Text style={s.assinaturaRole}>Comprador</Text>
           </View>
-        ) : (
-          grupo.contrapartes.map(p => (
-            <View key={p.id} style={s.assinaturaItem}>
-              <View style={s.assinaturaLinha} />
-              <Text style={s.assinaturaNome}>{p.nomexx || 'Comprador'}</Text>
-              <Text style={s.assinaturaRole}>Comprador</Text>
-            </View>
-          ))
-        )}
+        ) : null}
         {ven ? (
           <View style={s.assinaturaItem}>
             <View style={s.assinaturaLinha} />
             <Text style={s.assinaturaNome}>{ven.nomexx || 'Vendedor'}</Text>
             <Text style={s.assinaturaRole}>Vendedor</Text>
           </View>
-        ) : (
-          grupo.contrapartes.map(p => (
-            <View key={p.id} style={s.assinaturaItem}>
-              <View style={s.assinaturaLinha} />
-              <Text style={s.assinaturaNome}>{p.nomexx || 'Vendedor'}</Text>
-              <Text style={s.assinaturaRole}>Vendedor</Text>
-            </View>
-          ))
-        )}
+        ) : null}
       </View>
 
       <View style={s.footer} fixed>

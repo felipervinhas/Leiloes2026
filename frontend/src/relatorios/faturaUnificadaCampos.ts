@@ -36,6 +36,9 @@ export const FATURA_UNIFICADA_CAMPOS: CampoDisponivel[] = [
   { grupo: 'Totais', key: 'totalDesconto', label: 'Total Desconto p/ Pagto. à Vista' },
   { grupo: 'Totais', key: 'totalSinalExtenso', label: 'Total do Sinal (por extenso)' },
   { grupo: 'Totais', key: 'totalComissaoExtenso', label: 'Total da Comissão (por extenso)' },
+  { grupo: 'Totais', key: 'totalComissaoVendedor', label: 'Total Comissão do Vendedor' },
+  { grupo: 'Totais', key: 'totalLiquidoVendedor', label: 'Total Líquido ao Vendedor' },
+  { grupo: 'Totais', key: 'totalLiquidoVendedorExtenso', label: 'Total Líquido ao Vendedor (por extenso)' },
 ];
 
 /** Colunas padrão sugeridas ao adicionar uma nova Tabela de Lotes (Fatura Unificada) no editor.
@@ -51,6 +54,7 @@ export const COLUNAS_LOTES_FATURA_PADRAO: ColunaTabela[] = [
   { key: 'sinal', label: 'Sinal/1ª Parc.', largura: 14, visivel: true },
   { key: 'nomeContraparte', label: 'Comprador/Vendedor', largura: 24, visivel: false },
   { key: 'documentoContraparte', label: 'CPF/CNPJ Comprador/Vendedor', largura: 20, visivel: false },
+  { key: 'valorComissaoVendedor', label: 'Comissão do Vendedor (R$)', largura: 14, visivel: false },
 ];
 
 export function resolverCampoFaturaUnificada(key: string, ctx: FaturaUnificadaContexto): string {
