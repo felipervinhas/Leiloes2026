@@ -40,7 +40,7 @@ Saldo final: %SALDOFINAL%</p>
 <p>As partes elegem o foro da Comarca de %CIDLEI% - %ESTLEI% para dirimir eventuais dúvidas ou litígios oriundos deste contrato.</p>
 <p>E por estarem assim justos e contratados, assinam o presente instrumento em 02 (duas) vias de igual teor e forma.</p>
 
-<p style="text-align:center"><br>%CIDLEI% - %ESTLEI%, %DIA% de %MESEXTENSO% de %ANO%</p>
+<p style="text-align:right">%CIDLEI% - %ESTLEI%, %DIA% de %MESEXTENSO% de %ANO%</p>
 
 <br><br>
 <p style="text-align:center">______________________________<br><strong>%NOMVEN%</strong><br>Vendedor</p>
