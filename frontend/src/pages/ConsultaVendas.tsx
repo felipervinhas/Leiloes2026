@@ -49,6 +49,49 @@ const DEFESA_OPTS = [
 // A combinação id+idCli identifica cada linha de forma única.
 const rowKeyOf = (d: any) => `${d.id}_${d.idCli}`;
 
+// Comparadores usados tanto no `sorter` de cada coluna (ordenação visual da
+// tabela) quanto para reordenar os dados antes de gerar o PDF/CSV — sem isso,
+// a impressão sempre saía na ordem original da consulta, ignorando a coluna
+// que o usuário escolheu para ordenar na tela.
+const cmpTexto = (a?: string | null, b?: string | null) => (a || '').localeCompare(b || '');
+const cmpNumero = (a?: number | null, b?: number | null) => (a || 0) - (b || 0);
+
+function parseDataBr(str?: string): Date | null {
+  if (!str) return null;
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(str);
+  if (!m) return null;
+  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+}
+const cmpDataBr = (a?: string, b?: string) => {
+  const da = parseDataBr(a);
+  const db = parseDataBr(b);
+  if (da && db) return da.getTime() - db.getTime();
+  return cmpTexto(a, b);
+};
+const cmpDataIso = (a?: string, b?: string) => (a ? new Date(a).getTime() : 0) - (b ? new Date(b).getTime() : 0);
+
+const COMPARADORES: Record<string, (a: any, b: any) => number> = {
+  lotexx:                 (a, b) => cmpTexto(a.lotexx, b.lotexx),
+  deslot:                 (a, b) => cmpTexto(a.deslot, b.deslot),
+  descricaoRaca:          (a, b) => cmpTexto(a.descricaoRaca, b.descricaoRaca),
+  especies:               (a, b) => cmpTexto(a.especies, b.especies),
+  rpxxx:                  (a, b) => cmpTexto(a.rpxxx, b.rpxxx),
+  sbbxxx:                 (a, b) => cmpTexto(a.sbbxxx, b.sbbxxx),
+  nomeVendedor:           (a, b) => cmpTexto(a.nomeVendedor, b.nomeVendedor),
+  nomeComprador:          (a, b) => cmpTexto(a.nomeComprador, b.nomeComprador),
+  qtdxxx:                 (a, b) => cmpNumero(a.qtdxxx, b.qtdxxx),
+  valorUnidade:           (a, b) => cmpNumero(a.valorUnidade, b.valorUnidade),
+  valorPagar:             (a, b) => cmpNumero(a.valorPagar, b.valorPagar),
+  valorComissao:          (a, b) => cmpNumero(a.valorComissao, b.valorComissao),
+  valorDesconto:          (a, b) => cmpNumero(a.valorDesconto, b.valorDesconto),
+  valorLiquido:           (a, b) => cmpNumero(a.valorLiquido, b.valorLiquido),
+  desfin:                 (a, b) => cmpTexto(a.desfin, b.desfin),
+  parcelaInicial:         (a, b) => cmpNumero(a.parcelaInicial, b.parcelaInicial),
+  primeiroVencimentoData: (a, b) => cmpDataBr(a.primeiroVencimentoData, b.primeiroVencimentoData),
+  datlan:                 (a, b) => cmpDataIso(a.datlan, b.datlan),
+  defesa:                 (a, b) => cmpTexto(a.defesa, b.defesa),
+};
+
 export default function ConsultaVendas() {
   const config = useConfig();
   const [tipoRelatorio, setTipoRelatorio] = useState<TipoRelatorio>('vendas');
@@ -79,6 +122,10 @@ export default function ConsultaVendas() {
   const [consultaVersao, setConsultaVersao] = useState(0);
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  // Ordenação atual da grid (coluna + sentido) — replicada em dadosOrdenados
+  // pra impressão e CSV seguirem a mesma ordem escolhida na tela.
+  const [sortField, setSortField] = useState<string | undefined>();
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | undefined>();
   const [colunasVisiveis, setColunasVisiveis] = useState<string[]>(COLUNAS_CONSULTA_VENDAS.map(c => c.key));
   const [gerandoFaturaUnificada, setGerandoFaturaUnificada] = useState(false);
   const [faturasUnificadas, setFaturasUnificadas] = useState<FaturaUnificadaGrupo[] | null>(null);
@@ -215,7 +262,7 @@ export default function ConsultaVendas() {
     if (!dados.length) return;
     const cols = colunas.filter(c => c.dataIndex);
     const header = cols.map(c => c.title).join(';');
-    const rows = dados.map(row =>
+    const rows = dadosOrdenados.map(row =>
       cols.map(c => {
         const v = row[c.dataIndex!];
         if (v == null) return '';
@@ -268,8 +315,18 @@ export default function ConsultaVendas() {
 
   const { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalQtd, mediaGeral, mediasCategoria } = calcularTotais(dados);
 
+  // Reordena os dados igual ao que o usuário escolheu clicando no cabeçalho da
+  // tabela (sortField/sortOrder, capturado no onChange do Table), pra impressão
+  // e CSV saírem na mesma ordem que está sendo vista na tela.
+  const dadosOrdenados = (() => {
+    const cmp = sortField && COMPARADORES[sortField];
+    if (!cmp) return dados;
+    const ordenado = [...dados].sort(cmp);
+    return sortOrder === 'descend' ? ordenado.reverse() : ordenado;
+  })();
+
   // Impressão respeita a seleção da tabela: nada marcado -> imprime tudo; com seleção -> só os marcados.
-  const dadosImpressao = selectedRowKeys.length > 0 ? dados.filter(d => selectedRowKeys.includes(rowKeyOf(d))) : dados;
+  const dadosImpressao = selectedRowKeys.length > 0 ? dadosOrdenados.filter(d => selectedRowKeys.includes(rowKeyOf(d))) : dadosOrdenados;
   const totaisImpressao = calcularTotais(dadosImpressao);
 
   // Espécie predominante da consulta atual — decide se as colunas abaixo mostram
@@ -279,38 +336,53 @@ export default function ConsultaVendas() {
 
   const colunas: any[] = [
     { title: 'Lote', dataIndex: 'lotexx', ...rzCV('lotexx'), fixed: 'left' as const,
-      sorter: (a: any, b: any) => (a.lotexx || '').localeCompare(b.lotexx || '') },
-    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzCV('deslot') },
-    { title: 'Raça', dataIndex: 'descricaoRaca', ...rzCV('descricaoRaca'), ellipsis: true },
-    { title: 'Espécie', dataIndex: 'especies', ...rzCV('especies'), ellipsis: true },
-    { title: labelRP(especiesPredominante), dataIndex: 'rpxxx', ...rzCV('rpxxx') },
-    { title: labelSBB(especiesPredominante), dataIndex: 'sbbxxx', ...rzCV('sbbxxx') },
-    { title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, ...rzCV('nomeVendedor') },
-    { title: 'Comprador', dataIndex: 'nomeComprador', ellipsis: true, ...rzCV('nomeComprador') },
+      sorter: COMPARADORES.lotexx },
+    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzCV('deslot'),
+      sorter: COMPARADORES.deslot },
+    { title: 'Raça', dataIndex: 'descricaoRaca', ...rzCV('descricaoRaca'), ellipsis: true,
+      sorter: COMPARADORES.descricaoRaca },
+    { title: 'Espécie', dataIndex: 'especies', ...rzCV('especies'), ellipsis: true,
+      sorter: COMPARADORES.especies },
+    { title: labelRP(especiesPredominante), dataIndex: 'rpxxx', ...rzCV('rpxxx'),
+      sorter: COMPARADORES.rpxxx },
+    { title: labelSBB(especiesPredominante), dataIndex: 'sbbxxx', ...rzCV('sbbxxx'),
+      sorter: COMPARADORES.sbbxxx },
+    { title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, ...rzCV('nomeVendedor'),
+      sorter: COMPARADORES.nomeVendedor },
+    { title: 'Comprador', dataIndex: 'nomeComprador', ellipsis: true, ...rzCV('nomeComprador'),
+      sorter: COMPARADORES.nomeComprador },
     { title: 'Qtd', dataIndex: 'qtdxxx', ...rzCV('qtdxxx'), align: 'right' as const,
-      render: (v: number) => v ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '—' },
+      render: (v: number) => v ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '—',
+      sorter: COMPARADORES.qtdxxx },
     { title: 'Vlr. Unit.', dataIndex: 'valorUnidade', ...rzCV('valorUnidade'), align: 'right' as const,
       render: fmt,
-      sorter: (a: any, b: any) => (a.valorUnidade || 0) - (b.valorUnidade || 0) },
+      sorter: COMPARADORES.valorUnidade },
     { title: 'Vlr. a Pagar', dataIndex: 'valorPagar', ...rzCV('valorPagar'), align: 'right' as const,
       render: (v: number) => <Text strong>{fmt(v)}</Text>,
-      sorter: (a: any, b: any) => (a.valorPagar || 0) - (b.valorPagar || 0) },
+      sorter: COMPARADORES.valorPagar },
     { title: 'Comissão', dataIndex: 'valorComissao', ...rzCV('valorComissao'), align: 'right' as const,
-      render: (v: number) => <Text type="warning">{fmt(v)}</Text> },
+      render: (v: number) => <Text type="warning">{fmt(v)}</Text>,
+      sorter: COMPARADORES.valorComissao },
     { title: 'Desconto', dataIndex: 'valorDesconto', ...rzCV('valorDesconto'), align: 'right' as const,
-      render: (v: number) => v > 0 ? <Text type="danger">- {fmt(v)}</Text> : '—' },
+      render: (v: number) => v > 0 ? <Text type="danger">- {fmt(v)}</Text> : '—',
+      sorter: COMPARADORES.valorDesconto },
     { title: 'Vlr. Líquido', dataIndex: 'valorLiquido', ...rzCV('valorLiquido'), align: 'right' as const,
       render: (v: number) => <Text strong style={{ color: '#52c41a' }}>{fmt(v)}</Text>,
-      sorter: (a: any, b: any) => (a.valorLiquido || 0) - (b.valorLiquido || 0) },
-    { title: 'Condição', dataIndex: 'desfin', ...rzCV('desfin'), ellipsis: true },
-    { title: '1ª Parcela', dataIndex: 'parcelaInicial', ...rzCV('parcelaInicial'), align: 'right' as const, render: fmt },
-    { title: 'Vencimento', dataIndex: 'primeiroVencimentoData', ...rzCV('primeiroVencimentoData') },
+      sorter: COMPARADORES.valorLiquido },
+    { title: 'Condição', dataIndex: 'desfin', ...rzCV('desfin'), ellipsis: true,
+      sorter: COMPARADORES.desfin },
+    { title: '1ª Parcela', dataIndex: 'parcelaInicial', ...rzCV('parcelaInicial'), align: 'right' as const, render: fmt,
+      sorter: COMPARADORES.parcelaInicial },
+    { title: 'Vencimento', dataIndex: 'primeiroVencimentoData', ...rzCV('primeiroVencimentoData'),
+      sorter: COMPARADORES.primeiroVencimentoData },
     { title: 'Dt. Lançamento', dataIndex: 'datlan', ...rzCV('datlan'),
-      render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
+      render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—',
+      sorter: COMPARADORES.datlan },
     { title: 'Status', dataIndex: 'defesa', ...rzCV('defesa'),
       render: (v: string) => v === 'S'
         ? <Tag color="green">Vendido</Tag>
-        : <Tag color="default">Não vendido</Tag> },
+        : <Tag color="default">Não vendido</Tag>,
+      sorter: COMPARADORES.defesa },
   ];
 
   return (
@@ -668,6 +740,11 @@ export default function ConsultaVendas() {
             pagination={{ pageSize: 20, showTotal: t => `${t} registros`, showSizeChanger: true }}
             locale={{ emptyText: 'Nenhuma venda encontrada com os filtros informados' }}
             rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+            onChange={(_pagination, _filters, sorter) => {
+              const s = Array.isArray(sorter) ? sorter[0] : sorter;
+              setSortField(s?.order ? (s.field as string) : undefined);
+              setSortOrder(s?.order || undefined);
+            }}
             summary={() =>
               dados.length > 0 ? (
                 <Table.Summary.Row style={{ background: '#fafafa', fontWeight: 700 }}>
