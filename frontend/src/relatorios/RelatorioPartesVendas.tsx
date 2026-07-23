@@ -8,6 +8,7 @@ type Orientacao = 'retrato' | 'paisagem';
 
 export interface VendaPartesPDF {
   id: number;
+  datlei?: string;
   lotexx?: string;
   deslot?: string;
   descricaoRaca?: string;
@@ -56,6 +57,12 @@ const fmtR = (v?: number | null) =>
     ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : '—';
 
+const fmtData = (v?: string) => {
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? v : d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+};
+
 const linhaEndereco = (end?: string, bairro?: string) =>
   [end, bairro].filter(Boolean).join(', ') || null;
 
@@ -87,7 +94,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  headerLogo: { width: 108, height: 33, objectFit: 'contain', marginRight: 14 },
+  headerLogo: { width: 162, height: 50, objectFit: 'contain', marginRight: 14 },
   headerTitleBox: { flexDirection: 'column', justifyContent: 'center' },
   headerTitle: { color: ESCURO, fontSize: 11, fontFamily: 'Helvetica-Bold' },
   headerSub: { color: MEDIO, fontSize: 7.5, marginTop: 2 },
@@ -315,6 +322,7 @@ function PartesVendasPDF({
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
   const pageSize: any = orientacao === 'paisagem' ? [841.89, 595.28] : 'A4';
   const subtitulo = titulo || 'Partes das Vendas';
+  const dataLeilao = fmtData(vendas[0]?.datlei);
 
   return (
     <Document title={`Partes das Vendas — ${subtitulo}`} author={nomeEmpresa}>
@@ -326,7 +334,7 @@ function PartesVendasPDF({
             <Image src={logoBase64 || logotipoLocal} style={s.headerLogo} />
             <View style={s.headerTitleBox}>
               <Text style={s.headerTitle}>Vendedores e Compradores</Text>
-              <Text style={s.headerSub}>{subtitulo}</Text>
+              <Text style={s.headerSub}>{subtitulo}{dataLeilao ? `   ·   Data do Leilão: ${dataLeilao}` : ''}</Text>
               {filtrosDesc ? <Text style={s.headerFiltro}>Filtros: {filtrosDesc}</Text> : null}
             </View>
           </View>

@@ -54,7 +54,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   headerEsquerda: { flexDirection: 'column', justifyContent: 'center' },
-  headerLogo: { width: 110, height: 34, objectFit: 'contain', marginBottom: 2 },
+  headerLogo: { width: 165, height: 51, objectFit: 'contain', marginBottom: 2 },
   headerSub: { color: MEDIO, fontSize: 8, marginTop: 2 },
   headerInfoLeilao: { color: MEDIO, fontSize: 6.5, marginTop: 2 },
   headerDireita: { alignItems: 'flex-end' },

@@ -8,6 +8,7 @@ interface Props {
   filtrosDesc?: string;
   logoBase64?: string | null;
   totais: TotaisVendas;
+  dataLeilao?: string;
 }
 
 const ESCURO = '#222';
@@ -24,6 +25,12 @@ const fmtN = (v?: number | null) =>
   v != null && v !== 0
     ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 })
     : '—';
+
+const fmtData = (v?: string) => {
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? v : d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+};
 
 const s = StyleSheet.create({
   page: {
@@ -46,7 +53,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  headerLogo: { width: 90, height: 32, objectFit: 'contain', marginRight: 12 },
+  headerLogo: { width: 135, height: 48, objectFit: 'contain', marginRight: 12 },
   headerTitleBox: { flexDirection: 'column', justifyContent: 'center' },
   headerTitle: { color: ESCURO, fontSize: 13, fontFamily: 'Helvetica-Bold' },
   headerSub: { color: MEDIO, fontSize: 8, marginTop: 2 },
@@ -99,10 +106,11 @@ const s = StyleSheet.create({
   footerText: { fontSize: 6, color: '#aaa' },
 });
 
-function MediasLeilaoPDF({ titulo, empresa, filtrosDesc, logoBase64, totais }: Props) {
+function MediasLeilaoPDF({ titulo, empresa, filtrosDesc, logoBase64, totais, dataLeilao }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
   const subtitulo = titulo || 'Todos os leilões';
+  const dataLeilaoFmt = fmtData(dataLeilao);
   const medias = totais.mediasCategoria || [];
 
   return (
@@ -114,7 +122,7 @@ function MediasLeilaoPDF({ titulo, empresa, filtrosDesc, logoBase64, totais }: P
             <Image src={logoBase64 || logotipoLocal} style={s.headerLogo} />
             <View style={s.headerTitleBox}>
               <Text style={s.headerTitle}>Relatório de Médias por Categoria</Text>
-              <Text style={s.headerSub}>{subtitulo}</Text>
+              <Text style={s.headerSub}>{subtitulo}{dataLeilaoFmt ? `   ·   Data do Leilão: ${dataLeilaoFmt}` : ''}</Text>
               {filtrosDesc ? <Text style={s.headerFiltro}>Filtros: {filtrosDesc}</Text> : null}
             </View>
           </View>

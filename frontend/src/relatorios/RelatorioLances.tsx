@@ -52,7 +52,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  headerLogo: { width: 108, height: 33, objectFit: 'contain', marginRight: 14 },
+  headerLogo: { width: 162, height: 50, objectFit: 'contain', marginRight: 14 },
   headerTitleBox: { flexDirection: 'column' },
   headerTitle: { color: ESCURO, fontSize: 11, fontFamily: 'Helvetica-Bold' },
   headerSub:   { color: MEDIO, fontSize: 7.5, marginTop: 2 },

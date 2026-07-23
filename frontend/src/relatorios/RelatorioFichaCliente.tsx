@@ -61,7 +61,7 @@ const s = StyleSheet.create({
     paddingBottom: 8,
     marginBottom: 14,
   },
-  logo: { width: 90, height: 40, objectFit: 'contain' },
+  logo: { width: 135, height: 60, objectFit: 'contain' },
   titulo: { fontSize: 18, fontFamily: 'Helvetica-Bold', color: ESCURO },
 
   linha: { flexDirection: 'row', marginBottom: 7, flexWrap: 'wrap' },

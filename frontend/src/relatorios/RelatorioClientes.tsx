@@ -69,7 +69,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   docHeaderEsquerda: { flexDirection: 'column', justifyContent: 'center' },
-  docHeaderLogo: { width: 56, height: 56, objectFit: 'contain', marginBottom: 2 },
+  docHeaderLogo: { width: 84, height: 84, objectFit: 'contain', marginBottom: 2 },
   docHeaderTitulo: { color: ESCURO, fontSize: 13, fontFamily: 'Helvetica-Bold' },
   docHeaderSub: { color: MEDIO, fontSize: 8, marginTop: 2 },
   docHeaderDireita: { alignItems: 'flex-end' },

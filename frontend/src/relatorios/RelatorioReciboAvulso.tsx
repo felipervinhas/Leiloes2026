@@ -44,7 +44,7 @@ const s = StyleSheet.create({
     paddingBottom: 8,
     marginBottom: 18,
   },
-  logo: { width: 80, height: 36, objectFit: 'contain' },
+  logo: { width: 120, height: 54, objectFit: 'contain' },
   empresa: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: PRETO },
   titulo: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: PRETO },
 

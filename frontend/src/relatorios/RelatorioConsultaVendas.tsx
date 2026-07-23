@@ -8,6 +8,7 @@ type Orientacao = 'retrato' | 'paisagem';
 
 export interface VendaPDF {
   id: number;
+  datlei?: string;
   lotexx?: string;
   deslot?: string;
   descricaoRaca?: string;
@@ -76,17 +77,16 @@ const fmtR = (v?: number | null) =>
     ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : '—';
 
-function parseDataBr(str?: string): Date | null {
-  if (!str) return null;
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(str);
-  if (!m) return null;
-  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
-}
-
 const fmtN = (v?: number | null) =>
   v != null && v !== 0
     ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 })
     : '—';
+
+const fmtData = (v?: string) => {
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? v : d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+};
 
 const s = StyleSheet.create({
   page: {
@@ -111,7 +111,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  headerLogo: { width: 108, height: 33, objectFit: 'contain', marginRight: 14 },
+  headerLogo: { width: 162, height: 50, objectFit: 'contain', marginRight: 14 },
   headerTitleBox: { flexDirection: 'column', justifyContent: 'center' },
   headerTitle: { color: ESCURO, fontSize: 11, fontFamily: 'Helvetica-Bold' },
   headerSub: { color: MEDIO, fontSize: 7.5, marginTop: 2 },
@@ -222,26 +222,6 @@ const s = StyleSheet.create({
   tdTotGreen:  { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#fff', textAlign: 'right' as const },
   tdTotOrange: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#ddd', textAlign: 'right' as const },
 
-  // Parcelas agrupadas por vencimento
-  parcelasBox: {
-    borderRadius: 3, borderColor: CINZA, borderWidth: 1, marginBottom: 8, overflow: 'hidden',
-  },
-  parcelasTitulo: {
-    backgroundColor: CLARO, color: ESCURO, fontSize: 7, fontFamily: 'Helvetica-Bold',
-    paddingHorizontal: 8, paddingVertical: 4,
-  },
-  parcelasHeader: { backgroundColor: ESCURO, flexDirection: 'row', paddingVertical: 3, paddingHorizontal: 6 },
-  thP: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: '#fff' },
-  thPRight: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: '#fff', textAlign: 'right' as const },
-  parcRow: { flexDirection: 'row', paddingVertical: 2.5, paddingHorizontal: 6, borderTopColor: CINZA, borderTopWidth: 0.5 },
-  parcRowAlt: { backgroundColor: CLARO },
-  cGrupo: { flex: 1, flexDirection: 'row' },
-  cGrupoSep: { borderLeftColor: CINZA, borderLeftWidth: 0.5, paddingLeft: 4 },
-  cDatP: { flex: 1 },
-  cVlrP: { width: 70, textAlign: 'right' as const },
-  tdP: { fontSize: 7, color: ESCURO },
-  tdPRight: { fontSize: 7, color: ESCURO, textAlign: 'right' as const },
-
   // Rodapé
   footer: {
     position: 'absolute',
@@ -264,31 +244,8 @@ function ConsultaVendasPDF({
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
   const pageSize: any = orientacao === 'paisagem' ? [841.89, 595.28] : 'A4';
   const subtitulo = titulo || 'Todas as vendas';
+  const dataLeilao = fmtData(vendas[0]?.datlei);
   const v = (chave: string) => !colunasVisiveis || colunasVisiveis.includes(chave);
-
-  // Parcelas de todas as vendas listadas, somadas por data de vencimento —
-  // mesmo padrão da Fatura Unificada, senão uma consulta com muitos lotes
-  // parcelados geraria uma lista enorme (lotes x parcelas).
-  const porData = new Map<string, { datven: string; vlrpar: number; temSinal: boolean }>();
-  for (const venda of vendas) {
-    for (const p of venda.parcelas || []) {
-      const key = p.datven || '—';
-      const atual = porData.get(key) || { datven: key, vlrpar: 0, temSinal: false };
-      atual.vlrpar += p.vlrpar || 0;
-      if (p.pripar === 'S') atual.temSinal = true;
-      porData.set(key, atual);
-    }
-  }
-  const parcelasAgrupadas = Array.from(porData.values()).sort((a, b) => {
-    const da = parseDataBr(a.datven);
-    const db = parseDataBr(b.datven);
-    if (da && db) return da.getTime() - db.getTime();
-    return a.datven.localeCompare(b.datven);
-  });
-  const linhasParc: (typeof parcelasAgrupadas[0] | null)[][] = [];
-  for (let i = 0; i < parcelasAgrupadas.length; i += 4) {
-    linhasParc.push([parcelasAgrupadas[i] || null, parcelasAgrupadas[i + 1] || null, parcelasAgrupadas[i + 2] || null, parcelasAgrupadas[i + 3] || null]);
-  }
 
   return (
     <Document title={`Relatório de Vendas — ${subtitulo}`} author={nomeEmpresa}>
@@ -300,7 +257,7 @@ function ConsultaVendasPDF({
             <Image src={logoBase64 || logotipoLocal} style={s.headerLogo} />
             <View style={s.headerTitleBox}>
               <Text style={s.headerTitle}>Relatório de Consulta de Vendas</Text>
-              <Text style={s.headerSub}>{subtitulo}</Text>
+              <Text style={s.headerSub}>{subtitulo}{dataLeilao ? `   ·   Data do Leilão: ${dataLeilao}` : ''}</Text>
               {filtrosDesc ? (
                 <Text style={s.headerFiltro}>Filtros: {filtrosDesc}</Text>
               ) : null}
@@ -484,35 +441,6 @@ function ConsultaVendasPDF({
                 <Text style={s.tdTotGreen}>{fmtR(totais.totalLiquido)}</Text>
               </View>
             )}
-          </View>
-        )}
-
-        {/* Parcelas — somadas por data de vencimento entre todos os lotes listados */}
-        {parcelasAgrupadas.length > 0 && (
-          <View style={s.parcelasBox}>
-            <Text style={s.parcelasTitulo}>Parcelas por Vencimento</Text>
-            <View style={s.parcelasHeader}>
-              {[0, 1, 2, 3].map(c => (
-                <View key={c} style={[s.cGrupo, c > 0 ? s.cGrupoSep : {}]}>
-                  <View style={s.cDatP}><Text style={s.thP}>Vencimento</Text></View>
-                  <View style={s.cVlrP}><Text style={s.thPRight}>Valor</Text></View>
-                </View>
-              ))}
-            </View>
-            {linhasParc.map((linha, li) => (
-              <View key={li} wrap={false} style={[s.parcRow, li % 2 === 1 ? s.parcRowAlt : {}]}>
-                {linha.map((p, ci) => (
-                  <View key={ci} style={[s.cGrupo, ci > 0 ? s.cGrupoSep : {}]}>
-                    {p ? (
-                      <View style={{ flexDirection: 'row', flex: 1 }}>
-                        <View style={s.cDatP}><Text style={s.tdP}>{p.datven || '—'}</Text></View>
-                        <View style={s.cVlrP}><Text style={s.tdPRight}>{fmtR(p.vlrpar)}</Text></View>
-                      </View>
-                    ) : null}
-                  </View>
-                ))}
-              </View>
-            ))}
           </View>
         )}
 

@@ -73,6 +73,10 @@ export default function ConsultaVendas() {
   const [dados, setDados]   = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [consultou, setConsultou] = useState(false);
+  // Incrementa a cada nova consulta — força o PDFDownloadLink a remontar (via key)
+  // sempre que o resultado muda, senão o @react-pdf/renderer pode manter o PDF
+  // gerado da consulta anterior (ex.: troca de filtro sem trocar orientação/colunas).
+  const [consultaVersao, setConsultaVersao] = useState(0);
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [colunasVisiveis, setColunasVisiveis] = useState<string[]>(COLUNAS_CONSULTA_VENDAS.map(c => c.key));
@@ -144,6 +148,7 @@ export default function ConsultaVendas() {
       if (racasSel.length) params.idRacas  = racasSel.join(',');
       const r = await api.get('/consulta-vendas', { params });
       setDados(r.data);
+      setConsultaVersao(v => v + 1);
     } catch { message.error('Erro ao consultar vendas'); }
     finally { setLoading(false); }
   };
@@ -203,6 +208,7 @@ export default function ConsultaVendas() {
     setLotes([]); setRacas([]);
     setVendedores([]); setCompradores([]);
     setDados([]); setConsultou(false);
+    setConsultaVersao(v => v + 1);
   };
 
   const exportarCSV = () => {
@@ -581,7 +587,7 @@ export default function ConsultaVendas() {
                 </Button>
               ) : (
                 <PDFDownloadLink
-                  key={`${tipoRelatorio}-${orientacaoImp}-${colunasVisiveis.join(',')}`}
+                  key={`${tipoRelatorio}-${orientacaoImp}-${colunasVisiveis.join(',')}-${consultaVersao}-${selectedRowKeys.join(',')}`}
                   document={
                     tipoRelatorio === 'vendas'
                       ? <ConsultaVendasPDF
@@ -607,6 +613,7 @@ export default function ConsultaVendas() {
                       ? <MediasLeilaoPDF
                           totais={totaisImpressao}
                           titulo={nomeLeilaoSel}
+                          dataLeilao={dadosImpressao[0]?.datlei}
                           empresa={config.empresa}
                           filtrosDesc={filtrosDesc}
                           logoBase64={config.logoBase64}

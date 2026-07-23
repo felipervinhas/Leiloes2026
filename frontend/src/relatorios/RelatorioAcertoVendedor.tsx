@@ -54,7 +54,7 @@ const s = StyleSheet.create({
     marginBottom: 6,
   },
   docHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  docLogo: { width: 32, height: 32, objectFit: 'contain' },
+  docLogo: { width: 48, height: 48, objectFit: 'contain' },
   docEmpresa: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: PRETO },
   docHeaderRight: { alignItems: 'flex-end' },
   docTitulo: { fontSize: 13, fontFamily: 'Helvetica-Bold', color: PRETO, letterSpacing: 0.5 },

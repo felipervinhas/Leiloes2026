@@ -30,7 +30,7 @@ const s = StyleSheet.create({
   page: { fontFamily: 'Helvetica', fontSize: 8, color: ESCURO, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, paddingBottom: 8, borderBottomColor: PRETO, borderBottomWidth: 1 },
   headerEsq: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logo: { width: 32, height: 32, objectFit: 'contain' },
+  logo: { width: 48, height: 48, objectFit: 'contain' },
   empresa: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: PRETO },
   headerDir: { alignItems: 'flex-end' },
   titulo: { fontSize: 14, fontFamily: 'Helvetica-Bold', color: PRETO, letterSpacing: 1 },

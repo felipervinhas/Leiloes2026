@@ -9,6 +9,7 @@ type Orientacao = 'retrato' | 'paisagem';
 
 export interface VendaSeguroPDF {
   id: number;
+  datlei?: string;
   datlan?: string;
   lotexx?: string;
   deslot?: string;
@@ -90,7 +91,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  headerLogo: { width: 108, height: 33, objectFit: 'contain', marginRight: 14 },
+  headerLogo: { width: 162, height: 50, objectFit: 'contain', marginRight: 14 },
   headerTitleBox: { flexDirection: 'column', justifyContent: 'center' },
   headerTitle: { color: ESCURO, fontSize: 11, fontFamily: 'Helvetica-Bold' },
   headerSub: { color: MEDIO, fontSize: 7.5, marginTop: 2 },
@@ -213,9 +214,9 @@ const s = StyleSheet.create({
 });
 
 function Cabecalho({
-  logoBase64, titulo, subtitulo, filtrosDesc, agora, contagem,
+  logoBase64, titulo, subtitulo, dataLeilao, filtrosDesc, agora, contagem,
 }: {
-  logoBase64?: string | null; titulo: string; subtitulo?: string; filtrosDesc?: string; agora: string; contagem: number;
+  logoBase64?: string | null; titulo: string; subtitulo?: string; dataLeilao?: string | null; filtrosDesc?: string; agora: string; contagem: number;
 }) {
   return (
     <View style={s.header} fixed>
@@ -223,7 +224,7 @@ function Cabecalho({
         <Image src={logoBase64 || logotipoLocal} style={s.headerLogo} />
         <View style={s.headerTitleBox}>
           <Text style={s.headerTitle}>{titulo}</Text>
-          {subtitulo ? <Text style={s.headerSub}>{subtitulo}</Text> : null}
+          {subtitulo ? <Text style={s.headerSub}>{subtitulo}{dataLeilao ? `   ·   Data do Leilão: ${dataLeilao}` : ''}</Text> : null}
           {filtrosDesc ? <Text style={s.headerFiltro}>Filtros: {filtrosDesc}</Text> : null}
         </View>
       </View>
@@ -260,6 +261,7 @@ function MapaSeguroPDF({
   // Espécie predominante — decide se RP/Tat. mostram RP/SBB (equinos) ou
   // Tatuagem/Registro (demais espécies), igual à Consulta de Vendas.
   const especiesPredominante = vendas[0]?.especies;
+  const dataLeilao = fmtData(vendas[0]?.datlei);
 
   // Agrupamento por comprador na página 2 (Mapa da Compradores) — cada
   // comprador pode ter comprado mais de um lote, cada um com sua própria
@@ -283,7 +285,7 @@ function MapaSeguroPDF({
       <Page size={pageSize} style={s.page}>
         <Cabecalho
           logoBase64={logoBase64} titulo="Mapa de Seguradoras" subtitulo={subtitulo}
-          filtrosDesc={filtrosDesc} agora={agora} contagem={vendas.length}
+          dataLeilao={dataLeilao} filtrosDesc={filtrosDesc} agora={agora} contagem={vendas.length}
         />
 
         <View style={s.resumo}>
@@ -348,7 +350,7 @@ function MapaSeguroPDF({
       <Page size={pageSize} style={s.page}>
         <Cabecalho
           logoBase64={logoBase64} titulo="Mapa da Compradores" subtitulo={subtitulo}
-          filtrosDesc={filtrosDesc} agora={agora} contagem={vendas.length}
+          dataLeilao={dataLeilao} filtrosDesc={filtrosDesc} agora={agora} contagem={vendas.length}
         />
 
         <View style={s.tableHeader} fixed>

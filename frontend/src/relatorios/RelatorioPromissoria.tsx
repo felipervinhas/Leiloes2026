@@ -45,7 +45,7 @@ const s = StyleSheet.create({
     marginBottom: 6,
   },
   headerEsq: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  logo: { width: 32, height: 32, objectFit: 'contain' },
+  logo: { width: 48, height: 48, objectFit: 'contain' },
   empresa: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: PRETO },
   empresaSub: { fontSize: 6, color: MEDIO, marginTop: 1 },
   headerDir: { alignItems: 'flex-end' },
