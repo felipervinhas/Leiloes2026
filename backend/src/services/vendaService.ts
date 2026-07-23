@@ -1247,7 +1247,7 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
     grupo.totais.totalComissao += r.VALORCOMISSAO || 0;
     grupo.totais.totalDesconto += r.VALORDESCONTO || 0;
     grupo.totais.totalSinal        += valorSinal;
-    grupo.totais.totalPromissorias += valorSinal;
+    grupo.totais.totalPromissorias += valorPagar - valorSinal;
     if (aVista) grupo.totais.totalAVista += valorPagar;
     grupo.totais.totalComissaoVendedor += r.VALORCOMISSAOVENDEDOR || 0;
     grupo.totais.totalLiquidoVendedor  += valorOriginal - (r.VALORCOMISSAOVENDEDOR || 0);

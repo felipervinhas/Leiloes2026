@@ -407,8 +407,8 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
         })}
       </View>
 
-      {/* Totalizador de parcelamentos — agrupado por data de vencimento (só interessa ao comprador) */}
-      {!isVendedor && parcelasAgrupadas.length > 0 && (
+      {/* Totalizador de parcelamentos — agrupado por data de vencimento */}
+      {parcelasAgrupadas.length > 0 && (
         <View style={s.parcelasBox}>
           <Text style={{ fontSize: 5.5, color: MEDIO, padding: '2 4', fontStyle: 'italic' }}>
             Valores somados de todos os lotes com vencimento na mesma data
@@ -461,40 +461,24 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
         </View>
       </View>
 
-      {isVendedor ? (
-        /* Fatura de vendedor: 1 recibo só, do valor líquido pago a ele (já descontada
-           a comissão do vendedor) — não interessa a ele o que cada comprador pagou. */
+      {/* Recibos por extenso — não fazem sentido na fatura de vendedor (o dinheiro
+          sempre vem do comprador, que assina o próprio recibo na fatura dele). */}
+      {!isVendedor && comp ? (
         <View wrap={false}>
           <View style={s.reciboBox}>
-            <Text style={s.reciboLabel}>Pago a:</Text>
-            <Text style={s.reciboNome}>{ven?.nomexx || '—'}</Text>
-            <Text style={s.reciboLabel}>
-              a quantia de, referente à venda dos lotes acima, já descontada a comissão do vendedor de {fmtR(grupo.totais.totalComissaoVendedor)}:
-            </Text>
-            <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalLiquidoVendedor)}</Text>
+            <Text style={s.reciboLabel}>Recebemos de:</Text>
+            <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
+            <Text style={s.reciboLabel}>a quantia de, referente ao pagamento do sinal - 1ª parcela(s):</Text>
+            <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalSinal)}</Text>
+          </View>
+          <View style={s.reciboBox}>
+            <Text style={s.reciboLabel}>Recebemos de:</Text>
+            <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
+            <Text style={s.reciboLabel}>a quantia de, referente ao pagamento da comissão à leiloeira:</Text>
+            <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalComissao)}</Text>
           </View>
         </View>
-      ) : (
-        /* Recibos por extenso — o dinheiro sempre vem do comprador; quando ele é
-           único (modo 'par' ou 'comprador') é 1 recibo só, com o total do grupo.
-           Quando o comprador varia, 1 recibo por comprador, já tratado acima (isVendedor). */
-        comp ? (
-          <View wrap={false}>
-            <View style={s.reciboBox}>
-              <Text style={s.reciboLabel}>Recebemos de:</Text>
-              <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
-              <Text style={s.reciboLabel}>a quantia de, referente ao pagamento do sinal - 1ª parcela(s):</Text>
-              <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalSinal)}</Text>
-            </View>
-            <View style={s.reciboBox}>
-              <Text style={s.reciboLabel}>Recebemos de:</Text>
-              <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
-              <Text style={s.reciboLabel}>a quantia de, referente ao pagamento da comissão à leiloeira:</Text>
-              <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalComissao)}</Text>
-            </View>
-          </View>
-        ) : null
-      )}
+      ) : null}
 
       {/* Assinaturas — só quem é parte única do grupo assina: na fatura de vendedor,
           só o vendedor; na fatura de comprador, só o comprador; no par de sempre,

@@ -199,6 +199,17 @@ const s = StyleSheet.create({
     color: ESCURO,
     marginBottom: 6,
   },
+
+  assinaturas: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 14,
+    paddingTop: 6,
+  },
+  assinaturaItem: { alignItems: 'center', width: 220 },
+  assinaturaLinha: { borderTopColor: ESCURO, borderTopWidth: 0.5, width: '100%', marginBottom: 3 },
+  assinaturaNome: { fontSize: 8, color: ESCURO, textAlign: 'center' as const },
+  assinaturaRole: { fontSize: 6.5, color: MEDIO, textAlign: 'center' as const },
 });
 
 function Cabecalho({
@@ -321,6 +332,14 @@ function MapaSeguroPDF({
             <View style={s.cValor}><Text style={s.tdBoldRight}>{fmtR(v.valorPagar)}</Text></View>
           </View>
         ))}
+
+        <View wrap={false} style={s.assinaturas}>
+          <View style={s.assinaturaItem}>
+            <View style={s.assinaturaLinha} />
+            <Text style={s.assinaturaNome}>{nomeEmpresa}</Text>
+            <Text style={s.assinaturaRole}>Leiloeira Responsável</Text>
+          </View>
+        </View>
 
         <Rodape nomeEmpresa={nomeEmpresa} />
       </Page>

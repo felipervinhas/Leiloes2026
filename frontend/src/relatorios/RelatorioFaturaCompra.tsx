@@ -528,20 +528,23 @@ function FaturaCompraPDF({ dados, empresa, variante = 'comprador', logoBase64 }:
           <SecaoComprador key={comp.id} comp={comp} index={i} variante={variante} />
         ))}
 
-        {/* Assinaturas */}
+        {/* Assinaturas — na fatura de vendedor só o vendedor assina (não interessa
+            a ele a assinatura do comprador); na fatura de comprador, o inverso. */}
         <View wrap={false} style={s.assinaturas}>
-          {dados.compradores.slice(0, 2).map((comp, i) => (
+          {variante !== 'vendedor' && dados.compradores.slice(0, 2).map((comp, i) => (
             <View key={i} style={s.assinaturaItem}>
               <View style={s.assinaturaLinha} />
               <Text style={s.assinaturaNome}>{comp.nomexx || 'Comprador'}</Text>
               <Text style={s.assinaturaRole}>Comprador</Text>
             </View>
           ))}
-          <View style={s.assinaturaItem}>
-            <View style={s.assinaturaLinha} />
-            <Text style={s.assinaturaNome}>{dados.lote?.nomeVendedor || 'Vendedor'}</Text>
-            <Text style={s.assinaturaRole}>Vendedor</Text>
-          </View>
+          {variante !== 'comprador' && (
+            <View style={s.assinaturaItem}>
+              <View style={s.assinaturaLinha} />
+              <Text style={s.assinaturaNome}>{dados.lote?.nomeVendedor || 'Vendedor'}</Text>
+              <Text style={s.assinaturaRole}>Vendedor</Text>
+            </View>
+          )}
         </View>
 
         {/* Rodapé */}
