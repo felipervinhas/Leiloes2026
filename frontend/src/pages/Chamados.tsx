@@ -258,6 +258,7 @@ export default function Chamados() {
             <Form
               key={detalhe.id}
               form={formStatus}
+              preserve={false}
               layout="vertical"
               onFinish={salvarStatus}
               initialValues={{ status: detalhe.status, resposta: detalhe.resposta }}
