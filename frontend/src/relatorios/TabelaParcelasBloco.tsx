@@ -13,6 +13,8 @@ interface Props {
   qtdCond?: number | null;
   /** Estilo extra (ex.: posicionamento absoluto no editor de layout). */
   style?: any;
+  /** Quantos grupos #/Vencimento/Valor lado a lado por linha (default 4). */
+  colunas?: number;
 }
 
 const PRETO  = '#000';
@@ -38,10 +40,10 @@ const s = StyleSheet.create({
     backgroundColor: CLARO, flexDirection: 'row',
     paddingVertical: 3, paddingHorizontal: 4,
   },
-  cGrupo:    { flex: 1, flexDirection: 'row' },
-  cGrupoSep: { borderLeftWidth: 0.5, borderLeftColor: CINZA, paddingLeft: 3 },
+  cGrupo:    { flex: 1, flexDirection: 'row', paddingRight: 8 },
+  cGrupoSep: { borderLeftWidth: 0.5, borderLeftColor: CINZA, paddingLeft: 10 },
   cNum:  { width: 20 },
-  cData: { flex: 1 },
+  cData: { flex: 1, paddingLeft: 6 },
   cValor:{ width: 56, textAlign: 'right' },
   th:      { fontSize: 6, fontFamily: 'Helvetica-Bold', color: '#fff' },
   thRight: { fontSize: 6, fontFamily: 'Helvetica-Bold', color: '#fff', textAlign: 'right' },
@@ -51,19 +53,20 @@ const s = StyleSheet.create({
   tdBoldRight: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: PRETO, textAlign: 'right' },
 });
 
-/** Tabela de parcelas (4 grupos por linha) usada tanto no relatório estático quanto no dinâmico. */
-export default function TabelaParcelasBloco({ parcelas, qtdCond, style }: Props) {
+/** Tabela de parcelas (N grupos por linha, default 4) usada tanto no relatório estático quanto no dinâmico. */
+export default function TabelaParcelasBloco({ parcelas, qtdCond, style, colunas = 4 }: Props) {
   const totalParcelas = parcelas.reduce((a, p) => a + (p.vlrpar ?? 0), 0);
+  const grupos = Array.from({ length: colunas }, (_, g) => g);
 
   const linhas: (Parcela | null)[][] = [];
-  for (let i = 0; i < parcelas.length; i += 4) {
-    linhas.push([parcelas[i] ?? null, parcelas[i + 1] ?? null, parcelas[i + 2] ?? null, parcelas[i + 3] ?? null]);
+  for (let i = 0; i < parcelas.length; i += colunas) {
+    linhas.push(grupos.map(g => parcelas[i + g] ?? null));
   }
 
   return (
     <View style={style ? [s.tabelaBox, style] : s.tabelaBox}>
       <View style={s.tabelaHeader}>
-        {[0, 1, 2, 3].map(g => (
+        {grupos.map(g => (
           <View key={g} style={[s.cGrupo, g > 0 ? s.cGrupoSep : {}]}>
             <View style={s.cNum}><Text style={s.th}>#</Text></View>
             <View style={s.cData}><Text style={s.th}>Vencimento</Text></View>

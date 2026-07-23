@@ -333,9 +333,18 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
               ) : null}
             </View>
 
-            {/* ── DEMONSTRATIVO DE PARCELAMENTOS (4 grupos por linha) ── */}
+            {/* ── DEMONSTRATIVO DE PARCELAMENTOS (3 colunas) ── */}
             <Text style={s.secLabel}>Demonstrativo de Parcelamentos</Text>
-            <TabelaParcelasBloco parcelas={comp.parcelas} qtdCond={comp.qtdparCond} />
+            <TabelaParcelasBloco parcelas={comp.parcelas} qtdCond={comp.qtdparCond} colunas={3} />
+
+            {/* Assinatura do comprador, logo abaixo do demonstrativo de parcelamentos */}
+            <View wrap={false} style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
+              <View style={s.promAssinItem}>
+                <View style={s.promAssinLinha} />
+                <Text style={s.promAssinNome}>{comp.nomexx?.toUpperCase() || 'COMPRADOR'}</Text>
+                <Text style={s.promAssinRole}>Comprador</Text>
+              </View>
+            </View>
 
             {/* ── NOTA PROMISSÓRIA ÚNICA ── */}
             {(() => {
