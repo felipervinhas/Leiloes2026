@@ -278,8 +278,8 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
   });
 
   const linhasParc: (typeof parcelasAgrupadas[0] | null)[][] = [];
-  for (let i = 0; i < parcelasAgrupadas.length; i += 4) {
-    linhasParc.push([parcelasAgrupadas[i] || null, parcelasAgrupadas[i + 1] || null, parcelasAgrupadas[i + 2] || null, parcelasAgrupadas[i + 3] || null]);
+  for (let i = 0; i < parcelasAgrupadas.length; i += 3) {
+    linhasParc.push([parcelasAgrupadas[i] || null, parcelasAgrupadas[i + 1] || null, parcelasAgrupadas[i + 2] || null]);
   }
 
   return (
@@ -414,7 +414,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
             Valores somados de todos os lotes com vencimento na mesma data
           </Text>
           <View style={s.parcelasHeader}>
-            {[0, 1, 2, 3].map(c => (
+            {[0, 1, 2].map(c => (
               <View key={c} style={[s.cGrupo, c > 0 ? s.cGrupoSep : {}]}>
                 <View style={s.cDatP}><Text style={s.thP}>Vencimento</Text></View>
                 <View style={s.cVlrP}><Text style={s.thPRight}>Valor</Text></View>

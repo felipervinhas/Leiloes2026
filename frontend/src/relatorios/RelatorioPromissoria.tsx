@@ -337,9 +337,10 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
             <Text style={s.secLabel}>Demonstrativo de Parcelamentos</Text>
             <TabelaParcelasBloco parcelas={comp.parcelas} qtdCond={comp.qtdparCond} colunas={3} />
 
-            {/* Assinatura do comprador, logo abaixo do demonstrativo de parcelamentos */}
-            <View wrap={false} style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
-              <View style={s.promAssinItem}>
+            {/* Assinatura do comprador, logo abaixo do demonstrativo de parcelamentos —
+                espaço em branco generoso acima da linha, pra caber a assinatura de fato. */}
+            <View wrap={false} style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, marginBottom: 10 }}>
+              <View style={[s.promAssinItem, { marginTop: 28 }]}>
                 <View style={s.promAssinLinha} />
                 <Text style={s.promAssinNome}>{comp.nomexx?.toUpperCase() || 'COMPRADOR'}</Text>
                 <Text style={s.promAssinRole}>Comprador</Text>

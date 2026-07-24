@@ -415,17 +415,17 @@ function SecaoComprador({ comp, index, variante }: { comp: FaturaData['comprador
         </View>
       </View>
 
-      {/* Parcelas — 4 colunas */}
+      {/* Parcelas — 3 colunas */}
       {(() => {
         const parc = comp.parcelas;
         const linhas: (typeof parc[0] | null)[][] = [];
-        for (let i = 0; i < parc.length; i += 4) {
-          linhas.push([parc[i] || null, parc[i+1] || null, parc[i+2] || null, parc[i+3] || null]);
+        for (let i = 0; i < parc.length; i += 3) {
+          linhas.push([parc[i] || null, parc[i+1] || null, parc[i+2] || null]);
         }
         return (
           <View style={s.parcelasBox}>
             <View style={s.parcelasHeader}>
-              {[0, 1, 2, 3].map(c => (
+              {[0, 1, 2].map(c => (
                 <View key={c} style={[s.cGrupo, c > 0 ? s.cGrupoSep : {}]}>
                   <View style={s.cNumP}><Text style={s.thP}>#</Text></View>
                   <View style={s.cDatP}><Text style={s.thP}>Vencimento</Text></View>
@@ -445,7 +445,7 @@ function SecaoComprador({ comp, index, variante }: { comp: FaturaData['comprador
                         <View style={{ flexDirection: 'row', flex: 1 }}>
                           <View style={s.cNumP}>
                             <Text style={p.pripar === 'S' ? s.tdPBold : s.tdP}>
-                              {p.ordxxx || String(li * 4 + ci + 1).padStart(2, '0')}
+                              {p.ordxxx || String(li * 3 + ci + 1).padStart(2, '0')}
                             </Text>
                           </View>
                           <View style={s.cDatP}>
