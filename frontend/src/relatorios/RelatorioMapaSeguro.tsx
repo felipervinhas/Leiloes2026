@@ -251,8 +251,8 @@ function Rodape({ nomeEmpresa }: { nomeEmpresa: string }) {
 }
 
 function MapaSeguroPDF({
-  vendas, totais, titulo, empresa, filtrosDesc, logoBase64, orientacao = 'paisagem',
-}: Props & { orientacao?: Orientacao }) {
+  vendas, totais, titulo, empresa, filtrosDesc, logoBase64, orientacao = 'paisagem', pagina = 'ambas',
+}: Props & { orientacao?: Orientacao; pagina?: 'seguradoras' | 'compradores' | 'ambas' }) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
   const pageSize: any = orientacao === 'paisagem' ? [841.89, 595.28] : 'A4';
@@ -278,10 +278,14 @@ function MapaSeguroPDF({
     }, new Map()).values()
   ).sort((a, b) => a.nome.localeCompare(b.nome));
 
+  const mostraSeguradoras = pagina === 'seguradoras' || pagina === 'ambas';
+  const mostraCompradores = pagina === 'compradores' || pagina === 'ambas';
+
   return (
     <Document title={`Mapa de Seguro — ${subtitulo}`} author={nomeEmpresa}>
 
       {/* ── Página 1: Mapa de Seguradoras ── */}
+      {mostraSeguradoras && (
       <Page size={pageSize} style={s.page}>
         <Cabecalho
           logoBase64={logoBase64} titulo="Mapa de Seguradoras" subtitulo={subtitulo}
@@ -345,8 +349,10 @@ function MapaSeguroPDF({
 
         <Rodape nomeEmpresa={nomeEmpresa} />
       </Page>
+      )}
 
       {/* ── Página 2: Mapa da Compradores ── */}
+      {mostraCompradores && (
       <Page size={pageSize} style={s.page}>
         <Cabecalho
           logoBase64={logoBase64} titulo="Mapa da Compradores" subtitulo={subtitulo}
@@ -386,6 +392,7 @@ function MapaSeguroPDF({
 
         <Rodape nomeEmpresa={nomeEmpresa} />
       </Page>
+      )}
     </Document>
   );
 }

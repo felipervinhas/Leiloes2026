@@ -22,7 +22,7 @@ import { useConfig } from '../context/ConfigContext';
 import { labelRP, labelSBB } from '../utils/lote';
 
 type Orientacao = 'retrato' | 'paisagem';
-type TipoRelatorio = 'vendas' | 'partes' | 'medias' | 'fatura' | 'seguro';
+type TipoRelatorio = 'vendas' | 'partes' | 'medias' | 'fatura' | 'seguro' | 'seguroCompradores';
 type MediaCategoria = {
   key: string;
   categoria: string;
@@ -594,7 +594,8 @@ export default function ConsultaVendas() {
                   { value: 'partes', label: 'Vendedores / Compradores' },
                   { value: 'medias', label: 'Médias' },
                   { value: 'fatura', label: 'Fatura Unificada' },
-                  { value: 'seguro', label: 'Mapa de Seguro' },
+                  { value: 'seguro', label: 'Mapa de Seguradoras' },
+                  { value: 'seguroCompradores', label: 'Mapa de Compradores' },
                 ]}
               />
               {tipoRelatorio !== 'medias' && tipoRelatorio !== 'fatura' && (
@@ -698,9 +699,10 @@ export default function ConsultaVendas() {
                           filtrosDesc={filtrosDesc}
                           logoBase64={config.logoBase64}
                           orientacao={orientacaoImp}
+                          pagina={tipoRelatorio === 'seguroCompradores' ? 'compradores' : 'seguradoras'}
                         />
                   }
-                  fileName={`${{ vendas: 'consulta-vendas', partes: 'partes-vendas', medias: 'medias-leilao', seguro: 'mapa-seguro' }[tipoRelatorio as 'vendas' | 'partes' | 'medias' | 'seguro']}-${new Date().toISOString().slice(0, 10)}.pdf`}
+                  fileName={`${{ vendas: 'consulta-vendas', partes: 'partes-vendas', medias: 'medias-leilao', seguro: 'mapa-seguradoras', seguroCompradores: 'mapa-compradores' }[tipoRelatorio as 'vendas' | 'partes' | 'medias' | 'seguro' | 'seguroCompradores']}-${new Date().toISOString().slice(0, 10)}.pdf`}
                   style={{ textDecoration: 'none' }}
                 >
                   {({ loading }) => (
