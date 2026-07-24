@@ -5,7 +5,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined
   CheckCircleFilled, FileTextOutlined, FileExcelOutlined, CloseOutlined,
   TrophyOutlined, ShoppingCartOutlined, TagOutlined, AuditOutlined, TeamOutlined,
   UserOutlined, EnvironmentOutlined, PhoneOutlined, BankOutlined, SettingOutlined,
-  FolderOpenOutlined, SafetyCertificateOutlined, HomeOutlined,
+  FolderOpenOutlined, HomeOutlined,
   FileDoneOutlined, EyeOutlined, ExportOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -14,7 +14,6 @@ import { useColumnWidths } from '../hooks/useColumnWidths';
 import dayjs from 'dayjs';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
-import { useAuth } from '../context/AuthContext';
 import { useBanco } from '../context/BancoContext';
 import { BlobProvider } from '@react-pdf/renderer';
 import FaturaCompraPDF, { FaturaData } from '../relatorios/RelatorioFaturaCompra';
@@ -58,7 +57,6 @@ const PAGE_SIZE = 20;
 
 export default function Clientes() {
   const config = useConfig();
-  const { usuario: usuarioLogado } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { banco } = useBanco();
@@ -68,9 +66,6 @@ export default function Clientes() {
   const { rz: rzHV } = useColumnWidths('hist_vendas',  { leilao: 120, lotexx: 65, deslot: 160, descricaoRaca: 110, qtdxxx: 60, nomeComprador: 140, valorPagar: 110, valorComissaoVendedor: 100, defesa: 80 });
   const sm = !!screens.sm;  // ≥ 576px
   const md = !!screens.md;  // ≥ 768px
-  
-  // Verifica se o usuário logado é ADM com perfil 1
-  const podeEditarPermissoes = usuarioLogado?.perfis?.some(p => p.id === 1) && usuarioLogado?.perfis?.some(p => p.perfil?.includes('ADM') || p.perfil?.includes('adm'));
 
   const [dados, setDados] = useState<Cliente[]>([]);
   const [totalClientes, setTotalClientes] = useState(0);
@@ -403,13 +398,6 @@ export default function Clientes() {
       datnas: d.datnas ? dayjs(d.datnas) : null,
       datcad: d.datcad ? dayjs(d.datcad).format('DD/MM/YYYY') : '',
       datalt: d.datalt ? dayjs(d.datalt).format('DD/MM/YYYY') : '',
-      // Converter S/N para true/false para checkboxes
-      verComissoes: d.verComissoes === 'S',
-      verValoresLiquidos: d.verValoresLiquidos === 'S',
-      verInfoFinanceira: d.verInfoFinanceira === 'S',
-      verTopCompradores: d.verTopCompradores === 'S',
-      verTopVendedores: d.verTopVendedores === 'S',
-      verVencimentos: d.verVencimentos === 'S',
     });
     setEditando(d);
     carregarPropriedades(d.id);
@@ -425,13 +413,6 @@ export default function Clientes() {
         ativox: 'S',
         blocli: 'Não',
         codcla: 'F',
-        // Defaults para novos usuários: todos com acesso
-        verComissoes: true,
-        verValoresLiquidos: true,
-        verInfoFinanceira: true,
-        verTopCompradores: true,
-        verTopVendedores: true,
-        verVencimentos: true,
       });
       setEditando(null);
     }
@@ -447,16 +428,9 @@ export default function Clientes() {
   };
 
   const salvar = async (values: any) => {
-    const payload = { 
-      ...values, 
+    const payload = {
+      ...values,
       datnas: values.datnas ? values.datnas.format('YYYY-MM-DD') : null,
-      // Converter boolean para S/N para permissões
-      verComissoes: values.verComissoes ? 'S' : 'N',
-      verValoresLiquidos: values.verValoresLiquidos ? 'S' : 'N',
-      verInfoFinanceira: values.verInfoFinanceira ? 'S' : 'N',
-      verTopCompradores: values.verTopCompradores ? 'S' : 'N',
-      verTopVendedores: values.verTopVendedores ? 'S' : 'N',
-      verVencimentos: values.verVencimentos ? 'S' : 'N',
     };
     try {
       let id = editando?.id;
@@ -729,55 +703,6 @@ export default function Clientes() {
       <Col xs={24} md={12}><Form.Item name="senhax" label={editando ? 'Senha (deixe em branco para manter)' : 'Senha'}><Input.Password /></Form.Item></Col>
       <Col xs={24}><Form.Item name="obsxxx" label="Observações"><Input.TextArea rows={3} /></Form.Item></Col>
     </Row>
-  );
-
-  const tabPermissoes = (
-    <Card style={{ background: '#fafafa', borderRadius: 8 }}>
-      {!podeEditarPermissoes && (
-        <Row gutter={[12, 12]} style={{ marginBottom: 16, padding: '12px', background: '#fff7e6', borderRadius: 6 }}>
-          <Col xs={24}>
-            <Typography.Text type="warning">Apenas ADMs com perfil 1 podem editar permissões</Typography.Text>
-          </Col>
-        </Row>
-      )}
-      <Row gutter={[16, 16]}>
-        <Col xs={24}>
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, fontSize: 12, color: '#8c8c8c' }}>
-            Permissões de Visualização no Dashboard (Para ADMs)
-          </Typography.Text>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item name="verComissoes" valuePropName="checked" noStyle>
-            <Checkbox disabled={!podeEditarPermissoes}>Ver Comissões</Checkbox>
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item name="verValoresLiquidos" valuePropName="checked" noStyle>
-            <Checkbox disabled={!podeEditarPermissoes}>Ver Valores Líquidos</Checkbox>
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item name="verInfoFinanceira" valuePropName="checked" noStyle>
-            <Checkbox disabled={!podeEditarPermissoes}>Ver Informações Financeiras</Checkbox>
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item name="verTopCompradores" valuePropName="checked" noStyle>
-            <Checkbox disabled={!podeEditarPermissoes}>Ver Top Compradores</Checkbox>
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item name="verTopVendedores" valuePropName="checked" noStyle>
-            <Checkbox disabled={!podeEditarPermissoes}>Ver Top Vendedores</Checkbox>
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item name="verVencimentos" valuePropName="checked" noStyle>
-            <Checkbox disabled={!podeEditarPermissoes}>Ver Vencimentos</Checkbox>
-          </Form.Item>
-        </Col>
-      </Row>
-    </Card>
   );
 
   const tabDocumentos = editando ? (() => {
@@ -1450,7 +1375,6 @@ export default function Clientes() {
               ...(editando ? [{ key: 'ocorrencias', label: <><FileTextOutlined /> Ocorrências</>, children: tabOcorrencias }] : []),
               { key: '5', label: <><SettingOutlined /> Sistema</>, children: tabSistema },
               { key: '6', label: <><FolderOpenOutlined /> Documentos</>, children: tabDocumentos },
-              ...(podeEditarPermissoes ? [{ key: '7', label: <><SafetyCertificateOutlined /> Permissões</>, children: tabPermissoes }] : []),
               ...(editando ? [{ key: 'historico', label: <><ShoppingCartOutlined /> Compras/Vendas</>, children: tabHistorico }] : []),
             ]}
           />

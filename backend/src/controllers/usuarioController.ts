@@ -34,3 +34,15 @@ export const putControles = async (req: Request, res: Response) => {
   await svc.salvarControlesUsuario(Number(req.params.id), req.body.controles ?? []);
   res.json({ ok: true });
 };
+export const getPerfis = async (req: Request, res: Response) => {
+  res.json(await svc.listarPerfisUsuario(Number(req.params.id)));
+};
+export const putPerfis = async (req: Request, res: Response) => {
+  const usuarioLogado = (req as any).usuario;
+  if (!usuarioLogado?.perfis?.some((p: any) => p.id === 1)) {
+    return res.status(403).json({ error: 'Apenas ADMs com perfil 1 podem atribuir perfis' });
+  }
+  await svc.salvarPerfisUsuario(Number(req.params.id), req.body.perfis ?? []);
+  await registrarLog(usuarioLogado, 'Alterar', 'Usuários (perfis)', Number(req.params.id));
+  res.json({ ok: true });
+};

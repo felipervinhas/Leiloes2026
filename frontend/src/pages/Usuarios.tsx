@@ -4,6 +4,7 @@ import { Table, Button, Modal, Form, Input, Select, Space, Popconfirm,
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
   KeyOutlined, UserOutlined } from '@ant-design/icons';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const { Title, Text } = Typography;
 const SN          = [{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }];
@@ -22,9 +23,23 @@ const CONTROLES_GRUPOS = [
 
 const TODOS_CONTROLES = CONTROLES_GRUPOS.flatMap(g => g.itens);
 
+const ITENS_DASHBOARD: { key: string; label: string }[] = [
+  { key: 'verComissoes',       label: 'Ver Comissões' },
+  { key: 'verValoresLiquidos', label: 'Ver Valores Líquidos' },
+  { key: 'verInfoFinanceira',  label: 'Ver Informações Financeiras' },
+  { key: 'verTopCompradores',  label: 'Ver Top Compradores' },
+  { key: 'verTopVendedores',   label: 'Ver Top Vendedores' },
+  { key: 'verVencimentos',     label: 'Ver Vencimentos' },
+];
+const DASHBOARD_PADRAO: Record<string, boolean> = Object.fromEntries(ITENS_DASHBOARD.map(i => [i.key, true]));
+
 export default function Usuarios() {
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false;
+  const { usuario: usuarioLogado } = useAuth();
+  // Só ADMs com perfil 1 podem ver/editar o que cada usuário enxerga no Dashboard
+  // e atribuir perfis — mesma regra que o backend já aplica nesses PUTs.
+  const podeGerenciarPermissoes = usuarioLogado?.perfis?.some(p => p.id === 1);
 
   const [dados, setDados] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,6 +49,9 @@ export default function Usuarios() {
   const [form] = Form.useForm();
   const [controlesSelecionados, setControlesSelecionados] = useState<string[]>([]);
   const [carregandoControles, setCarregandoControles] = useState(false);
+  const [permissoesDash, setPermissoesDash] = useState<Record<string, boolean>>(DASHBOARD_PADRAO);
+  const [perfisDisponiveis, setPerfisDisponiveis] = useState<{ value: number; label: string }[]>([]);
+  const [perfisSelecionados, setPerfisSelecionados] = useState<number[]>([]);
 
   const carregar = async (b = '') => {
     setLoading(true);
@@ -41,7 +59,10 @@ export default function Usuarios() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    carregar();
+    api.get('/perfis').then(r => setPerfisDisponiveis(r.data.map((p: any) => ({ value: p.id, label: p.perfil }))));
+  }, []);
 
   const abrirModal = async (item?: any) => {
     setEditando(item || null);
@@ -49,15 +70,38 @@ export default function Usuarios() {
       ? { ...item, senhax: '' }
       : { ativox: 'S', blocli: 'Não', acessoApp: '1 - Liberado', senhax: '' });
     setControlesSelecionados([]);
+    setPermissoesDash(DASHBOARD_PADRAO);
+    setPerfisSelecionados([]);
     if (item) {
       setCarregandoControles(true);
       try {
-        const r = await api.get(`/usuarios/${item.id}/controles`);
-        setControlesSelecionados(r.data ?? []);
-      } catch { /* mantém vazio */ }
+        const [rControles, rDash, rPerfis] = await Promise.all([
+          api.get(`/usuarios/${item.id}/controles`),
+          api.get(`/usuarios/${item.id}/permissoes-dashboard`),
+          api.get(`/usuarios/${item.id}/perfis`),
+        ]);
+        setControlesSelecionados(rControles.data ?? []);
+        setPermissoesDash(Object.fromEntries(
+          ITENS_DASHBOARD.map(i => [i.key, rDash.data?.[i.key] !== 'N'])
+        ));
+        setPerfisSelecionados(rPerfis.data ?? []);
+      } catch { /* mantém os padrões */ }
       finally { setCarregandoControles(false); }
     }
     setModalOpen(true);
+  };
+
+  const salvarPermissoesDash = async (id: number) => {
+    if (!podeGerenciarPermissoes) return;
+    const payload = Object.fromEntries(
+      ITENS_DASHBOARD.map(i => [i.key, permissoesDash[i.key] ? 'S' : 'N'])
+    );
+    await api.put(`/usuarios/${id}/permissoes-dashboard`, payload);
+  };
+
+  const salvarPerfis = async (id: number) => {
+    if (!podeGerenciarPermissoes) return;
+    await api.put(`/usuarios/${id}/perfis`, { perfis: perfisSelecionados });
   };
 
   const salvar = async (values: any) => {
@@ -65,11 +109,15 @@ export default function Usuarios() {
       if (editando) {
         await api.put(`/usuarios/${editando.id}`, values);
         await api.put(`/usuarios/${editando.id}/controles`, { controles: controlesSelecionados });
+        await salvarPermissoesDash(editando.id);
+        await salvarPerfis(editando.id);
       } else {
         const r = await api.post('/usuarios', values);
         if (controlesSelecionados.length > 0) {
           await api.put(`/usuarios/${r.data.id}/controles`, { controles: controlesSelecionados });
         }
+        await salvarPermissoesDash(r.data.id);
+        await salvarPerfis(r.data.id);
       }
       message.success('Salvo com sucesso');
       setModalOpen(false);
@@ -136,6 +184,27 @@ export default function Usuarios() {
 
   const tabPermissoes = (
     <div style={{ paddingTop: 4 }}>
+      {!podeGerenciarPermissoes && (
+        <Alert
+          type="warning"
+          showIcon
+          message="Apenas ADMs com perfil 1 podem atribuir perfis e editar as permissões de Dashboard"
+          style={{ marginBottom: 16 }}
+        />
+      )}
+      <div style={{ marginBottom: 16 }}>
+        <Text strong style={{ display: 'block', marginBottom: 8, fontSize: 13 }}>Perfil</Text>
+        <Select
+          mode="multiple"
+          allowClear
+          style={{ width: '100%' }}
+          placeholder="Nenhum perfil atribuído"
+          options={perfisDisponiveis}
+          value={perfisSelecionados}
+          disabled={!podeGerenciarPermissoes}
+          onChange={setPerfisSelecionados}
+        />
+      </div>
       <Alert
         type="info"
         showIcon
@@ -188,6 +257,24 @@ export default function Usuarios() {
           </div>
         );
       })}
+
+      <div style={{ marginTop: 4 }}>
+        <Text strong style={{ display: 'block', marginBottom: 8, fontSize: 13 }}>
+          Permissões de Visualização no Dashboard
+        </Text>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
+          {ITENS_DASHBOARD.map(i => (
+            <Checkbox
+              key={i.key}
+              checked={permissoesDash[i.key]}
+              disabled={!podeGerenciarPermissoes}
+              onChange={e => setPermissoesDash(prev => ({ ...prev, [i.key]: e.target.checked }))}
+            >
+              {i.label}
+            </Checkbox>
+          ))}
+        </div>
+      </div>
     </div>
   );
 

@@ -125,3 +125,27 @@ export async function salvarControlesUsuario(id: number, controles: string[]): P
       .query(`INSERT INTO Clientes_Perfil (ID_CLIENTES, CONTROLE) VALUES (@id, @controle)`);
   }
 }
+
+// Perfis (papéis, ex.: "ADM") vinculados ao usuário — linhas de Clientes_Perfil
+// com ID_PERFIL preenchido, distintas das linhas de CONTROLE (acesso a página)
+// tratadas acima. O login (authService) lê essas linhas pra montar usuario.perfis.
+export async function listarPerfisUsuario(id: number): Promise<number[]> {
+  const pool = await getPool();
+  const r = await pool.request()
+    .input('id', sql.Int, id)
+    .query(`SELECT ID_PERFIL FROM Clientes_Perfil WHERE ID_CLIENTES = @id AND ID_PERFIL IS NOT NULL`);
+  return r.recordset.map((row: any) => row.ID_PERFIL as number);
+}
+
+export async function salvarPerfisUsuario(id: number, perfis: number[]): Promise<void> {
+  const pool = await getPool();
+  await pool.request()
+    .input('id', sql.Int, id)
+    .query(`DELETE FROM Clientes_Perfil WHERE ID_CLIENTES = @id AND ID_PERFIL IS NOT NULL`);
+  for (const idPerfil of perfis) {
+    await pool.request()
+      .input('id', sql.Int, id)
+      .input('idPerfil', sql.Int, idPerfil)
+      .query(`INSERT INTO Clientes_Perfil (ID_CLIENTES, ID_PERFIL) VALUES (@id, @idPerfil)`);
+  }
+}

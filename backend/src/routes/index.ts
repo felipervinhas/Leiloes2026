@@ -125,6 +125,8 @@ bancoRouter.delete('/perfis/:id', perfil.deletar);
 bancoRouter.get('/usuarios', usuario.listar);
 bancoRouter.get('/usuarios/:id/controles', usuario.getControles);
 bancoRouter.put('/usuarios/:id/controles', usuario.putControles);
+bancoRouter.get('/usuarios/:id/perfis', usuario.getPerfis);
+bancoRouter.put('/usuarios/:id/perfis', usuario.putPerfis);
 bancoRouter.get('/usuarios/:id', usuario.buscar);
 bancoRouter.post('/usuarios', usuario.criar);
 bancoRouter.put('/usuarios/:id', usuario.atualizar);
