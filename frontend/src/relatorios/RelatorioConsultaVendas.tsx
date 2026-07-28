@@ -256,7 +256,7 @@ function ConsultaVendasPDF({
           <View style={s.headerLeft}>
             <Image src={logoBase64 || logotipoLocal} style={s.headerLogo} />
             <View style={s.headerTitleBox}>
-              <Text style={s.headerTitle}>Relatório de Consulta de Vendas</Text>
+              <Text style={s.headerTitle}>Mapa de Vendas</Text>
               <Text style={s.headerSub}>{subtitulo}{dataLeilao ? `   ·   Data do Leilão: ${dataLeilao}` : ''}</Text>
               {filtrosDesc ? (
                 <Text style={s.headerFiltro}>Filtros: {filtrosDesc}</Text>
