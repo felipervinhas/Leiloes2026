@@ -151,7 +151,7 @@ const s = StyleSheet.create({
   cTat:       { width: 32 },
   cValor:     { width: 68 },
 
-  // Colunas — Página 2 (Mapa da Compradores)
+  // Colunas — Página 2 (Mapa de Compradores)
   cCidade:    { width: 90 },
   cEstado:    { width: 42 },
   cLote2:     { width: 38 },
@@ -263,7 +263,7 @@ function MapaSeguroPDF({
   const especiesPredominante = vendas[0]?.especies;
   const dataLeilao = fmtData(vendas[0]?.datlei);
 
-  // Agrupamento por comprador na página 2 (Mapa da Compradores) — cada
+  // Agrupamento por comprador na página 2 (Mapa de Compradores) — cada
   // comprador pode ter comprado mais de um lote, cada um com sua própria
   // propriedade de destino (Localidade/Propriedade/Inscrição).
   const grupos = Array.from(
@@ -271,7 +271,7 @@ function MapaSeguroPDF({
       const chave = v.nomeComprador || '—';
       const atual = map.get(chave) ?? {
         nome: v.nomeComprador || '—', cpf: v.cpfComprador,
-        cidade: v.cidadeComprador, estado: v.estadoComprador, lotes: [],
+        cidade: v.cidadePropriedade, estado: v.estadoPropriedade, lotes: [],
       };
       atual.lotes.push(v);
       return map.set(chave, atual);
@@ -351,11 +351,11 @@ function MapaSeguroPDF({
       </Page>
       )}
 
-      {/* ── Página 2: Mapa da Compradores ── */}
+      {/* ── Página 2: Mapa de Compradores ── */}
       {mostraCompradores && (
       <Page size={pageSize} style={s.page}>
         <Cabecalho
-          logoBase64={logoBase64} titulo="Mapa da Compradores" subtitulo={subtitulo}
+          logoBase64={logoBase64} titulo="Mapa de Compradores" subtitulo={subtitulo}
           dataLeilao={dataLeilao} filtrosDesc={filtrosDesc} agora={agora} contagem={vendas.length}
         />
 

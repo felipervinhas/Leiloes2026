@@ -54,11 +54,15 @@ const s = StyleSheet.create({
   thRight: { fontSize: 6, fontFamily: 'Helvetica-Bold', color: '#fff', textAlign: 'right' as const },
   tr: { flexDirection: 'row', paddingVertical: 2, paddingHorizontal: 5, borderBottomColor: CLARO, borderBottomWidth: 0.5 },
   trAlt: { backgroundColor: '#fafafa' },
-  cOrd: { width: 60 },
+  cGrupo: { flex: 1, flexDirection: 'row' },
+  cGrupoSep: { borderLeftColor: CINZA, borderLeftWidth: 0.5, paddingLeft: 6, marginLeft: 6 },
+  cOrd: { width: 34 },
   cDat: { flex: 1 },
-  cVlr: { width: 90, textAlign: 'right' as const },
+  cVlr: { width: 70, textAlign: 'right' as const },
   td: { fontSize: 7, color: ESCURO },
   tdRight: { fontSize: 7, color: ESCURO, textAlign: 'right' as const },
+  tdBold: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: PRETO },
+  tdBoldRight: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: PRETO, textAlign: 'right' as const },
   semParcelas: { padding: 8, textAlign: 'center' as const, fontSize: 7.5, color: CINZA, fontStyle: 'italic' },
 
   disclaimer: { fontSize: 6, color: MEDIO, marginTop: 8, marginBottom: 14, lineHeight: 1.4 },
@@ -96,6 +100,7 @@ function NotaVendaPagina({ dados, comp, empresa, logoBase64 }: { dados: FaturaDa
         <View style={[s.secBox, s.colHalf]}>
           <Text style={s.secLabel}>Vendedor</Text>
           <Text style={s.nome}>{lote?.nomeVendedor || '—'}</Text>
+          <Text style={s.linha}>CPF/CNPJ: {lote?.cpfVendedor || 'não informado'}</Text>
           <Text style={s.linha}>
             {[lote?.cidadeVendedor, lote?.estadoVendedor].filter(Boolean).join(' — ') || '—'}
           </Text>
@@ -141,22 +146,43 @@ function NotaVendaPagina({ dados, comp, empresa, logoBase64 }: { dados: FaturaDa
         </Text>
       </View>
 
-      <View style={s.tabela}>
-        <View style={s.tabelaHeader}>
-          <View style={s.cOrd}><Text style={s.th}>Parcela</Text></View>
-          <View style={s.cDat}><Text style={s.th}>Vencimento</Text></View>
-          <View style={s.cVlr}><Text style={s.thRight}>Valor</Text></View>
-        </View>
-        {comp.parcelas.length === 0 ? (
-          <Text style={s.semParcelas}>Demonstrativo de parcelamentos ainda não gerado</Text>
-        ) : comp.parcelas.map((p, i) => (
-          <View key={i} style={[s.tr, i % 2 === 1 ? s.trAlt : {}]}>
-            <View style={s.cOrd}><Text style={s.td}>{p.ordxxx || i + 1}</Text></View>
-            <View style={s.cDat}><Text style={s.td}>{p.datven || '—'}</Text></View>
-            <View style={s.cVlr}><Text style={s.tdRight}>{fmtR(p.vlrpar)}</Text></View>
+      {(() => {
+        const parc = comp.parcelas;
+        const linhas: (typeof parc[0] | null)[][] = [];
+        for (let i = 0; i < parc.length; i += 2) {
+          linhas.push([parc[i] || null, parc[i + 1] || null]);
+        }
+        return (
+          <View style={s.tabela}>
+            <View style={s.tabelaHeader}>
+              {[0, 1].map(c => (
+                <View key={c} style={[s.cGrupo, c > 0 ? s.cGrupoSep : {}]}>
+                  <View style={s.cOrd}><Text style={s.th}>#</Text></View>
+                  <View style={s.cDat}><Text style={s.th}>Vencimento</Text></View>
+                  <View style={s.cVlr}><Text style={s.thRight}>Valor</Text></View>
+                </View>
+              ))}
+            </View>
+            {parc.length === 0 ? (
+              <Text style={s.semParcelas}>Demonstrativo de parcelamentos ainda não gerado</Text>
+            ) : linhas.map((linha, li) => (
+              <View key={li} style={[s.tr, li % 2 === 1 ? s.trAlt : {}]}>
+                {linha.map((p, ci) => (
+                  <View key={ci} style={[s.cGrupo, ci > 0 ? s.cGrupoSep : {}]}>
+                    {p ? (
+                      <>
+                        <View style={s.cOrd}><Text style={p.pripar === 'S' ? s.tdBold : s.td}>{p.ordxxx || String(li * 2 + ci + 1).padStart(2, '0')}</Text></View>
+                        <View style={s.cDat}><Text style={p.pripar === 'S' ? s.tdBold : s.td}>{p.datven || '—'}</Text></View>
+                        <View style={s.cVlr}><Text style={p.pripar === 'S' ? s.tdBoldRight : s.tdRight}>{fmtR(p.vlrpar)}</Text></View>
+                      </>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            ))}
           </View>
-        ))}
-      </View>
+        );
+      })()}
 
       <Text style={s.disclaimer}>{DISCLAIMER}</Text>
 
