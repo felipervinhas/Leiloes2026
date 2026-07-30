@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Upload, Button, Image, Popconfirm, Spin, message, Typography } from 'antd';
 import { UploadOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
@@ -18,6 +18,11 @@ export default function ImageUpload({ label, uploadUrl, deleteUrl, initialUrl, a
   const [url, setUrl] = useState<string | undefined>(initialUrl);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState(false);
+
+  // O Modal que hospeda este componente (Leilões/Lotes) não desmonta ao fechar,
+  // então sem isso o componente ficava com a imagem do registro anterior ao
+  // trocar de leilão/lote — o useState acima só lê initialUrl no primeiro mount.
+  useEffect(() => setUrl(initialUrl), [initialUrl]);
 
   const uploadProps: UploadProps = {
     accept,
