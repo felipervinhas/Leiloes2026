@@ -48,8 +48,8 @@ export function valorExtenso(valor: number): string {
 export const fmtR = (v?: number | null) =>
   v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—';
 
-const MESES_EXT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-                   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MESES_EXT = ['janeiro','fevereiro','março','abril','maio','junho',
+                   'julho','agosto','setembro','outubro','novembro','dezembro'];
 
 // Backend envia datas já em "DD/MM/YYYY". new Date() não parseia esse formato.
 export function parseDate(s?: string | null): Date | null {
@@ -72,7 +72,7 @@ export const fmtData = (iso?: string | null) => {
 export const fmtDataExtenso = (iso?: string | null) => {
   const d = parseDate(iso);
   if (!d) return '—';
-  return `${d.getDate()} ${MESES_EXT[d.getMonth()]} ${d.getFullYear()}`;
+  return `${String(d.getDate()).padStart(2, '0')} de ${MESES_EXT[d.getMonth()]} de ${d.getFullYear()}`;
 };
 
 export const CATEGO: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C: 'Castrado' };

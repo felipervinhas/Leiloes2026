@@ -45,6 +45,9 @@ export async function buscarLeilaoPorId(id: number): Promise<Leilao | null> {
 
 export async function criarLeilao(d: Omit<Leilao, 'id' | 'nomeCidade' | 'nomeEstado' | 'descricaoCondicao'>): Promise<number> {
   const pool = await getPool();
+  // A coluna ID de Leiloes não é IDENTITY (tabela legada do Delphi, onde o ID
+  // era atribuído manualmente pela aplicação) — precisamos calcular o
+  // próximo valor aqui, senão o INSERT grava ID = NULL e falha.
   const r = await pool.request()
     .input('leilao', sql.VarChar, d.leilao).input('endere', sql.VarChar, d.endere||null)
     .input('codcid', sql.VarChar, d.codcid||null).input('datlei', sql.Date, d.datlei||null)
@@ -56,9 +59,9 @@ export async function criarLeilao(d: Omit<Leilao, 'id' | 'nomeCidade' | 'nomeEst
     .input('regulamento', sql.VarChar, d.regulamento||null).input('observacoes', sql.VarChar, d.observacoes||null)
     .input('urlcatalogo', sql.VarChar, d.urlcatalogo||null).input('link1', sql.VarChar, d.linktransmissao1||null)
     .input('link2', sql.VarChar, d.linktransmissao2||null).input('dataSaldo', sql.Date, d.dataSaldo||null)
-    .query(`INSERT INTO Leiloes (LEILAO,ENDERE,CODCID,DATLEI,LEILOE,CONDIC,COMVEN,COMCOM,ATIVOX,HORA_INICIO,HORA_FECHAMENTO_PRE,TIPO_LEILAO,MULTIPLO,rEGULAMENTO,OBSERVACOES,URLCATALOGO,LINKTRANSMISSAO1,LINKTRANSMISSAO2,DATA_SALDO)
+    .query(`INSERT INTO Leiloes (ID,LEILAO,ENDERE,CODCID,DATLEI,LEILOE,CONDIC,COMVEN,COMCOM,ATIVOX,HORA_INICIO,HORA_FECHAMENTO_PRE,TIPO_LEILAO,MULTIPLO,rEGULAMENTO,OBSERVACOES,URLCATALOGO,LINKTRANSMISSAO1,LINKTRANSMISSAO2,DATA_SALDO)
       OUTPUT INSERTED.ID
-      VALUES (@leilao,@endere,@codcid,@datlei,@leiloe,@condic,@comven,@comcom,@ativox,@horaInicio,@horaFechamento,@tipoLeilao,@multiplo,@regulamento,@observacoes,@urlcatalogo,@link1,@link2,@dataSaldo)`);
+      VALUES ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Leiloes WITH (UPDLOCK, HOLDLOCK)),@leilao,@endere,@codcid,@datlei,@leiloe,@condic,@comven,@comcom,@ativox,@horaInicio,@horaFechamento,@tipoLeilao,@multiplo,@regulamento,@observacoes,@urlcatalogo,@link1,@link2,@dataSaldo)`);
   return r.recordset[0].ID;
 }
 

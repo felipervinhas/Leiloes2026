@@ -3,6 +3,7 @@ import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Image } from '
 import { Button, Radio, Space } from 'antd';
 import { PrinterOutlined } from '@ant-design/icons';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
+import { labelRP } from '../utils/lote';
 
 type Orientacao = 'retrato' | 'paisagem';
 
@@ -11,6 +12,7 @@ export interface VendaPDF {
   datlei?: string;
   lotexx?: string;
   deslot?: string;
+  rpxxx?: string;
   descricaoRaca?: string;
   especies?: string;
   nomeVendedor?: string;
@@ -58,6 +60,7 @@ interface Props {
 export const COLUNAS_CONSULTA_VENDAS = [
   { key: 'lote', label: 'Lote' },
   { key: 'descricao', label: 'Descrição' },
+  { key: 'tatuagem', label: 'Tatuagem / RP' },
   { key: 'raca', label: 'Raça / Espécie' },
   { key: 'vendedor', label: 'Vendedor' },
   { key: 'comprador', label: 'Comprador' },
@@ -192,6 +195,7 @@ const s = StyleSheet.create({
   // desenhar por cima um do outro.
   cLote:     { width: '5.3%' },
   cDes:      { flex: 1 },
+  cTat:      { width: '8%' },
   cRaca:     { width: '10.3%' },
   cVend:     { width: '13.3%' },
   cComp:     { width: '13.3%' },
@@ -246,6 +250,8 @@ function ConsultaVendasPDF({
   const subtitulo = titulo || 'Todas as vendas';
   const dataLeilao = fmtData(vendas[0]?.datlei);
   const v = (chave: string) => !colunasVisiveis || colunasVisiveis.includes(chave);
+  // Cabeçalho não pode variar por linha — usa a espécie do primeiro lote, igual à grade on-screen.
+  const labelTatuagem = labelRP(vendas[0]?.especies);
 
   return (
     <Document title={`Relatório de Vendas — ${subtitulo}`} author={nomeEmpresa}>
@@ -351,6 +357,7 @@ function ConsultaVendasPDF({
         <View style={s.tableHeader} fixed>
           {v('lote') && <View style={s.cLote}><Text style={s.th}>Lote</Text></View>}
           {v('descricao') && <View style={s.cDes}><Text style={s.th}>Descrição</Text></View>}
+          {v('tatuagem') && <View style={s.cTat}><Text style={s.th}>{labelTatuagem}</Text></View>}
           {v('raca') && <View style={s.cRaca}><Text style={s.th}>Raça / Espécie</Text></View>}
           {v('vendedor') && <View style={s.cVend}><Text style={s.th}>Vendedor</Text></View>}
           {v('comprador') && <View style={s.cComp}><Text style={s.th}>Comprador</Text></View>}
@@ -371,6 +378,11 @@ function ConsultaVendasPDF({
             {v('descricao') && (
               <View style={s.cDes}>
                 <Text style={s.tdNormal}>{venda.deslot || '—'}</Text>
+              </View>
+            )}
+            {v('tatuagem') && (
+              <View style={s.cTat}>
+                <Text style={s.tdSmall}>{venda.rpxxx || '—'}</Text>
               </View>
             )}
             {v('raca') && (
@@ -418,6 +430,7 @@ function ConsultaVendasPDF({
           <View style={s.totaisRow}>
             {v('lote') && <View style={s.cLote}><Text style={s.tdTotLabel} /></View>}
             {v('descricao') && <View style={s.cDes}><Text style={s.tdTotLabel}>TOTAIS</Text></View>}
+            {v('tatuagem') && <View style={s.cTat}><Text style={s.tdTotLabel} /></View>}
             {v('raca') && <View style={s.cRaca}><Text style={s.tdTotLabel} /></View>}
             {v('vendedor') && <View style={s.cVend}><Text style={s.tdTotLabel} /></View>}
             {v('comprador') && <View style={s.cComp}><Text style={s.tdTotLabel} /></View>}
