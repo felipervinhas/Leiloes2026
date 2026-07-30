@@ -796,6 +796,10 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
         setLotesDisp(prev => prev.some(l => l.id === rl.data.idLote)
           ? prev
           : [{ ...rl.data, id: rl.data.idLote }, ...prev]);
+      } else {
+        // Vendas migradas do sistema antigo às vezes não têm MOVIMENTO_LOTE gravado —
+        // sem isso o Step "Lote & Valores" fica em branco e o usuário trava sem saber por quê.
+        message.warning('Esta venda não possui lote vinculado nos dados. Selecione o lote e os valores manualmente para continuar.', 6);
       }
 
       const rc = await api.get(`/vendas/${editId}/compradores`);
@@ -832,7 +836,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     const r = await api.get(`/leiloes/${id}`);
     setLeilaoInfo(r.data);
     // pré-preenche data base com data do leilão
-    if (r.data.datlei) setDataBase(dayjs(r.data.datlei));
+    if (r.data.datlei) setDataBase(dayjs(r.data.datlei.slice(0, 10)));
   };
 
   const salvarStep0 = async () => {

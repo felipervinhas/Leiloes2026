@@ -740,6 +740,7 @@ export default function Clientes() {
       sorter: (a: any, b: any) => (parseInt(a.lotexx, 10) || 0) - (parseInt(b.lotexx, 10) || 0) },
     { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzHC('deslot') },
     { title: 'Raça', dataIndex: 'descricaoRaca', ellipsis: true, ...rzHC('descricaoRaca') },
+    { title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, ...rzHC('nomeVendedor') },
     { title: 'Qtd', dataIndex: 'qtdxxx', ...rzHC('qtdxxx'), align: 'right' as const, render: (v: number) => v?.toLocaleString('pt-BR') },
     { title: 'Vlr. Total', dataIndex: 'valorPagar', ...rzHC('valorPagar'), align: 'right' as const, render: (v: number) => fmt(v) },
     { title: 'Vlr. Líquido', dataIndex: 'valorLiquido', ...rzHC('valorLiquido'), align: 'right' as const, render: (v: number) => <span style={{ fontWeight: 600, color: '#52c41a' }}>{fmt(v)}</span> },

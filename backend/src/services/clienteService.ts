@@ -90,11 +90,14 @@ export interface FiltrosCliente {
 const EXISTS_COMPRAS = `EXISTS (SELECT 1 FROM MOVIMENTO_COMPRADOR MC WHERE TRY_CAST(MC.IDCLI AS INT) = C.ID)`;
 const EXISTS_VENDAS  = `EXISTS (SELECT 1 FROM MOVIMENTO_LOTE ML WHERE ML.CODVEN = C.ID)`;
 
+const normDoc = (v: string) =>
+  `REPLACE(REPLACE(REPLACE(REPLACE(${v},'.',''),'-',''),'/',''),' ','')`;
+
 function condicaoFiltrosCliente(req: any, filtros?: FiltrosCliente): string[] {
   const conditions: string[] = [];
   if (filtros?.nome)   { req.input('fnome',   sql.VarChar, `%${filtros.nome}%`);  conditions.push(`C.NOMEXX LIKE @fnome`); }
-  if (filtros?.cpf)    { req.input('fcpf',    sql.VarChar, `%${filtros.cpf}%`);   conditions.push(`C.CPFXXX LIKE @fcpf`); }
-  if (filtros?.cnpj)   { req.input('fcnpj',   sql.VarChar, `%${filtros.cnpj}%`);  conditions.push(`C.CNPJXX LIKE @fcnpj`); }
+  if (filtros?.cpf)    { req.input('fcpf',    sql.VarChar, `%${filtros.cpf.replace(/[.\-/ ]/g, '')}%`);   conditions.push(`${normDoc('C.CPFXXX')} LIKE @fcpf`); }
+  if (filtros?.cnpj)   { req.input('fcnpj',   sql.VarChar, `%${filtros.cnpj.replace(/[.\-/ ]/g, '')}%`);  conditions.push(`${normDoc('C.CNPJXX')} LIKE @fcnpj`); }
   if (filtros?.cidade) { req.input('fcidade', sql.Int, Number(filtros.cidade));   conditions.push(`C.CIDADE = @fcidade`); }
   if (filtros?.estado) { req.input('festado', sql.VarChar, filtros.estado);       conditions.push(`CID.ESTADO = @festado`); }
   if (filtros?.situacao === 'compradores')        conditions.push(EXISTS_COMPRAS);

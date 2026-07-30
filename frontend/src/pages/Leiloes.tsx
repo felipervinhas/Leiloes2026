@@ -57,7 +57,7 @@ export default function Leiloes() {
         api.get(`/leiloes/${item.id}/imagens`),
       ]);
       const d = r.data;
-      form.setFieldsValue({ ...d, datlei: d.datlei ? dayjs(d.datlei) : null, dataSaldo: d.dataSaldo ? dayjs(d.dataSaldo) : null });
+      form.setFieldsValue({ ...d, datlei: d.datlei ? dayjs(d.datlei.slice(0, 10)) : null, dataSaldo: d.dataSaldo ? dayjs(d.dataSaldo.slice(0, 10)) : null });
       setEditando(d);
       setImagens(imgs.data);
     } else {
@@ -103,7 +103,7 @@ export default function Leiloes() {
       ),
     },
     { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, ...rzLei('leilao') },
-    { title: 'Data', dataIndex: 'datlei', ...rzLei('datlei'), render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
+    { title: 'Data', dataIndex: 'datlei', ...rzLei('datlei'), render: (v: string) => v ? dayjs(v.slice(0, 10)).format('DD/MM/YYYY') : '—' },
     { title: 'Ativo', dataIndex: 'ativox', ...rzLei('ativox'), render: (v: string) => <Tag color={v === 'S' ? 'green' : 'red'}>{v === 'S' ? 'Sim' : 'Não'}</Tag> },
     {
       title: 'Ações', width: 100,
