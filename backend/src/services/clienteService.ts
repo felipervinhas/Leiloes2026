@@ -125,7 +125,12 @@ export async function listarClientesFaturamento(filtros?: FiltrosCliente, filtro
   const conditions: string[] = condicaoFiltrosCliente(req, filtros);
   const condClassificacoes = condicaoClassificacoes(req, classificacoes);
   if (condClassificacoes) conditions.push(condClassificacoes);
-  const tot = `(ISNULL(COMP.TOTAL, 0) + ISNULL(VEN.TOTAL, 0))`;
+  // Se a busca já está restrita a Compradores ou Vendedores, a faixa de valor deve olhar
+  // só pro lado correspondente — senão alguém que vendeu muito (mas comprou pouco) aparecia
+  // em "Compradores acima de X", porque a soma comprou+vendeu batia a faixa.
+  const tot = filtros?.situacao === 'compradores' ? `ISNULL(COMP.TOTAL, 0)`
+    : filtros?.situacao === 'vendedores'          ? `ISNULL(VEN.TOTAL, 0)`
+    : `(ISNULL(COMP.TOTAL, 0) + ISNULL(VEN.TOTAL, 0))`;
   if (filtroValor && FAIXAS_FATURAMENTO[filtroValor]) conditions.push(FAIXAS_FATURAMENTO[filtroValor](tot));
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const r = await req.query(`
@@ -209,7 +214,12 @@ function montarWhereClientes(req: any, filtros?: FiltrosCliente, filtroValor?: s
   const condClassificacoes = condicaoClassificacoes(req, classificacoes);
   if (condClassificacoes) conditions.push(condClassificacoes);
   if (filtroValor && FAIXAS_FATURAMENTO[filtroValor]) {
-    conditions.push(FAIXAS_FATURAMENTO[filtroValor](`(ISNULL(COMP_V.TOTAL, 0) + ISNULL(VEN_V.TOTAL, 0))`));
+    // Mesmo raciocínio de listarClientesFaturamento: faixa de valor restrita ao lado
+    // (compra ou venda) já filtrado por situação, não à soma dos dois.
+    const tot = filtros?.situacao === 'compradores' ? `ISNULL(COMP_V.TOTAL, 0)`
+      : filtros?.situacao === 'vendedores'          ? `ISNULL(VEN_V.TOTAL, 0)`
+      : `(ISNULL(COMP_V.TOTAL, 0) + ISNULL(VEN_V.TOTAL, 0))`;
+    conditions.push(FAIXAS_FATURAMENTO[filtroValor](tot));
   }
   return conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 }
