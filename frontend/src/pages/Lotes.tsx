@@ -5,7 +5,6 @@ import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CopyOutlined, AppstoreOutlined } from '@ant-design/icons';
-import { useConfig } from '../context/ConfigContext';
 import dayjs from 'dayjs';
 import api from '../services/api';
 import ImageUpload from '../components/ImageUpload';
@@ -38,7 +37,6 @@ export default function Lotes() {
   const [condicoes, setCondicoes] = useState<{ value: number; label: string }[]>([]);
   const [imagens, setImagens] = useState<LoteImagem[]>([]);
   const [form] = Form.useForm();
-  const config = useConfig();
   const racaxxSelecionada = Form.useWatch('racaxx', form);
   const especiesLote = racas.find(r => r.value === racaxxSelecionada)?.especies;
 
@@ -47,11 +45,6 @@ export default function Lotes() {
       .map(r => ({ value: r.value, label: `${r.descricao}${r.especies ? ` (${r.especies})` : ''}` }))
       .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
   }, [racas]);
-
-  const imgLoteUrl = (id: number) =>
-    config.bucket
-      ? `https://${config.bucket}.s3.us-east-2.amazonaws.com/lote_1_img_${id}.jpg`
-      : '';
 
   const carregar = async (b = '', pag = 1) => {
     setLoading(true);
@@ -147,10 +140,10 @@ export default function Lotes() {
 
   const colunas = [
     {
-      title: '', dataIndex: 'id', width: 180, key: 'img',
-      render: (id: number) => (
+      title: '', dataIndex: 'imgLote1', width: 180, key: 'img',
+      render: (imgLote1: string) => (
         <Image
-          src={imgLoteUrl(id)}
+          src={imgLote1}
           width={164}
           height={100}
           style={{ objectFit: 'cover', borderRadius: 4, display: 'block' }}

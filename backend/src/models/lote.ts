@@ -49,4 +49,5 @@ export interface Lote {
   cidadeLeilao?: string;
   estadoLeilao?: string;
   condicaoPagamentoLeilao?: string;
+  imgLote1?: string;
 }

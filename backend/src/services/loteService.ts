@@ -1,5 +1,6 @@
 import { getPool, sql } from '../config/database';
 import { Lote } from '../models/lote';
+import { resolveBucket, s3PublicUrl, s3Keys } from './s3Service';
 
 let colunaQtdAnimaisCriada = false;
 async function garantirColunaQtdAnimais() {
@@ -12,7 +13,11 @@ async function garantirColunaQtdAnimais() {
   colunaQtdAnimaisCriada = true;
 }
 
-function mapRow(c: any): Lote {
+function mapRow(c: any, bucket: string): Lote {
+  // Lote duplicado (ID_DUPLICADO aponta pro original) herda a foto do
+  // original até que alguém faça upload de uma foto própria pra ele —
+  // mesma regra do sistema Delphi (unLotes.pas).
+  const idImagem = c.ID_DUPLICADO > 0 ? c.ID_DUPLICADO : c.ID;
   return {
     id: c.ID, lotexx: c.LOTEXX, deslot: c.DESLOT, rpxxx: c.RPXXX, sbbxxx: c.SBBXXX,
     pesoxx: c.PESOXX, tatxxx: c.TATXXX, racaxx: c.RACAXX, idleilao: c.IDLEILAO,
@@ -35,6 +40,7 @@ function mapRow(c: any): Lote {
     dataSaldoLeilao: c.LEI_DATA_SALDO,
     cidadeLeilao: c.LEI_CIDADE, estadoLeilao: c.LEI_ESTADO,
     condicaoPagamentoLeilao: c.LEI_CONDICAO_DESC,
+    imgLote1: s3PublicUrl(bucket, s3Keys.loteImagem(idImagem, 1)),
   };
 }
 
@@ -68,8 +74,11 @@ export async function listarLotes(idLeilao?: number, busca?: string): Promise<Lo
   if (idLeilao) { req.input('idLeilao', sql.Int, idLeilao); filtros.push(`L.IDLEILAO = @idLeilao`); }
   if (busca) { req.input('busca', sql.VarChar, `%${busca}%`); filtros.push(`(L.DESLOT LIKE @busca OR L.LOTEXX LIKE @busca)`); }
   const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
-  const r = await req.query(`${SELECT_LOTE} ${where} ORDER BY L.IDLEILAO, TRY_CAST(L.LOTEXX AS INT), L.LOTEXX`);
-  return r.recordset.map(mapRow);
+  const [r, bucket] = await Promise.all([
+    req.query(`${SELECT_LOTE} ${where} ORDER BY L.IDLEILAO, TRY_CAST(L.LOTEXX AS INT), L.LOTEXX`),
+    resolveBucket(),
+  ]);
+  return r.recordset.map(c => mapRow(c, bucket));
 }
 
 /**
@@ -100,24 +109,30 @@ export async function listarLotesPaginado(
   const total = totalResult.recordset[0].total;
 
   const offset = Math.max(0, (page - 1) * pageSize);
-  const r = await bindFiltros(pool.request())
-    .input('offset', sql.Int, offset)
-    .input('pageSize', sql.Int, pageSize)
-    .query(`
-      ${SELECT_LOTE} ${where}
-      ORDER BY L.IDLEILAO, TRY_CAST(L.LOTEXX AS INT), L.LOTEXX
-      OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY
-    `);
+  const [r, bucket] = await Promise.all([
+    bindFiltros(pool.request())
+      .input('offset', sql.Int, offset)
+      .input('pageSize', sql.Int, pageSize)
+      .query(`
+        ${SELECT_LOTE} ${where}
+        ORDER BY L.IDLEILAO, TRY_CAST(L.LOTEXX AS INT), L.LOTEXX
+        OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY
+      `),
+    resolveBucket(),
+  ]);
 
-  return { items: r.recordset.map(mapRow), total };
+  return { items: r.recordset.map(c => mapRow(c, bucket)), total };
 }
 
 export async function buscarLotePorId(id: number): Promise<Lote | null> {
   await garantirColunaQtdAnimais();
   const pool = await getPool();
-  const r = await pool.request().input('id', sql.Int, id).query(`${SELECT_LOTE} WHERE L.ID=@id`);
+  const [r, bucket] = await Promise.all([
+    pool.request().input('id', sql.Int, id).query(`${SELECT_LOTE} WHERE L.ID=@id`),
+    resolveBucket(),
+  ]);
   if (!r.recordset.length) return null;
-  return mapRow(r.recordset[0]);
+  return mapRow(r.recordset[0], bucket);
 }
 
 export async function criarLote(d: Lote): Promise<number> {
