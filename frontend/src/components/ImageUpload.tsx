@@ -33,7 +33,7 @@ export default function ImageUpload({ label, uploadUrl, deleteUrl, initialUrl, a
         const form = new FormData();
         form.append('file', file);
         const r = await api.post(uploadUrl, form, { headers: { 'Content-Type': 'multipart/form-data' } });
-        setUrl(r.data.url + '?t=' + Date.now());
+        setUrl(r.data.url);
         message.success('Imagem enviada com sucesso');
       } catch {
         message.error('Erro ao enviar imagem');

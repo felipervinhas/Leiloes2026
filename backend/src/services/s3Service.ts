@@ -27,8 +27,14 @@ export async function resolveBucket(): Promise<string> {
   return bucket;
 }
 
+// Marca quando cada key foi enviada nesta execução do processo, pra anexar
+// ?v=timestamp na URL e forçar o navegador a buscar de novo em vez de
+// reaproveitar a imagem antiga em cache (o nome do arquivo nunca muda).
+const uploadedAt = new Map<string, number>();
+
 export function s3PublicUrl(bucket: string, key: string): string {
-  return `https://${bucket}.s3.us-east-2.amazonaws.com/${key}`;
+  const v = uploadedAt.get(key);
+  return `https://${bucket}.s3.us-east-2.amazonaws.com/${key}${v ? `?v=${v}` : ''}`;
 }
 
 export async function uploadS3(key: string, buffer: Buffer, mimetype: string): Promise<string> {
@@ -39,12 +45,14 @@ export async function uploadS3(key: string, buffer: Buffer, mimetype: string): P
     Body: buffer,
     ContentType: mimetype,
   }));
+  uploadedAt.set(key, Date.now());
   return s3PublicUrl(bucket, key);
 }
 
 export async function deletarS3(key: string): Promise<void> {
   const bucket = await resolveBucket();
   await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+  uploadedAt.delete(key);
 }
 
 export async function urlS3(key: string): Promise<string> {
