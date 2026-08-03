@@ -1,7 +1,7 @@
 import { getPool, sql } from '../config/database';
 import { getBanco } from '../config/bancoContext';
 import { Chamado } from '../models/chamado';
-import { urlS3 } from './s3Service';
+import { resolveBucket, s3PublicUrl } from './s3Service';
 
 const bancosComTabela = new Set<string>();
 
@@ -28,7 +28,7 @@ async function garantirTabela() {
   bancosComTabela.add(banco);
 }
 
-function mapRow(c: any): Chamado {
+function mapRow(c: any, bucket: string): Chamado {
   return {
     id: c.ID,
     tipo: c.TIPO,
@@ -38,7 +38,7 @@ function mapRow(c: any): Chamado {
     idUsuario: c.ID_USUARIO,
     nomeUsuario: c.NOME_USUARIO,
     imagemKey: c.IMAGEM_KEY,
-    imagemUrl: c.IMAGEM_KEY ? urlS3(c.IMAGEM_KEY) : undefined,
+    imagemUrl: c.IMAGEM_KEY ? s3PublicUrl(bucket, c.IMAGEM_KEY) : undefined,
     resposta: c.RESPOSTA,
     datcri: c.DATCRI,
     datresp: c.DATRESP,
@@ -59,16 +59,22 @@ export async function listarChamados(busca?: string, status?: string): Promise<C
     wheres.push('STATUS=@status');
   }
   const where = wheres.length ? `WHERE ${wheres.join(' AND ')}` : '';
-  const r = await req.query(`SELECT * FROM CHAMADOS ${where} ORDER BY DATCRI DESC`);
-  return r.recordset.map(mapRow);
+  const [r, bucket] = await Promise.all([
+    req.query(`SELECT * FROM CHAMADOS ${where} ORDER BY DATCRI DESC`),
+    resolveBucket(),
+  ]);
+  return r.recordset.map(c => mapRow(c, bucket));
 }
 
 export async function buscarChamadoPorId(id: number): Promise<Chamado | null> {
   await garantirTabela();
   const pool = await getPool();
-  const r = await pool.request().input('id', sql.Int, id).query('SELECT * FROM CHAMADOS WHERE ID=@id');
+  const [r, bucket] = await Promise.all([
+    pool.request().input('id', sql.Int, id).query('SELECT * FROM CHAMADOS WHERE ID=@id'),
+    resolveBucket(),
+  ]);
   if (!r.recordset.length) return null;
-  return mapRow(r.recordset[0]);
+  return mapRow(r.recordset[0], bucket);
 }
 
 export async function criarChamado(d: {

@@ -1,8 +1,8 @@
 import { getPool, sql } from '../config/database';
 import { Leilao } from '../models/leilao';
-import { urlS3, s3Keys } from './s3Service';
+import { resolveBucket, s3PublicUrl, s3Keys } from './s3Service';
 
-function mapRow(c: any): Leilao {
+function mapRow(c: any, bucket: string): Leilao {
   return {
     id: c.ID, leilao: c.LEILAO, endere: c.ENDERE, codcid: c.CODCID,
     datlei: c.DATLEI, leiloe: c.LEILOE, condic: c.CONDIC, qtdpar: c.QTDPAR,
@@ -13,7 +13,7 @@ function mapRow(c: any): Leilao {
     regulamento: c.rEGULAMENTO, multiplo: c.MULTIPLO, observacoes: c.OBSERVACOES,
     tipo: c.TIPO, dataSaldo: c.DATA_SALDO,
     nomeCidade: c.NOMECIDADE, nomeEstado: c.NOMEESTADO, descricaoCondicao: c.DESFIN,
-    imgDesktop: urlS3(s3Keys.leilaoDesktop(c.ID)),
+    imgDesktop: s3PublicUrl(bucket, s3Keys.leilaoDesktop(c.ID)),
   };
 }
 
@@ -24,25 +24,31 @@ export async function listarLeiloes(busca?: string, ativo?: string): Promise<Lei
   if (busca) { req.input('busca', sql.VarChar, `%${busca}%`); filtros.push(`L.LEILAO LIKE @busca`); }
   if (ativo) { req.input('ativo', sql.VarChar, ativo); filtros.push(`L.ATIVOX = @ativo`); }
   const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
-  const r = await req.query(`
-    SELECT L.*, CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO, CP.DESFIN, CP.QTDPAR
-    FROM Leiloes L
-    LEFT JOIN Cidades CID ON CID.ID = TRY_CAST(L.CODCID AS INT)
-    LEFT JOIN CondicaoPagtos CP ON CP.ID = L.CONDIC
-    ${where} ORDER BY L.DATLEI DESC`);
-  return r.recordset.map(mapRow);
+  const [r, bucket] = await Promise.all([
+    req.query(`
+      SELECT L.*, CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO, CP.DESFIN, CP.QTDPAR
+      FROM Leiloes L
+      LEFT JOIN Cidades CID ON CID.ID = TRY_CAST(L.CODCID AS INT)
+      LEFT JOIN CondicaoPagtos CP ON CP.ID = L.CONDIC
+      ${where} ORDER BY L.DATLEI DESC`),
+    resolveBucket(),
+  ]);
+  return r.recordset.map(c => mapRow(c, bucket));
 }
 
 export async function buscarLeilaoPorId(id: number): Promise<Leilao | null> {
   const pool = await getPool();
-  const r = await pool.request().input('id', sql.Int, id).query(`
-    SELECT L.*, CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO, CP.DESFIN, CP.QTDPAR
-    FROM Leiloes L
-    LEFT JOIN Cidades CID ON CID.ID = TRY_CAST(L.CODCID AS INT)
-    LEFT JOIN CondicaoPagtos CP ON CP.ID = L.CONDIC
-    WHERE L.ID=@id`);
+  const [r, bucket] = await Promise.all([
+    pool.request().input('id', sql.Int, id).query(`
+      SELECT L.*, CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO, CP.DESFIN, CP.QTDPAR
+      FROM Leiloes L
+      LEFT JOIN Cidades CID ON CID.ID = TRY_CAST(L.CODCID AS INT)
+      LEFT JOIN CondicaoPagtos CP ON CP.ID = L.CONDIC
+      WHERE L.ID=@id`),
+    resolveBucket(),
+  ]);
   if (!r.recordset.length) return null;
-  return mapRow(r.recordset[0]);
+  return mapRow(r.recordset[0], bucket);
 }
 
 export async function criarLeilao(d: Omit<Leilao, 'id' | 'nomeCidade' | 'nomeEstado' | 'descricaoCondicao'>): Promise<number> {

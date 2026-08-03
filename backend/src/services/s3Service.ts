@@ -1,4 +1,6 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { getPool } from '../config/database';
+import { getBanco } from '../config/bancoContext';
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION || 'us-east-2',
@@ -8,24 +10,46 @@ const s3 = new S3Client({
   },
 });
 
-const BUCKET = process.env.AWS_BUCKET || 'macedo';
+const bucketCache = new Map<string, string>();
+
+// Cada tenant (banco) tem seu próprio bucket S3, legado do sistema Delphi
+// (Configuracoes.bucket) — ex.: "knorrleiloes" pro Knorr, "macedo" pro
+// MacedoLeiloes. Só cai no AWS_BUCKET do .env se o tenant não tiver
+// configurado (cadastro incompleto).
+export async function resolveBucket(): Promise<string> {
+  const banco = getBanco();
+  const cached = bucketCache.get(banco);
+  if (cached) return cached;
+  const pool = await getPool();
+  const r = await pool.request().query('SELECT TOP 1 bucket FROM Configuracoes');
+  const bucket = r.recordset[0]?.bucket || process.env.AWS_BUCKET || 'macedo';
+  bucketCache.set(banco, bucket);
+  return bucket;
+}
+
+export function s3PublicUrl(bucket: string, key: string): string {
+  return `https://${bucket}.s3.us-east-2.amazonaws.com/${key}`;
+}
 
 export async function uploadS3(key: string, buffer: Buffer, mimetype: string): Promise<string> {
+  const bucket = await resolveBucket();
   await s3.send(new PutObjectCommand({
-    Bucket: BUCKET,
+    Bucket: bucket,
     Key: key,
     Body: buffer,
     ContentType: mimetype,
   }));
-  return `https://${BUCKET}.s3.us-east-2.amazonaws.com/${key}`;
+  return s3PublicUrl(bucket, key);
 }
 
 export async function deletarS3(key: string): Promise<void> {
-  await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+  const bucket = await resolveBucket();
+  await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
 }
 
-export function urlS3(key: string): string {
-  return `https://${BUCKET}.s3.us-east-2.amazonaws.com/${key}`;
+export async function urlS3(key: string): Promise<string> {
+  const bucket = await resolveBucket();
+  return s3PublicUrl(bucket, key);
 }
 
 // Nomes dos arquivos seguindo o padrão do sistema Delphi

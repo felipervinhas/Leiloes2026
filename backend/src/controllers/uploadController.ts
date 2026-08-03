@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { uploadS3, deletarS3, urlS3, s3Keys } from '../services/s3Service';
+import { uploadS3, deletarS3, resolveBucket, s3PublicUrl, s3Keys } from '../services/s3Service';
 
 export async function uploadLeilaoDesktop(req: Request, res: Response) {
   const id = Number(req.params.id);
@@ -51,12 +51,13 @@ export async function deletarLeilaoImagem(req: Request, res: Response) {
   res.json({ ok: true });
 }
 
-export function getImagensLeilao(req: Request, res: Response) {
+export async function getImagensLeilao(req: Request, res: Response) {
   const id = Number(req.params.id);
+  const bucket = await resolveBucket();
   res.json({
-    desktop: urlS3(s3Keys.leilaoDesktop(id)),
-    mobile:  urlS3(s3Keys.leilaoMobile(id)),
-    media:   urlS3(s3Keys.leilaoMedia(id)),
+    desktop: s3PublicUrl(bucket, s3Keys.leilaoDesktop(id)),
+    mobile:  s3PublicUrl(bucket, s3Keys.leilaoMobile(id)),
+    media:   s3PublicUrl(bucket, s3Keys.leilaoMedia(id)),
   });
 }
 
@@ -71,9 +72,10 @@ export async function getImagensLote(req: Request, res: Response) {
     const dup = r.recordset[0]?.ID_DUPLICADO ?? 0;
     if (dup > 0) idRef = dup;
   } catch { /* se coluna não existir, usa id original */ }
+  const bucket = await resolveBucket();
   res.json([1, 2, 3, 4].map(n => ({
     num: n,
-    url: urlS3(s3Keys.loteImagem(idRef, n as 1 | 2 | 3 | 4)),
+    url: s3PublicUrl(bucket, s3Keys.loteImagem(idRef, n as 1 | 2 | 3 | 4)),
     key: s3Keys.loteImagem(idRef, n as 1 | 2 | 3 | 4),
   })));
 }
