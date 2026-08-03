@@ -33,7 +33,7 @@ export default function Lotes() {
   const [busca, setBusca] = useState('');
   const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes, garantirOpcao: garantirOpcaoLeilao } = useBuscaLeiloes();
   const [leilaoFiltro, setLeilaoFiltro] = useState<number | undefined>();
-  const [racas, setRacas] = useState<{ value: number; descricao: string; especies?: string; oldId?: string }[]>([]);
+  const [racas, setRacas] = useState<{ value: number; descricao: string; especies?: string }[]>([]);
   const [clientes, setClientes] = useState<{ value: number; label: string }[]>([]);
   const [condicoes, setCondicoes] = useState<{ value: number; label: string }[]>([]);
   const [imagens, setImagens] = useState<LoteImagem[]>([]);
@@ -42,37 +42,11 @@ export default function Lotes() {
   const racaxxSelecionada = Form.useWatch('racaxx', form);
   const especiesLote = racas.find(r => r.value === racaxxSelecionada)?.especies;
 
-  // Raças legadas (ex.: banco knorr) vêm com um código antigo de 7 dígitos
-  // (OLD_ID) onde os 4 primeiros dígitos agrupam variações da mesma raça
-  // (ex.: 0734001..0734030 são tudo TEXEL, cada uma com uma descrição
-  // diferente). O select de Raça mostra só um nome por grupo (o item "001",
-  // que é sempre o nome limpo da raça) em vez da lista crua com +1000
-  // variações. Quando o código não segue esse padrão, cada raça vira seu
-  // próprio grupo — comportamento igual ao de antes.
-  const gruposRaca = React.useMemo(() => {
-    const porGrupo = new Map<string, typeof racas>();
-    for (const r of racas) {
-      const key = r.oldId && r.oldId.length === 7 ? r.oldId.slice(0, 4) : `_${r.value}`;
-      if (!porGrupo.has(key)) porGrupo.set(key, []);
-      porGrupo.get(key)!.push(r);
-    }
-    return Array.from(porGrupo.values()).map(itens => {
-      const header = itens.find(i => i.oldId?.endsWith('001')) ?? itens[0];
-      return { value: header.value, label: `${header.descricao}${header.especies ? ` (${header.especies})` : ''}` };
-    });
-  }, [racas]);
-
-  // Se o lote já tem uma raça salva que não é o "header" de nenhum grupo
-  // (ex.: lote antigo apontando direto pra uma variação específica), inclui
-  // essa opção à parte pra não cair no bug de mostrar o código bruto.
   const opcoesRaca = React.useMemo(() => {
-    const opcoes = [...gruposRaca];
-    if (racaxxSelecionada != null && !opcoes.some(o => o.value === racaxxSelecionada)) {
-      const item = racas.find(r => r.value === racaxxSelecionada);
-      if (item) opcoes.push({ value: item.value, label: `${item.descricao}${item.especies ? ` (${item.especies})` : ''}` });
-    }
-    return opcoes.sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
-  }, [gruposRaca, racaxxSelecionada, racas]);
+    return racas
+      .map(r => ({ value: r.value, label: `${r.descricao}${r.especies ? ` (${r.especies})` : ''}` }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+  }, [racas]);
 
   const imgLoteUrl = (id: number) =>
     config.bucket
@@ -93,7 +67,7 @@ export default function Lotes() {
     const [rac, cli, cond] = await Promise.all([
       api.get('/racas'), api.get('/clientes'), api.get('/condicoes-pagamento')
     ]);
-    setRacas(rac.data.map((r: any) => ({ value: r.id, descricao: r.descricao, especies: r.especies, oldId: r.oldId })));
+    setRacas(rac.data.map((r: any) => ({ value: r.id, descricao: r.descricao, especies: r.especies })));
     setClientes(cli.data.map((c: any) => ({ value: c.id, label: c.nomexx })));
     setCondicoes(cond.data.map((c: any) => ({ value: c.id, label: c.desfin })));
   };

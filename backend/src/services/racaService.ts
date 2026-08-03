@@ -9,16 +9,16 @@ export async function listarRacas(busca?: string): Promise<Raca[]> {
     req.input('busca', sql.VarChar, `%${busca}%`);
     where = `WHERE DESCRICAO LIKE @busca OR ESPECIES LIKE @busca`;
   }
-  const r = await req.query(`SELECT ID, DESCRICAO, ESPECIES, RACA, OLD_ID FROM Racas ${where} ORDER BY ESPECIES, DESCRICAO`);
-  return r.recordset.map(c => ({ id: c.ID, descricao: c.DESCRICAO, especies: c.ESPECIES, raca: c.RACA, oldId: c.OLD_ID }));
+  const r = await req.query(`SELECT ID, DESCRICAO, ESPECIES, RACA FROM Racas ${where} ORDER BY ESPECIES, DESCRICAO`);
+  return r.recordset.map(c => ({ id: c.ID, descricao: c.DESCRICAO, especies: c.ESPECIES, raca: c.RACA }));
 }
 
 export async function buscarRacaPorId(id: number): Promise<Raca | null> {
   const pool = await getPool();
-  const r = await pool.request().input('id', sql.Int, id).query(`SELECT ID, DESCRICAO, ESPECIES, RACA, OLD_ID FROM Racas WHERE ID=@id`);
+  const r = await pool.request().input('id', sql.Int, id).query(`SELECT ID, DESCRICAO, ESPECIES, RACA FROM Racas WHERE ID=@id`);
   if (!r.recordset.length) return null;
   const c = r.recordset[0];
-  return { id: c.ID, descricao: c.DESCRICAO, especies: c.ESPECIES, raca: c.RACA, oldId: c.OLD_ID };
+  return { id: c.ID, descricao: c.DESCRICAO, especies: c.ESPECIES, raca: c.RACA };
 }
 
 export async function criarRaca(dados: Omit<Raca, 'id'>): Promise<number> {

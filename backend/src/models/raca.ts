@@ -3,5 +3,4 @@ export interface Raca {
   descricao: string;
   especies?: string;
   raca?: string;
-  oldId?: string;
 }
