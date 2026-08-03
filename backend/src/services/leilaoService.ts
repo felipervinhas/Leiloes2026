@@ -1,5 +1,6 @@
 import { getPool, sql } from '../config/database';
 import { Leilao } from '../models/leilao';
+import { urlS3, s3Keys } from './s3Service';
 
 function mapRow(c: any): Leilao {
   return {
@@ -12,6 +13,7 @@ function mapRow(c: any): Leilao {
     regulamento: c.rEGULAMENTO, multiplo: c.MULTIPLO, observacoes: c.OBSERVACOES,
     tipo: c.TIPO, dataSaldo: c.DATA_SALDO,
     nomeCidade: c.NOMECIDADE, nomeEstado: c.NOMEESTADO, descricaoCondicao: c.DESFIN,
+    imgDesktop: urlS3(s3Keys.leilaoDesktop(c.ID)),
   };
 }
 

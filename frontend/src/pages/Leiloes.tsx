@@ -7,7 +7,6 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutl
 import dayjs from 'dayjs';
 import api from '../services/api';
 import ImageUpload from '../components/ImageUpload';
-import { useConfig } from '../context/ConfigContext';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -28,12 +27,6 @@ export default function Leiloes() {
   const [condicoes, setCondicoes] = useState<{ value: number; label: string }[]>([]);
   const [imagens, setImagens] = useState<Imagens | null>(null);
   const [form] = Form.useForm();
-  const config = useConfig();
-
-  const imgUrl = (id: number) =>
-    config.bucket
-      ? `https://${config.bucket}.s3.us-east-2.amazonaws.com/desktop_leilao_img_${id}.png`
-      : '';
 
   const carregar = async (b = '') => {
     setLoading(true);
@@ -90,10 +83,10 @@ export default function Leiloes() {
 
   const colunas = [
     {
-      title: '', dataIndex: 'id', width: 180, key: 'img',
-      render: (id: number) => (
+      title: '', dataIndex: 'imgDesktop', width: 180, key: 'img',
+      render: (imgDesktop: string) => (
         <Image
-          src={imgUrl(id)}
+          src={imgDesktop}
           width={164}
           height={100}
           style={{ objectFit: 'cover', borderRadius: 4, display: 'block' }}

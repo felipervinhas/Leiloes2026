@@ -25,4 +25,5 @@ export interface Leilao {
   nomeCidade?: string;
   nomeEstado?: string;
   descricaoCondicao?: string;
+  imgDesktop?: string;
 }
