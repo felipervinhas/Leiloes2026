@@ -4,6 +4,7 @@ import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker,
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
+import { useBuscaClientes } from '../hooks/useBuscaClientes';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CopyOutlined, AppstoreOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api from '../services/api';
@@ -33,7 +34,7 @@ export default function Lotes() {
   const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes, garantirOpcao: garantirOpcaoLeilao } = useBuscaLeiloes();
   const [leilaoFiltro, setLeilaoFiltro] = useState<number | undefined>();
   const [racas, setRacas] = useState<{ value: number; descricao: string; especies?: string }[]>([]);
-  const [clientes, setClientes] = useState<{ value: number; label: string }[]>([]);
+  const { opcoes: clientes, carregando: carregandoClientes, buscar: buscarClientes, garantirOpcao: garantirOpcaoCliente } = useBuscaClientes();
   const [condicoes, setCondicoes] = useState<{ value: number; label: string }[]>([]);
   const [imagens, setImagens] = useState<LoteImagem[]>([]);
   const [form] = Form.useForm();
@@ -57,11 +58,10 @@ export default function Lotes() {
   };
 
   const carregarAuxiliares = async () => {
-    const [rac, cli, cond] = await Promise.all([
-      api.get('/racas'), api.get('/clientes'), api.get('/condicoes-pagamento')
+    const [rac, cond] = await Promise.all([
+      api.get('/racas'), api.get('/condicoes-pagamento')
     ]);
     setRacas(rac.data.map((r: any) => ({ value: r.id, descricao: r.descricao, especies: r.especies })));
-    setClientes(cli.data.map((c: any) => ({ value: c.id, label: c.nomexx })));
     setCondicoes(cond.data.map((c: any) => ({ value: c.id, label: c.desfin })));
   };
 
@@ -81,15 +81,11 @@ export default function Lotes() {
       setEditando(d);
       setImagens(imgs.data);
       // Um Select cujo value não bate com nenhuma option mostra o código
-      // bruto em vez de um nome — acontece tanto quando a opção existe mas
-      // não foi carregada (Vendedor só lista os 500 primeiros clientes, ver
-      // clienteService.listarClientes) quanto quando o próprio dado é
+      // bruto em vez de um nome — acontece quando o próprio dado é
       // legado/órfão (ex.: lotes antigos com RACAXX apontando para uma raça
       // que não existe mais). Garantimos sempre uma option com um label
       // legível nesses casos.
-      if (d.codven && !clientes.some(c => c.value === d.codven)) {
-        setClientes(prev => [...prev, { value: d.codven, label: d.nomeVendedor || `Cliente #${d.codven} (não encontrado)` }]);
-      }
+      garantirOpcaoCliente(d.codven, d.nomeVendedor);
       if (d.racaxx && !racas.some(r => r.value === d.racaxx)) {
         setRacas(prev => [...prev, { value: d.racaxx, descricao: d.nomeRaca || `Raça #${d.racaxx} (não encontrada)` }]);
       }
@@ -115,7 +111,7 @@ export default function Lotes() {
       message.success('Salvo com sucesso');
       setModalOpen(false);
       carregar(busca, pagina);
-    } catch { message.error('Erro ao salvar'); }
+    } catch (err: any) { message.error(err?.response?.data?.error || 'Erro ao salvar'); }
   };
 
   const deletar = async (id: number) => {
@@ -199,7 +195,16 @@ export default function Lotes() {
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="codven" label="Vendedor">
-                <Select showSearch options={clientes} filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
+                <Select
+                  showSearch
+                  allowClear
+                  placeholder="Digite para buscar o cliente..."
+                  options={clientes}
+                  onSearch={buscarClientes}
+                  filterOption={false}
+                  loading={carregandoClientes}
+                  notFoundContent={carregandoClientes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
+                />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
