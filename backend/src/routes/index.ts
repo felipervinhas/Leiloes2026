@@ -138,9 +138,9 @@ bancoRouter.post('/leiloes', leilao.criar);
 bancoRouter.put('/leiloes/:id', leilao.atualizar);
 bancoRouter.delete('/leiloes/:id', leilao.deletar);
 bancoRouter.get('/leiloes/:id/imagens', upload.getImagensLeilao);
-bancoRouter.post('/leiloes/:id/imagens/desktop', memStorage.single('file'), upload.uploadLeilaoDesktop);
-bancoRouter.post('/leiloes/:id/imagens/mobile', memStorage.single('file'), upload.uploadLeilaoMobile);
-bancoRouter.post('/leiloes/:id/imagens/media', memStorage.single('file'), upload.uploadLeilaoMedia);
+bancoRouter.post('/leiloes/:id/imagens/desktop', memStorage.single('file'), reafirmarBanco, upload.uploadLeilaoDesktop);
+bancoRouter.post('/leiloes/:id/imagens/mobile', memStorage.single('file'), reafirmarBanco, upload.uploadLeilaoMobile);
+bancoRouter.post('/leiloes/:id/imagens/media', memStorage.single('file'), reafirmarBanco, upload.uploadLeilaoMedia);
 bancoRouter.delete('/leiloes/:id/imagens/:tipo', upload.deletarLeilaoImagem);
 
 bancoRouter.get('/lotes', lote.listar);
@@ -152,7 +152,7 @@ bancoRouter.patch('/lotes/:id/status', lote.atualizarStatus);
 bancoRouter.delete('/lotes/:id', lote.deletar);
 bancoRouter.post('/lotes/:id/duplicar', lote.duplicar);
 bancoRouter.get('/lotes/:id/imagens', upload.getImagensLote);
-bancoRouter.post('/lotes/:id/imagens/:num', memStorage.single('file'), upload.uploadLoteImagem);
+bancoRouter.post('/lotes/:id/imagens/:num', memStorage.single('file'), reafirmarBanco, upload.uploadLoteImagem);
 bancoRouter.delete('/lotes/:id/imagens/:num', upload.deletarLoteImagem);
 
 bancoRouter.get('/consulta-vendas', consultaVendas.consultar);
