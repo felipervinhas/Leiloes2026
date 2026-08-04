@@ -1250,7 +1250,7 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
     grupo.totais.totalPromissorias += valorPagar - valorSinal;
     if (aVista) grupo.totais.totalAVista += valorPagar;
     grupo.totais.totalComissaoVendedor += r.VALORCOMISSAOVENDEDOR || 0;
-    grupo.totais.totalLiquidoVendedor  += valorOriginal - (r.VALORCOMISSAOVENDEDOR || 0);
+    grupo.totais.totalLiquidoVendedor  += valorOriginal - (r.VALORCOMISSAOVENDEDOR || 0) - (r.VALORDESCONTO || 0);
 
     if (idContraparte != null) {
       const mapaContrapartes = contrapartesPorGrupo.get(chave)!;

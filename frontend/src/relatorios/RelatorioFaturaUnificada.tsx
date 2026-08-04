@@ -176,7 +176,6 @@ const s = StyleSheet.create({
   cLiquido: { width: 62, textAlign: 'right' as const },
   cSinal: { width: 70, textAlign: 'right' as const },
   cComVen: { width: 60, textAlign: 'right' as const },
-  cLiqVen: { width: 62, textAlign: 'right' as const },
 
   parceirosLista: { marginTop: 1 },
   parceiroLinha: { fontSize: 6.5, color: MEDIO, marginBottom: 1 },
@@ -365,7 +364,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
           {isVendedor ? (
             <>
               <View style={s.cComVen}><Text style={[s.th, { textAlign: 'right' }]}>Comissão Vend.</Text></View>
-              <View style={s.cLiqVen}><Text style={[s.th, { textAlign: 'right' }]}>Líq. Vendedor</Text></View>
+              <View style={s.cSinal}><Text style={[s.th, { textAlign: 'right' }]}>Sinal/1ª Parc.</Text></View>
             </>
           ) : (
             <>
@@ -377,7 +376,6 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
         {grupo.lotes.map((l, i) => {
           const primeira = l.parcelas.find(p => p.pripar === 'S');
           const sinal = primeira ? primeira.vlrpar : l.valorPagar;
-          const liquidoVendedor = l.valorOriginal - (l.valorComissaoVendedor || 0);
           return (
             <View key={l.idMc} style={i % 2 === 1 ? [s.tRow, s.tRowAlt] : s.tRow} wrap={false}>
               <View style={s.cLote}><Text style={s.tdBold}>{l.lotexx || '—'}</Text></View>
@@ -394,7 +392,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
               {isVendedor ? (
                 <>
                   <View style={s.cComVen}><Text style={s.td}>{fmtR(l.valorComissaoVendedor)}</Text></View>
-                  <View style={s.cLiqVen}><Text style={s.tdBold}>{fmtR(liquidoVendedor)}</Text></View>
+                  <View style={s.cSinal}><Text style={s.tdBold}>{fmtR(sinal)}</Text></View>
                 </>
               ) : (
                 <>
