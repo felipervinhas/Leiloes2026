@@ -76,7 +76,11 @@ const BASE_SQL = `
   LEFT JOIN CondicaoPagtos PG      ON PG.ID  = V.IDCONDPAGTO
   LEFT JOIN Clientes COM           ON COM.ID = V.IDCLI
   LEFT JOIN Movimento_Comprador MC ON MC.IDMOV = V.ID AND MC.IDCLI = V.IDCLI
-  LEFT JOIN Clientes_Propriedades CP ON CP.ID = V.ID_PROPRIEDADE
+  /* Quando a venda não teve propriedade de destino selecionada, cai pra
+     propriedade cadastrada no próprio comprador (a mais antiga, se houver
+     mais de uma) em vez de deixar Localidade/Propriedade/Inscrição em branco. */
+  LEFT JOIN Clientes_Propriedades CP ON CP.ID = ISNULL(V.ID_PROPRIEDADE,
+    (SELECT TOP 1 ID FROM Clientes_Propriedades WHERE ID_CLIENTE = COM.ID ORDER BY ID))
   LEFT JOIN Cidades CIDVEN         ON CIDVEN.ID = VEN.CIDADE
   LEFT JOIN Cidades CIDCOM         ON CIDCOM.ID = COM.CIDADE
   WHERE V.ID > 0 AND V.VALORPAGAR >= 0
