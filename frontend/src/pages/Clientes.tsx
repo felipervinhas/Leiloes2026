@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Table, Button, Modal, Drawer, Form, Input, Select, DatePicker, Space, Popconfirm,
-  Typography, Row, Col, message, Tag, Tabs, Divider, Grid, Checkbox, Card, Radio } from 'antd';
+  Typography, Row, Col, message, Tag, Tabs, Divider, Grid, Checkbox, Card, Radio, Upload } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AimOutlined,
   CheckCircleFilled, FileTextOutlined, FileExcelOutlined, CloseOutlined,
   TrophyOutlined, ShoppingCartOutlined, TagOutlined, AuditOutlined, TeamOutlined,
   UserOutlined, EnvironmentOutlined, PhoneOutlined, BankOutlined, SettingOutlined,
-  FolderOpenOutlined, HomeOutlined,
+  FolderOpenOutlined, HomeOutlined, UploadOutlined,
   FileDoneOutlined, EyeOutlined, ExportOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -76,6 +76,7 @@ export default function Clientes() {
   const [filtroNome, setFiltroNome] = useState('');
   const [filtroCpf, setFiltroCpf] = useState('');
   const [filtroCnpj, setFiltroCnpj] = useState('');
+  const [filtroPropriedade, setFiltroPropriedade] = useState('');
   const [filtroCidade, setFiltroCidade] = useState<number | undefined>(undefined);
   const [filtroEstado, setFiltroEstado] = useState<string | undefined>(undefined);
   const [filtroSituacao, setFiltroSituacao] = useState<string | undefined>(undefined);
@@ -114,6 +115,7 @@ export default function Clientes() {
   const [promissoriaLoading, setPromissoriaLoading] = useState<number | null>(null);
   const [promissoriaData, setPromissoriaData] = useState<FaturaData | null>(null);
   const [promissoriaModal, setPromissoriaModal] = useState(false);
+  const [enviandoDocumento, setEnviandoDocumento] = useState<string | null>(null);
   const [propriedades, setPropriedades] = useState<any[]>([]);
   const [propriedadesLoading, setPropriedadesLoading] = useState(false);
   const [propModalOpen, setPropModalOpen] = useState(false);
@@ -138,6 +140,7 @@ export default function Clientes() {
           nome: filtroNome || undefined, cpf: filtroCpf || undefined,
           cnpj: filtroCnpj || undefined, cidade: filtroCidade,
           estado: filtroEstado, situacao: filtroSituacao,
+          propriedade: filtroPropriedade || undefined,
           filtroValor,
           classificacoes: filtroClassificacoes.length ? filtroClassificacoes.join(',') : undefined,
           page: pag, pageSize: PAGE_SIZE,
@@ -163,6 +166,7 @@ export default function Clientes() {
           nome: filtroNome || undefined, cpf: filtroCpf || undefined,
           cnpj: filtroCnpj || undefined, cidade: filtroCidade,
           estado: filtroEstado, situacao: filtroSituacao,
+          propriedade: filtroPropriedade || undefined,
           filtroValor,
           classificacoes: filtroClassificacoes.length ? filtroClassificacoes.join(',') : undefined,
         },
@@ -705,6 +709,20 @@ export default function Clientes() {
     </Row>
   );
 
+  const enviarDocumentoCliente = async (tipo: string, file: File) => {
+    setEnviandoDocumento(tipo);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      await api.post(`/clientes/${editando.id}/documentos/${tipo}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      message.success('Documento enviado com sucesso');
+    } catch {
+      message.error('Erro ao enviar documento');
+    } finally {
+      setEnviandoDocumento(null);
+    }
+  };
+
   const tabDocumentos = editando ? (() => {
     const base = `https://${config.bucket}.s3.us-east-2.amazonaws.com`;
     const docs = [
@@ -717,7 +735,7 @@ export default function Clientes() {
       <Space direction="vertical" style={{ width: '100%' }} size={16}>
         {docs.map(d => (
           <Card key={d.key} size="small" title={d.label} style={{ borderRadius: 8 }}>
-            <Space>
+            <Space wrap>
               <Button icon={<FileTextOutlined />}
                 onClick={() => window.open(`${base}/${d.key}_user_${editando.id}.jpg`, '_blank')}>
                 Abrir JPG
@@ -726,6 +744,15 @@ export default function Clientes() {
                 onClick={() => window.open(`${base}/${d.key}_user_${editando.id}.pdf`, '_blank')}>
                 Abrir PDF
               </Button>
+              <Upload
+                accept=".jpg,.jpeg,.png,.pdf"
+                showUploadList={false}
+                beforeUpload={file => { enviarDocumentoCliente(d.key, file); return false; }}
+              >
+                <Button icon={<UploadOutlined />} loading={enviandoDocumento === d.key}>
+                  Enviar arquivo
+                </Button>
+              </Upload>
             </Space>
           </Card>
         ))}
@@ -1056,6 +1083,9 @@ export default function Clientes() {
         </Col>
         <Col xs={12} sm={5} md={4}>
           <Input placeholder="CNPJ" value={filtroCnpj} onChange={e => setFiltroCnpj(e.target.value)} onPressEnter={buscar} allowClear />
+        </Col>
+        <Col xs={24} sm={6} md={5}>
+          <Input placeholder="Propriedade" value={filtroPropriedade} onChange={e => setFiltroPropriedade(e.target.value)} onPressEnter={buscar} allowClear />
         </Col>
         <Col xs={24} sm={8} md={5}>
           <Select

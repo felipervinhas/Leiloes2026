@@ -35,6 +35,19 @@ export async function uploadLoteImagem(req: Request, res: Response) {
   res.json({ url, key });
 }
 
+const TIPOS_DOCUMENTO_CLIENTE = ['documento', 'residencia', 'renda', 'analise'] as const;
+
+export async function uploadClienteDocumento(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const tipo = req.params.tipo as typeof TIPOS_DOCUMENTO_CLIENTE[number];
+  if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+  if (!TIPOS_DOCUMENTO_CLIENTE.includes(tipo)) return res.status(400).json({ error: 'Tipo de documento inválido' });
+  const ext = req.file.mimetype === 'application/pdf' ? 'pdf' : 'jpg';
+  const key = s3Keys.clienteDocumento(tipo, id, ext);
+  const url = await uploadS3(key, req.file.buffer, req.file.mimetype);
+  res.json({ url, key });
+}
+
 export async function deletarLoteImagem(req: Request, res: Response) {
   const id = Number(req.params.id);
   const num = Number(req.params.num) as 1 | 2 | 3 | 4;

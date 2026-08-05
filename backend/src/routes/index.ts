@@ -231,6 +231,7 @@ bancoRouter.patch('/clientes/:id/senha', cliente.alterarSenha);
 bancoRouter.patch('/clientes/:id/aprovar', cliente.aprovar);
 bancoRouter.patch('/clientes/:id/recusar', cliente.recusar);
 bancoRouter.patch('/clientes/:id/analisar', cliente.analisar);
+bancoRouter.post('/clientes/:id/documentos/:tipo', memStorage.single('file'), reafirmarBanco, upload.uploadClienteDocumento);
 
 // Preferências do usuário
 bancoRouter.get('/preferencias/:chave', preferencia.get);

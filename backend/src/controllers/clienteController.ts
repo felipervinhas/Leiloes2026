@@ -9,6 +9,7 @@ const filtrosDaQuery = (req: Request): svc.FiltrosCliente => ({
   nome: req.query.nome as string, cpf: req.query.cpf as string,
   cnpj: req.query.cnpj as string, cidade: req.query.cidade as string,
   estado: req.query.estado as string, situacao: req.query.situacao as string,
+  propriedade: req.query.propriedade as string,
 });
 
 export const listar = async (req: Request, res: Response) => {

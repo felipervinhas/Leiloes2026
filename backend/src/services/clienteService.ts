@@ -85,6 +85,7 @@ function mapRow(c: any): Cliente {
 
 export interface FiltrosCliente {
   nome?: string; cpf?: string; cnpj?: string; cidade?: string; estado?: string; situacao?: string;
+  propriedade?: string;
 }
 
 const EXISTS_COMPRAS = `EXISTS (SELECT 1 FROM MOVIMENTO_COMPRADOR MC WHERE TRY_CAST(MC.IDCLI AS INT) = C.ID)`;
@@ -100,6 +101,10 @@ function condicaoFiltrosCliente(req: any, filtros?: FiltrosCliente): string[] {
   if (filtros?.cnpj)   { req.input('fcnpj',   sql.VarChar, `%${filtros.cnpj.replace(/[.\-/ ]/g, '')}%`);  conditions.push(`${normDoc('C.CNPJXX')} LIKE @fcnpj`); }
   if (filtros?.cidade) { req.input('fcidade', sql.Int, Number(filtros.cidade));   conditions.push(`C.CIDADE = @fcidade`); }
   if (filtros?.estado) { req.input('festado', sql.VarChar, filtros.estado);       conditions.push(`CID.ESTADO = @festado`); }
+  if (filtros?.propriedade) {
+    req.input('fpropriedade', sql.VarChar, `%${filtros.propriedade}%`);
+    conditions.push(`EXISTS (SELECT 1 FROM CLIENTES_PROPRIEDADES CP WHERE CP.ID_CLIENTE = C.ID AND CP.NOME_PROPRIEDADE LIKE @fpropriedade)`);
+  }
   if (filtros?.situacao === 'compradores')        conditions.push(EXISTS_COMPRAS);
   if (filtros?.situacao === 'vendedores')         conditions.push(EXISTS_VENDAS);
   if (filtros?.situacao === 'semComercializacao') conditions.push(`NOT ${EXISTS_COMPRAS} AND NOT ${EXISTS_VENDAS}`);
@@ -359,6 +364,8 @@ export async function criarCliente(d: Cliente): Promise<number> {
     .input('telres', sql.VarChar, d.telres||null).input('telcom', sql.VarChar, d.telcom||null)
     .input('celu1', sql.VarChar, d.celu1||null).input('celu2', sql.VarChar, d.celu2||null)
     .input('rgxxxx', sql.VarChar, d.rgxxxx||null).input('datnas', sql.Date, d.datnas||null)
+    .input('orgem', sql.VarChar, d.orgem||null).input('emissa', sql.VarChar, d.emissa||null)
+    .input('paixxx', sql.VarChar, d.paixxx||null).input('maexxx', sql.VarChar, d.maexxx||null)
     .input('emailx', sql.VarChar, d.emailx||null).input('email2', sql.VarChar, d.email2||null)
     .input('cidade', sql.Int, d.cidade||null).input('comple', sql.VarChar, d.comple||null)
     .input('profiss', sql.VarChar, d.profiss||null).input('empres', sql.VarChar, d.empres||null)
@@ -381,9 +388,9 @@ export async function criarCliente(d: Cliente): Promise<number> {
     .input('idSolicitadoPor', sql.Int, d.idSolicitadoPor||null)
     .input('usucad', sql.Int, d.usucad||null)
     .query(`DECLARE @InsertedIds TABLE (ID INT);
-      INSERT INTO Clientes (NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,CODCLA,ESTCIV,OBSXXX,OCORRENCIAS,DATCAD,BANCOX,AGENCI,CONTAX,PIX,BANCO1,AGENCIA1,CONTA1,PIX1,BANCO2,AGENCIA2,CONTA2,PIX2,REFER1,TELREFERE1,REFER2,TELREFERE2,ID_SOLICITADO_POR,USUCAD)
+      INSERT INTO Clientes (NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,ORG_EM,EMISSA,PAIXXX,MAEXXX,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,CODCLA,ESTCIV,OBSXXX,OCORRENCIAS,DATCAD,BANCOX,AGENCI,CONTAX,PIX,BANCO1,AGENCIA1,CONTA1,PIX1,BANCO2,AGENCIA2,CONTA2,PIX2,REFER1,TELREFERE1,REFER2,TELREFERE2,ID_SOLICITADO_POR,USUCAD)
       OUTPUT INSERTED.ID INTO @InsertedIds
-      VALUES (@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@codcla,@estciv,@obsxxx,@ocorrencias,@datcad,@bancox,@agenci,@contax,@pix,@banco1,@agencia1,@conta1,@pix1,@banco2,@agencia2,@conta2,@pix2,@refer1,@telrefere1,@refer2,@telrefere2,@idSolicitadoPor,@usucad);
+      VALUES (@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@orgem,@emissa,@paixxx,@maexxx,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@codcla,@estciv,@obsxxx,@ocorrencias,@datcad,@bancox,@agenci,@contax,@pix,@banco1,@agencia1,@conta1,@pix1,@banco2,@agencia2,@conta2,@pix2,@refer1,@telrefere1,@refer2,@telrefere2,@idSolicitadoPor,@usucad);
       SELECT ID FROM @InsertedIds;`);
   const id = r.recordset[0].ID;
   await salvarClassificacoesDoCliente(id, d.classificacoes || []);
@@ -403,6 +410,8 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
     .input('telres', sql.VarChar, d.telres||null).input('telcom', sql.VarChar, d.telcom||null)
     .input('celu1', sql.VarChar, d.celu1||null).input('celu2', sql.VarChar, d.celu2||null)
     .input('rgxxxx', sql.VarChar, d.rgxxxx||null).input('datnas', sql.Date, d.datnas||null)
+    .input('orgem', sql.VarChar, d.orgem||null).input('emissa', sql.VarChar, d.emissa||null)
+    .input('paixxx', sql.VarChar, d.paixxx||null).input('maexxx', sql.VarChar, d.maexxx||null)
     .input('emailx', sql.VarChar, d.emailx||null).input('email2', sql.VarChar, d.email2||null)
     .input('cidade', sql.Int, d.cidade||null).input('comple', sql.VarChar, d.comple||null)
     .input('profiss', sql.VarChar, d.profiss||null).input('empres', sql.VarChar, d.empres||null)
@@ -426,7 +435,8 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
     .input('senhax', sql.VarChar, d.senhax||null)
     .query(`UPDATE Clientes SET NOMEXX=@nomexx,ENDERE=@endere,BAIRRO=@bairro,CEPXXX=@cepxxx,
       CPFXXX=@cpfxxx,CNPJXX=@cnpjxx,TELRES=@telres,TELCOM=@telcom,CELU_1=@celu1,CELU_2=@celu2,
-      RGXXXX=@rgxxxx,DATNAS=@datnas,EMAILX=@emailx,EMAIL2=@email2,CIDADE=@cidade,COMPLE=@comple,
+      RGXXXX=@rgxxxx,DATNAS=@datnas,ORG_EM=@orgem,EMISSA=@emissa,PAIXXX=@paixxx,MAEXXX=@maexxx,
+      EMAILX=@emailx,EMAIL2=@email2,CIDADE=@cidade,COMPLE=@comple,
       PROFISS=@profiss,EMPRES=@empres,RENDAX=@rendax,ATIVOX=@ativox,BLOCLI=@blocli,
       ACESSO_APP=@acessoApp,LIMCRE=@limcre,CLASSIFICACAO=@classificacao,CODCLA=@codcla,ESTCIV=@estciv,
       OBSXXX=@obsxxx,OCORRENCIAS=@ocorrencias,DATALT=@datalt,BANCOX=@bancox,AGENCI=@agenci,CONTAX=@contax,PIX=@pix,

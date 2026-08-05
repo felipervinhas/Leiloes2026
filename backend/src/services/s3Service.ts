@@ -67,4 +67,6 @@ export const s3Keys = {
   leilaoMedia:   (id: number) => `leilao_media_${id}.jpg`,
   loteImagem:    (id: number, num: 1 | 2 | 3 | 4) => `lote_${num}_img_${id}.jpg`,
   chamadoImagem: (id: number) => `chamados/chamado_${id}.jpg`,
+  clienteDocumento: (tipo: 'documento' | 'residencia' | 'renda' | 'analise', id: number, ext: 'jpg' | 'pdf') =>
+    `${tipo}_user_${id}.${ext}`,
 };
