@@ -1110,7 +1110,7 @@ export default function Clientes() {
             options={UFS}
           />
         </Col>
-        <Col xs={24} sm="auto" style={{ minWidth: 190 }}>
+        <Col xs={12} sm={6} md={4}>
           <Select
             value={filtroSituacao}
             onChange={setFiltroSituacao}
@@ -1120,7 +1120,7 @@ export default function Clientes() {
             options={SITUACOES}
           />
         </Col>
-        <Col xs={24} sm="auto" style={{ minWidth: 160 }}>
+        <Col xs={12} sm={6} md={4}>
           <Select
             value={filtroValor}
             onChange={v => setFiltroValor(v)}
@@ -1138,7 +1138,7 @@ export default function Clientes() {
             ]}
           />
         </Col>
-        <Col xs={24} sm="auto" style={{ minWidth: 200 }}>
+        <Col xs={24} sm={8} md={5}>
           <Select
             mode="multiple"
             value={filtroClassificacoes}
