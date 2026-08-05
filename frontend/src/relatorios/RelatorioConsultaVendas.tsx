@@ -59,11 +59,11 @@ interface Props {
 /** Catálogo de colunas que o usuário pode ocultar/mostrar no PDF de Consulta de Vendas. */
 export const COLUNAS_CONSULTA_VENDAS = [
   { key: 'lote', label: 'Lote' },
-  { key: 'descricao', label: 'Descrição' },
   { key: 'tatuagem', label: 'Tatuagem / RP' },
-  { key: 'raca', label: 'Raça / Espécie' },
-  { key: 'vendedor', label: 'Vendedor' },
   { key: 'comprador', label: 'Comprador' },
+  { key: 'vendedor', label: 'Vendedor' },
+  { key: 'descricao', label: 'Descrição' },
+  { key: 'raca', label: 'Raça / Espécie' },
   { key: 'qtd', label: 'Qtd' },
   { key: 'valorPagar', label: 'Vlr. a Pagar' },
   { key: 'comissao', label: 'Comissão' },
@@ -356,11 +356,11 @@ function ConsultaVendasPDF({
 
         <View style={s.tableHeader} fixed>
           {v('lote') && <View style={s.cLote}><Text style={s.th}>Lote</Text></View>}
-          {v('descricao') && <View style={s.cDes}><Text style={s.th}>Descrição</Text></View>}
           {v('tatuagem') && <View style={s.cTat}><Text style={s.th}>{labelTatuagem}</Text></View>}
-          {v('raca') && <View style={s.cRaca}><Text style={s.th}>Raça / Espécie</Text></View>}
-          {v('vendedor') && <View style={s.cVend}><Text style={s.th}>Vendedor</Text></View>}
           {v('comprador') && <View style={s.cComp}><Text style={s.th}>Comprador</Text></View>}
+          {v('vendedor') && <View style={s.cVend}><Text style={s.th}>Vendedor</Text></View>}
+          {v('descricao') && <View style={s.cDes}><Text style={s.th}>Descrição</Text></View>}
+          {v('raca') && <View style={s.cRaca}><Text style={s.th}>Raça / Espécie</Text></View>}
           {v('qtd') && <View style={s.cQtd}><Text style={s.thRight}>Qtd</Text></View>}
           {v('valorPagar') && <View style={s.cPagar}><Text style={s.thRight}>Vlr. a Pagar</Text></View>}
           {v('comissao') && <View style={s.cComissao}><Text style={s.thRight}>Comissão</Text></View>}
@@ -375,21 +375,14 @@ function ConsultaVendasPDF({
                 <Text style={[s.tdBold, { color: ESCURO }]}>{venda.lotexx || '—'}</Text>
               </View>
             )}
-            {v('descricao') && (
-              <View style={s.cDes}>
-                <Text style={s.tdNormal}>{venda.deslot || '—'}</Text>
-              </View>
-            )}
             {v('tatuagem') && (
               <View style={s.cTat}>
                 <Text style={s.tdSmall}>{venda.rpxxx || '—'}</Text>
               </View>
             )}
-            {v('raca') && (
-              <View style={s.cRaca}>
-                <Text style={s.tdSmall}>
-                  {[venda.descricaoRaca, venda.especies].filter(Boolean).join(' / ') || '—'}
-                </Text>
+            {v('comprador') && (
+              <View style={s.cComp}>
+                <Text style={s.tdNormal}>{venda.nomeComprador || '—'}</Text>
               </View>
             )}
             {v('vendedor') && (
@@ -397,9 +390,16 @@ function ConsultaVendasPDF({
                 <Text style={s.tdNormal}>{venda.nomeVendedor || '—'}</Text>
               </View>
             )}
-            {v('comprador') && (
-              <View style={s.cComp}>
-                <Text style={s.tdNormal}>{venda.nomeComprador || '—'}</Text>
+            {v('descricao') && (
+              <View style={s.cDes}>
+                <Text style={s.tdNormal}>{venda.deslot || '—'}</Text>
+              </View>
+            )}
+            {v('raca') && (
+              <View style={s.cRaca}>
+                <Text style={s.tdSmall}>
+                  {[venda.descricaoRaca, venda.especies].filter(Boolean).join(' / ') || '—'}
+                </Text>
               </View>
             )}
             {v('qtd') && (
