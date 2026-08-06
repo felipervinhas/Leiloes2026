@@ -433,6 +433,7 @@ export default function Clientes() {
 
   const salvar = async (values: any) => {
     const payload = {
+      ...editando, // preserva campos de abas do Drawer não visitadas nesta sessão (Tabs só monta Form.Item da aba ativa)
       ...values,
       datnas: values.datnas ? values.datnas.format('YYYY-MM-DD') : null,
     };
