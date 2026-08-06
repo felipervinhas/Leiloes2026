@@ -429,6 +429,7 @@ export default function Clientes() {
     setTotalPorLeilaoLegado([]);
     setBoletosLegado([]);
     setLeilaoLegadoSelecionado(null);
+    setOcorrencias([]);
     setDrawerActiveTab('1');
     setDrawerOpen(true);
   };
