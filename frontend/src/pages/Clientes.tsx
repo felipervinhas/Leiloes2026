@@ -409,8 +409,10 @@ export default function Clientes() {
   };
 
   const abrirDrawer = async (item?: Cliente) => {
+    setPropriedades([]);
     if (item) {
       await preencherFormCliente(item.id);
+      carregarPropriedades(item.id);
     } else {
       form.resetFields();
       form.setFieldsValue({
