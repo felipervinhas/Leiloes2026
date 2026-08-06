@@ -1,4 +1,5 @@
 import { getPool, sql } from '../config/database';
+import { getBanco } from '../config/bancoContext';
 import { Cliente } from '../models/cliente';
 import { listarClassificacoesDoCliente, salvarClassificacoesDoCliente, garantirTabelasClassificacao } from './classificacaoService';
 
@@ -22,9 +23,10 @@ function condicaoClassificacoes(req: any, classificacoes: string | undefined): s
   return `EXISTS (SELECT 1 FROM CLIENTES_CLASSIFICACOES CCX WHERE CCX.ID_CLIENTE = C.ID AND CCX.ID_CLASSIFICACAO IN (${params.join(',')}))`;
 }
 
-let colunaUsuCriada = false;
+const colunaUsuCriadaPorBanco = new Set<string>();
 async function garantirColunasUsu() {
-  if (colunaUsuCriada) return;
+  const banco = getBanco();
+  if (colunaUsuCriadaPorBanco.has(banco)) return;
   const pool = await getPool();
   await pool.request().query(`
     IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Clientes' AND COLUMN_NAME='USUCAD')
@@ -32,12 +34,13 @@ async function garantirColunasUsu() {
     IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Clientes' AND COLUMN_NAME='USUALT')
       ALTER TABLE Clientes ADD USUALT INT NULL;
   `);
-  colunaUsuCriada = true;
+  colunaUsuCriadaPorBanco.add(banco);
 }
 
-let colunaSolicitadoPorCriada = false;
+const colunaSolicitadoPorCriadaPorBanco = new Set<string>();
 async function garantirColunaSolicitadoPor() {
-  if (colunaSolicitadoPorCriada) return;
+  const banco = getBanco();
+  if (colunaSolicitadoPorCriadaPorBanco.has(banco)) return;
   const pool = await getPool();
   await pool.request().query(`
     IF NOT EXISTS (
@@ -46,7 +49,7 @@ async function garantirColunaSolicitadoPor() {
     )
     ALTER TABLE Clientes ADD ID_SOLICITADO_POR INT NULL
   `);
-  colunaSolicitadoPorCriada = true;
+  colunaSolicitadoPorCriadaPorBanco.add(banco);
 }
 
 function mapRow(c: any): Cliente {

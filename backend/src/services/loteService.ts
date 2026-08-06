@@ -1,16 +1,18 @@
 import { getPool, sql } from '../config/database';
+import { getBanco } from '../config/bancoContext';
 import { Lote } from '../models/lote';
 import { resolveBucket, s3PublicUrl, s3Keys } from './s3Service';
 
-let colunaQtdAnimaisCriada = false;
+const colunaQtdAnimaisCriadaPorBanco = new Set<string>();
 async function garantirColunaQtdAnimais() {
-  if (colunaQtdAnimaisCriada) return;
+  const banco = getBanco();
+  if (colunaQtdAnimaisCriadaPorBanco.has(banco)) return;
   const pool = await getPool();
   await pool.request().query(`
     IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Lotes' AND COLUMN_NAME='QTDANIMAIS')
       ALTER TABLE Lotes ADD QTDANIMAIS INT NULL
   `);
-  colunaQtdAnimaisCriada = true;
+  colunaQtdAnimaisCriadaPorBanco.add(banco);
 }
 
 function mapRow(c: any, bucket: string): Lote {

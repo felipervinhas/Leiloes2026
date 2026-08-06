@@ -1,9 +1,11 @@
 import { getPool, sql } from '../config/database';
+import { getBanco } from '../config/bancoContext';
 
-let tabelaCriada = false;
+const tabelaCriadaPorBanco = new Set<string>();
 
 async function garantirTabela() {
-  if (tabelaCriada) return;
+  const banco = getBanco();
+  if (tabelaCriadaPorBanco.has(banco)) return;
   const pool = await getPool();
   await pool.request().query(`
     IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='PREFERENCIAS_USUARIO' AND xtype='U')
@@ -16,7 +18,7 @@ async function garantirTabela() {
       CONSTRAINT UQ_PREF_USUARIO_CHAVE UNIQUE (IDUSUARIO, CHAVE)
     )
   `);
-  tabelaCriada = true;
+  tabelaCriadaPorBanco.add(banco);
 }
 
 export async function getPreferencia(idUsuario: number, chave: string): Promise<any> {

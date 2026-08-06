@@ -733,6 +733,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   const racaxxLoteSimp = Form.useWatch('racaxx', formLoteSimp);
   const [racas, setRacas] = useState<{ value: number; label: string; especies?: string }[]>([]);
   const [vendedores, setVendedores] = useState<{ value: number; label: string }[]>([]);
+  const [loadingVend, setLoadingVend] = useState(false);
+  const timerVend = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // ── step 2 ──────────────────────────────────────────────────────────────
   const [form2]         = Form.useForm();
@@ -908,15 +910,26 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
 
   const abrirLoteSimplificado = async () => {
     formLoteSimp.resetFields();
+    setVendedores([]);
     if (racas.length === 0) {
       const r = await api.get('/racas');
       setRacas(r.data.map((x: any) => ({ value: x.id, label: `${x.descricao}${x.especies ? ` (${x.especies})` : ''}`, especies: x.especies })));
     }
-    if (vendedores.length === 0) {
-      const r = await api.get('/clientes');
-      setVendedores(r.data.map((x: any) => ({ value: x.id, label: x.nomexx })));
-    }
     setLoteSimpModal(true);
+  };
+
+  const buscarVendedores = (busca: string) => {
+    clearTimeout(timerVend.current);
+    if (busca.length < 2) { setVendedores([]); return; }
+    timerVend.current = setTimeout(async () => {
+      setLoadingVend(true);
+      try {
+        const r = await api.get('/clientes', { params: { nome: busca } });
+        setVendedores(r.data.map((x: any) => ({ value: x.id, label: x.nomexx })));
+      } catch {
+        message.error('Erro ao buscar vendedor');
+      } finally { setLoadingVend(false); }
+    }, 350);
   };
 
   const criarLoteSimplificado = async () => {
@@ -991,6 +1004,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
       try {
         const r = await api.get('/clientes', { params: { nome: busca } });
         setClientes(r.data.map((c: any) => ({ value: c.id, label: c.nomexx })));
+      } catch {
+        message.error('Erro ao buscar comprador');
       } finally { setLoadingCli(false); }
     }, 350);
   };
@@ -1508,7 +1523,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
                 <Col span={12}>
                   <Form.Item name="codven" label="Vendedor">
                     <Select showSearch options={vendedores} allowClear
-                      filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
+                      filterOption={false} onSearch={buscarVendedores} loading={loadingVend}
+                      notFoundContent={loadingVend ? <Spin size="small" /> : 'Digite 2+ letras'} />
                   </Form.Item>
                 </Col>
                 <Col span={8}>

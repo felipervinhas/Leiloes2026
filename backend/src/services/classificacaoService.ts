@@ -1,12 +1,14 @@
 import { getPool, sql } from '../config/database';
+import { getBanco } from '../config/bancoContext';
 import { Classificacao } from '../models/classificacao';
 
-let tabelasCriadas = false;
+const tabelasCriadasPorBanco = new Set<string>();
 export async function garantirTabelasClassificacao() {
   await garantirTabelas();
 }
 async function garantirTabelas() {
-  if (tabelasCriadas) return;
+  const banco = getBanco();
+  if (tabelasCriadasPorBanco.has(banco)) return;
   const pool = await getPool();
   await pool.request().query(`
     IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='Classificacoes')
@@ -22,7 +24,7 @@ async function garantirTabelas() {
         CONSTRAINT UQ_CLIENTE_CLASSIFICACAO UNIQUE (ID_CLIENTE, ID_CLASSIFICACAO)
       );
   `);
-  tabelasCriadas = true;
+  tabelasCriadasPorBanco.add(banco);
 }
 
 export async function listarClassificacoes(busca?: string): Promise<Classificacao[]> {

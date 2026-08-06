@@ -1,4 +1,5 @@
 import { getPool, sql } from '../config/database';
+import { getBanco } from '../config/bancoContext';
 
 export interface UsuarioSistema {
   id: number;
@@ -12,9 +13,10 @@ export interface UsuarioSistema {
   tipoUsuario?: string;
 }
 
-let colunaCriada = false;
+const colunaCriadaPorBanco = new Set<string>();
 async function garantirColuna() {
-  if (colunaCriada) return;
+  const banco = getBanco();
+  if (colunaCriadaPorBanco.has(banco)) return;
   const pool = await getPool();
   await pool.request().query(`
     IF NOT EXISTS (
@@ -23,7 +25,7 @@ async function garantirColuna() {
     )
     ALTER TABLE Clientes ADD TIPO_USUARIO NVARCHAR(50) NULL
   `);
-  colunaCriada = true;
+  colunaCriadaPorBanco.add(banco);
 }
 
 function mapRow(c: any): UsuarioSistema {
