@@ -140,6 +140,9 @@ export async function buscarLotePorId(id: number): Promise<Lote | null> {
 export async function criarLote(d: Lote): Promise<number> {
   await garantirColunaQtdAnimais();
   const pool = await getPool();
+  // A coluna ID de Lotes não é IDENTITY (tabela legada do Delphi, onde o ID
+  // era atribuído manualmente pela aplicação) — precisamos calcular o
+  // próximo valor aqui, senão o INSERT grava ID = NULL.
   const r = await pool.request()
     .input('lotexx', sql.VarChar, d.lotexx).input('deslot', sql.VarChar, d.deslot||null)
     .input('rpxxx', sql.VarChar, d.rpxxx||null).input('sbbxxx', sql.VarChar, d.sbbxxx||null)
@@ -153,9 +156,9 @@ export async function criarLote(d: Lote): Promise<number> {
     .input('comentario', sql.VarChar, d.comentario||null).input('multiplo', sql.Int, d.multiplo||null)
     .input('vendido', sql.Char, d.vendido||'N').input('publica', sql.Char, d.publica||'N')
     .input('condic', sql.Int, d.condic||null).input('qtdAnimais', sql.Int, d.qtdAnimais||null)
-    .query(`INSERT INTO Lotes (LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,RACAXX,IDLEILAO,CODVEN,ORDEM,CATEGO,VLRINS,PELAGE,DATNAS,OBSLOT,FILIACAO,LANMAX,URLVideo,Comentario,MULTIPLO,VENDIDO,PUBLICA,CONDIC,QTDANIMAIS)
+    .query(`INSERT INTO Lotes (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,RACAXX,IDLEILAO,CODVEN,ORDEM,CATEGO,VLRINS,PELAGE,DATNAS,OBSLOT,FILIACAO,LANMAX,URLVideo,Comentario,MULTIPLO,VENDIDO,PUBLICA,CONDIC,QTDANIMAIS)
       OUTPUT INSERTED.ID
-      VALUES (@lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@racaxx,@idleilao,@codven,@ordem,@catego,@vlrins,@pelage,@datnas,@obslot,@filiacao,@lanmax,@urlvideo,@comentario,@multiplo,@vendido,@publica,@condic,@qtdAnimais)`);
+      VALUES ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@racaxx,@idleilao,@codven,@ordem,@catego,@vlrins,@pelage,@datnas,@obslot,@filiacao,@lanmax,@urlvideo,@comentario,@multiplo,@vendido,@publica,@condic,@qtdAnimais)`);
   return r.recordset[0].ID;
 }
 
@@ -242,9 +245,9 @@ export async function duplicarLote(id: number): Promise<number> {
     .input('urlvideo', sql.VarChar, o.URLVideo || null)
     .input('iddup',    sql.Int,     id)
     .query(`INSERT INTO Lotes
-      (DESLOT,RPXXX,SBBXXX,TATXXX,FILIACAO,DATNAS,CATEGO,RACAXX,OBSLOT,PELAGE,URLVideo,ID_DUPLICADO,VENDIDO,PUBLICA)
+      (ID,DESLOT,RPXXX,SBBXXX,TATXXX,FILIACAO,DATNAS,CATEGO,RACAXX,OBSLOT,PELAGE,URLVideo,ID_DUPLICADO,VENDIDO,PUBLICA)
       OUTPUT INSERTED.ID
       VALUES
-      (@deslot,@rpxxx,@sbbxxx,@tatxxx,@filiacao,@datnas,@catego,@racaxx,@obslot,@pelage,@urlvideo,@iddup,'N','N')`);
+      ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @deslot,@rpxxx,@sbbxxx,@tatxxx,@filiacao,@datnas,@catego,@racaxx,@obslot,@pelage,@urlvideo,@iddup,'N','N')`);
   return nr.recordset[0].ID;
 }
