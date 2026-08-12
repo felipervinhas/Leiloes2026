@@ -9,9 +9,11 @@ import {
   FileTextOutlined, MenuOutlined, TagsOutlined, SoundOutlined, BugOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { useBanco } from '../../context/BancoContext';
 import { useConfig } from '../../context/ConfigContext';
+import { VERSAO_FRONTEND } from '../../version';
 import AIChat from '../AIChat';
 
 const { Header, Sider, Content } = Layout;
@@ -129,6 +131,14 @@ export default function MainLayout() {
 
   const controles: string[] = usuario?.controles ?? [];
   const menuItems = filtrarMenu(ALL_MENU_ITEMS, controles, usuario?.adm === 'S');
+
+  // Versão do backend efetivamente no ar (commit do último git pull + restart do PM2) —
+  // exibida junto da versão do frontend pra conferir se um deploy já subiu de fato.
+  const [versaoBackend, setVersaoBackend] = useState<{ commit: string; dataCommit?: string } | null>(null);
+  useEffect(() => {
+    const base = process.env.REACT_APP_API_URL || 'http://localhost:8500/api';
+    axios.get(`${base}/version`).then(r => setVersaoBackend(r.data)).catch(() => {});
+  }, []);
 
   const cor1 = config.corMenuTop || '#FEC824';
   const cor2 = config.corMenuBottom || '#003333';
@@ -258,6 +268,15 @@ export default function MainLayout() {
         onClick={({ key }) => openTab(key)}
         style={{ background: 'transparent', padding: isMobile ? '10px 8px' : '2px 10px 10px', flex: 1, overflowY: 'auto' }}
       />
+
+      {(!collapsed || isMobile) && (
+        <div
+          title={versaoBackend?.dataCommit ? `Backend implantado em ${new Date(versaoBackend.dataCommit).toLocaleString('pt-BR')}` : undefined}
+          style={{ padding: '6px 16px 10px', fontSize: 10, color: 'rgba(255,255,255,0.35)', textAlign: 'center', flexShrink: 0 }}
+        >
+          front {VERSAO_FRONTEND.commit} · back {versaoBackend?.commit || '…'}
+        </div>
+      )}
     </>
   );
 

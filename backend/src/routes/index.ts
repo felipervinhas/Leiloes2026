@@ -32,6 +32,7 @@ import * as relatorioLayout from '../controllers/relatorioLayoutController';
 import * as preferencia from '../controllers/preferenciaController';
 import * as chamado from '../controllers/chamadoController';
 import { chatAI } from '../controllers/aiController';
+import { VERSAO } from '../config/versao';
 import multer from 'multer';
 
 const memStorage = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -50,6 +51,9 @@ const router = Router();
 
 // health check global (sem banco)
 router.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+
+// versão do backend atualmente no ar — commit + data do último deploy (git pull + restart)
+router.get('/version', (req, res) => res.json(VERSAO));
 
 // Todas as rotas reais ficam sob /:banco
 const bancoRouter = Router({ mergeParams: true });

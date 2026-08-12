@@ -7,6 +7,8 @@ frontend:
         - npm install
     build:
       commands:
+        - export REACT_APP_COMMIT_SHA=$(git rev-parse --short HEAD)
+        - export REACT_APP_BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
         - npm run build
   artifacts:
     baseDirectory: frontend/build
