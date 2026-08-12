@@ -372,7 +372,7 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
 
                       {/* Texto */}
                       <Text style={s.promTexto}>
-                        {`AO(S) ${dataExtenso} PAGAREI POR ESTA NOTA PROMISSÓRIA ÚNICA A ${(credor).toUpperCase()}${cpfCredor ? ` CPF: ${cpfCredor}` : ''} OU A SUA ORDEM A QUANTIA DE (${extenso}) EM MOEDA CORRENTE DO PAÍS NA PRAÇA DE ${praca} PELA COMPRA QUE LHE FIZE(MOS).`}
+                        {`NO DIA ${dataExtenso}, PAGAREI POR ESTA NOTA PROMISSÓRIA ÚNICA A ${(credor).toUpperCase()}${cpfCredor ? `, CPF ${cpfCredor}` : ''} OU A SUA ORDEM A QUANTIA DE (${extenso}) EM MOEDA CORRENTE DO PAÍS NA PRAÇA DE ${praca} PELA COMPRA QUE FIZ, NO LEILÃO ${(dados.leilao || '—').toUpperCase()}.`}
                       </Text>
 
                       {/* Local + Data */}

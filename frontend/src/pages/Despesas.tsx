@@ -15,6 +15,11 @@ import { useBuscaClientes } from '../hooks/useBuscaClientes';
 const { Title } = Typography;
 const { TextArea } = Input;
 
+const TIPO_RECIBO_OPTS = [
+  { value: 'R', label: 'Recebimento (a empresa recebe e assina)' },
+  { value: 'P', label: 'Pagamento (o cliente recebe e assina)' },
+];
+
 const DC_OPTS = [
   { value: 'D', label: 'Despesa' },
   { value: 'C', label: 'Crédito' },
@@ -294,10 +299,12 @@ function AbaDespesas() {
   );
 }
 
-// Recibo avulso: pra dinheiro que a Knorr RECEBE (ex.: comissão), separado
-// de Despesas (que é dinheiro saindo) — chamado #10, aberto porque usar
-// Despesas pra isso gerava um recibo com o texto invertido ("pagamos" em
-// vez de "recebemos") e nem era o conceito certo (despesa x recebimento).
+// Recibo avulso: recibo assinável, separado de Despesas (que é lançamento
+// contábil sem assinatura) — chamado #10, aberto porque usar Despesas pra
+// isso gerava um recibo com o texto invertido ("pagamos" em vez de
+// "recebemos") e nem era o conceito certo (despesa x recebimento).
+// Tipo Recebimento/Pagamento (chamado #53) decide quem assina: em
+// Recebimento a empresa recebe e assina; em Pagamento o cliente recebe e assina.
 function AbaRecibos() {
   const config = useConfig();
   const [dados, setDados]         = useState<any[]>([]);
@@ -308,6 +315,7 @@ function AbaRecibos() {
   const { opcoes: clientes, carregando: carregandoClientes, buscar: buscarClientes, garantirOpcao: garantirOpcaoCliente } = useBuscaClientes();
   const [recibo, setRecibo]       = useState<any | null>(null);
   const [form] = Form.useForm();
+  const tipoSel = Form.useWatch('tipo', form) ?? 'R';
 
   const carregar = async (b = '') => {
     setLoading(true);
@@ -323,7 +331,7 @@ function AbaRecibos() {
     setEditando(item || null);
     form.setFieldsValue(item
       ? { ...item, data: item.data ? dayjs(item.data) : dayjs() }
-      : { valor: 0, data: dayjs() });
+      : { valor: 0, data: dayjs(), tipo: 'R' });
     if (item) garantirOpcaoCliente(item.codigoCliente, item.nomeCliente);
     setModalOpen(true);
   };
@@ -350,12 +358,17 @@ function AbaRecibos() {
   };
 
   const colunas = [
+    { title: 'Tipo', dataIndex: 'tipo', width: 110,
+      render: (v: string) => v === 'P'
+        ? <Tag color="volcano">Pagamento</Tag>
+        : <Tag color="green">Recebimento</Tag>,
+    },
     { title: 'Pagador', dataIndex: 'pagador', ellipsis: true },
     { title: 'Observações', dataIndex: 'observacoes', ellipsis: true },
     { title: 'Valor', dataIndex: 'valor', width: 140, align: 'right' as const,
-      render: (v: number) => (
-        <span style={{ color: '#52c41a', fontWeight: 600 }}>
-          + R$ {Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+      render: (v: number, r: any) => (
+        <span style={{ color: r.tipo === 'P' ? '#ff4d4f' : '#52c41a', fontWeight: 600 }}>
+          {r.tipo === 'P' ? '-' : '+'} R$ {Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
         </span>
       ),
     },
@@ -413,6 +426,9 @@ function AbaRecibos() {
         width={520}
       >
         <Form form={form} layout="vertical" onFinish={salvar}>
+          <Form.Item name="tipo" label="Tipo" rules={[{ required: true }]}>
+            <Select options={TIPO_RECIBO_OPTS} />
+          </Form.Item>
           <Form.Item name="codigoCliente" label="Cliente cadastrado (opcional)">
             <Select
               showSearch
@@ -427,11 +443,11 @@ function AbaRecibos() {
             />
           </Form.Item>
           <Form.Item
-            name="pagador" label="Pagador"
-            rules={[{ required: true, message: 'Informe o pagador' }]}
+            name="pagador" label={tipoSel === 'P' ? 'Beneficiário' : 'Pagador'}
+            rules={[{ required: true, message: tipoSel === 'P' ? 'Informe o beneficiário' : 'Informe o pagador' }]}
             extra="Selecionar um cliente acima preenche este campo, mas dá pra digitar qualquer nome."
           >
-            <Input placeholder="Nome de quem está pagando" />
+            <Input placeholder={tipoSel === 'P' ? 'Nome de quem está recebendo' : 'Nome de quem está pagando'} />
           </Form.Item>
           <Row gutter={12}>
             <Col span={12}>
@@ -466,7 +482,7 @@ function AbaRecibos() {
         width={400}
       >
         {recibo && (
-          <BlobProvider document={<RelatorioReciboAvulso dados={recibo} empresa={config.empresa} logoBase64={config.logoBase64} />}>
+          <BlobProvider document={<RelatorioReciboAvulso dados={recibo} empresa={config.empresa} empresaEndereco={config.empresaEndereco} logoBase64={config.logoBase64} />}>
             {({ url, loading: gerandoPdf, error }) => (
               <>
                 <Button

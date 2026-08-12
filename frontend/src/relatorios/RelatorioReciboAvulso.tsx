@@ -8,11 +8,14 @@ export interface ReciboAvulsoPDF {
   valor: number;
   observacoes?: string;
   data?: string;
+  /** 'R' = Recebimento (Knorr recebe e assina) | 'P' = Pagamento (cliente recebe e assina). Default 'R'. */
+  tipo?: 'R' | 'P';
 }
 
 interface Props {
   dados: ReciboAvulsoPDF;
   empresa?: string;
+  empresaEndereco?: string;
   logoBase64?: string | null;
 }
 
@@ -44,8 +47,10 @@ const s = StyleSheet.create({
     paddingBottom: 8,
     marginBottom: 18,
   },
+  headerEsquerda: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logo: { width: 120, height: 54, objectFit: 'contain' },
   empresa: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: PRETO },
+  empresaEndereco: { fontSize: 6.5, color: MEDIO, marginTop: 2, maxWidth: 200 },
   titulo: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: PRETO },
 
   numero: { fontSize: 7, color: MEDIO, textAlign: 'right' as const, marginBottom: 16 },
@@ -60,8 +65,8 @@ const s = StyleSheet.create({
   valorLabel: { fontSize: 7, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1 },
   valorNumero: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: '#fff', marginTop: 4 },
 
-  frase: { fontSize: 10, color: ESCURO, lineHeight: 1.6, marginBottom: 4 },
-  extenso: { fontSize: 10, fontFamily: 'Helvetica-BoldOblique', color: PRETO, marginBottom: 18 },
+  frase: { fontSize: 10, color: ESCURO, lineHeight: 1.6, marginBottom: 18 },
+  extenso: { fontSize: 10, fontFamily: 'Helvetica-BoldOblique', color: PRETO },
 
   detalhesBox: {
     borderColor: CINZA, borderWidth: 0.5, borderRadius: 4,
@@ -84,16 +89,27 @@ const s = StyleSheet.create({
   footerText: { fontSize: 6.5, color: CINZA },
 });
 
-function RelatorioReciboAvulso({ dados, empresa, logoBase64 }: Props) {
+function RelatorioReciboAvulso({ dados, empresa, empresaEndereco, logoBase64 }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const dataFmt = dados.data ? new Date(dados.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : new Date().toLocaleDateString('pt-BR');
+  const ehPagamento = dados.tipo === 'P';
+  const pessoa = dados.pagador || 'acima identificado(a)';
+  // Recebimento (padrão): Knorr recebe do pagador e assina. Pagamento: Knorr
+  // paga ao beneficiário, que assina recebendo (chamado #53).
+  const quemAssina = ehPagamento ? pessoa : nomeEmpresa;
 
   return (
     <Document title={`RECIBO #${dados.id}`} author={nomeEmpresa}>
       <Page size="A4" style={s.page}>
 
         <View style={s.header}>
-          <Image src={logoBase64 || logotipoLocal} style={s.logo} />
+          <View style={s.headerEsquerda}>
+            <Image src={logoBase64 || logotipoLocal} style={s.logo} />
+            <View>
+              <Text style={s.empresa}>{nomeEmpresa}</Text>
+              {empresaEndereco ? <Text style={s.empresaEndereco}>{empresaEndereco}</Text> : null}
+            </View>
+          </View>
           <Text style={s.titulo}>RECIBO</Text>
         </View>
 
@@ -104,12 +120,14 @@ function RelatorioReciboAvulso({ dados, empresa, logoBase64 }: Props) {
           <Text style={s.valorNumero}>{fmtR(dados.valor)}</Text>
         </View>
 
-        <Text style={s.frase}>Recebemos de {dados.pagador || 'acima identificado(a)'} a quantia de</Text>
-        <Text style={s.extenso}>{valorExtenso(dados.valor)}.</Text>
+        <Text style={s.frase}>
+          {ehPagamento ? `Pagamos a ${pessoa} a quantia de ` : `Recebemos de ${pessoa} a quantia de `}
+          <Text style={s.extenso}>({valorExtenso(dados.valor)})</Text>.
+        </Text>
 
         <View style={s.detalhesBox}>
           <View style={s.linha}>
-            <Text style={s.label}>Pagador</Text>
+            <Text style={s.label}>{ehPagamento ? 'Beneficiário' : 'Pagador'}</Text>
             <Text style={s.valor}>{dados.pagador || '—'}</Text>
           </View>
           <View style={s.linha}>
@@ -124,7 +142,7 @@ function RelatorioReciboAvulso({ dados, empresa, logoBase64 }: Props) {
 
         <View style={s.assinatura}>
           <View style={s.assinaturaLinha} />
-          <Text style={s.assinaturaNome}>{nomeEmpresa}</Text>
+          <Text style={s.assinaturaNome}>{quemAssina}</Text>
           <Text style={s.assinaturaRole}>Assinatura</Text>
         </View>
 
