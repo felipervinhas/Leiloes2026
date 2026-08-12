@@ -71,6 +71,8 @@ const cmpDataBr = (a?: string, b?: string) => {
 const cmpDataIso = (a?: string, b?: string) => (a ? new Date(a).getTime() : 0) - (b ? new Date(b).getTime() : 0);
 
 const COMPARADORES: Record<string, (a: any, b: any) => number> = {
+  leilao:                 (a, b) => cmpTexto(a.leilao, b.leilao),
+  datlei:                 (a, b) => cmpDataIso(a.datlei, b.datlei),
   lotexx:                 (a, b) => cmpTexto(a.lotexx, b.lotexx),
   deslot:                 (a, b) => cmpTexto(a.deslot, b.deslot),
   descricaoRaca:          (a, b) => cmpTexto(a.descricaoRaca, b.descricaoRaca),
@@ -337,6 +339,11 @@ export default function ConsultaVendas() {
   const colunas: any[] = [
     { title: 'Lote', dataIndex: 'lotexx', ...rzCV('lotexx'), fixed: 'left' as const,
       sorter: COMPARADORES.lotexx },
+    { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, ...rzCV('leilao'),
+      sorter: COMPARADORES.leilao },
+    { title: 'Dt. Leilão', dataIndex: 'datlei', ...rzCV('datlei'),
+      render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—',
+      sorter: COMPARADORES.datlei },
     { title: labelRP(especiesPredominante), dataIndex: 'rpxxx', ...rzCV('rpxxx'),
       sorter: COMPARADORES.rpxxx },
     { title: 'Comprador', dataIndex: 'nomeComprador', ellipsis: true, ...rzCV('nomeComprador'),
