@@ -5,7 +5,9 @@ import {
 } from 'antd';
 import {
   SearchOutlined, FileTextOutlined, PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, PrinterOutlined,
+  FileExcelOutlined,
 } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import { BlobProvider } from '@react-pdf/renderer';
 import api from '../services/api';
 import RelatorioAcertoVendedor from '../relatorios/RelatorioAcertoVendedor';
@@ -35,11 +37,11 @@ const DC_INFO: Record<string, { label: string; color: string }> = {
 const dcInfo = (v: string) => DC_INFO[v] || { label: v || '—', color: 'default' };
 
 interface Acerto {
-  idLeilao: number;
+  idLeilao?: number;
   leilao?: string;
   idVendedor: number;
   vendedor?: string;
-  entradas: Array<{ idMc: number; lotexx?: string; deslot?: string; nomeComprador?: string; valorEntrada: number }>;
+  entradas: Array<{ idMc: number; lotexx?: string; deslot?: string; nomeComprador?: string; valorEntrada: number; leilao?: string }>;
   promissorias: Array<{ datven: string; valor: number }>;
   lancamentos: Array<{ id: number; dc: string; valor: number; observacoes?: string; dataInclusao?: string }>;
   totais: {
@@ -78,10 +80,12 @@ export default function AcertoVendedor() {
   }, []);
 
   const consultar = async () => {
-    if (!leilaoSel || !vendedorSel) { message.warning('Selecione o leilão e o vendedor'); return; }
+    if (!vendedorSel) { message.warning('Selecione o vendedor'); return; }
     setLoading(true);
     try {
-      const r = await api.get('/acerto-vendedor', { params: { idLeilao: leilaoSel, idVendedor: vendedorSel } });
+      const params: any = { idVendedor: vendedorSel };
+      if (leilaoSel) params.idLeilao = leilaoSel;
+      const r = await api.get('/acerto-vendedor', { params });
       setAcerto(r.data);
     } catch { message.error('Erro ao calcular o acerto'); }
     finally { setLoading(false); }
@@ -110,8 +114,59 @@ export default function AcertoVendedor() {
     catch { message.error('Erro ao excluir'); }
   };
 
+  const exportarCSV = () => {
+    if (!acerto) return;
+    const linhas: string[] = [];
+    const num = (v: number) => String(Number(v || 0).toFixed(2)).replace('.', ',');
+    const csvEsc = (v: any) => String(v ?? '').replace(/;/g, ',');
+
+    linhas.push(`Acerto de Vendedor;${csvEsc(acerto.vendedor)}`);
+    linhas.push(`Leilão;${csvEsc(acerto.leilao)}`);
+    linhas.push('');
+
+    linhas.push(`ENTRADAS (${acerto.entradas.length})`);
+    linhas.push(['Lote', ...(!acerto.idLeilao ? ['Leilão'] : []), 'Descrição', 'Comprador', 'Valor Entrada'].join(';'));
+    for (const e of acerto.entradas) {
+      linhas.push([e.lotexx, ...(!acerto.idLeilao ? [e.leilao] : []), e.deslot, e.nomeComprador, num(e.valorEntrada)].map(csvEsc).join(';'));
+    }
+    linhas.push('');
+
+    linhas.push('PROMISSÓRIAS (futuro)');
+    linhas.push(['Vencimento', 'Valor'].join(';'));
+    for (const p of acerto.promissorias) linhas.push([p.datven, num(p.valor)].map(csvEsc).join(';'));
+    linhas.push('');
+
+    linhas.push('DESPESAS / CRÉDITOS / FECHAMENTOS');
+    linhas.push(['Tipo', 'Leilão', 'Observações', 'Valor', 'Inclusão'].join(';'));
+    for (const l of acerto.lancamentos) {
+      linhas.push([dcInfo(l.dc).label, (l as any).leilao, l.observacoes, num(l.valor),
+        l.dataInclusao ? new Date(l.dataInclusao).toLocaleDateString('pt-BR') : ''].map(csvEsc).join(';'));
+    }
+    linhas.push('');
+
+    linhas.push('TOTAIS');
+    linhas.push(`Total Entradas;${num(acerto.totais.totalEntradas)}`);
+    linhas.push(`Total Promissórias (futuro);${num(acerto.totais.totalPromissorias)}`);
+    linhas.push(`Total Créditos;${num(acerto.totais.totalCreditos)}`);
+    linhas.push(`Total Despesas;${num(acerto.totais.totalDespesas)}`);
+    linhas.push(`Total Fechamentos;${num(acerto.totais.totalFechamentos)}`);
+    linhas.push(`Saldo;${num(acerto.totais.saldo)}`);
+
+    const csv = '﻿' + linhas.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `acerto_vendedor_${(acerto.vendedor || '').replace(/\s+/g, '_')}_${dayjs().format('YYYYMMDD_HHmmss')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Coluna "Leilão" só faz sentido quando a consulta agrega vários leilões
+  // (leilaoSel vazio) — com um leilão específico selecionado, seria redundante.
   const colunasEntradas = [
     { title: 'Lote', dataIndex: 'lotexx', width: 70 },
+    ...(!acerto?.idLeilao ? [{ title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 160 }] : []),
     { title: 'Descrição', dataIndex: 'deslot', ellipsis: true },
     { title: 'Comprador', dataIndex: 'nomeComprador', ellipsis: true, width: 220 },
     { title: 'Valor Entrada', dataIndex: 'valorEntrada', width: 130, align: 'right' as const, render: fmt },
@@ -124,6 +179,7 @@ export default function AcertoVendedor() {
 
   const colunasLancamentos = [
     { title: 'Tipo', dataIndex: 'dc', width: 130, render: (v: string) => <Tag color={dcInfo(v).color}>{dcInfo(v).label}</Tag> },
+    ...(!acerto?.idLeilao ? [{ title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 160 }] : []),
     { title: 'Observações', dataIndex: 'observacoes', ellipsis: true },
     { title: 'Valor', dataIndex: 'valor', width: 130, align: 'right' as const, render: fmt },
     { title: 'Inclusão', dataIndex: 'dataInclusao', width: 100, render: (v: string) => v ? new Date(v).toLocaleDateString('pt-BR') : '—' },
@@ -132,7 +188,7 @@ export default function AcertoVendedor() {
       render: (_: any, r: any) => (
         <Space size={4}>
           <Button size="small" icon={<PrinterOutlined />} title="Imprimir recibo"
-            onClick={() => setRecibo({ ...r, cliente: acerto?.vendedor, leilao: acerto?.leilao })} />
+            onClick={() => setRecibo({ ...r, cliente: acerto?.vendedor, leilao: r.leilao || acerto?.leilao })} />
           <Button size="small" icon={<EditOutlined />} onClick={() => abrirModal(r)} />
           <Popconfirm title="Confirma exclusão?" onConfirm={() => excluirLancamento(r.id)}>
             <Button size="small" danger icon={<DeleteOutlined />} />
@@ -158,7 +214,7 @@ export default function AcertoVendedor() {
       <Row gutter={8} style={{ marginBottom: 16 }}>
         <Col xs={24} md={10}>
           <Select
-            placeholder="Digite para buscar o leilão..."
+            placeholder="Leilão (opcional — vazio busca todos os leilões do vendedor)"
             style={{ width: '100%' }}
             allowClear
             showSearch
@@ -196,7 +252,7 @@ export default function AcertoVendedor() {
       {!acerto && (
         <div style={{ textAlign: 'center', padding: '60px 0', color: '#bbb' }}>
           <FileTextOutlined style={{ fontSize: 48, marginBottom: 12, display: 'block' }} />
-          Selecione o leilão e o vendedor e clique em <strong>Consultar</strong>
+          Selecione o vendedor (e opcionalmente o leilão) e clique em <strong>Consultar</strong>
         </div>
       )}
 
@@ -206,18 +262,23 @@ export default function AcertoVendedor() {
             <div>
               <Text type="secondary">{acerto.leilao}</Text> — <Text strong>{acerto.vendedor}</Text>
             </div>
-            <BlobProvider document={<RelatorioAcertoVendedor dados={acerto} empresa={config.empresa} logoBase64={config.logoBase64} />}>
-              {({ url, loading: gerandoPdf }) => (
-                <Button
-                  icon={<EyeOutlined />}
-                  loading={gerandoPdf}
-                  disabled={!url}
-                  onClick={() => url && window.open(url, '_blank')}
-                >
-                  {gerandoPdf ? 'Gerando PDF...' : 'Visualizar / Imprimir'}
-                </Button>
-              )}
-            </BlobProvider>
+            <Space>
+              <Button icon={<FileExcelOutlined />} onClick={exportarCSV}>
+                Exportar Excel
+              </Button>
+              <BlobProvider document={<RelatorioAcertoVendedor dados={acerto} empresa={config.empresa} logoBase64={config.logoBase64} />}>
+                {({ url, loading: gerandoPdf }) => (
+                  <Button
+                    icon={<EyeOutlined />}
+                    loading={gerandoPdf}
+                    disabled={!url}
+                    onClick={() => url && window.open(url, '_blank')}
+                  >
+                    {gerandoPdf ? 'Gerando PDF...' : 'Visualizar / Imprimir'}
+                  </Button>
+                )}
+              </BlobProvider>
+            </Space>
           </div>
 
           <Row gutter={12} style={{ marginBottom: 16 }}>
@@ -250,7 +311,15 @@ export default function AcertoVendedor() {
           <Card
             size="small"
             title="Despesas / Créditos / Fechamentos"
-            extra={<Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()}>Novo Lançamento</Button>}
+            extra={
+              <Button
+                size="small" type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()}
+                disabled={!acerto.idLeilao}
+                title={!acerto.idLeilao ? 'Selecione um leilão específico para lançar despesas/créditos' : undefined}
+              >
+                Novo Lançamento
+              </Button>
+            }
           >
             <Table
               rowKey="id" size="small" columns={colunasLancamentos} dataSource={acerto.lancamentos}

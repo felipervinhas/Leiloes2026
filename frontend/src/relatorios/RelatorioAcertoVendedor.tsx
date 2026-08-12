@@ -2,12 +2,12 @@ import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/render
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 
 export interface AcertoVendedorPDF {
-  idLeilao: number;
+  idLeilao?: number;
   leilao?: string;
   datlei?: string;
   idVendedor: number;
   vendedor?: string;
-  entradas: Array<{ idMc: number; lotexx?: string; deslot?: string; nomeComprador?: string; valorEntrada: number }>;
+  entradas: Array<{ idMc: number; lotexx?: string; deslot?: string; nomeComprador?: string; valorEntrada: number; leilao?: string }>;
   promissorias: Array<{ datven: string; valor: number }>;
   lancamentos: Array<{ id: number; dc: string; valor: number; observacoes?: string }>;
   totais: {
@@ -154,7 +154,7 @@ function RelatorioAcertoVendedor({ dados, empresa, logoBase64 }: Props) {
           </View>
           <View style={s.docHeaderRight}>
             <Text style={s.docTitulo}>ACERTO DE VENDEDOR</Text>
-            <Text style={s.docData}>Data do Leilão: {dados.datlei || '—'}</Text>
+            {dados.idLeilao && <Text style={s.docData}>Data do Leilão: {dados.datlei || '—'}</Text>}
           </View>
         </View>
 
@@ -185,6 +185,7 @@ function RelatorioAcertoVendedor({ dados, empresa, logoBase64 }: Props) {
               lote={e.lotexx}
               comp={e.nomeComprador}
               det="ENTRADAS"
+              tipo={!dados.idLeilao ? e.leilao : undefined}
               dc="E"
               valor={e.valorEntrada}
               alt={proximaAlt()}
@@ -244,8 +245,8 @@ function RelatorioAcertoVendedor({ dados, empresa, logoBase64 }: Props) {
         <View style={s.cienciaBox} wrap={false}>
           <Text style={s.cienciaTexto}>
             Eu, {dados.vendedor || '—'}, dou ciência e concordo com as informações contidas no relatório
-            apresentado sobre o {dados.leilao || '—'} ocorrido em {dados.datlei || '—'}, reiterando que
-            afirmo ter recebido {fmtR(dados.totais.totalFechamentos)} da empresa {nomeEmpresa}.
+            apresentado sobre {dados.idLeilao ? `o ${dados.leilao || '—'} ocorrido em ${dados.datlei || '—'}` : 'os leilões acima computados'},
+            reiterando que afirmo ter recebido {fmtR(dados.totais.totalFechamentos)} da empresa {nomeEmpresa}.
           </Text>
           <View style={{ height: 24 }} />
           <View style={s.assinatura}>

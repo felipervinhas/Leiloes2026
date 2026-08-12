@@ -7,6 +7,7 @@ export interface EntradaAcerto {
   deslot?: string;
   nomeComprador?: string;
   valorEntrada: number;
+  leilao?: string;
 }
 
 export interface PromissoriaAcerto {
@@ -15,7 +16,7 @@ export interface PromissoriaAcerto {
 }
 
 export interface AcertoVendedor {
-  idLeilao: number;
+  idLeilao?: number;
   leilao?: string;
   datlei?: string;
   idVendedor: number;
@@ -40,25 +41,24 @@ function ehDespesa(dc: string): boolean {
   return dc === 'D' || dc === 'S';
 }
 
-export async function calcularAcertoVendedor(idLeilao: number, idVendedor: number): Promise<AcertoVendedor> {
+export async function calcularAcertoVendedor(idVendedor: number, idLeilao?: number): Promise<AcertoVendedor> {
   const pool = await getPool();
 
-  const rLeilao = await pool.request().input('id', sql.Int, idLeilao).query(`SELECT LEILAO, DATLEI FROM Leiloes WHERE ID=@id`);
   const rVendedor = await pool.request().input('id', sql.Int, idVendedor).query(`SELECT NOMEXX FROM Clientes WHERE ID=@id`);
 
-  const rEntradas = await pool.request()
-    .input('idLeilao', sql.Int, idLeilao)
-    .input('idVendedor', sql.Int, idVendedor)
-    .query(`
-      SELECT MC.ID, LO.LOTEXX, LO.DESLOT, COM.NOMEXX AS NOME_COMPRADOR, MC.VALORPAGAR,
+  const reqEntradas = pool.request().input('idVendedor', sql.Int, idVendedor);
+  if (idLeilao) reqEntradas.input('idLeilao', sql.Int, idLeilao);
+  const rEntradas = await reqEntradas.query(`
+      SELECT MC.ID, LO.LOTEXX, LO.DESLOT, COM.NOMEXX AS NOME_COMPRADOR, MC.VALORPAGAR, L.LEILAO,
         (SELECT TOP 1 VLRPAR FROM MOVIMENTO_PARCELAMENTO WHERE IDMOVLOTE = MC.IDMOVLOTE AND PRIPAR = 'S') AS VALOR_ENTRADA
       FROM MOVIMENTO_COMPRADOR MC
       LEFT JOIN MOVIMENTO M       ON M.ID  = MC.IDMOV
       LEFT JOIN MOVIMENTO_LOTE ML ON ML.ID = MC.IDMOVLOTE
       LEFT JOIN LOTES LO          ON LO.ID = ML.IDLOTE
       LEFT JOIN CLIENTES COM      ON COM.ID = MC.IDCLI
-      WHERE M.IDLEILAO = @idLeilao AND ML.CODVEN = @idVendedor
-      ORDER BY TRY_CAST(LO.LOTEXX AS INT), LO.LOTEXX
+      LEFT JOIN LEILOES L         ON L.ID  = M.IDLEILAO
+      WHERE ML.CODVEN = @idVendedor ${idLeilao ? 'AND M.IDLEILAO = @idLeilao' : ''}
+      ORDER BY L.DATLEI DESC, TRY_CAST(LO.LOTEXX AS INT), LO.LOTEXX
     `);
 
   const entradas: EntradaAcerto[] = rEntradas.recordset.map((r: any) => ({
@@ -70,17 +70,17 @@ export async function calcularAcertoVendedor(idLeilao: number, idVendedor: numbe
     // Único), não existe entrada — o valor cheio já está em "promissórias"
     // (a receber no futuro). Usar VALORPAGAR aqui duplicava esse valor.
     valorEntrada: r.VALOR_ENTRADA != null ? r.VALOR_ENTRADA : 0,
+    leilao: r.LEILAO,
   }));
 
-  const rPromissorias = await pool.request()
-    .input('idLeilao', sql.Int, idLeilao)
-    .input('idVendedor', sql.Int, idVendedor)
-    .query(`
+  const reqPromissorias = pool.request().input('idVendedor', sql.Int, idVendedor);
+  if (idLeilao) reqPromissorias.input('idLeilao', sql.Int, idLeilao);
+  const rPromissorias = await reqPromissorias.query(`
       SELECT FORMAT(MP.DATVEN,'dd/MM/yyyy') AS DATVEN_F, SUM(MP.VLRPAR) AS VALOR
       FROM MOVIMENTO_PARCELAMENTO MP
       LEFT JOIN MOVIMENTO_LOTE ML ON ML.ID = MP.IDMOVLOTE
       LEFT JOIN MOVIMENTO M       ON M.ID  = ML.IDMOV
-      WHERE M.IDLEILAO = @idLeilao AND ML.CODVEN = @idVendedor AND ISNULL(MP.PRIPAR, 'N') <> 'S'
+      WHERE ML.CODVEN = @idVendedor AND ISNULL(MP.PRIPAR, 'N') <> 'S' ${idLeilao ? 'AND M.IDLEILAO = @idLeilao' : ''}
       GROUP BY MP.DATVEN
       ORDER BY MP.DATVEN
     `);
@@ -99,10 +99,20 @@ export async function calcularAcertoVendedor(idLeilao: number, idVendedor: numbe
   const totalFechamentos = lancamentos.filter(l => l.dc === 'F').reduce((a, l) => a + (l.valor || 0), 0);
   const saldo = totalEntradas + totalCreditos - totalDespesas - totalFechamentos;
 
+  let leilao: string | undefined;
+  let datlei: string | undefined;
+  if (idLeilao) {
+    const rLeilao = await pool.request().input('id', sql.Int, idLeilao).query(`SELECT LEILAO, DATLEI FROM Leiloes WHERE ID=@id`);
+    leilao = rLeilao.recordset[0]?.LEILAO;
+    datlei = rLeilao.recordset[0]?.DATLEI ? new Date(rLeilao.recordset[0].DATLEI).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : undefined;
+  } else {
+    leilao = 'Todos os leilões';
+  }
+
   return {
     idLeilao,
-    leilao: rLeilao.recordset[0]?.LEILAO,
-    datlei: rLeilao.recordset[0]?.DATLEI ? new Date(rLeilao.recordset[0].DATLEI).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : undefined,
+    leilao,
+    datlei,
     idVendedor,
     vendedor: rVendedor.recordset[0]?.NOMEXX,
     entradas,
