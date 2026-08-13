@@ -110,18 +110,22 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
   const r = await req.query(sql_text);
 
   const idMovLotes = [...new Set(r.recordset.map((row: any) => row.ID_MOVLOTE).filter((v: any) => v != null))];
-  const parcelasPorMovLote: Record<number, any[]> = {};
+  // Chave composta IDMOVLOTE+IDCLI: quando o lote é rateado entre vários
+  // compradores, todos compartilham o mesmo IDMOVLOTE — agrupar só por
+  // IDMOVLOTE juntava as parcelas de todos os compradores numa lista só,
+  // duplicando vencimentos no relatório (chamado #61).
+  const parcelasPorMovLote: Record<string, any[]> = {};
   if (idMovLotes.length) {
     const reqParc = pool.request();
     const ph = idMovLotes.map((id, i) => { reqParc.input(`ml${i}`, sql.Int, id as number); return `@ml${i}`; });
     const rParc = await reqParc.query(`
-      SELECT IDMOVLOTE, ORDXXX, FORMAT(DATVEN,'dd/MM/yyyy') AS DATVEN_F, VLRPAR, PRIPAR
+      SELECT IDMOVLOTE, IDCLI, ORDXXX, FORMAT(DATVEN,'dd/MM/yyyy') AS DATVEN_F, VLRPAR, PRIPAR
       FROM MOVIMENTO_PARCELAMENTO
       WHERE IDMOVLOTE IN (${ph.join(',')})
       ORDER BY IDMOVLOTE, DATVEN, ORDXXX
     `);
     for (const p of rParc.recordset) {
-      const key = p.IDMOVLOTE;
+      const key = `${p.IDMOVLOTE}_${p.IDCLI}`;
       if (!parcelasPorMovLote[key]) parcelasPorMovLote[key] = [];
       parcelasPorMovLote[key].push({ ordxxx: p.ORDXXX, datven: p.DATVEN_F, vlrpar: p.VLRPAR, pripar: p.PRIPAR });
     }
@@ -180,7 +184,7 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
     valorComissaoVendedor: row.VALORCOMISSAOVENDEDOR,
     comissaoVendedor:      row.COMISSAOVENDEDOR,
     defesa:                row.DEFESA,
-    parcelas:              parcelasPorMovLote[row.ID_MOVLOTE] || [],
+    parcelas:              parcelasPorMovLote[`${row.ID_MOVLOTE}_${row.IDCLI}`] || [],
   }));
 }
 
