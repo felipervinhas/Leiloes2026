@@ -14,7 +14,7 @@ import {
   DeleteOutlined, DollarOutlined, EditOutlined, FileSearchOutlined,
   FileDoneOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UserOutlined,
   FileTextOutlined, AuditOutlined, EyeOutlined, FileExcelOutlined, FlagOutlined,
-  PercentageOutlined, PlusCircleOutlined, SyncOutlined, MoreOutlined,
+  PercentageOutlined, SyncOutlined, MoreOutlined,
 } from '@ant-design/icons';
 import { BlobProvider } from '@react-pdf/renderer';
 import FaturaCompraPDF, { FaturaData, VarianteFatura } from '../relatorios/RelatorioFaturaCompra';
@@ -1357,7 +1357,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
 
           <Form form={form1} layout="vertical" onValuesChange={recalcularValores}>
             <Row gutter={16}>
-              <Col xs={18} sm={20}>
+              <Col xs={24} sm={24}>
                 <Form.Item name="idLote" label="Lote disponível"
                   rules={[{ required: true, message: 'Selecione um lote' }]}>
                   <Select showSearch placeholder="Selecione o lote..."
@@ -1368,13 +1368,6 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
                       label: `${l.lotexx} — ${l.deslot}` + (l.nomeVendedor ? ` (${l.nomeVendedor})` : ''),
                     }))}
                   />
-                </Form.Item>
-              </Col>
-              <Col xs={6} sm={4}>
-                <Form.Item label=" ">
-                  <Button icon={<PlusCircleOutlined />} block onClick={abrirLoteSimplificado}>
-                    Novo lote
-                  </Button>
                 </Form.Item>
               </Col>
 
