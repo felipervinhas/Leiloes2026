@@ -939,15 +939,18 @@ export async function dadosFatura(idMov: number) {
   `);
 
   const rParc = await pool.request().input('id', sql.Int, idMov).query(`
-    SELECT IDMOVLOTE, ORDXXX, FORMAT(DATVEN,'dd/MM/yyyy') AS DATVEN_F, VLRPAR, PRIPAR
+    SELECT IDMOVLOTE, IDCLI, ORDXXX, FORMAT(DATVEN,'dd/MM/yyyy') AS DATVEN_F, VLRPAR, PRIPAR
     FROM MOVIMENTO_PARCELAMENTO
     WHERE IDMOV = @id
     ORDER BY IDMOVLOTE, DATVEN, ORDXXX
   `);
 
-  const parcelasPorMovLote: Record<number, any[]> = {};
+  // Chave composta IDMOVLOTE+IDCLI: quando o lote é rateado entre vários
+  // compradores, todos compartilham o mesmo IDMOVLOTE — agrupar só por
+  // IDMOVLOTE juntava as parcelas de todos os compradores (chamado #62).
+  const parcelasPorMovLote: Record<string, any[]> = {};
   for (const p of rParc.recordset) {
-    const key = p.IDMOVLOTE;
+    const key = `${p.IDMOVLOTE}_${p.IDCLI}`;
     if (!parcelasPorMovLote[key]) parcelasPorMovLote[key] = [];
     parcelasPorMovLote[key].push({
       ordxxx: p.ORDXXX,
@@ -1022,7 +1025,7 @@ export async function dadosFatura(idMov: number) {
       nomePropriedade: c.NOME_PROPRIEDADE,
       cidadeProp:      c.CIDADE_PROP,
       estadoProp:      c.ESTADO_PROP,
-      parcelas:        parcelasPorMovLote[c.IDMOVLOTE] || [],
+      parcelas:        parcelasPorMovLote[`${c.IDMOVLOTE}_${c.IDCLI}`] || [],
     })),
   };
 }
