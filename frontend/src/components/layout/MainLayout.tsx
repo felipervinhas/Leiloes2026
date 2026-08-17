@@ -132,13 +132,15 @@ export default function MainLayout() {
   const controles: string[] = usuario?.controles ?? [];
   const menuItems = filtrarMenu(ALL_MENU_ITEMS, controles, usuario?.adm === 'S');
 
-  // Versão do backend efetivamente no ar (commit do último git pull + restart do PM2) —
-  // exibida junto da versão do frontend pra conferir se um deploy já subiu de fato.
-  const [versaoBackend, setVersaoBackend] = useState<{ commit: string; dataCommit?: string } | null>(null);
+  // Versão do backend efetivamente no ar (do último git pull + restart do PM2) —
+  // comparada com a versão do frontend pra avisar quando um deploy ainda não subiu.
+  const [versaoBackend, setVersaoBackend] = useState<{ versao?: string; commit: string; dataCommit?: string } | null>(null);
   useEffect(() => {
     const base = process.env.REACT_APP_API_URL || 'http://localhost:8500/api';
     axios.get(`${base}/version`).then(r => setVersaoBackend(r.data)).catch(() => {});
   }, []);
+  const versaoBackendCarregada = versaoBackend?.versao != null;
+  const versoesDivergentes = versaoBackendCarregada && versaoBackend!.versao !== VERSAO_FRONTEND.versao;
 
   const cor1 = config.corMenuTop || '#FEC824';
   const cor2 = config.corMenuBottom || '#003333';
@@ -271,10 +273,19 @@ export default function MainLayout() {
 
       {(!collapsed || isMobile) && (
         <div
-          title={versaoBackend?.dataCommit ? `Backend implantado em ${new Date(versaoBackend.dataCommit).toLocaleString('pt-BR')}` : undefined}
-          style={{ padding: '6px 16px 10px', fontSize: 10, color: 'rgba(255,255,255,0.35)', textAlign: 'center', flexShrink: 0 }}
+          title={[
+            `front ${VERSAO_FRONTEND.commit}`,
+            `back ${versaoBackend?.commit || '…'}`,
+            versaoBackend?.dataCommit ? `implantado em ${new Date(versaoBackend.dataCommit).toLocaleString('pt-BR')}` : null,
+          ].filter(Boolean).join(' · ')}
+          style={{
+            padding: '6px 16px 10px', fontSize: 10, textAlign: 'center', flexShrink: 0,
+            color: versoesDivergentes ? '#ffd666' : 'rgba(255,255,255,0.35)',
+          }}
         >
-          front {VERSAO_FRONTEND.commit} · back {versaoBackend?.commit || '…'}
+          {versoesDivergentes
+            ? `v${VERSAO_FRONTEND.versao} — back v${versaoBackend!.versao} desatualizado`
+            : `v${VERSAO_FRONTEND.versao}`}
         </div>
       )}
     </>
