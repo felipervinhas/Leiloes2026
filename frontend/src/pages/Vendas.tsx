@@ -44,6 +44,17 @@ const dataUTC = (v: string | Date) => dayjs(String(typeof v === 'string' ? v : v
 const fmtData = (v?: string | Date | null) =>
   v ? dataUTC(v).format('DD/MM/YYYY') : '—';
 
+// Restringe os dados de Fatura/Promissória/Nota de Leilão a UM comprador —
+// nunca gera o PDF com todos os compradores do lote juntos (chamado #62).
+// Retorna null quando ainda falta escolher (lote dividido, nada selecionado).
+function dadosDoComprador(data: FaturaData | null, compradorId: number | null): FaturaData | null {
+  if (!data) return null;
+  if (data.compradores.length <= 1) return data;
+  if (compradorId == null) return null;
+  const comp = data.compradores.find(c => c.id === compradorId);
+  return comp ? { ...data, compradores: [comp] } : null;
+}
+
 /** Ordena numericamente quando os dois valores são números (ex. boleto, lote), com fallback para texto. */
 const sortNumericOuTexto = (a: unknown, b: unknown) => {
   const na = parseFloat(String(a));
@@ -121,6 +132,17 @@ function Listagem({
   const [notaVendaLoading, setNotaVendaLoading] = useState<number | null>(null);
   const [notaVendaLayout, setNotaVendaLayout] = useState<CampoLayout[] | null>(null);
 
+  // Quando o lote é dividido entre vários compradores (percentual quebrado),
+  // Fatura/Promissória/Nota de Leilão exigem escolher UM comprador por vez —
+  // nunca gerar um PDF único misturando todos (chamado #62).
+  const [docCompradorId, setDocCompradorId] = useState<number | null>(null);
+
+  // Pré-seleciona o único comprador quando não há divisão; força escolha
+  // explícita (null) quando o lote foi rateado entre vários.
+  const definirCompradorInicial = (data: FaturaData) => {
+    setDocCompradorId(data.compradores.length === 1 ? data.compradores[0].id : null);
+  };
+
   const abrirFatura = async (id: number, variante: VarianteFatura = 'comprador') => {
     setFaturaLoading(id);
     try {
@@ -129,6 +151,7 @@ function Listagem({
         api.get(`/relatorio-layouts/ativo/fatura_${variante}`).catch(() => ({ data: null })),
       ]);
       setFaturaData(rDados.data);
+      definirCompradorInicial(rDados.data);
       setFaturaVariante(variante);
       setFaturaLayout(rLayout.data?.conteudo || null);
       setFaturaModal(true);
@@ -144,6 +167,7 @@ function Listagem({
         api.get('/relatorio-layouts/ativo/promissoria').catch(() => ({ data: null })),
       ]);
       setPromissoriaData(rDados.data);
+      definirCompradorInicial(rDados.data);
       setPromissoriaLayout(rLayout.data?.conteudo || null);
       setPromissoriaModal(true);
     } catch { message.error('Erro ao carregar promissórias'); }
@@ -158,6 +182,7 @@ function Listagem({
         api.get('/relatorio-layouts/ativo/nota_venda').catch(() => ({ data: null })),
       ]);
       setNotaVendaData(rDados.data);
+      definirCompradorInicial(rDados.data);
       setNotaVendaLayout(rLayout.data?.conteudo || null);
       setNotaVendaModal(true);
     } catch { message.error('Erro ao carregar nota de venda'); }
@@ -335,6 +360,34 @@ function Listagem({
     },
   ];
 
+  // Select "escolha o comprador" mostrado só quando o lote foi dividido
+  // (compradores.length > 1) — nas vendas normais (1 comprador) não aparece.
+  const seletorComprador = (data: FaturaData) => data.compradores.length <= 1 ? null : (
+    <Alert
+      type="warning"
+      showIcon
+      style={{ marginBottom: 16, textAlign: 'left' }}
+      message="Lote dividido entre vários compradores"
+      description={
+        <>
+          <div style={{ marginBottom: 8 }}>
+            Escolha para qual comprador gerar o documento — cada um recebe o seu próprio PDF, sem dados dos demais.
+          </div>
+          <Select
+            style={{ width: '100%' }}
+            placeholder="Selecione o comprador..."
+            value={docCompradorId ?? undefined}
+            onChange={setDocCompradorId}
+            options={data.compradores.map(c => ({
+              value: c.id,
+              label: `${c.nomexx || 'Sem nome'}${c.percen != null ? ` — ${c.percen}%` : ''}`,
+            }))}
+          />
+        </>
+      }
+    />
+  );
+
   return (
     <>
       {/* Modal Fatura de Compras */}
@@ -350,8 +403,11 @@ function Listagem({
         }
         width={480}
       >
-        {faturaData && (
+        {faturaData && (() => {
+          const dadosSel = dadosDoComprador(faturaData, docCompradorId);
+          return (
           <div style={{ padding: '16px 0', textAlign: 'center' }}>
+            {seletorComprador(faturaData)}
             <div style={{ marginBottom: 16, textAlign: 'left', lineHeight: 1.8 }}>
               <div><strong>Leilão:</strong> {faturaData.leilao || '—'}</div>
               <div><strong>Lote:</strong> {faturaData.lote?.lotexx} — {faturaData.lote?.deslot}</div>
@@ -359,29 +415,32 @@ function Listagem({
               <div><strong>Vendedor:</strong> {faturaData.lote?.nomeVendedor || '—'}</div>
               <div><strong>Parcelas:</strong> {faturaData.compradores.reduce((t, c) => t + c.parcelas.length, 0)}</div>
             </div>
-            <BlobProvider
-              document={
-                faturaLayout
-                  ? <RelatorioFaturaCompradorDinamico dados={faturaData} layout={faturaLayout} empresa={config.empresa} logoBase64={config.logoBase64} titulo={TITULO_FATURA_VARIANTE[faturaVariante]} />
-                  : <FaturaCompraPDF dados={faturaData} empresa={config.empresa} variante={faturaVariante} logoBase64={config.logoBase64} />
-              }
-            >
-              {({ url, loading }) => (
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<EyeOutlined />}
-                  loading={loading}
-                  disabled={!url}
-                  onClick={() => url && window.open(url, '_blank')}
-                  style={{ width: '100%' }}
-                >
-                  {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Fatura'}
-                </Button>
-              )}
-            </BlobProvider>
+            {dadosSel && (
+              <BlobProvider
+                document={
+                  faturaLayout
+                    ? <RelatorioFaturaCompradorDinamico dados={dadosSel} layout={faturaLayout} empresa={config.empresa} logoBase64={config.logoBase64} titulo={TITULO_FATURA_VARIANTE[faturaVariante]} />
+                    : <FaturaCompraPDF dados={dadosSel} empresa={config.empresa} variante={faturaVariante} logoBase64={config.logoBase64} />
+                }
+              >
+                {({ url, loading }) => (
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<EyeOutlined />}
+                    loading={loading}
+                    disabled={!url}
+                    onClick={() => url && window.open(url, '_blank')}
+                    style={{ width: '100%' }}
+                  >
+                    {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Fatura'}
+                  </Button>
+                )}
+              </BlobProvider>
+            )}
           </div>
-        )}
+          );
+        })()}
       </Modal>
 
       {/* Modal Promissórias */}
@@ -397,8 +456,11 @@ function Listagem({
         }
         width={480}
       >
-        {promissoriaData && (
+        {promissoriaData && (() => {
+          const dadosSel = dadosDoComprador(promissoriaData, docCompradorId);
+          return (
           <div style={{ padding: '16px 0', textAlign: 'center' }}>
+            {seletorComprador(promissoriaData)}
             <div style={{ marginBottom: 16, textAlign: 'left', lineHeight: 1.8 }}>
               <div><strong>Leilão:</strong> {promissoriaData.leilao || '—'}</div>
               <div><strong>Lote:</strong> {promissoriaData.lote?.lotexx} — {promissoriaData.lote?.deslot}</div>
@@ -412,29 +474,32 @@ function Listagem({
                 {promissoriaData.compradores.reduce((t, c) => t + (c.qtdparCond ?? c.parcelas.length), 0)} parcelas
               </div>
             </div>
-            <BlobProvider
-              document={
-                promissoriaLayout
-                  ? <PromissoriaDinamica dados={promissoriaData} layout={promissoriaLayout} empresa={config.empresa} logoBase64={config.logoBase64} />
-                  : <PromissoriaPDF dados={promissoriaData} empresa={config.empresa} logoBase64={config.logoBase64} />
-              }
-            >
-              {({ url, loading }) => (
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<EyeOutlined />}
-                  loading={loading}
-                  disabled={!url}
-                  onClick={() => url && window.open(url, '_blank')}
-                  style={{ width: '100%' }}
-                >
-                  {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Promissória'}
-                </Button>
-              )}
-            </BlobProvider>
+            {dadosSel && (
+              <BlobProvider
+                document={
+                  promissoriaLayout
+                    ? <PromissoriaDinamica dados={dadosSel} layout={promissoriaLayout} empresa={config.empresa} logoBase64={config.logoBase64} />
+                    : <PromissoriaPDF dados={dadosSel} empresa={config.empresa} logoBase64={config.logoBase64} />
+                }
+              >
+                {({ url, loading }) => (
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<EyeOutlined />}
+                    loading={loading}
+                    disabled={!url}
+                    onClick={() => url && window.open(url, '_blank')}
+                    style={{ width: '100%' }}
+                  >
+                    {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Promissória'}
+                  </Button>
+                )}
+              </BlobProvider>
+            )}
           </div>
-        )}
+          );
+        })()}
       </Modal>
 
       {/* Modal Nota de Leilão */}
@@ -450,8 +515,11 @@ function Listagem({
         }
         width={480}
       >
-        {notaVendaData && (
+        {notaVendaData && (() => {
+          const dadosSel = dadosDoComprador(notaVendaData, docCompradorId);
+          return (
           <div style={{ padding: '16px 0', textAlign: 'center' }}>
+            {seletorComprador(notaVendaData)}
             <div style={{ marginBottom: 16, textAlign: 'left', lineHeight: 1.8 }}>
               <div><strong>Leilão:</strong> {notaVendaData.leilao || '—'}</div>
               <div><strong>Lote:</strong> {notaVendaData.lote?.lotexx} — {notaVendaData.lote?.deslot}</div>
@@ -461,29 +529,32 @@ function Listagem({
                 {notaVendaData.compradores.map(c => c.nomexx).filter(Boolean).join(', ')}
               </div>
             </div>
-            <BlobProvider
-              document={
-                notaVendaLayout
-                  ? <PromissoriaDinamica dados={notaVendaData} layout={notaVendaLayout} empresa={config.empresa} logoBase64={config.logoBase64} titulo="Nota de Leilão" />
-                  : <NotaVendaPDF dados={notaVendaData} empresa={config.empresa} logoBase64={config.logoBase64} />
-              }
-            >
-              {({ url, loading }) => (
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<EyeOutlined />}
-                  loading={loading}
-                  disabled={!url}
-                  onClick={() => url && window.open(url, '_blank')}
-                  style={{ width: '100%' }}
-                >
-                  {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Nota de Leilão'}
-                </Button>
-              )}
-            </BlobProvider>
+            {dadosSel && (
+              <BlobProvider
+                document={
+                  notaVendaLayout
+                    ? <PromissoriaDinamica dados={dadosSel} layout={notaVendaLayout} empresa={config.empresa} logoBase64={config.logoBase64} titulo="Nota de Leilão" />
+                    : <NotaVendaPDF dados={dadosSel} empresa={config.empresa} logoBase64={config.logoBase64} />
+                }
+              >
+                {({ url, loading }) => (
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<EyeOutlined />}
+                    loading={loading}
+                    disabled={!url}
+                    onClick={() => url && window.open(url, '_blank')}
+                    style={{ width: '100%' }}
+                  >
+                    {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir Nota de Leilão'}
+                  </Button>
+                )}
+              </BlobProvider>
+            )}
           </div>
-        )}
+          );
+        })()}
       </Modal>
 
       {/* Modal Contrato */}
