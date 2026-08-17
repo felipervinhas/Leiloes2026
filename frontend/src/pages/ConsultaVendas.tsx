@@ -134,7 +134,7 @@ export default function ConsultaVendas() {
   const [modalFaturaOpen, setModalFaturaOpen] = useState(false);
 
   const { rz: rzCV } = useColumnWidths('consulta_vendas', {
-    lotexx: 70, deslot: 180, descricaoRaca: 120, especies: 90, rpxxx: 90, sbbxxx: 90,
+    lotexx: 70, leilao: 160, datlei: 100, deslot: 180, descricaoRaca: 120, especies: 90, rpxxx: 90, sbbxxx: 90,
     nomeVendedor: 160, nomeComprador: 160, qtdxxx: 70, valorUnidade: 110, valorPagar: 120,
     valorComissao: 110, valorDesconto: 110, valorLiquido: 120, desfin: 130,
     parcelaInicial: 110, primeiroVencimentoData: 110, datlan: 120, defesa: 100,
