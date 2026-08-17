@@ -1150,18 +1150,22 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
   `);
 
   const idMovLotes = [...new Set(rMc.recordset.map((r: any) => r.IDMOVLOTE).filter((v: any) => v != null))];
-  const parcelasPorMovLote: Record<number, any[]> = {};
+  // Chave composta IDMOVLOTE+IDCLI: quando o lote é rateado entre vários
+  // compradores, todos compartilham o mesmo IDMOVLOTE — agrupar só por
+  // IDMOVLOTE misturava as parcelas de todos os compradores no PDF de cada
+  // um (chamado #62, mesma causa do #61 na Consulta de Vendas).
+  const parcelasPorMovLote: Record<string, any[]> = {};
   if (idMovLotes.length) {
     const req2 = pool.request();
     const ph2 = idMovLotes.map((id, i) => { req2.input(`ml${i}`, sql.Int, id as number); return `@ml${i}`; });
     const rParc = await req2.query(`
-      SELECT IDMOVLOTE, ORDXXX, FORMAT(DATVEN,'dd/MM/yyyy') AS DATVEN_F, VLRPAR, PRIPAR
+      SELECT IDMOVLOTE, IDCLI, ORDXXX, FORMAT(DATVEN,'dd/MM/yyyy') AS DATVEN_F, VLRPAR, PRIPAR
       FROM MOVIMENTO_PARCELAMENTO
       WHERE IDMOVLOTE IN (${ph2.join(',')})
       ORDER BY IDMOVLOTE, DATVEN, ORDXXX
     `);
     for (const p of rParc.recordset) {
-      const key = p.IDMOVLOTE;
+      const key = `${p.IDMOVLOTE}_${p.IDCLI}`;
       if (!parcelasPorMovLote[key]) parcelasPorMovLote[key] = [];
       parcelasPorMovLote[key].push({ ordxxx: p.ORDXXX, datven: p.DATVEN_F, vlrpar: p.VLRPAR, pripar: p.PRIPAR });
     }
@@ -1209,7 +1213,7 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
     }
 
     const grupo = grupos.get(chave)!;
-    const parcelas = parcelasPorMovLote[r.IDMOVLOTE] || [];
+    const parcelas = parcelasPorMovLote[`${r.IDMOVLOTE}_${r.IDCLI}`] || [];
     const qtdparCond = r.COND_QTDPAR != null ? Number(r.COND_QTDPAR) : parcelas.length;
     const aVista = qtdparCond <= 1;
     const valorOriginal = r.VALORORIGINAL || 0;
