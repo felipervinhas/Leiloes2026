@@ -548,22 +548,22 @@ export async function salvarComprador(
     .input('codnot',                      sql.VarChar, leilao.codnot)
     .input('idCli',                       sql.Int,     d.idCli)
     .input('idCondPagto',                 sql.Int,     d.idCondPagto)
-    .input('percen',                      sql.Decimal, d.percen)
-    .input('valorOriginal',               sql.Decimal, valorOriginal)
-    .input('valorPagar',                  sql.Decimal, valorPagar)
-    .input('valorDesconto',               sql.Decimal, valorDesconto)
-    .input('valorComissao',               sql.Decimal, valorComissao)
-    .input('comissao',                    sql.Decimal, comissao)
-    .input('valorComissaoVendedor',       sql.Decimal, valorComissaoVendedor)
-    .input('comissaoVendedor',            sql.Decimal, comissaoVendedor)
-    .input('valorBaseComissao',           sql.Decimal, valorBaseComissao)
-    .input('valorBaseComissaoVendedor',   sql.Decimal, valorBaseComissaoVendedor)
+    .input('percen',                      sql.Decimal(9, 4), d.percen)
+    .input('valorOriginal',               sql.Decimal(18, 2), valorOriginal)
+    .input('valorPagar',                  sql.Decimal(18, 2), valorPagar)
+    .input('valorDesconto',               sql.Decimal(18, 2), valorDesconto)
+    .input('valorComissao',               sql.Decimal(18, 2), valorComissao)
+    .input('comissao',                    sql.Decimal(9, 4), comissao)
+    .input('valorComissaoVendedor',       sql.Decimal(18, 2), valorComissaoVendedor)
+    .input('comissaoVendedor',            sql.Decimal(9, 4), comissaoVendedor)
+    .input('valorBaseComissao',           sql.Decimal(18, 2), valorBaseComissao)
+    .input('valorBaseComissaoVendedor',   sql.Decimal(18, 2), valorBaseComissaoVendedor)
     .input('formaPagamento',              sql.VarChar, d.formaPagamento)
     .input('idPropriedade',               sql.Int,     d.idPropriedade || null)
     .input('idPisteiro',                  sql.Int,     d.idPisteiro || null)
     .input('tipoDescontoFidelidade',      sql.Char(1), d.tipoDescontoFidelidade ?? null)
-    .input('descontoFidelidade',          sql.Decimal, d.descontoFidelidade ?? 0)
-    .input('valorDescontoFidelidade',     sql.Decimal, valorDescontoFidelidade)
+    .input('descontoFidelidade',          sql.Decimal(18, 2), d.descontoFidelidade ?? 0)
+    .input('valorDescontoFidelidade',     sql.Decimal(18, 2), valorDescontoFidelidade)
     .query(`
       INSERT INTO MOVIMENTO_COMPRADOR
         (IDMOV,IDMOVLOTE,IDLEILAO,CODNOT,IDCLI,IDCONDPAGTO,PERCEN,
@@ -606,22 +606,22 @@ export async function atualizarComprador(
   await pool.request()
     .input('id',                          sql.Int,     idComp)
     .input('idCondPagto',                 sql.Int,     d.idCondPagto)
-    .input('percen',                      sql.Decimal, d.percen)
-    .input('valorOriginal',               sql.Decimal, valorOriginal)
-    .input('valorPagar',                  sql.Decimal, valorPagar)
-    .input('valorDesconto',               sql.Decimal, valorDesconto)
-    .input('valorComissao',               sql.Decimal, valorComissao)
-    .input('comissao',                    sql.Decimal, comissao)
-    .input('valorComissaoVendedor',       sql.Decimal, valorComissaoVendedor)
-    .input('comissaoVendedor',            sql.Decimal, comissaoVendedor)
-    .input('valorBaseComissao',           sql.Decimal, valorBaseComissao)
-    .input('valorBaseComissaoVendedor',   sql.Decimal, valorBaseComissaoVendedor)
+    .input('percen',                      sql.Decimal(9, 4), d.percen)
+    .input('valorOriginal',               sql.Decimal(18, 2), valorOriginal)
+    .input('valorPagar',                  sql.Decimal(18, 2), valorPagar)
+    .input('valorDesconto',               sql.Decimal(18, 2), valorDesconto)
+    .input('valorComissao',               sql.Decimal(18, 2), valorComissao)
+    .input('comissao',                    sql.Decimal(9, 4), comissao)
+    .input('valorComissaoVendedor',       sql.Decimal(18, 2), valorComissaoVendedor)
+    .input('comissaoVendedor',            sql.Decimal(9, 4), comissaoVendedor)
+    .input('valorBaseComissao',           sql.Decimal(18, 2), valorBaseComissao)
+    .input('valorBaseComissaoVendedor',   sql.Decimal(18, 2), valorBaseComissaoVendedor)
     .input('formaPagamento',              sql.VarChar, d.formaPagamento)
     .input('idPropriedade',               sql.Int,     d.idPropriedade || null)
     .input('idPisteiro',                  sql.Int,     d.idPisteiro || null)
     .input('tipoDescontoFidelidade',      sql.Char(1), d.tipoDescontoFidelidade ?? null)
-    .input('descontoFidelidade',          sql.Decimal, d.descontoFidelidade ?? 0)
-    .input('valorDescontoFidelidade',     sql.Decimal, valorDescontoFidelidade)
+    .input('descontoFidelidade',          sql.Decimal(18, 2), d.descontoFidelidade ?? 0)
+    .input('valorDescontoFidelidade',     sql.Decimal(18, 2), valorDescontoFidelidade)
     .query(`
       UPDATE MOVIMENTO_COMPRADOR SET
         IDCONDPAGTO=@idCondPagto, PERCEN=@percen,
@@ -642,8 +642,8 @@ export async function atualizarComissaoManual(
   const pool = await getPool();
   await pool.request()
     .input('id',                    sql.Int,     idComp)
-    .input('valorComissao',         sql.Decimal, valorComissao)
-    .input('valorComissaoVendedor', sql.Decimal, valorComissaoVendedor)
+    .input('valorComissao',         sql.Decimal(18, 2), valorComissao)
+    .input('valorComissaoVendedor', sql.Decimal(18, 2), valorComissaoVendedor)
     .query(`
       UPDATE MOVIMENTO_COMPRADOR
       SET VALORCOMISSAO=@valorComissao, VALORCOMISSAOVENDEDOR=@valorComissaoVendedor
@@ -749,7 +749,12 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
   }
 
   // 5. Desconto (condição de pagamento) + Fidelidade (composto sobre o valor já líquido)
-  let { pValorOriginal, pValorPagar } = p;
+  // pValorPagar sempre recomeça do bruto (pValorOriginal) — gerarParcelas pode
+  // rodar mais de uma vez pro mesmo comprador (reemitir parcelamento), e usar o
+  // p.pValorPagar recebido (que já pode ter a fidelidade aplicada uma vez pelo
+  // cálculo provisório de salvarComprador/atualizarComprador) duplicaria o desconto.
+  const { pValorOriginal } = p;
+  let pValorPagar = pValorOriginal;
   let valorDescontoCondicao = 0;
   if (descon > 0) {
     valorDescontoCondicao = pValorOriginal * (descon / 100);
@@ -770,9 +775,9 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
       .input('idMov',     sql.Int,     p.pMovimento)
       .input('idCli',     sql.Int,     p.pCliente)
       .input('idMovLote', sql.Int,     p.pIdMovLote)
-      .input('desc',      sql.Decimal, valorDescontoCondicao)
-      .input('fid',       sql.Decimal, valorDescontoFidelidade)
-      .input('pagar',     sql.Decimal, pValorPagar)
+      .input('desc',      sql.Decimal(18, 2), valorDescontoCondicao)
+      .input('fid',       sql.Decimal(18, 2), valorDescontoFidelidade)
+      .input('pagar',     sql.Decimal(18, 2), pValorPagar)
       .query(`UPDATE MOVIMENTO_COMPRADOR
               SET VALORDESCONTO=@desc, VALOR_DESCONTO_FIDELIDADE=@fid, VALORPAGAR=@pagar
               WHERE IDMOV=@idMov AND IDCLI=@idCli AND IDMOVLOTE=@idMovLote`);
@@ -811,7 +816,7 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
       req.input(`cd${i}`,  sql.Int,     p.pLote);
       req.input(`ml${i}`,  sql.Int,     p.pIdMovLote);
       req.input(`dv${i}`,  sql.Date,    row.datven);
-      req.input(`vp${i}`,  sql.Decimal, row.vlrpar);
+      req.input(`vp${i}`,  sql.Decimal(18, 2), row.vlrpar);
       req.input(`ox${i}`,  sql.VarChar, row.ordxxx);
       return `(@im${i},@ic${i},@lx${i},@dl${i},@cv${i},@cl${i},@pp${i},@cd${i},@ml${i},@dv${i},@vp${i},@ox${i})`;
     });
@@ -848,7 +853,7 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
     if (rows.length > 0) {
       await pool.request()
         .input('idMov',  sql.Int,     p.pMovimento)
-        .input('vlrpar', sql.Decimal, rows[0].vlrpar)
+        .input('vlrpar', sql.Decimal(18, 2), rows[0].vlrpar)
         .query(`UPDATE MOVIMENTO_LOTE SET VLRPAR=@vlrpar WHERE IDMOV=@idMov`);
     }
     return;
