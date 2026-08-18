@@ -764,16 +764,17 @@ export default function ConsultaVendas() {
               dados.length > 0 ? (
                 <Table.Summary.Row style={{ background: '#fafafa', fontWeight: 700 }}>
                   <Table.Summary.Cell index={0} colSpan={8}>TOTAIS</Table.Summary.Cell>
-                  <Table.Summary.Cell index={8} align="right">
+                  <Table.Summary.Cell index={8} />
+                  <Table.Summary.Cell index={9} align="right">
                     {totalQtd.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={9} />
                   <Table.Summary.Cell index={10} align="right">{fmt(totalValor)}</Table.Summary.Cell>
                   <Table.Summary.Cell index={11} align="right">{fmt(totalComissao)}</Table.Summary.Cell>
-                  <Table.Summary.Cell index={12} align="right">{fmt(totalDesconto)}</Table.Summary.Cell>
-                  <Table.Summary.Cell index={13} align="right">{fmt(totalDescontoFidelidade)}</Table.Summary.Cell>
-                  <Table.Summary.Cell index={14} align="right"><span style={{ color: '#52c41a' }}>{fmt(totalLiquido)}</span></Table.Summary.Cell>
-                  <Table.Summary.Cell index={15} colSpan={5} />
+                  <Table.Summary.Cell index={12} align="right"><span style={{ color: '#52c41a' }}>{fmt(totalLiquido)}</span></Table.Summary.Cell>
+                  <Table.Summary.Cell index={13} colSpan={2} />
+                  <Table.Summary.Cell index={15} align="right">{fmt(totalDesconto)}</Table.Summary.Cell>
+                  <Table.Summary.Cell index={16} align="right">{fmt(totalDescontoFidelidade)}</Table.Summary.Cell>
+                  <Table.Summary.Cell index={17} colSpan={5} />
                 </Table.Summary.Row>
               ) : null
             }
