@@ -920,7 +920,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   };
 
   const salvarStep0 = async () => {
-    const vals = await form0.validateFields();
+    let vals;
+    try { vals = await form0.validateFields(); } catch { return; }
     const payload = { idLeilao: vals.idLeilao, codnot: vals.codnot, defesa: vals.defesa === false ? 'N' : 'S' };
     setSalvando(true);
     try {
@@ -1011,7 +1012,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   };
 
   const criarLoteSimplificado = async () => {
-    const vals = await formLoteSimp.validateFields();
+    let vals;
+    try { vals = await formLoteSimp.validateFields(); } catch { return; }
     const idLeilao = form0.getFieldValue('idLeilao');
     setSalvando(true);
     try {
@@ -1033,7 +1035,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   };
 
   const salvarStep1 = async () => {
-    const vals = await form1.validateFields();
+    let vals;
+    try { vals = await form1.validateFields(); } catch { return; }
     if (!movId) return;
 
     // Aviso não bloqueante: o lote tem quantidade de animais cadastrada e o
@@ -1097,7 +1100,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   };
 
   const adicionarComprador = async () => {
-    const vals = await form2.validateFields();
+    let vals;
+    try { vals = await form2.validateFields(); } catch { return; }
     if (!movId) return;
     setSalvando(true);
     try {
@@ -1157,7 +1161,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   };
 
   const salvarComissaoManual = async () => {
-    const vals = await formComissao.validateFields();
+    let vals;
+    try { vals = await formComissao.validateFields(); } catch { return; }
     if (!comissaoAlvo || !movId) return;
     await api.put(`/vendas/${movId}/compradores/${comissaoAlvo.id}/comissao`, vals);
     const rc = await api.get(`/vendas/${movId}/compradores`);
