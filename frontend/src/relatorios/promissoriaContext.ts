@@ -1,4 +1,4 @@
-import { FaturaData } from './RelatorioFaturaCompra';
+import { FaturaData, fmtFidelidade } from './RelatorioFaturaCompra';
 import { valorExtenso, fmtDataExtenso } from './promissoriaUtils';
 
 export interface PromissoriaCalc {
@@ -13,6 +13,7 @@ export interface PromissoriaCalc {
   endereVend: string;
   agora: string;
   nomeEmpresa: string;
+  fidelidade?: string;
 }
 
 export interface PromissoriaContexto {
@@ -52,6 +53,7 @@ export function montarContextoPromissoria(
     dados.estadoLeilao?.toUpperCase(),
   ].filter(Boolean).join('/') || '___';
   const localEmissao = dados.cidadeLeilao?.toUpperCase() || '___';
+  const fidelidade = fmtFidelidade(comp.tipoDescontoFidelidade, comp.descontoFidelidade) || undefined;
 
   return {
     dados,
@@ -59,7 +61,7 @@ export function montarContextoPromissoria(
     comp,
     calc: {
       totalParcelas, totalValor, extenso, dataExtenso, praca, localEmissao,
-      credor, cpfCredor, endereVend, agora, nomeEmpresa,
+      credor, cpfCredor, endereVend, agora, nomeEmpresa, fidelidade,
     },
   };
 }

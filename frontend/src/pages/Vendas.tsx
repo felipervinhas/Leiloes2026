@@ -815,6 +815,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
 
   // ── step 2 ──────────────────────────────────────────────────────────────
   const [form2]         = Form.useForm();
+  const tipoDescontoFidelidadeSel = Form.useWatch('tipoDescontoFidelidade', form2);
   const [clientes, setClientes]   = useState<any[]>([]);
   const [loadingCli, setLoadingCli] = useState(false);
   const timerCli = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -1107,6 +1108,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
         formaPagamento:  vals.formaPagamento,
         idPropriedade:   vals.idPropriedade ?? null,
         idPisteiro:      vals.idPisteiro ?? null,
+        tipoDescontoFidelidade: vals.tipoDescontoFidelidade ?? null,
+        descontoFidelidade:     vals.descontoFidelidade ?? 0,
       };
       if (compEditando) {
         await api.put(`/vendas/${movId}/compradores/${compEditando.id}`, payload);
@@ -1132,6 +1135,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
       formaPagamento: comp.formaPagamento,
       idPropriedade:  comp.idPropriedade,
       idPisteiro:     comp.idPisteiro,
+      tipoDescontoFidelidade: comp.tipoDescontoFidelidade ?? null,
+      descontoFidelidade:     comp.descontoFidelidade ?? 0,
     });
   };
 
@@ -1139,7 +1144,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     setCompEditando(null);
     setCondicaoSel(null);
     setClientes([]);
-    form2.resetFields(['idCli', 'idCondPagto', 'percen', 'formaPagamento', 'idPropriedade', 'idPisteiro']);
+    form2.resetFields(['idCli', 'idCondPagto', 'percen', 'formaPagamento', 'idPropriedade', 'idPisteiro', 'tipoDescontoFidelidade', 'descontoFidelidade']);
   };
 
   const abrirComissaoManual = (comp: any) => {
@@ -1233,6 +1238,10 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     {
       title: 'Vlr. a Pagar', dataIndex: 'valorPagar', width: 120, align: 'right' as const,
       render: fmt,
+    },
+    {
+      title: 'Desc. Fidelidade', dataIndex: 'valorDescontoFidelidade', width: 130, align: 'right' as const,
+      render: (v: number) => v > 0 ? <Text type="danger">- {fmt(v)}</Text> : '—',
     },
     {
       title: 'Comissão', dataIndex: 'valorComissao', width: 130, align: 'right' as const,
@@ -1669,6 +1678,20 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
                     </Form.Item>
                   </Col>
                 )}
+                <Col xs={12} sm={6} md={4}>
+                  <Form.Item name="tipoDescontoFidelidade" label="Desconto Fidelidade" initialValue={null}>
+                    <Select allowClear placeholder="Nenhum"
+                      options={[{ value: 'P', label: '% Percentual' }, { value: 'V', label: 'R$ Valor' }]} />
+                  </Form.Item>
+                </Col>
+                <Col xs={12} sm={6} md={4}>
+                  <Form.Item name="descontoFidelidade" label="Valor" initialValue={0}>
+                    <InputNumber min={0} step={1} style={{ width: '100%' }}
+                      disabled={!tipoDescontoFidelidadeSel}
+                      formatter={v => tipoDescontoFidelidadeSel === 'P' ? `${v}%` : `R$ ${v}`}
+                      parser={v => Number(String(v ?? '').replace(/[^\d.,-]/g, '').replace(',', '.')) as any} />
+                  </Form.Item>
+                </Col>
               </Row>
 
               <Row justify="end" style={{ marginTop: 4 }}>

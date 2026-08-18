@@ -76,9 +76,13 @@ export const listarCompradores = async (req: Request, res: Response) => {
   res.json(await svc.listarCompradores(Number(req.params.id)));
 };
 
+const normalizarTipoDescontoFidelidade = (v: unknown): 'P' | 'V' | null =>
+  v === 'P' || v === 'V' ? v : null;
+
 export const adicionarComprador = async (req: Request, res: Response) => {
   const idMov = Number(req.params.id);
-  const { idCli, idCondPagto, percen, formaPagamento, idPropriedade, idPisteiro } = req.body;
+  const { idCli, idCondPagto, percen, formaPagamento, idPropriedade, idPisteiro,
+          tipoDescontoFidelidade, descontoFidelidade } = req.body;
   if (!idCli || !idCondPagto) {
     return res.status(400).json({ error: 'idCli e idCondPagto são obrigatórios' });
   }
@@ -97,6 +101,8 @@ export const adicionarComprador = async (req: Request, res: Response) => {
     percen: Number(percen) || 100, formaPagamento: formaPagamento || 'PROMISSORIA',
     idPropriedade: idPropriedade ? Number(idPropriedade) : null,
     idPisteiro: idPisteiro ? Number(idPisteiro) : null,
+    tipoDescontoFidelidade: normalizarTipoDescontoFidelidade(tipoDescontoFidelidade),
+    descontoFidelidade: Number(descontoFidelidade) || 0,
   }, {
     id: mov.idLeilao, comcom: mov.comcom ?? 0, comven: mov.comven ?? 0,
     condic: mov.condic ?? 0, codnot: mov.codnot,
@@ -116,7 +122,8 @@ export const excluirComprador = async (req: Request, res: Response) => {
 export const atualizarComprador = async (req: Request, res: Response) => {
   const idMov  = Number(req.params.id);
   const idComp = Number(req.params.idComp);
-  const { idCondPagto, percen, formaPagamento, idPropriedade, idPisteiro } = req.body;
+  const { idCondPagto, percen, formaPagamento, idPropriedade, idPisteiro,
+          tipoDescontoFidelidade, descontoFidelidade } = req.body;
   if (!idCondPagto) return res.status(400).json({ error: 'idCondPagto é obrigatório' });
 
   const lote = await svc.buscarLoteMovimento(idMov);
@@ -131,6 +138,8 @@ export const atualizarComprador = async (req: Request, res: Response) => {
     percen: Number(percen) || 100, formaPagamento: formaPagamento || 'PROMISSORIA',
     idPropriedade: idPropriedade ? Number(idPropriedade) : null,
     idPisteiro: idPisteiro ? Number(idPisteiro) : null,
+    tipoDescontoFidelidade: normalizarTipoDescontoFidelidade(tipoDescontoFidelidade),
+    descontoFidelidade: Number(descontoFidelidade) || 0,
   });
   await registrarLog((req as any).usuario, 'Alterar', 'Vendas', idMov);
   res.json({ ok: true });
@@ -188,6 +197,8 @@ export const gerarParcelas = async (req: Request, res: Response) => {
     pValorPagar:      comp.valorPagar,
     pInvertQtd:       Number(invertQtd)   || 0,
     pInvertValor:     Number(invertValor) || 0,
+    pTipoDescontoFidelidade: comp.tipoDescontoFidelidade ?? null,
+    pDescontoFidelidade:     comp.descontoFidelidade || 0,
   });
 
   await registrarLog((req as any).usuario, 'Inserir', 'Vendas', idMov);

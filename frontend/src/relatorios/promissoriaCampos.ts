@@ -55,10 +55,12 @@ export const PROMISSORIA_CAMPOS: CampoDisponivel[] = [
   { grupo: 'Propriedade', key: 'comp.estadoProp', label: 'UF da Propriedade' },
 
   { grupo: 'Financeiro', key: 'comp.desfin', label: 'Condição de Pagamento' },
+  { grupo: 'Financeiro', key: 'calc.fidelidade', label: 'Fidelidade' },
   { grupo: 'Financeiro', key: 'comp.valorOriginal', label: 'Valor Total', formato: 'moeda' },
   { grupo: 'Financeiro', key: 'comp.comissao', label: 'Comissão do Leiloeiro (%)' },
   { grupo: 'Financeiro', key: 'comp.valorComissao', label: 'Valor da Comissão', formato: 'moeda' },
   { grupo: 'Financeiro', key: 'comp.valorDesconto', label: 'Desconto', formato: 'moeda' },
+  { grupo: 'Financeiro', key: 'comp.valorDescontoFidelidade', label: 'Desconto Fidelidade', formato: 'moeda' },
   { grupo: 'Financeiro', key: 'comp.valorPagar', label: 'Valor Líquido', formato: 'moeda' },
   { grupo: 'Financeiro', key: 'comp.percen', label: '% do Lote' },
   { grupo: 'Financeiro', key: 'comp.formaPagamento', label: 'Forma de Pagamento' },

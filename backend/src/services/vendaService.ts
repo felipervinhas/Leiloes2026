@@ -51,6 +51,8 @@ export interface DadosComprador {
   formaPagamento: string;
   idPropriedade?: number | null;
   idPisteiro?: number | null;
+  tipoDescontoFidelidade?: 'P' | 'V' | null;
+  descontoFidelidade?: number;
 }
 
 export interface GerarParcelasParams {
@@ -70,6 +72,8 @@ export interface GerarParcelasParams {
   pValorPagar: number;
   pInvertQtd: number;
   pInvertValor: number;
+  pTipoDescontoFidelidade?: 'P' | 'V' | null;
+  pDescontoFidelidade?: number;
 }
 
 // ─── listagem ───────────────────────────────────────────────────────────────
@@ -463,16 +467,38 @@ export async function listarCompradores(idMov: number) {
     estadoPropriedade: row.ESTADO,
     idPisteiro:        row.ID_PISTEIRO ? Number(row.ID_PISTEIRO) : null,
     nomePisteiro:      row.NOME_PISTEIRO ?? null,
+    tipoDescontoFidelidade:  row.TIPO_DESCONTO_FIDELIDADE ?? null,
+    descontoFidelidade:      row.DESCONTO_FIDELIDADE,
+    valorDescontoFidelidade: row.VALOR_DESCONTO_FIDELIDADE,
   }));
 }
 
 type MovLoteBase = { vlrtot: number; vlrdes: number; comiss: number; comissVendedor: number; lotexx: string; datlan: string; qtdxxx: number };
 
-function calcularValoresComprador(movLote: MovLoteBase, percenPct: number) {
+function calcularValoresComprador(
+  movLote: MovLoteBase,
+  percenPct: number,
+  fidelidade?: { tipo: 'P' | 'V' | null; valor: number },
+) {
   const percen = percenPct / 100;
   const valorOriginal = (movLote.vlrtot + movLote.vlrdes) * percen;
   const valorDesconto = movLote.vlrdes * percen;
-  const valorPagar    = movLote.vlrtot * percen;
+  let valorPagar = movLote.vlrtot * percen;
+
+  // Desconto de fidelidade — aditivo/separado do desconto de lote (VALORDESCONTO).
+  // Valor provisório: neste estágio o desconto de condição de pagamento ainda não
+  // foi aplicado (isso só acontece em gerarParcelas), o mesmo comportamento que
+  // VALORDESCONTO/VALORPAGAR já têm hoje antes das parcelas serem geradas.
+  const tipoFid = fidelidade?.tipo ?? null;
+  const brutoFid = fidelidade?.valor ?? 0;
+  let valorDescontoFidelidade = 0;
+  if (tipoFid === 'P' && brutoFid > 0) {
+    valorDescontoFidelidade = valorPagar * (brutoFid / 100);
+  } else if (tipoFid === 'V' && brutoFid > 0) {
+    valorDescontoFidelidade = brutoFid;
+  }
+  valorDescontoFidelidade = Math.min(valorDescontoFidelidade, valorPagar);
+  valorPagar -= valorDescontoFidelidade;
 
   const valorBaseComissao         = movLote.vlrtot * percen;
   const valorBaseComissaoVendedor = movLote.vlrtot * percen;
@@ -488,6 +514,9 @@ function calcularValoresComprador(movLote: MovLoteBase, percenPct: number) {
     valorBaseComissao, valorBaseComissaoVendedor,
     valorComissao, valorComissaoVendedor,
     comissao, comissaoVendedor,
+    tipoDescontoFidelidade: tipoFid,
+    descontoFidelidade: brutoFid,
+    valorDescontoFidelidade,
   };
 }
 
@@ -505,7 +534,11 @@ export async function salvarComprador(
     valorBaseComissao, valorBaseComissaoVendedor,
     valorComissao, valorComissaoVendedor,
     comissao, comissaoVendedor,
-  } = calcularValoresComprador(movLote, d.percen);
+    valorDescontoFidelidade,
+  } = calcularValoresComprador(movLote, d.percen, {
+    tipo: d.tipoDescontoFidelidade ?? null,
+    valor: d.descontoFidelidade ?? 0,
+  });
 
   await garantirColunaMovCompPisteiro();
   const r = await pool.request()
@@ -528,20 +561,25 @@ export async function salvarComprador(
     .input('formaPagamento',              sql.VarChar, d.formaPagamento)
     .input('idPropriedade',               sql.Int,     d.idPropriedade || null)
     .input('idPisteiro',                  sql.Int,     d.idPisteiro || null)
+    .input('tipoDescontoFidelidade',      sql.Char(1), d.tipoDescontoFidelidade ?? null)
+    .input('descontoFidelidade',          sql.Decimal, d.descontoFidelidade ?? 0)
+    .input('valorDescontoFidelidade',     sql.Decimal, valorDescontoFidelidade)
     .query(`
       INSERT INTO MOVIMENTO_COMPRADOR
         (IDMOV,IDMOVLOTE,IDLEILAO,CODNOT,IDCLI,IDCONDPAGTO,PERCEN,
          VALORORIGINAL,VALORPAGAR,VALORDESCONTO,VALORCOMISSAO,COMISSAO,
          VALORCOMISSAOVENDEDOR,COMISSAOVENDEDOR,
          VALORBASECOMISSAO,VALORBASECOMISSAOVENDEDOR,
-         FORMA_PAGAMENTO,ID_PROPRIEDADE,ID_PISTEIRO)
+         FORMA_PAGAMENTO,ID_PROPRIEDADE,ID_PISTEIRO,
+         TIPO_DESCONTO_FIDELIDADE,DESCONTO_FIDELIDADE,VALOR_DESCONTO_FIDELIDADE)
       OUTPUT INSERTED.ID
       VALUES
         (@idMov,@idMovLote,@idLeilao,@codnot,@idCli,@idCondPagto,@percen,
          @valorOriginal,@valorPagar,@valorDesconto,@valorComissao,@comissao,
          @valorComissaoVendedor,@comissaoVendedor,
          @valorBaseComissao,@valorBaseComissaoVendedor,
-         @formaPagamento,@idPropriedade,@idPisteiro)
+         @formaPagamento,@idPropriedade,@idPisteiro,
+         @tipoDescontoFidelidade,@descontoFidelidade,@valorDescontoFidelidade)
     `);
 
   return r.recordset[0].ID;
@@ -559,7 +597,11 @@ export async function atualizarComprador(
     valorBaseComissao, valorBaseComissaoVendedor,
     valorComissao, valorComissaoVendedor,
     comissao, comissaoVendedor,
-  } = calcularValoresComprador(movLote, d.percen);
+    valorDescontoFidelidade,
+  } = calcularValoresComprador(movLote, d.percen, {
+    tipo: d.tipoDescontoFidelidade ?? null,
+    valor: d.descontoFidelidade ?? 0,
+  });
 
   await pool.request()
     .input('id',                          sql.Int,     idComp)
@@ -577,6 +619,9 @@ export async function atualizarComprador(
     .input('formaPagamento',              sql.VarChar, d.formaPagamento)
     .input('idPropriedade',               sql.Int,     d.idPropriedade || null)
     .input('idPisteiro',                  sql.Int,     d.idPisteiro || null)
+    .input('tipoDescontoFidelidade',      sql.Char(1), d.tipoDescontoFidelidade ?? null)
+    .input('descontoFidelidade',          sql.Decimal, d.descontoFidelidade ?? 0)
+    .input('valorDescontoFidelidade',     sql.Decimal, valorDescontoFidelidade)
     .query(`
       UPDATE MOVIMENTO_COMPRADOR SET
         IDCONDPAGTO=@idCondPagto, PERCEN=@percen,
@@ -584,7 +629,9 @@ export async function atualizarComprador(
         VALORCOMISSAO=@valorComissao, COMISSAO=@comissao,
         VALORCOMISSAOVENDEDOR=@valorComissaoVendedor, COMISSAOVENDEDOR=@comissaoVendedor,
         VALORBASECOMISSAO=@valorBaseComissao, VALORBASECOMISSAOVENDEDOR=@valorBaseComissaoVendedor,
-        FORMA_PAGAMENTO=@formaPagamento, ID_PROPRIEDADE=@idPropriedade, ID_PISTEIRO=@idPisteiro
+        FORMA_PAGAMENTO=@formaPagamento, ID_PROPRIEDADE=@idPropriedade, ID_PISTEIRO=@idPisteiro,
+        TIPO_DESCONTO_FIDELIDADE=@tipoDescontoFidelidade, DESCONTO_FIDELIDADE=@descontoFidelidade,
+        VALOR_DESCONTO_FIDELIDADE=@valorDescontoFidelidade
       WHERE ID=@id
     `);
 }
@@ -701,17 +748,33 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
     totpar += parseFloat(cond[k]) || 0;
   }
 
-  // 5. Desconto
+  // 5. Desconto (condição de pagamento) + Fidelidade (composto sobre o valor já líquido)
   let { pValorOriginal, pValorPagar } = p;
+  let valorDescontoCondicao = 0;
   if (descon > 0) {
-    pValorPagar = pValorOriginal - (pValorOriginal * (descon / 100));
+    valorDescontoCondicao = pValorOriginal * (descon / 100);
+    pValorPagar = pValorOriginal - valorDescontoCondicao;
+  }
+
+  let valorDescontoFidelidade = 0;
+  if (p.pTipoDescontoFidelidade === 'P' && (p.pDescontoFidelidade || 0) > 0) {
+    valorDescontoFidelidade = pValorPagar * ((p.pDescontoFidelidade as number) / 100);
+  } else if (p.pTipoDescontoFidelidade === 'V' && (p.pDescontoFidelidade || 0) > 0) {
+    valorDescontoFidelidade = p.pDescontoFidelidade as number;
+  }
+  valorDescontoFidelidade = Math.min(valorDescontoFidelidade, pValorPagar);
+  pValorPagar -= valorDescontoFidelidade;
+
+  if (descon > 0 || valorDescontoFidelidade > 0) {
     await pool.request()
       .input('idMov',     sql.Int,     p.pMovimento)
       .input('idCli',     sql.Int,     p.pCliente)
       .input('idMovLote', sql.Int,     p.pIdMovLote)
-      .input('desc',      sql.Decimal, pValorOriginal * (descon / 100))
+      .input('desc',      sql.Decimal, valorDescontoCondicao)
+      .input('fid',       sql.Decimal, valorDescontoFidelidade)
       .input('pagar',     sql.Decimal, pValorPagar)
-      .query(`UPDATE MOVIMENTO_COMPRADOR SET VALORDESCONTO=@desc, VALORPAGAR=@pagar
+      .query(`UPDATE MOVIMENTO_COMPRADOR
+              SET VALORDESCONTO=@desc, VALOR_DESCONTO_FIDELIDADE=@fid, VALORPAGAR=@pagar
               WHERE IDMOV=@idMov AND IDCLI=@idCli AND IDMOVLOTE=@idMovLote`);
   }
 
@@ -813,7 +876,7 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
     format = x * parcVal;
     const ordxxx = ord2(format, qtdpar);
 
-    const vlrcalc = pValorOriginal - (pValorOriginal * (descon / 100));
+    const vlrcalc = pValorPagar; // já líquido de condição de pagamento + fidelidade
     const parcela = safrax ? (valorEntrada - descontoEntrada) : (vlrcalc / qtdpar);
     const vlrpar  = parcela * parcVal;
 
@@ -833,7 +896,7 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
     // Soma das PARC01-15 já coletadas em memória (sem round-trip ao DB)
     const soma = rows.reduce((acc, r) => acc + r.vlrpar, 0);
 
-    const vlrcalc = pValorOriginal - (pValorOriginal * (descon / 100));
+    const vlrcalc = pValorPagar; // já líquido de condição de pagamento + fidelidade
     let parcela = (vlrcalc - soma) / salpar;
     if (safrax) parcela = valorSaldo - descontoSaldo;
 
@@ -924,6 +987,7 @@ export async function dadosFatura(idMov: number) {
     SELECT MC.ID, MC.IDCLI, MC.IDMOVLOTE, MC.PERCEN, MC.VALORORIGINAL, MC.VALORPAGAR,
            MC.VALORDESCONTO, MC.VALORCOMISSAO, MC.COMISSAO, MC.FORMA_PAGAMENTO,
            MC.VALORCOMISSAOVENDEDOR, MC.COMISSAOVENDEDOR,
+           MC.TIPO_DESCONTO_FIDELIDADE, MC.DESCONTO_FIDELIDADE, MC.VALOR_DESCONTO_FIDELIDADE,
            MC.IDCONDPAGTO,
            C.NOMEXX, C.CPFXXX, C.ENDERE, C.BAIRRO, C.CEPXXX, C.CELU_1, C.EMAILX,
            CIDC.CIDADE  AS NOMECIDADE,    CIDC.ESTADO  AS ESTADO,
@@ -1019,6 +1083,9 @@ export async function dadosFatura(idMov: number) {
       comissao:       c.COMISSAO,
       valorComissaoVendedor: c.VALORCOMISSAOVENDEDOR,
       comissaoVendedor:      c.COMISSAOVENDEDOR,
+      tipoDescontoFidelidade:  c.TIPO_DESCONTO_FIDELIDADE,
+      descontoFidelidade:      c.DESCONTO_FIDELIDADE,
+      valorDescontoFidelidade: c.VALOR_DESCONTO_FIDELIDADE,
       formaPagamento: c.FORMA_PAGAMENTO,
       desfin:         c.DESFIN,
       qtdparCond:     c.COND_QTDPAR != null ? Number(c.COND_QTDPAR) : null,
@@ -1053,6 +1120,9 @@ export interface FaturaUnificadaLote {
   valorOriginal: number;
   valorPagar: number;
   valorDesconto: number;
+  valorDescontoFidelidade: number;
+  tipoDescontoFidelidade: 'P' | 'V' | null;
+  descontoFidelidade: number;
   valorComissao: number;
   comissao: number;
   formaPagamento?: string;
@@ -1107,6 +1177,7 @@ export interface FaturaUnificadaGrupo {
     totalSinal: number;
     totalComissao: number;
     totalDesconto: number;
+    totalDescontoFidelidade: number;
     totalComissaoVendedor: number;
     totalLiquidoVendedor: number;
   };
@@ -1122,6 +1193,7 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
     SELECT MC.ID, MC.IDMOV, MC.IDMOVLOTE, MC.IDCLI, MC.VALORORIGINAL, MC.VALORPAGAR,
            MC.VALORDESCONTO, MC.VALORCOMISSAO, MC.COMISSAO, MC.FORMA_PAGAMENTO, MC.IDCONDPAGTO,
            MC.VALORCOMISSAOVENDEDOR, MC.COMISSAOVENDEDOR,
+           MC.TIPO_DESCONTO_FIDELIDADE, MC.DESCONTO_FIDELIDADE, MC.VALOR_DESCONTO_FIDELIDADE,
            M.IDLEILAO, M.CODNOT, M.DATLAN,
            LEI.LEILAO, LEI.DATLEI,
            ML.QTDXXX, ML.CODVEN AS ID_VENDEDOR,
@@ -1209,6 +1281,7 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
         lotes: [],
         totais: {
           totalCompra: 0, totalAVista: 0, totalPromissorias: 0, totalSinal: 0, totalComissao: 0, totalDesconto: 0,
+          totalDescontoFidelidade: 0,
           totalComissaoVendedor: 0, totalLiquidoVendedor: 0,
         },
       });
@@ -1243,7 +1316,9 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
       lotexx: r.LOTEXX, deslot: r.DESLOT, rpxxx: r.RPXXX, sbbxxx: r.SBBXXX, pesoxx: r.PESOXX,
       catego: r.CATEGO, descricaoRaca: r.DESCRICAORACA, especies: r.ESPECIES, qtdxxx: r.QTDXXX,
       valorOriginal, valorPagar,
-      valorDesconto: r.VALORDESCONTO || 0, valorComissao: r.VALORCOMISSAO || 0, comissao: r.COMISSAO || 0,
+      valorDesconto: r.VALORDESCONTO || 0, valorDescontoFidelidade: r.VALOR_DESCONTO_FIDELIDADE || 0,
+      tipoDescontoFidelidade: r.TIPO_DESCONTO_FIDELIDADE ?? null, descontoFidelidade: r.DESCONTO_FIDELIDADE || 0,
+      valorComissao: r.VALORCOMISSAO || 0, comissao: r.COMISSAO || 0,
       formaPagamento: r.FORMA_PAGAMENTO, desfin: r.DESFIN, qtdparCond,
       parcelas,
       idContraparte, nomeContraparte, documentoContraparte,
@@ -1253,11 +1328,12 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
     grupo.totais.totalCompra   += valorOriginal;
     grupo.totais.totalComissao += r.VALORCOMISSAO || 0;
     grupo.totais.totalDesconto += r.VALORDESCONTO || 0;
+    grupo.totais.totalDescontoFidelidade += r.VALOR_DESCONTO_FIDELIDADE || 0;
     grupo.totais.totalSinal        += valorSinal;
     grupo.totais.totalPromissorias += valorPagar - valorSinal;
     if (aVista) grupo.totais.totalAVista += valorPagar;
     grupo.totais.totalComissaoVendedor += r.VALORCOMISSAOVENDEDOR || 0;
-    grupo.totais.totalLiquidoVendedor  += valorOriginal - (r.VALORCOMISSAOVENDEDOR || 0) - (r.VALORDESCONTO || 0);
+    grupo.totais.totalLiquidoVendedor  += valorOriginal - (r.VALORCOMISSAOVENDEDOR || 0) - (r.VALORDESCONTO || 0) - (r.VALOR_DESCONTO_FIDELIDADE || 0);
 
     if (idContraparte != null) {
       const mapaContrapartes = contrapartesPorGrupo.get(chave)!;

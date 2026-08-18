@@ -54,6 +54,9 @@ export interface FaturaData {
     valorOriginal?: number;
     valorPagar?: number;
     valorDesconto?: number;
+    valorDescontoFidelidade?: number;
+    tipoDescontoFidelidade?: 'P' | 'V' | null;
+    descontoFidelidade?: number;
     valorComissao?: number;
     comissao?: number;
     valorComissaoVendedor?: number;
@@ -99,6 +102,14 @@ const fmtR = (v?: number | null) =>
   v != null && v !== 0
     ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
     : '—';
+
+/** Mostra o valor bruto digitado no desconto de fidelidade (% ou R$), não o valor calculado. */
+export const fmtFidelidade = (tipo?: 'P' | 'V' | null, valor?: number | null) => {
+  if (!tipo || valor == null || valor <= 0) return undefined;
+  return tipo === 'P'
+    ? `${valor}%`
+    : `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+};
 
 const s = StyleSheet.create({
   page: {
@@ -398,6 +409,7 @@ function SecaoComprador({ comp, index, variante }: { comp: FaturaData['comprador
         <Text style={[s.secLabel, { marginBottom: 8 }]}>Dados do Acerto</Text>
         <View style={s.acertoGrid}>
           <InfoItem label="Cond. Pagamento" value={comp.desfin} />
+          <InfoItem label="Fidelidade" value={fmtFidelidade(comp.tipoDescontoFidelidade, comp.descontoFidelidade)} />
           <InfoItem label="Valor Total" value={fmtR(comp.valorOriginal)} style={s.acertoValorBlue} />
           {variante === 'vendedor' ? (
             <>
@@ -411,6 +423,7 @@ function SecaoComprador({ comp, index, variante }: { comp: FaturaData['comprador
             </>
           )}
           <InfoItem label="Desconto" value={fmtR(comp.valorDesconto)} style={s.acertoValorRed} />
+          <InfoItem label="Desconto Fidelidade" value={fmtR(comp.valorDescontoFidelidade)} style={s.acertoValorRed} />
           <InfoItem label="Valor Líquido" value={fmtR(comp.valorPagar)} style={s.acertoValorGreen} />
         </View>
       </View>

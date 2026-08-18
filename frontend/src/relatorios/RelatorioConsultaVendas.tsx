@@ -22,6 +22,7 @@ export interface VendaPDF {
   valorPagar?: number;
   valorComissao?: number;
   valorDesconto?: number;
+  valorDescontoFidelidade?: number;
   valorLiquido?: number;
   desfin?: string;
   defesa?: string;
@@ -33,6 +34,7 @@ export interface TotaisVendas {
   totalValor: number;
   totalComissao: number;
   totalDesconto: number;
+  totalDescontoFidelidade: number;
   totalLiquido: number;
   totalQtd: number;
   mediaGeral: number;
@@ -315,6 +317,13 @@ function ConsultaVendasPDF({
             <Text style={s.resumoLabel}>Descontos</Text>
             <Text style={[s.resumoValor, { color: ESCURO }]}>
               {fmtR(totais.totalDesconto)}
+            </Text>
+          </View>
+          <View style={s.resumoSep} />
+          <View style={s.resumoItem}>
+            <Text style={s.resumoLabel}>Desc. Fidelidade</Text>
+            <Text style={[s.resumoValor, { color: ESCURO }]}>
+              {fmtR(totais.totalDescontoFidelidade)}
             </Text>
           </View>
           <View style={s.resumoSep} />

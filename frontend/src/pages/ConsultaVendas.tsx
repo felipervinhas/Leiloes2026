@@ -86,6 +86,7 @@ const COMPARADORES: Record<string, (a: any, b: any) => number> = {
   valorPagar:             (a, b) => cmpNumero(a.valorPagar, b.valorPagar),
   valorComissao:          (a, b) => cmpNumero(a.valorComissao, b.valorComissao),
   valorDesconto:          (a, b) => cmpNumero(a.valorDesconto, b.valorDesconto),
+  valorDescontoFidelidade: (a, b) => cmpNumero(a.valorDescontoFidelidade, b.valorDescontoFidelidade),
   valorLiquido:           (a, b) => cmpNumero(a.valorLiquido, b.valorLiquido),
   desfin:                 (a, b) => cmpTexto(a.desfin, b.desfin),
   parcelaInicial:         (a, b) => cmpNumero(a.parcelaInicial, b.parcelaInicial),
@@ -136,7 +137,7 @@ export default function ConsultaVendas() {
   const { rz: rzCV } = useColumnWidths('consulta_vendas', {
     lotexx: 70, leilao: 160, datlei: 100, deslot: 180, descricaoRaca: 120, especies: 90, rpxxx: 90, sbbxxx: 90,
     nomeVendedor: 160, nomeComprador: 160, qtdxxx: 70, valorUnidade: 110, valorPagar: 120,
-    valorComissao: 110, valorDesconto: 110, valorLiquido: 120, desfin: 130,
+    valorComissao: 110, valorDesconto: 110, valorDescontoFidelidade: 130, valorLiquido: 120, desfin: 130,
     parcelaInicial: 110, primeiroVencimentoData: 110, datlan: 120, defesa: 100,
   });
 
@@ -299,6 +300,7 @@ export default function ConsultaVendas() {
     const totalComissao   = lista.reduce((a, d) => a + (d.valorComissao  || 0), 0);
     const totalLiquido    = lista.reduce((a, d) => a + (d.valorLiquido   || 0), 0);
     const totalDesconto   = lista.reduce((a, d) => a + (d.valorDesconto  || 0), 0);
+    const totalDescontoFidelidade = lista.reduce((a, d) => a + (d.valorDescontoFidelidade || 0), 0);
     const totalQtd        = lista.reduce((a, d) => a + (d.qtdxxx         || 0), 0);
     const mediaGeral      = totalQtd > 0 ? totalValor / totalQtd : 0;
     const mediasCategoria: MediaCategoria[] = Array.from(
@@ -312,10 +314,10 @@ export default function ConsultaVendas() {
         return map.set(key, atual);
       }, new Map<string, MediaCategoria>()).values()
     ).sort((a, b) => a.categoria.localeCompare(b.categoria));
-    return { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalQtd, mediaGeral, mediasCategoria };
+    return { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediasCategoria };
   }
 
-  const { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalQtd, mediaGeral, mediasCategoria } = calcularTotais(dados);
+  const { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediasCategoria } = calcularTotais(dados);
 
   // Reordena os dados igual ao que o usuário escolheu clicando no cabeçalho da
   // tabela (sortField/sortOrder, capturado no onChange do Table), pra impressão
@@ -376,6 +378,9 @@ export default function ConsultaVendas() {
     { title: 'Desconto', dataIndex: 'valorDesconto', ...rzCV('valorDesconto'), align: 'right' as const,
       render: (v: number) => v > 0 ? <Text type="danger">- {fmt(v)}</Text> : '—',
       sorter: COMPARADORES.valorDesconto },
+    { title: 'Desc. Fidelidade', dataIndex: 'valorDescontoFidelidade', ...rzCV('valorDescontoFidelidade'), align: 'right' as const,
+      render: (v: number) => v > 0 ? <Text type="danger">- {fmt(v)}</Text> : '—',
+      sorter: COMPARADORES.valorDescontoFidelidade },
     { title: 'Condição', dataIndex: 'desfin', ...rzCV('desfin'), ellipsis: true,
       sorter: COMPARADORES.desfin },
     { title: '1ª Parcela', dataIndex: 'parcelaInicial', ...rzCV('parcelaInicial'), align: 'right' as const, render: fmt,
@@ -527,6 +532,7 @@ export default function ConsultaVendas() {
             { title: 'Valor Total',     value: totalValor,    suffix: 'R$', color: '#1677ff' },
             { title: 'Comissão Total',  value: totalComissao, suffix: 'R$', color: '#faad14' },
             { title: 'Total Descontos', value: totalDesconto, suffix: 'R$', color: '#ff4d4f' },
+            { title: 'Desc. Fidelidade', value: totalDescontoFidelidade, suffix: 'R$', color: '#ff4d4f' },
             { title: 'Valor Líquido',   value: totalLiquido,  suffix: 'R$', color: '#52c41a' },
             { title: 'Média/Cabeça',    value: mediaGeral,    suffix: 'R$', color: '#722ed1' },
           ].map(({ title, value, suffix, color }) => (
@@ -765,8 +771,9 @@ export default function ConsultaVendas() {
                   <Table.Summary.Cell index={10} align="right">{fmt(totalValor)}</Table.Summary.Cell>
                   <Table.Summary.Cell index={11} align="right">{fmt(totalComissao)}</Table.Summary.Cell>
                   <Table.Summary.Cell index={12} align="right">{fmt(totalDesconto)}</Table.Summary.Cell>
-                  <Table.Summary.Cell index={13} align="right"><span style={{ color: '#52c41a' }}>{fmt(totalLiquido)}</span></Table.Summary.Cell>
-                  <Table.Summary.Cell index={14} colSpan={5} />
+                  <Table.Summary.Cell index={13} align="right">{fmt(totalDescontoFidelidade)}</Table.Summary.Cell>
+                  <Table.Summary.Cell index={14} align="right"><span style={{ color: '#52c41a' }}>{fmt(totalLiquido)}</span></Table.Summary.Cell>
+                  <Table.Summary.Cell index={15} colSpan={5} />
                 </Table.Summary.Row>
               ) : null
             }

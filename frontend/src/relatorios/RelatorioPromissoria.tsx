@@ -2,7 +2,7 @@ import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/render
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import lacrePromissoria from '../assets/lacre_promissoria.png';
 import { labelRP, labelSBB } from '../utils/lote';
-import { FaturaData } from './RelatorioFaturaCompra';
+import { FaturaData, fmtFidelidade } from './RelatorioFaturaCompra';
 import { montarContextoPromissoria } from './promissoriaContext';
 import TabelaParcelasBloco from './TabelaParcelasBloco';
 import { valorExtenso, fmtR, fmtData, CATEGO } from './promissoriaUtils';
@@ -324,9 +324,11 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
             {/* ── ACERTO FINANCEIRO ── */}
             <View style={s.acertoBox}>
               <InfoItem label="Cond. de Pagamento"  value={comp.desfin} />
+              <InfoItem label="Fidelidade" value={fmtFidelidade(comp.tipoDescontoFidelidade, comp.descontoFidelidade)} />
 
               <InfoItem label="Valor Total"         value={fmtR(comp.valorOriginal)} style={s.acertoValBlue} />
               <InfoItem label="Desconto"            value={fmtR(comp.valorDesconto)} />
+              <InfoItem label="Desconto Fidelidade" value={fmtR(comp.valorDescontoFidelidade)} />
               <InfoItem label="Valor Líquido"       value={fmtR(comp.valorPagar)} style={s.acertoValGreen} />
               {comp.percen != null && comp.percen !== 100 ? (
                 <InfoItem label="% do Lote" value={`${comp.percen}%`} />

@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet } from '@react-pdf/renderer';
 import { ColunaTabela } from './tipoLayout';
 import { FaturaUnificadaLote } from './RelatorioFaturaUnificada';
+import { fmtFidelidade } from './RelatorioFaturaCompra';
 
 interface Props {
   lotes: FaturaUnificadaLote[];
@@ -19,6 +20,7 @@ function valorColuna(lote: FaturaUnificadaLote, key: string): string {
     const primeira = lote.parcelas.find(p => p.pripar === 'S');
     return fmtR(primeira ? primeira.vlrpar : lote.valorPagar);
   }
+  if (key === 'fidelidade') return fmtFidelidade(lote.tipoDescontoFidelidade, lote.descontoFidelidade) || '—';
   if (key === 'valorOriginal' || key === 'valorPagar' || key === 'valorComissaoVendedor') return fmtR((lote as any)[key]);
   const v = (lote as any)[key];
   return v ?? '—';

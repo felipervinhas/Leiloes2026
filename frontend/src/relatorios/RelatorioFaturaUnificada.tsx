@@ -23,6 +23,9 @@ export interface FaturaUnificadaLote {
   valorOriginal: number;
   valorPagar: number;
   valorDesconto: number;
+  valorDescontoFidelidade: number;
+  tipoDescontoFidelidade?: 'P' | 'V' | null;
+  descontoFidelidade?: number;
   valorComissao: number;
   comissao: number;
   formaPagamento?: string;
@@ -71,6 +74,7 @@ export interface FaturaUnificadaGrupo {
     totalSinal: number;
     totalComissao: number;
     totalDesconto: number;
+    totalDescontoFidelidade: number;
     totalComissaoVendedor: number;
     totalLiquidoVendedor: number;
   };
@@ -91,6 +95,14 @@ const CATEGO: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C
 
 const fmtR = (v?: number | null) =>
   v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—';
+
+/** Mostra o valor bruto digitado no desconto de fidelidade (% ou R$), não o valor calculado. */
+const fmtFidelidade = (tipo?: 'P' | 'V' | null, valor?: number | null) => {
+  if (!tipo || valor == null || valor <= 0) return null;
+  return tipo === 'P'
+    ? `${valor}%`
+    : `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+};
 
 function parseDataBr(str?: string): Date | null {
   if (!str) return null;
@@ -387,7 +399,12 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
                 </Text>
               </View>
               {tituloColunaParceiro ? <View style={s.cParceiro}><Text style={s.td}>{l.nomeContraparte || '—'}</Text></View> : null}
-              <View style={s.cCond}><Text style={s.td}>{l.desfin || '—'}</Text></View>
+              <View style={s.cCond}>
+                <Text style={s.td}>{l.desfin || '—'}</Text>
+                {fmtFidelidade(l.tipoDescontoFidelidade, l.descontoFidelidade) ? (
+                  <Text style={{ fontSize: 6, color: MEDIO }}>Fidelidade: {fmtFidelidade(l.tipoDescontoFidelidade, l.descontoFidelidade)}</Text>
+                ) : null}
+              </View>
               <View style={s.cBruto}><Text style={s.td}>{fmtR(l.valorOriginal)}</Text></View>
               {isVendedor ? (
                 <>
@@ -444,6 +461,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
             <>
               <InfoItem label="Total Vendido" value={fmtR(grupo.totais.totalCompra)} />
               <InfoItem label="Total Comissão do Vendedor" value={fmtR(grupo.totais.totalComissaoVendedor)} />
+              <InfoItem label="Total Desconto Fidelidade" value={fmtR(grupo.totais.totalDescontoFidelidade)} />
               <InfoItem label="Total Líquido ao Vendedor" value={fmtR(grupo.totais.totalLiquidoVendedor)} />
             </>
           ) : (
@@ -454,6 +472,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
               <InfoItem label="Total do Sinal / 1ª Parcela(s)" value={fmtR(grupo.totais.totalSinal)} />
               <InfoItem label="Total da Comissão" value={fmtR(grupo.totais.totalComissao)} />
               <InfoItem label="Total Desconto p/ Pagto. à Vista" value={fmtR(grupo.totais.totalDesconto)} />
+              <InfoItem label="Total Desconto Fidelidade" value={fmtR(grupo.totais.totalDescontoFidelidade)} />
             </>
           )}
         </View>

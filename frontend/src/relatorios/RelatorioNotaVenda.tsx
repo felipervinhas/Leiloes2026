@@ -1,6 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
-import { FaturaData } from './RelatorioFaturaCompra';
+import { FaturaData, fmtFidelidade } from './RelatorioFaturaCompra';
 import { valorExtenso } from './RelatorioPromissoria';
 import { labelRP, labelSBB } from '../utils/lote';
 
@@ -138,7 +138,9 @@ function NotaVendaPagina({ dados, comp, empresa, logoBase64 }: { dados: FaturaDa
         <Text style={s.secLabel}>Acerto Financeiro</Text>
         <View style={s.grid}>
           <View style={s.gridItem}><Text style={s.gridLabel}>F. Pagamento</Text><Text style={s.gridValor}>{comp.formaPagamento || comp.desfin || '—'}</Text></View>
+          <View style={s.gridItem}><Text style={s.gridLabel}>Fidelidade</Text><Text style={s.gridValor}>{fmtFidelidade(comp.tipoDescontoFidelidade, comp.descontoFidelidade) || '—'}</Text></View>
           <View style={s.gridItem}><Text style={s.gridLabel}>Desconto</Text><Text style={s.gridValor}>{fmtR(comp.valorDesconto)}</Text></View>
+          <View style={s.gridItem}><Text style={s.gridLabel}>Desc. Fidelidade</Text><Text style={s.gridValor}>{fmtR(comp.valorDescontoFidelidade)}</Text></View>
           <View style={s.gridItem}><Text style={s.gridLabel}>Vlr. Total</Text><Text style={s.gridValor}>{fmtR(totalValor)}</Text></View>
         </View>
         <Text style={[s.linha, { marginTop: 2, fontStyle: 'italic' }]}>
