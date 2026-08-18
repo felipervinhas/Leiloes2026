@@ -29,6 +29,7 @@ import ContratoEditor from '../components/ContratoEditor';
 import api from '../services/api';
 import dayjs, { Dayjs } from 'dayjs';
 import { labelRP, labelSBB } from '../utils/lote';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 
 const { Title, Text } = Typography;
 
@@ -1969,10 +1970,13 @@ export default function Vendas() {
   // diferentes, o que desmonta Listagem por completo a cada troca de modo.
   // Se o filtro ficasse como estado local de Listagem, ele se perdia toda
   // vez que o usuário abria o wizard (Nova Venda/Editar) e voltava.
-  const [tipoBusca, setTipoBusca] = useState('todos');
-  const [busca, setBusca]         = useState('');
-  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes } = useBuscaLeiloes();
-  const [idLeilao, setIdLeilao]   = useState<number | undefined>();
+  const filtroSalvo = lerFiltroPersistido(banco, 'vendas', {
+    tipoBusca: 'todos', busca: '', idLeilao: undefined as number | undefined, jaBuscou: false,
+  });
+  const [tipoBusca, setTipoBusca] = useState(filtroSalvo.tipoBusca);
+  const [busca, setBusca]         = useState(filtroSalvo.busca);
+  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes, garantirOpcao: garantirOpcaoLeilao } = useBuscaLeiloes();
+  const [idLeilao, setIdLeilao]   = useState<number | undefined>(filtroSalvo.idLeilao);
   const [dados, setDados]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(false);
   const [jaBuscou, setJaBuscou]   = useState(false);
@@ -1981,6 +1985,7 @@ export default function Vendas() {
     setLoading(true);
     setJaBuscou(true);
     try {
+      salvarFiltroPersistido(banco, 'vendas', { tipoBusca, busca, idLeilao, jaBuscou: true });
       const params: any = { tipoBusca };
       if (busca)    params.busca    = busca;
       if (idLeilao) params.idLeilao = idLeilao;
@@ -1998,6 +2003,15 @@ export default function Vendas() {
       setModo('wizard');
       if (clienteId) setOrigemClienteId(clienteId);
       window.history.replaceState({}, document.title);
+    }
+    // Restaura o resultado da última busca ao remontar (troca de aba) — só
+    // se o usuário já tinha buscado algo antes (senão mantém a tela vazia
+    // com a mensagem "escolha um filtro e clique em Buscar").
+    if (filtroSalvo.jaBuscou) {
+      if (filtroSalvo.idLeilao) {
+        api.get(`/leiloes/${filtroSalvo.idLeilao}`).then(r => garantirOpcaoLeilao(r.data.id, r.data.leilao)).catch(() => {});
+      }
+      carregar();
     }
   }, []);
 

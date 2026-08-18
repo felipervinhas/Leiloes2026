@@ -10,6 +10,8 @@ import dayjs from 'dayjs';
 import api from '../services/api';
 import ImageUpload from '../components/ImageUpload';
 import { labelRP, labelSBB } from '../utils/lote';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
+import { useBanco } from '../context/BancoContext';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -23,6 +25,8 @@ export default function Lotes() {
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false;
   const { rz: rzLot } = useColumnWidths('lotes', { lotexx: 70, deslot: 300, nomeVendedor: 160 });
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ busca: string; leilaoFiltro?: number }>(banco, 'lotes', { busca: '' });
 
   const [dados, setDados] = useState<any[]>([]);
   const [totalLotes, setTotalLotes] = useState(0);
@@ -30,9 +34,9 @@ export default function Lotes() {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<any | null>(null);
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = useState(filtroSalvo.busca);
   const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes, garantirOpcao: garantirOpcaoLeilao } = useBuscaLeiloes();
-  const [leilaoFiltro, setLeilaoFiltro] = useState<number | undefined>();
+  const [leilaoFiltro, setLeilaoFiltro] = useState<number | undefined>(filtroSalvo.leilaoFiltro);
   const [racas, setRacas] = useState<{ value: number; descricao: string; especies?: string }[]>([]);
   const { opcoes: clientes, carregando: carregandoClientes, buscar: buscarClientes, garantirOpcao: garantirOpcaoCliente } = useBuscaClientes();
   const [condicoes, setCondicoes] = useState<{ value: number; label: string }[]>([]);
@@ -50,6 +54,7 @@ export default function Lotes() {
   const carregar = async (b = '', pag = 1) => {
     setLoading(true);
     try {
+      salvarFiltroPersistido(banco, 'lotes', { busca: b, leilaoFiltro });
       const r = await api.get('/lotes', { params: { busca: b, idLeilao: leilaoFiltro, page: pag, pageSize: PAGE_SIZE } });
       setDados(r.data.items);
       setTotalLotes(r.data.total);
@@ -65,7 +70,13 @@ export default function Lotes() {
     setCondicoes(cond.data.map((c: any) => ({ value: c.id, label: c.desfin })));
   };
 
-  useEffect(() => { carregarAuxiliares(); }, []);
+  useEffect(() => {
+    carregarAuxiliares();
+    if (filtroSalvo.leilaoFiltro) {
+      api.get(`/leiloes/${filtroSalvo.leilaoFiltro}`).then(r => garantirOpcaoLeilao(r.data.id, r.data.leilao)).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { carregar(busca); }, [leilaoFiltro]);
 

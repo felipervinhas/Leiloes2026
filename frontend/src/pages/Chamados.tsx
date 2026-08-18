@@ -8,6 +8,8 @@ import {
   PlusOutlined, DeleteOutlined, UploadOutlined,
 } from '@ant-design/icons';
 import api from '../services/api';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
+import { useBanco } from '../context/BancoContext';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -38,10 +40,12 @@ const CORES_TIPO: Record<Chamado['tipo'], string> = {
 };
 
 export default function Chamados() {
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ busca: string; statusFiltro?: string }>(banco, 'chamados', { busca: '' });
   const [dados, setDados] = useState<Chamado[]>([]);
   const [loading, setLoading] = useState(false);
-  const [busca, setBusca] = useState('');
-  const [statusFiltro, setStatusFiltro] = useState<string | undefined>();
+  const [busca, setBusca] = useState(filtroSalvo.busca);
+  const [statusFiltro, setStatusFiltro] = useState<string | undefined>(filtroSalvo.statusFiltro);
 
   const [modalNovoOpen, setModalNovoOpen] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
@@ -55,6 +59,7 @@ export default function Chamados() {
   const carregar = async (b = busca, s = statusFiltro) => {
     setLoading(true);
     try {
+      salvarFiltroPersistido(banco, 'chamados', { busca: b, statusFiltro: s });
       const r = await api.get('/chamados', { params: { busca: b || undefined, status: s || undefined } });
       setDados(r.data);
     } finally {
@@ -62,7 +67,7 @@ export default function Chamados() {
     }
   };
 
-  useEffect(() => { carregar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar(filtroSalvo.busca, filtroSalvo.statusFiltro); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const abrirModalNovo = () => {
     form.resetFields();

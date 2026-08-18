@@ -2,26 +2,33 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Space, Popconfirm, Typography, Row, Col, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import api from '../services/api';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
+import { useBanco } from '../context/BancoContext';
 
 const { Title } = Typography;
 
 interface Cidade { id: number; cidade: string; estado: string; pais?: string; }
 
 export default function Cidades() {
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ busca: string }>(banco, 'cidades', { busca: '' });
   const [dados, setDados] = useState<Cidade[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<Cidade | null>(null);
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = useState(filtroSalvo.busca);
   const [form] = Form.useForm();
 
   const carregar = async (b = '') => {
     setLoading(true);
-    try { const r = await api.get('/cidades', { params: { busca: b } }); setDados(r.data); }
+    try {
+      salvarFiltroPersistido(banco, 'cidades', { busca: b });
+      const r = await api.get('/cidades', { params: { busca: b } }); setDados(r.data);
+    }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { carregar(filtroSalvo.busca); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const abrirModal = (item?: Cidade) => {
     setEditando(item || null);

@@ -9,8 +9,10 @@ import { useConfig } from '../context/ConfigContext';
 import RelatorioReciboDespesa from '../relatorios/RelatorioReciboDespesa';
 import RelatorioReciboAvulso from '../relatorios/RelatorioReciboAvulso';
 import { formatarMoeda, parseMoeda } from '../utils/moeda';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import { useBuscaClientes } from '../hooks/useBuscaClientes';
+import { useBanco } from '../context/BancoContext';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -36,18 +38,10 @@ const DC_INFO: Record<string, { label: string; color: string; sinal: 1 | -1 }> =
 };
 const dcInfo = (v: string) => DC_INFO[v] || { label: v || '—', color: 'default', sinal: 1 as const };
 
-const FILTRO_STORAGE_KEY = 'despesas_filtro';
-
-function lerFiltroSalvo(): { busca: string; leilaoFiltro?: number } {
-  try {
-    const raw = sessionStorage.getItem(FILTRO_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { busca: '' };
-  } catch { return { busca: '' }; }
-}
-
 function AbaDespesas() {
   const config = useConfig();
-  const filtroSalvo = lerFiltroSalvo();
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ busca: string; leilaoFiltro?: number }>(banco, 'despesas', { busca: '' });
   const [dados, setDados]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -62,7 +56,7 @@ function AbaDespesas() {
   const carregar = async (b = '', idLeilao?: number) => {
     setLoading(true);
     try {
-      sessionStorage.setItem(FILTRO_STORAGE_KEY, JSON.stringify({ busca: b, leilaoFiltro: idLeilao }));
+      salvarFiltroPersistido(banco, 'despesas', { busca: b, leilaoFiltro: idLeilao });
       const r = await api.get('/despesas', { params: { busca: b, idLeilao } });
       setDados(r.data);
     } finally { setLoading(false); }
@@ -307,11 +301,13 @@ function AbaDespesas() {
 // Recebimento a empresa recebe e assina; em Pagamento o cliente recebe e assina.
 function AbaRecibos() {
   const config = useConfig();
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ busca: string }>(banco, 'despesas-recibos', { busca: '' });
   const [dados, setDados]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando]   = useState<any | null>(null);
-  const [busca, setBusca]         = useState('');
+  const [busca, setBusca]         = useState(filtroSalvo.busca);
   const { opcoes: clientes, carregando: carregandoClientes, buscar: buscarClientes, garantirOpcao: garantirOpcaoCliente } = useBuscaClientes();
   const [recibo, setRecibo]       = useState<any | null>(null);
   const [form] = Form.useForm();
@@ -320,12 +316,13 @@ function AbaRecibos() {
   const carregar = async (b = '') => {
     setLoading(true);
     try {
+      salvarFiltroPersistido(banco, 'despesas-recibos', { busca: b });
       const r = await api.get('/recibos', { params: { busca: b } });
       setDados(r.data);
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { carregar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { carregar(filtroSalvo.busca); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const abrirModal = (item?: any) => {
     setEditando(item || null);

@@ -19,6 +19,8 @@ import MediasLeilaoPDF from '../relatorios/RelatorioMediasLeilao';
 import RelatorioFaturaUnificada, { FaturaUnificadaGrupo } from '../relatorios/RelatorioFaturaUnificada';
 import MapaSeguroPDF from '../relatorios/RelatorioMapaSeguro';
 import { useConfig } from '../context/ConfigContext';
+import { useBanco } from '../context/BancoContext';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { labelRP, labelSBB } from '../utils/lote';
 
 type Orientacao = 'retrato' | 'paisagem';
@@ -97,9 +99,18 @@ const COMPARADORES: Record<string, (a: any, b: any) => number> = {
 
 export default function ConsultaVendas() {
   const config = useConfig();
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido(banco, 'consulta-vendas', {
+    leilaoSel: undefined as number | undefined,
+    loteSel: undefined as number | undefined,
+    vendedorSel: undefined as number | undefined,
+    compradorSel: undefined as number | undefined,
+    defesaSel: '',
+    racasSel: [] as number[],
+  });
   const [tipoRelatorio, setTipoRelatorio] = useState<TipoRelatorio>('vendas');
   const [orientacaoImp, setOrientacaoImp] = useState<Orientacao>('paisagem');
-  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes } = useBuscaLeiloes();
+  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes, garantirOpcao: garantirOpcaoLeilao } = useBuscaLeiloes();
   const [lotes, setLotes]       = useState<{ value: number; label: string }[]>([]);
   const [vendedores, setVendedores] = useState<{ value: number; label: string }[]>([]);
   const [compradores, setCompradores] = useState<{ value: number; label: string }[]>([]);
@@ -109,12 +120,12 @@ export default function ConsultaVendas() {
   const timerComp = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [racas, setRacas]       = useState<{ id: number; label: string }[]>([]);
 
-  const [leilaoSel, setLeilaoSel]     = useState<number | undefined>();
-  const [loteSel, setLoteSel]         = useState<number | undefined>();
-  const [vendedorSel, setVendedorSel] = useState<number | undefined>();
-  const [compradorSel, setCompradorSel] = useState<number | undefined>();
-  const [defesaSel, setDefesaSel]     = useState<string>('');
-  const [racasSel, setRacasSel]       = useState<number[]>([]);
+  const [leilaoSel, setLeilaoSel]     = useState<number | undefined>(filtroSalvo.leilaoSel);
+  const [loteSel, setLoteSel]         = useState<number | undefined>(filtroSalvo.loteSel);
+  const [vendedorSel, setVendedorSel] = useState<number | undefined>(filtroSalvo.vendedorSel);
+  const [compradorSel, setCompradorSel] = useState<number | undefined>(filtroSalvo.compradorSel);
+  const [defesaSel, setDefesaSel]     = useState<string>(filtroSalvo.defesaSel);
+  const [racasSel, setRacasSel]       = useState<number[]>(filtroSalvo.racasSel);
 
   const [dados, setDados]   = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -189,6 +200,7 @@ export default function ConsultaVendas() {
     setConsultou(true);
     setSelectedRowKeys([]);
     try {
+      salvarFiltroPersistido(banco, 'consulta-vendas', { leilaoSel, loteSel, vendedorSel, compradorSel, defesaSel, racasSel });
       const params: any = {};
       if (leilaoSel)    params.idLeilao    = leilaoSel;
       if (loteSel)      params.idLote      = loteSel;
@@ -202,6 +214,31 @@ export default function ConsultaVendas() {
     } catch { message.error('Erro ao consultar vendas'); }
     finally { setLoading(false); }
   };
+
+  // Restaura o resultado da última consulta ao remontar (troca de aba): resolve
+  // o rótulo dos Selects assíncronos (leilão/vendedor/comprador, que começam
+  // sem opções carregadas) e os lotes/raças do leilão restaurado, então
+  // repete a consulta que já tinha sido feita.
+  useEffect(() => {
+    if (filtroSalvo.leilaoSel) {
+      api.get(`/leiloes/${filtroSalvo.leilaoSel}`).then(r => garantirOpcaoLeilao(r.data.id, r.data.leilao)).catch(() => {});
+      Promise.all([
+        api.get(`/consulta-vendas/lotes/${filtroSalvo.leilaoSel}`),
+        api.get(`/consulta-vendas/racas/${filtroSalvo.leilaoSel}`),
+      ]).then(([rl, rr]) => {
+        setLotes(rl.data.map((l: any) => ({ value: l.id, label: `${l.lotexx} — ${l.deslot}` })));
+        setRacas(rr.data.map((r: any) => ({ id: r.id, label: r.descricao + (r.especies ? ` (${r.especies})` : '') })));
+      }).catch(() => {});
+    }
+    if (filtroSalvo.vendedorSel) {
+      api.get(`/clientes/${filtroSalvo.vendedorSel}`).then(r => setVendedores([{ value: r.data.id, label: r.data.nomexx }])).catch(() => {});
+    }
+    if (filtroSalvo.compradorSel) {
+      api.get(`/clientes/${filtroSalvo.compradorSel}`).then(r => setCompradores([{ value: r.data.id, label: r.data.nomexx }])).catch(() => {});
+    }
+    if (filtroSalvo.leilaoSel || filtroSalvo.vendedorSel || filtroSalvo.compradorSel) consultar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const limparSelecao = () => setSelectedRowKeys([]);
 
@@ -259,6 +296,7 @@ export default function ConsultaVendas() {
     setVendedores([]); setCompradores([]);
     setDados([]); setConsultou(false);
     setConsultaVersao(v => v + 1);
+    salvarFiltroPersistido(banco, 'consulta-vendas', {});
   };
 
   const exportarCSV = () => {

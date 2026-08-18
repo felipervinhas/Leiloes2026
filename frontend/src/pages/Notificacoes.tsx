@@ -3,6 +3,8 @@ import { Table, Button, Modal, Form, Input, Select, Popconfirm,
   Typography, Row, Col, message, Tag, Alert } from 'antd';
 import { PlusOutlined, DeleteOutlined, SearchOutlined, BellOutlined, SendOutlined } from '@ant-design/icons';
 import api from '../services/api';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
+import { useBanco } from '../context/BancoContext';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -13,24 +15,30 @@ const PARA_QUEM_OPTS = [
 ];
 
 export default function Notificacoes() {
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ busca: string }>(banco, 'notificacoes', { busca: '' });
   const [dados, setDados]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [sending, setSending]     = useState(false);
-  const [busca, setBusca]         = useState('');
+  const [busca, setBusca]         = useState(filtroSalvo.busca);
   const [clientes, setClientes]   = useState<{ value: number; label: string }[]>([]);
   const [paraQuem, setParaQuem]   = useState<string>('Todos');
   const [form] = Form.useForm();
 
   const carregar = async (b = '') => {
     setLoading(true);
-    try { const r = await api.get('/notificacoes', { params: { busca: b } }); setDados(r.data); }
+    try {
+      salvarFiltroPersistido(banco, 'notificacoes', { busca: b });
+      const r = await api.get('/notificacoes', { params: { busca: b } }); setDados(r.data);
+    }
     finally { setLoading(false); }
   };
 
   useEffect(() => {
-    carregar();
+    carregar(filtroSalvo.busca);
     api.get('/clientes').then(r => setClientes(r.data.map((c: any) => ({ value: c.id, label: c.nomexx }))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const abrirModal = () => {

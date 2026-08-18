@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, Space, Popconfirm, Typography, Row, Col, message, Divider } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import api from '../services/api';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
+import { useBanco } from '../context/BancoContext';
 
 const { Title } = Typography;
 
@@ -12,21 +14,26 @@ interface Condicao {
 }
 
 export default function CondicoesPagamento() {
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ busca: string }>(banco, 'condicoes-pagamento', { busca: '' });
   const [dados, setDados] = useState<Condicao[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<Condicao | null>(null);
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = useState(filtroSalvo.busca);
   const [form] = Form.useForm();
   const safraxAtivo = Form.useWatch('safrax', form) === 'S';
 
   const carregar = async (b = '') => {
     setLoading(true);
-    try { const r = await api.get('/condicoes-pagamento', { params: { busca: b } }); setDados(r.data); }
+    try {
+      salvarFiltroPersistido(banco, 'condicoes-pagamento', { busca: b });
+      const r = await api.get('/condicoes-pagamento', { params: { busca: b } }); setDados(r.data);
+    }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { carregar(filtroSalvo.busca); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const abrirModal = async (item?: Condicao) => {
     if (item) {

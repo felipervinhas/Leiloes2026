@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Select, Row, Col, Typography, Button, Table, Card, Space, Spin, Tag,
   Modal, Form, Input, InputNumber, Popconfirm, message, Empty,
@@ -14,7 +14,9 @@ import RelatorioAcertoVendedor from '../relatorios/RelatorioAcertoVendedor';
 import RelatorioReciboDespesa from '../relatorios/RelatorioReciboDespesa';
 import { formatarMoeda, parseMoeda } from '../utils/moeda';
 import { useConfig } from '../context/ConfigContext';
+import { useBanco } from '../context/BancoContext';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -52,10 +54,12 @@ interface Acerto {
 
 export default function AcertoVendedor() {
   const config = useConfig();
-  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes } = useBuscaLeiloes();
-  const [leilaoSel, setLeilaoSel] = useState<number | undefined>();
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ leilaoSel?: number; vendedorSel?: number }>(banco, 'acerto-vendedor', {});
+  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes, garantirOpcao: garantirOpcaoLeilao } = useBuscaLeiloes();
+  const [leilaoSel, setLeilaoSel] = useState<number | undefined>(filtroSalvo.leilaoSel);
   const [vendedores, setVendedores] = useState<{ value: number; label: string }[]>([]);
-  const [vendedorSel, setVendedorSel] = useState<number | undefined>();
+  const [vendedorSel, setVendedorSel] = useState<number | undefined>(filtroSalvo.vendedorSel);
   const [loadingVend, setLoadingVend] = useState(false);
   const timerVend = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -83,6 +87,7 @@ export default function AcertoVendedor() {
     if (!vendedorSel) { message.warning('Selecione o vendedor'); return; }
     setLoading(true);
     try {
+      salvarFiltroPersistido(banco, 'acerto-vendedor', { leilaoSel, vendedorSel });
       const params: any = { idVendedor: vendedorSel };
       if (leilaoSel) params.idLeilao = leilaoSel;
       const r = await api.get('/acerto-vendedor', { params });
@@ -90,6 +95,20 @@ export default function AcertoVendedor() {
     } catch { message.error('Erro ao calcular o acerto'); }
     finally { setLoading(false); }
   };
+
+  // Restaura o resultado da última consulta ao remontar (troca de aba) e
+  // resolve o rótulo dos Selects assíncronos (leilão/vendedor), que começam
+  // sem opções carregadas.
+  useEffect(() => {
+    if (filtroSalvo.leilaoSel) {
+      api.get(`/leiloes/${filtroSalvo.leilaoSel}`).then(r => garantirOpcaoLeilao(r.data.id, r.data.leilao)).catch(() => {});
+    }
+    if (filtroSalvo.vendedorSel) {
+      api.get(`/clientes/${filtroSalvo.vendedorSel}`).then(r => setVendedores([{ value: r.data.id, label: r.data.nomexx }])).catch(() => {});
+      consultar();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const abrirModal = (item?: any) => {
     setEditando(item || null);

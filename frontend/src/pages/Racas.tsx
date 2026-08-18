@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Space, Popconfirm, Typography, Row, Col, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import api from '../services/api';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
+import { useBanco } from '../context/BancoContext';
 
 const { Title } = Typography;
 const ESPECIES = ['BOVINOS', 'EQUINOS', 'OVINOS', 'SUINOS', 'CAPRINOS', 'OUTROS'];
@@ -9,20 +11,25 @@ const ESPECIES = ['BOVINOS', 'EQUINOS', 'OVINOS', 'SUINOS', 'CAPRINOS', 'OUTROS'
 interface Raca { id: number; descricao: string; especies?: string; raca?: string; }
 
 export default function Racas() {
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ busca: string }>(banco, 'racas', { busca: '' });
   const [dados, setDados] = useState<Raca[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<Raca | null>(null);
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = useState(filtroSalvo.busca);
   const [form] = Form.useForm();
 
   const carregar = async (b = '') => {
     setLoading(true);
-    try { const r = await api.get('/racas', { params: { busca: b } }); setDados(r.data); }
+    try {
+      salvarFiltroPersistido(banco, 'racas', { busca: b });
+      const r = await api.get('/racas', { params: { busca: b } }); setDados(r.data);
+    }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { carregar(filtroSalvo.busca); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const abrirModal = (item?: Raca) => {
     setEditando(item || null);

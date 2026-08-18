@@ -15,6 +15,7 @@ import dayjs from 'dayjs';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
 import { useBanco } from '../context/BancoContext';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { BlobProvider } from '@react-pdf/renderer';
 import FaturaCompraPDF, { FaturaData } from '../relatorios/RelatorioFaturaCompra';
 import PromissoriaPDF from '../relatorios/RelatorioPromissoria';
@@ -67,24 +68,34 @@ export default function Clientes() {
   const sm = !!screens.sm;  // ≥ 576px
   const md = !!screens.md;  // ≥ 768px
 
+  const filtroSalvo = lerFiltroPersistido(banco, 'clientes', {
+    filtroNome: '', filtroCpf: '', filtroCnpj: '', filtroPropriedade: '',
+    filtroCidade: undefined as number | undefined,
+    filtroEstado: undefined as string | undefined,
+    filtroSituacao: undefined as string | undefined,
+    filtroValor: undefined as string | undefined,
+    filtroClassificacoes: [] as number[],
+    rankingMode: false,
+  });
+
   const [dados, setDados] = useState<Cliente[]>([]);
   const [totalClientes, setTotalClientes] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [loading, setLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editando, setEditando] = useState<any | null>(null);
-  const [filtroNome, setFiltroNome] = useState('');
-  const [filtroCpf, setFiltroCpf] = useState('');
-  const [filtroCnpj, setFiltroCnpj] = useState('');
-  const [filtroPropriedade, setFiltroPropriedade] = useState('');
-  const [filtroCidade, setFiltroCidade] = useState<number | undefined>(undefined);
-  const [filtroEstado, setFiltroEstado] = useState<string | undefined>(undefined);
-  const [filtroSituacao, setFiltroSituacao] = useState<string | undefined>(undefined);
+  const [filtroNome, setFiltroNome] = useState(filtroSalvo.filtroNome);
+  const [filtroCpf, setFiltroCpf] = useState(filtroSalvo.filtroCpf);
+  const [filtroCnpj, setFiltroCnpj] = useState(filtroSalvo.filtroCnpj);
+  const [filtroPropriedade, setFiltroPropriedade] = useState(filtroSalvo.filtroPropriedade);
+  const [filtroCidade, setFiltroCidade] = useState<number | undefined>(filtroSalvo.filtroCidade);
+  const [filtroEstado, setFiltroEstado] = useState<string | undefined>(filtroSalvo.filtroEstado);
+  const [filtroSituacao, setFiltroSituacao] = useState<string | undefined>(filtroSalvo.filtroSituacao);
   const [cidades, setCidades] = useState<{ value: number; label: string }[]>([]);
   const [classificacoesOpcoes, setClassificacoesOpcoes] = useState<{ value: number; label: string }[]>([]);
   const [usuarios, setUsuarios] = useState<{ value: number; label: string }[]>([]);
-  const [filtroValor, setFiltroValor] = useState<string | undefined>(undefined);
-  const [filtroClassificacoes, setFiltroClassificacoes] = useState<number[]>([]);
+  const [filtroValor, setFiltroValor] = useState<string | undefined>(filtroSalvo.filtroValor);
+  const [filtroClassificacoes, setFiltroClassificacoes] = useState<number[]>(filtroSalvo.filtroClassificacoes);
   const [cepLoading, setCepLoading] = useState(false);
   const [form] = Form.useForm();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -92,7 +103,7 @@ export default function Clientes() {
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [clientesCompletos, setClientesCompletos] = useState<ClienteCompleto[]>([]);
   const [carregandoRelatorio, setCarregandoRelatorio] = useState(false);
-  const [rankingMode, setRankingMode] = useState(false);
+  const [rankingMode, setRankingMode] = useState(filtroSalvo.rankingMode);
   const [dadosRanking, setDadosRanking] = useState<ClienteRanking[]>([]);
   const [historicoCompras, setHistoricoCompras] = useState<any[]>([]);
   const [historicoVendas, setHistoricoVendas] = useState<any[]>([]);
@@ -131,10 +142,16 @@ export default function Clientes() {
   const carregarSeqRef = useRef(0);
   const carregarRankingSeqRef = useRef(0);
 
+  const salvarFiltroAtual = () => salvarFiltroPersistido(banco, 'clientes', {
+    filtroNome, filtroCpf, filtroCnpj, filtroPropriedade, filtroCidade,
+    filtroEstado, filtroSituacao, filtroValor, filtroClassificacoes, rankingMode,
+  });
+
   const carregar = async (pag = 1) => {
     const seq = ++carregarSeqRef.current;
     setLoading(true);
     try {
+      salvarFiltroAtual();
       const r = await api.get('/clientes', {
         params: {
           nome: filtroNome || undefined, cpf: filtroCpf || undefined,
@@ -161,6 +178,7 @@ export default function Clientes() {
     const seq = ++carregarRankingSeqRef.current;
     setLoading(true);
     try {
+      salvarFiltroAtual();
       const r = await api.get('/clientes/faturamento', {
         params: {
           nome: filtroNome || undefined, cpf: filtroCpf || undefined,
@@ -367,7 +385,7 @@ export default function Clientes() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    carregar();
+    if (filtroSalvo.rankingMode) carregarRanking(); else carregar();
     carregarCidades();
     carregarClassificacoes();
     api.get('/usuarios').then(r =>

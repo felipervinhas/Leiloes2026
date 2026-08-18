@@ -5,24 +5,31 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, LineChartOu
 import api from '../services/api';
 import dayjs from 'dayjs';
 import { formatarMoeda, parseMoeda } from '../utils/moeda';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
+import { useBanco } from '../context/BancoContext';
 
 const { Title } = Typography;
 
 export default function Cotacoes() {
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ busca: string }>(banco, 'cotacoes', { busca: '' });
   const [dados, setDados]       = useState<any[]>([]);
   const [loading, setLoading]   = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando]   = useState<any | null>(null);
-  const [busca, setBusca]         = useState('');
+  const [busca, setBusca]         = useState(filtroSalvo.busca);
   const [form] = Form.useForm();
 
   const carregar = async (b = '') => {
     setLoading(true);
-    try { const r = await api.get('/cotacoes', { params: { busca: b } }); setDados(r.data); }
+    try {
+      salvarFiltroPersistido(banco, 'cotacoes', { busca: b });
+      const r = await api.get('/cotacoes', { params: { busca: b } }); setDados(r.data);
+    }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { carregar(filtroSalvo.busca); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const abrirModal = (item?: any) => {
     setEditando(item || null);

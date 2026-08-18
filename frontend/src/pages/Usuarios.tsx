@@ -5,6 +5,8 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
   KeyOutlined, UserOutlined } from '@ant-design/icons';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useBanco } from '../context/BancoContext';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 
 const { Title, Text } = Typography;
 const SN          = [{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }];
@@ -40,12 +42,14 @@ export default function Usuarios() {
   // Só ADMs com perfil 1 podem ver/editar o que cada usuário enxerga no Dashboard
   // e atribuir perfis — mesma regra que o backend já aplica nesses PUTs.
   const podeGerenciarPermissoes = usuarioLogado?.perfis?.some(p => p.id === 1);
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ busca: string }>(banco, 'usuarios', { busca: '' });
 
   const [dados, setDados] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<any | null>(null);
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = useState(filtroSalvo.busca);
   const [form] = Form.useForm();
   const [controlesSelecionados, setControlesSelecionados] = useState<string[]>([]);
   const [carregandoControles, setCarregandoControles] = useState(false);
@@ -55,13 +59,17 @@ export default function Usuarios() {
 
   const carregar = async (b = '') => {
     setLoading(true);
-    try { const r = await api.get('/usuarios', { params: { busca: b } }); setDados(r.data); }
+    try {
+      salvarFiltroPersistido(banco, 'usuarios', { busca: b });
+      const r = await api.get('/usuarios', { params: { busca: b } }); setDados(r.data);
+    }
     finally { setLoading(false); }
   };
 
   useEffect(() => {
-    carregar();
+    carregar(filtroSalvo.busca);
     api.get('/perfis').then(r => setPerfisDisponiveis(r.data.map((p: any) => ({ value: p.id, label: p.perfil }))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const abrirModal = async (item?: any) => {

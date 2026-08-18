@@ -2,26 +2,33 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Space, Popconfirm, Typography, Row, Col, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import api from '../services/api';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
+import { useBanco } from '../context/BancoContext';
 
 const { Title } = Typography;
 
 interface Classificacao { id: number; descricao: string; }
 
 export default function Classificacoes() {
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ busca: string }>(banco, 'classificacoes', { busca: '' });
   const [dados, setDados] = useState<Classificacao[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<Classificacao | null>(null);
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = useState(filtroSalvo.busca);
   const [form] = Form.useForm();
 
   const carregar = async (b = '') => {
     setLoading(true);
-    try { const r = await api.get('/classificacoes', { params: { busca: b } }); setDados(r.data); }
+    try {
+      salvarFiltroPersistido(banco, 'classificacoes', { busca: b });
+      const r = await api.get('/classificacoes', { params: { busca: b } }); setDados(r.data);
+    }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { carregar(filtroSalvo.busca); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const abrirModal = (item?: Classificacao) => {
     setEditando(item || null);

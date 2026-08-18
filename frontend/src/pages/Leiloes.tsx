@@ -7,6 +7,8 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutl
 import dayjs from 'dayjs';
 import api from '../services/api';
 import ImageUpload from '../components/ImageUpload';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
+import { useBanco } from '../context/BancoContext';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -17,12 +19,14 @@ export default function Leiloes() {
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false;
   const { rz: rzLei } = useColumnWidths('leiloes', { leilao: 300, datlei: 110, ativox: 80 });
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ busca: string }>(banco, 'leiloes', { busca: '' });
 
   const [dados, setDados] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<any | null>(null);
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = useState(filtroSalvo.busca);
   const [cidades, setCidades] = useState<{ value: string; label: string }[]>([]);
   const [condicoes, setCondicoes] = useState<{ value: number; label: string }[]>([]);
   const [imagens, setImagens] = useState<Imagens | null>(null);
@@ -30,7 +34,10 @@ export default function Leiloes() {
 
   const carregar = async (b = '') => {
     setLoading(true);
-    try { const r = await api.get('/leiloes', { params: { busca: b } }); setDados(r.data); }
+    try {
+      salvarFiltroPersistido(banco, 'leiloes', { busca: b });
+      const r = await api.get('/leiloes', { params: { busca: b } }); setDados(r.data);
+    }
     finally { setLoading(false); }
   };
 
@@ -40,7 +47,7 @@ export default function Leiloes() {
     setCondicoes(cond.data.map((c: any) => ({ value: c.id, label: c.desfin })));
   };
 
-  useEffect(() => { carregar(); carregarAuxiliares(); }, []);
+  useEffect(() => { carregar(filtroSalvo.busca); carregarAuxiliares(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const abrirModal = async (item?: any) => {
     setImagens(null);

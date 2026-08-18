@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Table, Select, Typography, Row, Col, Tag, Statistic, Card, Space, Button, Modal, Spin } from 'antd';
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
@@ -6,6 +6,8 @@ import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import { TrophyOutlined, FileDoneOutlined } from '@ant-design/icons';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
+import { useBanco } from '../context/BancoContext';
+import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import dayjs from 'dayjs';
 import BotaoBaixarLancesPDF, { LancePDF } from '../relatorios/RelatorioLances';
 
@@ -13,12 +15,14 @@ const { Title, Text } = Typography;
 
 export default function Lances() {
   const config = useConfig();
+  const { banco } = useBanco();
+  const filtroSalvo = lerFiltroPersistido<{ leilaoSel?: number; loteSel?: number }>(banco, 'lances', {});
 
-  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes } = useBuscaLeiloes();
+  const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes, garantirOpcao: garantirOpcaoLeilao } = useBuscaLeiloes();
   const [lotes, setLotes]     = useState<{ value: number; label: string }[]>([]);
-  const [leilaoSel, setLeilaoSel]   = useState<number | undefined>();
+  const [leilaoSel, setLeilaoSel]   = useState<number | undefined>(filtroSalvo.leilaoSel);
   const [leilaoLabel, setLeilaoLabel] = useState('');
-  const [loteSel, setLoteSel]       = useState<number | undefined>();
+  const [loteSel, setLoteSel]       = useState<number | undefined>(filtroSalvo.loteSel);
   const [dados, setDados]           = useState<any[]>([]);
   const [resumo, setResumo]         = useState<any[]>([]);
   const [loading, setLoading]       = useState(false);
@@ -31,12 +35,13 @@ export default function Lances() {
   const { rz: rzR } = useColumnWidths('lances_resumo', { lotexx: 80, deslot: 200, qtdLances: 110, maiorLance: 130, menorLance: 130 });
   const { rz: rzL } = useColumnWidths('lances_detalhes', { data: 150, lotexx: 80, deslot: 180, nomeCliente: 200, celu1: 130, valor: 130, origemLance: 100 });
 
-  const onLeilao = async (idLeilao: number) => {
+  const onLeilao = async (idLeilao: number, manterLote = false) => {
     setLeilaoSel(idLeilao);
     setLeilaoLabel(leiloes.find(l => l.value === idLeilao)?.label || '');
-    setLoteSel(undefined);
+    if (!manterLote) setLoteSel(undefined);
     setDados([]);
     setLancesRelatorio([]);
+    salvarFiltroPersistido(banco, 'lances', { leilaoSel: idLeilao, loteSel: manterLote ? loteSel : undefined });
     const r = await api.get('/lotes', { params: { idLeilao } });
     setLotes(r.data.map((l: any) => ({ value: l.id, label: `${l.lotexx} — ${l.deslot}` })));
     setLoading(true);
@@ -49,12 +54,27 @@ export default function Lances() {
   const onLote = async (idLote: number) => {
     setLoteSel(idLote);
     setTab('lances');
+    salvarFiltroPersistido(banco, 'lances', { leilaoSel, loteSel: idLote });
     setLoading(true);
     try {
       const r = await api.get('/lances', { params: { idLeilao: leilaoSel, idLote } });
       setDados(r.data);
     } finally { setLoading(false); }
   };
+
+  // Restaura leilão/lote selecionados ao remontar (troca de aba).
+  useEffect(() => {
+    if (filtroSalvo.leilaoSel) {
+      api.get(`/leiloes/${filtroSalvo.leilaoSel}`).then(r => {
+        garantirOpcaoLeilao(r.data.id, r.data.leilao);
+        setLeilaoLabel(r.data.leilao);
+      }).catch(() => {});
+      onLeilao(filtroSalvo.leilaoSel, true).then(() => {
+        if (filtroSalvo.loteSel) onLote(filtroSalvo.loteSel);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const gerarRelatorio = async () => {
     if (!leilaoSel) return;
@@ -104,7 +124,7 @@ export default function Lances() {
             placeholder="Digite para buscar o leilão..."
             style={{ width: '100%' }}
             options={leiloes}
-            onChange={onLeilao}
+            onChange={(v: number) => onLeilao(v)}
             onSearch={buscarLeiloes}
             showSearch
             filterOption={false}
