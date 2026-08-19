@@ -946,7 +946,9 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     const det = lotesDisp.find(l => l.id === id);
     setLoteDetalhes(det ?? null);
 
-    const qtdpar = Number(leilaoInfo?.qtdpar ?? 1);
+    // Se o lote tem condição de pagamento própria (diferente da padrão do
+    // leilão), usa o número de parcelas dela — não da condição do leilão.
+    const qtdpar = Number(det?.condicaoQtdpar ?? leilaoInfo?.qtdpar ?? 1);
     const comcom = leilaoInfo?.comcom ?? 0;
     const comven = leilaoInfo?.comven ?? 0;
 
@@ -970,7 +972,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     if (!loteDetalhes) return;
     const vals  = form1.getFieldsValue();
     const qtd   = vals.qtdxxx || 1;
-    const qtdpar = Number(leilaoInfo?.qtdpar ?? 1);
+    const qtdpar = Number(loteDetalhes?.condicaoQtdpar ?? leilaoInfo?.qtdpar ?? 1);
     const comcom = leilaoInfo?.comcom ?? 0;
     const comven = leilaoInfo?.comven ?? 0;
 

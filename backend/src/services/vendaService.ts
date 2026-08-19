@@ -239,7 +239,7 @@ export async function lotesDisponiveis(idLeilao: number) {
     .input('idLeilao', sql.Int, idLeilao)
     .query(`
       SELECT L.*, C.NOMEXX, R.DESCRICAO AS DESCRICAORACA, R.ESPECIES, R.RACA,
-             CP.DESFIN AS CONDICAO_DESFIN, ISNULL(MLV.QTD_VENDIDA, 0) AS QTD_VENDIDA
+             CP.DESFIN AS CONDICAO_DESFIN, CP.QTDPAR AS CONDICAO_QTDPAR, ISNULL(MLV.QTD_VENDIDA, 0) AS QTD_VENDIDA
       FROM LOTES L
       LEFT JOIN CLIENTES C   ON C.ID = L.CODVEN
       LEFT JOIN RACAS R      ON R.ID = L.RACAXX
@@ -273,6 +273,7 @@ export async function lotesDisponiveis(idLeilao: number) {
     raca:        row.RACA,
     condic:      row.CONDIC,
     condicaoDesfin: row.CONDICAO_DESFIN,
+    condicaoQtdpar: row.CONDICAO_QTDPAR,
     vlrins:      row.VLRINS,
     filiacoa:    row.FILIACAO,
     ordem:       row.ORDEM,
