@@ -851,6 +851,10 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
       // leilaoInfo ficava null ao editar e a Comissão Leiloeiro/Vendedor
       // (e o painel de info do leilão) apareciam em branco.
       setLeilaoInfo(mv);
+      // Data base do parcelamento (equivalente ao EditDataBase do Delphi):
+      // default é a data do leilão, não a data atual — sem isso ficava presa
+      // no dayjs() do estado inicial ao reabrir uma venda para editar.
+      if (mv.datlei) setDataBase(dayjs(mv.datlei.slice(0, 10)));
       form0.setFieldsValue({ idLeilao: mv.idLeilao, codnot: mv.codnot, defesa: mv.defesa !== 'N' });
       garantirOpcaoLeilao(mv.idLeilao, mv.leilao);
       await carregarLotesDisp(mv.idLeilao);
