@@ -1068,6 +1068,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
         comiss, comissVendedor: comissVend,
         datlan: datlei,
       });
+      aplicarCondicaoPadraoLeilao();
       setStep(2);
     } finally { setSalvando(false); }
   };
@@ -1094,6 +1095,15 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     if (condicao?.avista === 'S') {
       form2.setFieldValue('formaPagamento', undefined);
     }
+  };
+
+  // Pré-preenche a condição de pagamento do comprador com a condição
+  // padrão cadastrada no leilão (Leiloes.condic), em vez de deixar o
+  // Select em branco a cada novo comprador.
+  const aplicarCondicaoPadraoLeilao = () => {
+    if (!leilaoInfo?.condic) return;
+    form2.setFieldValue('idCondPagto', leilaoInfo.condic);
+    onCondicaoChange(leilaoInfo.condic);
   };
 
   const adicionarComprador = async () => {
@@ -1146,6 +1156,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     setCondicaoSel(null);
     setClientes([]);
     form2.resetFields(['idCli', 'idCondPagto', 'percen', 'formaPagamento', 'idPropriedade', 'idPisteiro', 'tipoDescontoFidelidade', 'descontoFidelidade']);
+    aplicarCondicaoPadraoLeilao();
   };
 
   const abrirComissaoManual = (comp: any) => {
