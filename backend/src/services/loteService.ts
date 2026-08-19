@@ -232,22 +232,33 @@ export async function duplicarLote(id: number): Promise<number> {
   if (!r.recordset.length) throw new Error('Lote não encontrado');
   const o = r.recordset[0];
   const nr = await pool.request()
+    .input('lotexx',   sql.VarChar, o.LOTEXX   || null)
     .input('deslot',   sql.VarChar, o.DESLOT   || null)
     .input('rpxxx',    sql.VarChar, o.RPXXX    || null)
     .input('sbbxxx',   sql.VarChar, o.SBBXXX   || null)
+    .input('pesoxx',   sql.Float,   o.PESOXX   || null)
     .input('tatxxx',   sql.VarChar, o.TATXXX   || null)
     .input('filiacao', sql.VarChar, o.FILIACAO || null)
     .input('datnas',   sql.Date,    o.DATNAS   || null)
     .input('catego',   sql.VarChar, o.CATEGO   || null)
     .input('racaxx',   sql.Int,     o.RACAXX   || null)
+    .input('idleilao', sql.Int,     o.IDLEILAO || null)
+    .input('codven',   sql.Int,     o.CODVEN   || null)
+    .input('ordem',    sql.VarChar, o.ORDEM    || null)
+    .input('vlrins',   sql.Float,   o.VLRINS   || null)
+    .input('lanmax',   sql.Float,   o.LANMAX   || null)
     .input('obslot',   sql.VarChar, o.OBSLOT   || null)
     .input('pelage',   sql.VarChar, o.PELAGE   || null)
     .input('urlvideo', sql.VarChar, o.URLVideo || null)
+    .input('comentario', sql.VarChar, o.Comentario || null)
+    .input('multiplo', sql.Int,     o.MULTIPLO || null)
+    .input('condic',   sql.Int,     o.CONDIC   || null)
+    .input('qtdAnimais', sql.Int,   o.QTDANIMAIS || null)
     .input('iddup',    sql.Int,     id)
     .query(`INSERT INTO Lotes
-      (ID,DESLOT,RPXXX,SBBXXX,TATXXX,FILIACAO,DATNAS,CATEGO,RACAXX,OBSLOT,PELAGE,URLVideo,ID_DUPLICADO,VENDIDO,PUBLICA)
+      (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,FILIACAO,DATNAS,CATEGO,RACAXX,IDLEILAO,CODVEN,ORDEM,VLRINS,LANMAX,OBSLOT,PELAGE,URLVideo,Comentario,MULTIPLO,CONDIC,QTDANIMAIS,ID_DUPLICADO,VENDIDO,PUBLICA)
       OUTPUT INSERTED.ID
       VALUES
-      ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @deslot,@rpxxx,@sbbxxx,@tatxxx,@filiacao,@datnas,@catego,@racaxx,@obslot,@pelage,@urlvideo,@iddup,'N','N')`);
+      ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@filiacao,@datnas,@catego,@racaxx,@idleilao,@codven,@ordem,@vlrins,@lanmax,@obslot,@pelage,@urlvideo,@comentario,@multiplo,@condic,@qtdAnimais,@iddup,'N','N')`);
   return nr.recordset[0].ID;
 }
