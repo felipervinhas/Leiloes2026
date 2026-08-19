@@ -28,6 +28,7 @@ import { useConfig } from '../context/ConfigContext';
 import ContratoEditor from '../components/ContratoEditor';
 import api from '../services/api';
 import dayjs, { Dayjs } from 'dayjs';
+import { dataUTC, fmtDataUTC } from '../utils/data';
 import { labelRP, labelSBB } from '../utils/lote';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 
@@ -36,14 +37,7 @@ const { Title, Text } = Typography;
 const fmt = (v?: number | null) =>
   v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—';
 
-// Datas vindas do backend são DATE-only, serializadas como meia-noite UTC
-// (ex.: "2026-08-13T00:00:00.000Z"). Formatar com dayjs(v) direto converte
-// pro fuso local do navegador e recua um dia (chamado #58). Usar só a
-// parte da data evita o round-trip de fuso horário.
-const dataUTC = (v: string | Date) => dayjs(String(typeof v === 'string' ? v : v.toISOString()).slice(0, 10));
-
-const fmtData = (v?: string | Date | null) =>
-  v ? dataUTC(v).format('DD/MM/YYYY') : '—';
+const fmtData = fmtDataUTC;
 
 // Restringe os dados de Fatura/Promissória/Nota de Leilão a UM comprador —
 // nunca gera o PDF com todos os compradores do lote juntos (chamado #62).
@@ -1873,7 +1867,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
                               return (
                                 <DatePicker
                                   size="small" format="DD/MM/YYYY" autoFocus
-                                  defaultValue={dataUTC(v)}
+                                  defaultValue={dataUTC(v)!}
                                   onChange={val => {
                                     editingValRef.current = val;
                                     if (val) salvarParcela(row.id, 'datven');
@@ -1885,8 +1879,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
                             }
                             return (
                               <span
-                                style={{ cursor: 'pointer', color: dataUTC(v).isBefore(dayjs()) ? '#ff4d4f' : undefined }}
-                                onClick={() => { editingValRef.current = dataUTC(v); setEditingParc({ id: row.id, field: 'datven', value: dataUTC(v) }); }}
+                                style={{ cursor: 'pointer', color: dataUTC(v)!.isBefore(dayjs()) ? '#ff4d4f' : undefined }}
+                                onClick={() => { editingValRef.current = dataUTC(v)!; setEditingParc({ id: row.id, field: 'datven', value: dataUTC(v)! }); }}
                               >
                                 {fmtData(v)} <EditOutlined style={{ fontSize: 10, opacity: 0.4 }} />
                               </span>

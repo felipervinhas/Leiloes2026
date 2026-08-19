@@ -12,6 +12,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import dayjs from 'dayjs';
+import { dataUTC, fmtDataUTC } from '../utils/data';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
 import { useBanco } from '../context/BancoContext';
@@ -417,9 +418,9 @@ export default function Clientes() {
     const d = r.data;
     form.setFieldsValue({
       ...d,
-      datnas: d.datnas ? dayjs(d.datnas) : null,
-      datcad: d.datcad ? dayjs(d.datcad).format('DD/MM/YYYY') : '',
-      datalt: d.datalt ? dayjs(d.datalt).format('DD/MM/YYYY') : '',
+      datnas: dataUTC(d.datnas),
+      datcad: fmtDataUTC(d.datcad, ''),
+      datalt: fmtDataUTC(d.datalt, ''),
     });
     setEditando(d);
     carregarPropriedades(d.id);
@@ -783,7 +784,7 @@ export default function Clientes() {
   })() : <Typography.Text type="secondary">Disponível apenas ao editar um cliente existente.</Typography.Text>;
 
   const colunasHistCompras = [
-    { title: 'Data', dataIndex: 'datlan', width: 100, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—',
+    { title: 'Data', dataIndex: 'datlan', width: 100, render: (v: string) => fmtDataUTC(v),
       sorter: (a: any, b: any) => new Date(a.datlan || 0).getTime() - new Date(b.datlan || 0).getTime() },
     { title: 'Lote', dataIndex: 'lotexx', ...rzHC('lotexx'),
       sorter: (a: any, b: any) => (parseInt(a.lotexx, 10) || 0) - (parseInt(b.lotexx, 10) || 0) },
@@ -814,7 +815,7 @@ export default function Clientes() {
   ];
 
   const colunasHistVendas = [
-    { title: 'Data', dataIndex: 'datlan', width: 100, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—',
+    { title: 'Data', dataIndex: 'datlan', width: 100, render: (v: string) => fmtDataUTC(v),
       sorter: (a: any, b: any) => new Date(a.datlan || 0).getTime() - new Date(b.datlan || 0).getTime() },
     { title: 'Lote', dataIndex: 'lotexx', ...rzHV('lotexx'),
       sorter: (a: any, b: any) => (parseInt(a.lotexx, 10) || 0) - (parseInt(b.lotexx, 10) || 0) },
@@ -875,7 +876,7 @@ export default function Clientes() {
   );
 
   const colunasOcorrencias = [
-    { title: 'Data', dataIndex: 'dataOcorrencia', width: 110, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
+    { title: 'Data', dataIndex: 'dataOcorrencia', width: 110, render: (v: string) => fmtDataUTC(v) },
     { title: 'Ocorrência', dataIndex: 'ocorrencia', ellipsis: true },
     {
       title: '', width: 80,

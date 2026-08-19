@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
+import { fmtDataUTC } from '../utils/data';
 
 export interface ClienteFichaPDF {
   id: number;
@@ -107,7 +108,7 @@ function Campo({ label, valor, largura }: { label: string; valor?: string | null
 function FichaClientePDF({ cliente, propriedades, empresa, logoBase64 }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-  const nascimento = cliente.datnas ? new Date(cliente.datnas).toLocaleDateString('pt-BR') : undefined;
+  const nascimento = cliente.datnas ? fmtDataUTC(cliente.datnas) : undefined;
 
   return (
     <Document title={`Ficha de Cliente — ${cliente.nomexx || ''}`} author={nomeEmpresa}>

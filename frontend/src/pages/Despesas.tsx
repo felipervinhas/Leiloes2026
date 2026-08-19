@@ -4,6 +4,7 @@ import { Table, Button, Modal, Form, Input, InputNumber, Select, Spin, DatePicke
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, WalletOutlined, PrinterOutlined, FileTextOutlined } from '@ant-design/icons';
 import { BlobProvider } from '@react-pdf/renderer';
 import dayjs from 'dayjs';
+import { dataUTC, fmtDataUTC } from '../utils/data';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
 import RelatorioReciboDespesa from '../relatorios/RelatorioReciboDespesa';
@@ -119,7 +120,7 @@ function AbaDespesas() {
       ),
     },
     { title: 'Inclusão', dataIndex: 'dataInclusao', width: 110,
-      render: (v: string) => v ? new Date(v).toLocaleDateString('pt-BR') : '—' },
+      render: (v: string) => fmtDataUTC(v) },
     {
       title: 'Ações', width: 130,
       render: (_: any, r: any) => (
@@ -327,7 +328,7 @@ function AbaRecibos() {
   const abrirModal = (item?: any) => {
     setEditando(item || null);
     form.setFieldsValue(item
-      ? { ...item, data: item.data ? dayjs(item.data) : dayjs() }
+      ? { ...item, data: item.data ? dataUTC(item.data) : dayjs() }
       : { valor: 0, data: dayjs(), tipo: 'R' });
     if (item) garantirOpcaoCliente(item.codigoCliente, item.nomeCliente);
     setModalOpen(true);
@@ -370,7 +371,7 @@ function AbaRecibos() {
       ),
     },
     { title: 'Data', dataIndex: 'data', width: 110,
-      render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
+      render: (v: string) => fmtDataUTC(v) },
     {
       title: 'Ações', width: 130,
       render: (_: any, r: any) => (

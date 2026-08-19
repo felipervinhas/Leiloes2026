@@ -1,3 +1,5 @@
+import { fmtDataUTC } from '../utils/data';
+
 export interface OrdemEntradaContexto {
   titulo: string;
   empresa: string;
@@ -51,9 +53,7 @@ interface LoteComDadosLeilao {
 }
 
 function dataBr(v?: string | Date): string {
-  if (!v) return '—';
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR');
+  return fmtDataUTC(v);
 }
 
 function numOuTraco(v?: number): string {

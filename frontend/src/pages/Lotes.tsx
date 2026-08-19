@@ -7,6 +7,7 @@ import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import { useBuscaClientes } from '../hooks/useBuscaClientes';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CopyOutlined, AppstoreOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { dataUTC } from '../utils/data';
 import api from '../services/api';
 import ImageUpload from '../components/ImageUpload';
 import { labelRP, labelSBB } from '../utils/lote';
@@ -88,7 +89,7 @@ export default function Lotes() {
         api.get(`/lotes/${item.id}/imagens`),
       ]);
       const d = r.data;
-      form.setFieldsValue({ ...d, datnas: d.datnas ? dayjs(d.datnas) : null, publica: d.publica === 'S', vendido: d.vendido === 'S' });
+      form.setFieldsValue({ ...d, datnas: dataUTC(d.datnas), publica: d.publica === 'S', vendido: d.vendido === 'S' });
       setEditando(d);
       setImagens(imgs.data);
       // Um Select cujo value não bate com nenhuma option mostra o código
@@ -137,7 +138,7 @@ export default function Lotes() {
       const novoLote = await api.get(`/lotes/${r.data.id}`);
       const imgs = await api.get(`/lotes/${r.data.id}/imagens`);
       const d = novoLote.data;
-      form.setFieldsValue({ ...d, datnas: d.datnas ? dayjs(d.datnas) : null, publica: d.publica === 'S', vendido: d.vendido === 'S' });
+      form.setFieldsValue({ ...d, datnas: dataUTC(d.datnas), publica: d.publica === 'S', vendido: d.vendido === 'S' });
       setEditando(d);
       setImagens(imgs.data);
       carregar(busca, pagina);

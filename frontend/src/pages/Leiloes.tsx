@@ -4,8 +4,8 @@ import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker,
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CalendarOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import api from '../services/api';
+import { dataUTC, fmtDataUTC } from '../utils/data';
 import ImageUpload from '../components/ImageUpload';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { useBanco } from '../context/BancoContext';
@@ -57,7 +57,7 @@ export default function Leiloes() {
         api.get(`/leiloes/${item.id}/imagens`),
       ]);
       const d = r.data;
-      form.setFieldsValue({ ...d, datlei: d.datlei ? dayjs(d.datlei.slice(0, 10)) : null, dataSaldo: d.dataSaldo ? dayjs(d.dataSaldo.slice(0, 10)) : null });
+      form.setFieldsValue({ ...d, datlei: dataUTC(d.datlei), dataSaldo: dataUTC(d.dataSaldo) });
       setEditando(d);
       setImagens(imgs.data);
     } else {
@@ -103,7 +103,7 @@ export default function Leiloes() {
       ),
     },
     { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, ...rzLei('leilao') },
-    { title: 'Data', dataIndex: 'datlei', ...rzLei('datlei'), render: (v: string) => v ? dayjs(v.slice(0, 10)).format('DD/MM/YYYY') : '—' },
+    { title: 'Data', dataIndex: 'datlei', ...rzLei('datlei'), render: (v: string) => fmtDataUTC(v) },
     { title: 'Ativo', dataIndex: 'ativox', ...rzLei('ativox'), render: (v: string) => <Tag color={v === 'S' ? 'green' : 'red'}>{v === 'S' ? 'Sim' : 'Não'}</Tag> },
     {
       title: 'Ações', width: 100,

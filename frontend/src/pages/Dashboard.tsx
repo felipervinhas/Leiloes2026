@@ -13,6 +13,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useBanco } from '../context/BancoContext';
 import api from '../services/api';
+import { fmtDataUTC } from '../utils/data';
 
 const { Title, Text } = Typography;
 
@@ -998,7 +999,7 @@ export default function Dashboard() {
                         </div>
                       )}
                       {c.datcad && (
-                        <div>Cadastro: {new Date(c.datcad).toLocaleDateString('pt-BR')}</div>
+                        <div>Cadastro: {fmtDataUTC(c.datcad)}</div>
                       )}
                     </div>
                   }

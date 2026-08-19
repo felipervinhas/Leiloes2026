@@ -17,6 +17,7 @@ import { useConfig } from '../context/ConfigContext';
 import { useBanco } from '../context/BancoContext';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
+import { fmtDataUTC } from '../utils/data';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -159,7 +160,7 @@ export default function AcertoVendedor() {
     linhas.push(['Tipo', 'Leilão', 'Observações', 'Valor', 'Inclusão'].join(';'));
     for (const l of acerto.lancamentos) {
       linhas.push([dcInfo(l.dc).label, (l as any).leilao, l.observacoes, num(l.valor),
-        l.dataInclusao ? new Date(l.dataInclusao).toLocaleDateString('pt-BR') : ''].map(csvEsc).join(';'));
+        l.dataInclusao ? fmtDataUTC(l.dataInclusao) : ''].map(csvEsc).join(';'));
     }
     linhas.push('');
 
@@ -201,7 +202,7 @@ export default function AcertoVendedor() {
     ...(!acerto?.idLeilao ? [{ title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 160 }] : []),
     { title: 'Observações', dataIndex: 'observacoes', ellipsis: true },
     { title: 'Valor', dataIndex: 'valor', width: 130, align: 'right' as const, render: fmt },
-    { title: 'Inclusão', dataIndex: 'dataInclusao', width: 100, render: (v: string) => v ? new Date(v).toLocaleDateString('pt-BR') : '—' },
+    { title: 'Inclusão', dataIndex: 'dataInclusao', width: 100, render: (v: string) => fmtDataUTC(v) },
     {
       title: 'Ações', width: 120,
       render: (_: any, r: any) => (

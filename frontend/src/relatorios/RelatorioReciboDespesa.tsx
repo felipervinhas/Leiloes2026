@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { valorExtenso } from './promissoriaUtils';
+import { fmtDataUTC } from '../utils/data';
 
 export interface ReciboDespesaPDF {
   id: number;
@@ -98,7 +99,7 @@ const s = StyleSheet.create({
 function RelatorioReciboDespesa({ dados, empresa, logoBase64 }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const info = TIPO_INFO[dados.dc] || TIPO_INFO.D;
-  const dataFmt = dados.dataInclusao ? new Date(dados.dataInclusao).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+  const dataFmt = dados.dataInclusao ? fmtDataUTC(dados.dataInclusao) : new Date().toLocaleDateString('pt-BR');
 
   return (
     <Document title={`${info.titulo} #${dados.id}`} author={nomeEmpresa}>

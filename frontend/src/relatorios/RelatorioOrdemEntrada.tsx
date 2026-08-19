@@ -3,6 +3,7 @@ import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Image } from '
 import { Button, Radio, Space } from 'antd';
 import { PrinterOutlined } from '@ant-design/icons';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
+import { fmtDataUTC } from '../utils/data';
 
 type Orientacao = 'retrato' | 'paisagem';
 
@@ -111,9 +112,7 @@ const s = StyleSheet.create({
 });
 
 function dataBr(v?: string): string {
-  if (!v) return '';
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
+  return fmtDataUTC(v, '');
 }
 
 function OrdemEntradaPDF({ lotes, titulo, empresa, logoBase64, orientacao = 'paisagem' }: Props & { orientacao?: Orientacao }) {

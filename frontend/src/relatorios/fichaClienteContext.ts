@@ -1,3 +1,5 @@
+import { fmtDataUTC } from '../utils/data';
+
 export interface ClienteFichaPDF {
   id: number;
   nomexx?: string;
@@ -50,9 +52,7 @@ export interface FichaClienteContexto {
 }
 
 function dataBr(v?: string): string {
-  if (!v) return '—';
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR');
+  return v ? fmtDataUTC(v) : '—';
 }
 
 export function montarContextoFichaCliente(

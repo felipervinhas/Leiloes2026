@@ -13,6 +13,7 @@ import {
 import { PDFDownloadLink, BlobProvider } from '@react-pdf/renderer';
 import api from '../services/api';
 import dayjs from 'dayjs';
+import { fmtDataUTC } from '../utils/data';
 import ConsultaVendasPDF, { COLUNAS_CONSULTA_VENDAS } from '../relatorios/RelatorioConsultaVendas';
 import PartesVendasPDF from '../relatorios/RelatorioPartesVendas';
 import MediasLeilaoPDF from '../relatorios/RelatorioMediasLeilao';
@@ -382,7 +383,7 @@ export default function ConsultaVendas() {
     { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, ...rzCV('leilao'),
       sorter: COMPARADORES.leilao },
     { title: 'Dt. Leilão', dataIndex: 'datlei', ...rzCV('datlei'),
-      render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—',
+      render: (v: string) => fmtDataUTC(v),
       sorter: COMPARADORES.datlei },
     { title: labelRP(especiesPredominante), dataIndex: 'rpxxx', ...rzCV('rpxxx'),
       sorter: COMPARADORES.rpxxx },
@@ -426,7 +427,7 @@ export default function ConsultaVendas() {
     { title: 'Vencimento', dataIndex: 'primeiroVencimentoData', ...rzCV('primeiroVencimentoData'),
       sorter: COMPARADORES.primeiroVencimentoData },
     { title: 'Dt. Lançamento', dataIndex: 'datlan', ...rzCV('datlan'),
-      render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY') : '—',
+      render: (v: string) => fmtDataUTC(v),
       sorter: COMPARADORES.datlan },
     { title: 'Status', dataIndex: 'defesa', ...rzCV('defesa'),
       render: (v: string) => v === 'S'

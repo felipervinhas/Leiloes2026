@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { ClienteCompleto } from './RelatorioClientes';
+import { fmtDataUTC } from '../utils/data';
 
 export function exportarClientesExcel(clientes: ClienteCompleto[], nomeArquivo = 'clientes') {
   const linhas = clientes.map(c => ({
@@ -9,7 +10,7 @@ export function exportarClientesExcel(clientes: ClienteCompleto[], nomeArquivo =
     'CNPJ': c.cnpjxx ?? '',
     'RG': c.rgxxxx ?? '',
     'Estado Civil': c.estciv ?? '',
-    'Data Nasc.': c.datnas ? new Date(c.datnas).toLocaleDateString('pt-BR') : '',
+    'Data Nasc.': fmtDataUTC(c.datnas, ''),
     'E-mail': c.emailx ?? '',
     'E-mail 2': c.email2 ?? '',
     'Tel. Residencial': c.telres ?? '',
@@ -27,7 +28,7 @@ export function exportarClientesExcel(clientes: ClienteCompleto[], nomeArquivo =
     'Ativo': c.ativox === 'S' ? 'Sim' : 'Não',
     'Bloqueado': c.blocli ?? '',
     'Observações': c.obsxxx ?? '',
-    'Cadastrado em': c.datcad ? new Date(c.datcad).toLocaleDateString('pt-BR') : '',
+    'Cadastrado em': fmtDataUTC(c.datcad, ''),
   }));
 
   const ws = XLSX.utils.json_to_sheet(linhas);
@@ -73,7 +74,7 @@ export function exportarVendasExcel(vendas: any[], nomeArquivo = 'vendas') {
     'Status': v.defesa === 'S' ? 'Vendido' : 'Pendente',
     'Boleto': v.codnot ?? '',
     'Leilão': v.leilao ?? '',
-    'Data': v.datlan ? new Date(v.datlan).toLocaleDateString('pt-BR') : '',
+    'Data': fmtDataUTC(v.datlan, ''),
     'Lote': v.lotexx ?? '',
     'Descrição': v.deslot ?? '',
     'Comprador': v.nomexx ?? '',

@@ -5,6 +5,7 @@ import {
   LeftOutlined, RightOutlined, LogoutOutlined, PlayCircleOutlined,
 } from '@ant-design/icons';
 import api from '../services/api';
+import { fmtDataUTC } from '../utils/data';
 import { useBanco } from '../context/BancoContext';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import { labelRP, labelSBB, ordenarPorEntrada } from '../utils/lote';
@@ -250,7 +251,7 @@ export default function PainelLeiloeiro() {
                   <DadoItem label={labelRP(especies)} valor={lote.rpxxx} />
                   <DadoItem label={labelSBB(especies)} valor={lote.sbbxxx} />
                   <DadoItem label="TAT" valor={lote.tatxxx} />
-                  <DadoItem label="Data Nasc." valor={lote.datnas ? new Date(lote.datnas).toLocaleDateString('pt-BR') : undefined} />
+                  <DadoItem label="Data Nasc." valor={lote.datnas ? fmtDataUTC(lote.datnas) : undefined} />
                 </Row>
 
                 {lote.filiacao && (

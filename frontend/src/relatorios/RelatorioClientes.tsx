@@ -3,6 +3,7 @@ import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Image } from '
 import { Button, Radio, Space } from 'antd';
 import { FilePdfOutlined } from '@ant-design/icons';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
+import { fmtDataUTC } from '../utils/data';
 
 type Orientacao = 'retrato' | 'paisagem';
 
@@ -173,7 +174,7 @@ function Campo({ label, value, width }: { label: string; value?: string | null; 
 
 function formatarData(iso?: string | null) {
   if (!iso) return undefined;
-  try { return new Date(iso).toLocaleDateString('pt-BR'); } catch { return iso; }
+  try { return fmtDataUTC(iso); } catch { return iso; }
 }
 
 
