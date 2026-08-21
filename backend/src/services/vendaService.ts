@@ -2,14 +2,19 @@ import { getPool, sql } from '../config/database';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
+// Colunas DATE-only do SQL Server chegam como meia-noite UTC. Usar getters/setters
+// locais aqui (getMonth/setFullYear) reinterpreta esse instante no fuso do servidor
+// (America/Sao_Paulo, UTC-3) e recua um dia antes de fazer a conta do mês — em
+// cadeias de incMonth (parcelas SALPAR, uma chamada em cima da anterior) esse
+// desvio composto chega a pular o mês de fevereiro inteiro. Precisa operar em UTC.
 function incMonth(date: Date, months = 1): Date {
   const d = new Date(date);
-  const targetMonth = d.getMonth() + months;
-  const year  = d.getFullYear() + Math.floor(targetMonth / 12);
+  const targetMonth = d.getUTCMonth() + months;
+  const year  = d.getUTCFullYear() + Math.floor(targetMonth / 12);
   const month = ((targetMonth % 12) + 12) % 12;
-  const day   = d.getDate();
-  const lastDay = new Date(year, month + 1, 0).getDate();
-  d.setFullYear(year, month, Math.min(day, lastDay));
+  const day   = d.getUTCDate();
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  d.setUTCFullYear(year, month, Math.min(day, lastDay));
   return d;
 }
 
@@ -299,11 +304,11 @@ export async function salvarLote(idMov: number, d: DadosLote, datlan: string): P
       .input('idLote',         sql.Int,     d.idLote)
       .input('qtdxxx',         sql.Decimal, d.qtdxxx)
       .input('qtdpar',         sql.VarChar, String(d.qtdpar ?? 1))
-      .input('vlrpar',         sql.Decimal, d.vlrpar)
-      .input('vlrtot',         sql.Decimal, d.vlrtot)
-      .input('vlrdes',         sql.Decimal, d.vlrdes)
-      .input('comiss',         sql.Decimal, d.comiss || 0)
-      .input('comissVendedor', sql.Decimal, d.comissVendedor || 0)
+      .input('vlrpar',         sql.Decimal(18, 2), d.vlrpar)
+      .input('vlrtot',         sql.Decimal(18, 2), d.vlrtot)
+      .input('vlrdes',         sql.Decimal(18, 2), d.vlrdes)
+      .input('comiss',         sql.Decimal(18, 2), d.comiss || 0)
+      .input('comissVendedor', sql.Decimal(18, 2), d.comissVendedor || 0)
       .input('datlan',         sql.Date,    datlan)
       .query(`
         UPDATE MOVIMENTO_LOTE
@@ -329,11 +334,11 @@ export async function salvarLote(idMov: number, d: DadosLote, datlan: string): P
     .input('codven',         sql.Int,     codven)
     .input('qtdxxx',         sql.Decimal, d.qtdxxx)
     .input('qtdpar',         sql.Int,     d.qtdpar || 1)
-    .input('vlrpar',         sql.Decimal, d.vlrpar)
-    .input('vlrtot',         sql.Decimal, d.vlrtot)
-    .input('vlrdes',         sql.Decimal, d.vlrdes)
-    .input('comiss',         sql.Decimal, d.comiss || 0)
-    .input('comissVendedor', sql.Decimal, d.comissVendedor || 0)
+    .input('vlrpar',         sql.Decimal(18, 2), d.vlrpar)
+    .input('vlrtot',         sql.Decimal(18, 2), d.vlrtot)
+    .input('vlrdes',         sql.Decimal(18, 2), d.vlrdes)
+    .input('comiss',         sql.Decimal(18, 2), d.comiss || 0)
+    .input('comissVendedor', sql.Decimal(18, 2), d.comissVendedor || 0)
     .input('datlan',         sql.Date,    datlan)
     .query(`
       INSERT INTO MOVIMENTO_LOTE (IDMOV,IDLOTE,LOTEXX,CODVEN,QTDXXX,QTDPAR,VLRPAR,VLRTOT,VLRDES,COMISS,COMISS_VENDEDOR,DATLAN)
@@ -749,17 +754,19 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
     totpar += parseFloat(cond[k]) || 0;
   }
 
-  // 5. Desconto (condição de pagamento) + Fidelidade (composto sobre o valor já líquido)
+  // 5. Desconto do lote (manual, campo "Desconto (R$)" da venda) + Desconto da condição
+  // de pagamento (%) + Fidelidade — compostos em sequência sobre o valor bruto.
   // pValorPagar sempre recomeça do bruto (pValorOriginal) — gerarParcelas pode
   // rodar mais de uma vez pro mesmo comprador (reemitir parcelamento), e usar o
-  // p.pValorPagar recebido (que já pode ter a fidelidade aplicada uma vez pelo
+  // p.pValorPagar recebido (que já pode ter os descontos aplicados uma vez pelo
   // cálculo provisório de salvarComprador/atualizarComprador) duplicaria o desconto.
   const { pValorOriginal } = p;
-  let pValorPagar = pValorOriginal;
+  const valorDescontoLote = p.pValorDesconto || 0;
+  let pValorPagar = pValorOriginal - valorDescontoLote;
   let valorDescontoCondicao = 0;
   if (descon > 0) {
-    valorDescontoCondicao = pValorOriginal * (descon / 100);
-    pValorPagar = pValorOriginal - valorDescontoCondicao;
+    valorDescontoCondicao = pValorPagar * (descon / 100);
+    pValorPagar -= valorDescontoCondicao;
   }
 
   let valorDescontoFidelidade = 0;
@@ -771,12 +778,13 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
   valorDescontoFidelidade = Math.min(valorDescontoFidelidade, pValorPagar);
   pValorPagar -= valorDescontoFidelidade;
 
-  if (descon > 0 || valorDescontoFidelidade > 0) {
+  {
+    const valorDescontoTotal = valorDescontoLote + valorDescontoCondicao;
     await pool.request()
       .input('idMov',     sql.Int,     p.pMovimento)
       .input('idCli',     sql.Int,     p.pCliente)
       .input('idMovLote', sql.Int,     p.pIdMovLote)
-      .input('desc',      sql.Decimal(18, 2), valorDescontoCondicao)
+      .input('desc',      sql.Decimal(18, 2), valorDescontoTotal)
       .input('fid',       sql.Decimal(18, 2), valorDescontoFidelidade)
       .input('pagar',     sql.Decimal(18, 2), pValorPagar)
       .query(`UPDATE MOVIMENTO_COMPRADOR

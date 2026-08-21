@@ -51,10 +51,10 @@ export async function criarCondicao(d: Omit<CondicaoPagto, 'id'>): Promise<numbe
     .input('entrad', sql.VarChar, d.entrad || null).input('invert', sql.VarChar, d.invert || null)
     .input('safrax', sql.VarChar, d.safrax || null).input('descon', sql.VarChar, d.descon || null)
     .input('salpar', sql.VarChar, d.salpar || null)
-    .input('entradaSafra', sql.Decimal, d.entradaSafra || null)
-    .input('descontoEntradaSafra', sql.Decimal, d.descontoEntradaSafra || null)
-    .input('saldoSafra', sql.Decimal, d.saldoSafra || null)
-    .input('descontoSaldoSafra', sql.Decimal, d.descontoSaldoSafra || null);
+    .input('entradaSafra', sql.Decimal(5, 2), d.entradaSafra || null)
+    .input('descontoEntradaSafra', sql.Decimal(5, 2), d.descontoEntradaSafra || null)
+    .input('saldoSafra', sql.Decimal(5, 2), d.saldoSafra || null)
+    .input('descontoSaldoSafra', sql.Decimal(5, 2), d.descontoSaldoSafra || null);
   bindParcelas(req, d);
   const parcCols = PARC_KEYS.map(k => k.toUpperCase()).join(',');
   const parcVals = PARC_KEYS.map(k => `@${k}`).join(',');
@@ -76,10 +76,10 @@ export async function atualizarCondicao(id: number, d: Omit<CondicaoPagto, 'id'>
     .input('entrad', sql.VarChar, d.entrad || null).input('invert', sql.VarChar, d.invert || null)
     .input('safrax', sql.VarChar, d.safrax || null).input('descon', sql.VarChar, d.descon || null)
     .input('salpar', sql.VarChar, d.salpar || null)
-    .input('entradaSafra', sql.Decimal, d.entradaSafra || null)
-    .input('descontoEntradaSafra', sql.Decimal, d.descontoEntradaSafra || null)
-    .input('saldoSafra', sql.Decimal, d.saldoSafra || null)
-    .input('descontoSaldoSafra', sql.Decimal, d.descontoSaldoSafra || null);
+    .input('entradaSafra', sql.Decimal(5, 2), d.entradaSafra || null)
+    .input('descontoEntradaSafra', sql.Decimal(5, 2), d.descontoEntradaSafra || null)
+    .input('saldoSafra', sql.Decimal(5, 2), d.saldoSafra || null)
+    .input('descontoSaldoSafra', sql.Decimal(5, 2), d.descontoSaldoSafra || null);
   bindParcelas(req, d);
   const parcSets = PARC_KEYS.map(k => `${k.toUpperCase()}=@${k}`).join(',');
   await req.query(`UPDATE CondicaoPagtos SET DESFIN=@desfin,PRZMED=@przmed,QTDPAR=@qtdpar,AVISTA=@avista,ENTRAD=@entrad,
