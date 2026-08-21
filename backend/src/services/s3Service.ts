@@ -52,7 +52,12 @@ export async function uploadS3(key: string, buffer: Buffer, mimetype: string): P
 export async function deletarS3(key: string): Promise<void> {
   const bucket = await resolveBucket();
   await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
-  uploadedAt.delete(key);
+  // Não usar .delete(key) aqui: isso tiraria o "?v=" da URL, fazendo-a voltar
+  // pra forma "crua" que o navegador pode ter em cache de uma visita anterior
+  // (o nome do arquivo no S3 nunca muda) — a imagem apagada "reaparecia" ao
+  // reabrir o cadastro. Marcando um novo timestamp força uma URL nunca vista
+  // antes, garantindo que o navegador busque de novo (e receba 404/vazio).
+  uploadedAt.set(key, Date.now());
 }
 
 export async function urlS3(key: string): Promise<string> {
