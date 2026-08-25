@@ -128,6 +128,7 @@ export default function Clientes() {
   const [promissoriaData, setPromissoriaData] = useState<FaturaData | null>(null);
   const [promissoriaModal, setPromissoriaModal] = useState(false);
   const [enviandoDocumento, setEnviandoDocumento] = useState<string | null>(null);
+  const [statusDocumentos, setStatusDocumentos] = useState<Record<string, { enviado: boolean; urlJpg: string | null; urlPdf: string | null }>>({});
   const [propriedades, setPropriedades] = useState<any[]>([]);
   const [propriedadesLoading, setPropriedadesLoading] = useState(false);
   const [propModalOpen, setPropModalOpen] = useState(false);
@@ -254,6 +255,17 @@ export default function Clientes() {
     }
     if (key === 'ocorrencias' && editando) {
       carregarOcorrencias(editando.id);
+    }
+  };
+
+  const carregarStatusDocumentos = async (idCli: number) => {
+    try {
+      const r = await api.get(`/clientes/${idCli}/documentos/status`);
+      const mapa: typeof statusDocumentos = {};
+      for (const d of r.data) mapa[d.tipo] = { enviado: d.enviado, urlJpg: d.urlJpg, urlPdf: d.urlPdf };
+      setStatusDocumentos(mapa);
+    } catch {
+      setStatusDocumentos({});
     }
   };
 
@@ -429,9 +441,11 @@ export default function Clientes() {
 
   const abrirDrawer = async (item?: Cliente) => {
     setPropriedades([]);
+    setStatusDocumentos({});
     if (item) {
       await preencherFormCliente(item.id);
       carregarPropriedades(item.id);
+      carregarStatusDocumentos(item.id);
     } else {
       form.resetFields();
       form.setFieldsValue({
@@ -739,6 +753,7 @@ export default function Clientes() {
       fd.append('file', file);
       await api.post(`/clientes/${editando.id}/documentos/${tipo}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       message.success('Documento enviado com sucesso');
+      carregarStatusDocumentos(editando.id);
     } catch {
       message.error('Erro ao enviar documento');
     } finally {
@@ -747,7 +762,6 @@ export default function Clientes() {
   };
 
   const tabDocumentos = editando ? (() => {
-    const base = `https://${config.bucket}.s3.us-east-2.amazonaws.com`;
     const docs = [
       { key: 'documento',  label: 'Documento de Identidade' },
       { key: 'residencia', label: 'Comprovante de Residência' },
@@ -756,29 +770,42 @@ export default function Clientes() {
     ];
     return (
       <Space direction="vertical" style={{ width: '100%' }} size={16}>
-        {docs.map(d => (
-          <Card key={d.key} size="small" title={d.label} style={{ borderRadius: 8 }}>
-            <Space wrap>
-              <Button icon={<FileTextOutlined />}
-                onClick={() => window.open(`${base}/${d.key}_user_${editando.id}.jpg`, '_blank')}>
-                Abrir JPG
-              </Button>
-              <Button icon={<AuditOutlined />}
-                onClick={() => window.open(`${base}/${d.key}_user_${editando.id}.pdf`, '_blank')}>
-                Abrir PDF
-              </Button>
-              <Upload
-                accept=".jpg,.jpeg,.png,.pdf"
-                showUploadList={false}
-                beforeUpload={file => { enviarDocumentoCliente(d.key, file); return false; }}
-              >
-                <Button icon={<UploadOutlined />} loading={enviandoDocumento === d.key}>
-                  Enviar arquivo
-                </Button>
-              </Upload>
-            </Space>
-          </Card>
-        ))}
+        {docs.map(d => {
+          const st = statusDocumentos[d.key];
+          return (
+            <Card key={d.key} size="small" style={{ borderRadius: 8 }}
+              title={
+                <Space>
+                  {d.label}
+                  {st?.enviado
+                    ? <Tag color="green" icon={<CheckCircleFilled />}>Enviado</Tag>
+                    : <Tag color="default" icon={<CloseOutlined />}>Não enviado</Tag>}
+                </Space>
+              }>
+              <Space wrap>
+                {st?.urlJpg && (
+                  <Button icon={<FileTextOutlined />} onClick={() => window.open(st.urlJpg!, '_blank')}>
+                    Abrir JPG
+                  </Button>
+                )}
+                {st?.urlPdf && (
+                  <Button icon={<AuditOutlined />} onClick={() => window.open(st.urlPdf!, '_blank')}>
+                    Abrir PDF
+                  </Button>
+                )}
+                <Upload
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  showUploadList={false}
+                  beforeUpload={file => { enviarDocumentoCliente(d.key, file); return false; }}
+                >
+                  <Button icon={<UploadOutlined />} loading={enviandoDocumento === d.key}>
+                    {st?.enviado ? 'Substituir arquivo' : 'Enviar arquivo'}
+                  </Button>
+                </Upload>
+              </Space>
+            </Card>
+          );
+        })}
       </Space>
     );
   })() : <Typography.Text type="secondary">Disponível apenas ao editar um cliente existente.</Typography.Text>;

@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getPool } from '../config/database';
 import { getBanco } from '../config/bancoContext';
 
@@ -58,6 +58,16 @@ export async function deletarS3(key: string): Promise<void> {
   // reabrir o cadastro. Marcando um novo timestamp força uma URL nunca vista
   // antes, garantindo que o navegador busque de novo (e receba 404/vazio).
   uploadedAt.set(key, Date.now());
+}
+
+export async function existeS3(key: string): Promise<boolean> {
+  const bucket = await resolveBucket();
+  try {
+    await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function urlS3(key: string): Promise<string> {

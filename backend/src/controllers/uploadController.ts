@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { uploadS3, deletarS3, resolveBucket, s3PublicUrl, s3Keys } from '../services/s3Service';
+import { uploadS3, deletarS3, existeS3, resolveBucket, s3PublicUrl, s3Keys } from '../services/s3Service';
 
 export async function uploadLeilaoDesktop(req: Request, res: Response) {
   const id = Number(req.params.id);
@@ -46,6 +46,24 @@ export async function uploadClienteDocumento(req: Request, res: Response) {
   const key = s3Keys.clienteDocumento(tipo, id, ext);
   const url = await uploadS3(key, req.file.buffer, req.file.mimetype);
   res.json({ url, key });
+}
+
+export async function getStatusDocumentosCliente(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const bucket = await resolveBucket();
+  const status = await Promise.all(TIPOS_DOCUMENTO_CLIENTE.map(async (tipo) => {
+    const [temJpg, temPdf] = await Promise.all([
+      existeS3(s3Keys.clienteDocumento(tipo, id, 'jpg')),
+      existeS3(s3Keys.clienteDocumento(tipo, id, 'pdf')),
+    ]);
+    return {
+      tipo,
+      enviado: temJpg || temPdf,
+      urlJpg: temJpg ? s3PublicUrl(bucket, s3Keys.clienteDocumento(tipo, id, 'jpg')) : null,
+      urlPdf: temPdf ? s3PublicUrl(bucket, s3Keys.clienteDocumento(tipo, id, 'pdf')) : null,
+    };
+  }));
+  res.json(status);
 }
 
 export async function deletarLoteImagem(req: Request, res: Response) {
