@@ -719,12 +719,12 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
     ? new Date(p.pDataLeilao)
     : (lRes.recordset[0]?.DATLEI ? new Date(lRes.recordset[0].DATLEI) : new Date());
 
-  // 2. Condição de pagamento (pode ter override no lote)
-  const loteRes = await pool.request()
-    .input('id', sql.Int, p.pLote)
-    .query(`SELECT CONDIC FROM LOTES WHERE ID=@id`);
-  let condId = p.pCondicaoPagto;
-  if (loteRes.recordset[0]?.CONDIC) condId = loteRes.recordset[0].CONDIC;
+  // 2. Condição de pagamento: sempre a escolhida pelo comprador (MOVIMENTO_COMPRADOR),
+  // é ela que define como o cliente vai efetivamente pagar (ex.: à vista com desconto).
+  // A CONDIC do lote/leilão é usada só como multiplicador de QTDPAR pra precificar o
+  // lote (VLRTOT = VLRPAR * QTDPAR, já resolvido no frontend ao selecionar o lote) —
+  // não deve ser usada aqui pra decidir o parcelamento do contrato.
+  const condId = p.pCondicaoPagto;
 
   const cRes = await pool.request()
     .input('id', sql.Int, condId)
