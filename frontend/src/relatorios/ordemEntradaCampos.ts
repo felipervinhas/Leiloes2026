@@ -7,6 +7,7 @@ export interface LoteOrdemPDF {
   lotexx: string;
   deslot?: string;
   nomeVendedor?: string;
+  estabelecimento?: string;
   nomeRaca?: string;
   catego?: string;
   ordem: string;
@@ -68,6 +69,7 @@ export const COLUNAS_LOTES_PADRAO: ColunaTabela[] = [
   { key: 'lotexx', label: 'Lote', largura: 12, visivel: true },
   { key: 'deslot', label: 'Descrição', largura: 36, visivel: true },
   { key: 'nomeVendedor', label: 'Vendedor', largura: 22, visivel: true },
+  { key: 'estabelecimento', label: 'Estabelecimento', largura: 22, visivel: false },
   { key: 'nomeRaca', label: 'Raça', largura: 12, visivel: true },
   { key: 'catego', label: 'Sexo', largura: 6, visivel: true },
 ];

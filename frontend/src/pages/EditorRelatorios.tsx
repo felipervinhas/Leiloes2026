@@ -251,9 +251,17 @@ export default function EditorRelatorios() {
     baselineLayoutRef.current = '[]';
   };
 
+  /** Completa blocos de tabela de lotes salvos antes de uma coluna nova existir no catálogo (ex.: Estabelecimento), sem alterar as colunas já configuradas pelo usuário. */
+  const completarColunasTabelaLotes = (c: CampoLayout): CampoLayout => {
+    if (c.tipo !== 'bloco:tabela-lotes') return c;
+    const existentes = new Set((c.colunas || []).map(col => col.key));
+    const faltantes = COLUNAS_LOTES_PADRAO.filter(col => !existentes.has(col.key)).map(col => ({ ...col, visivel: false }));
+    return faltantes.length ? { ...c, colunas: [...(c.colunas || []), ...faltantes] } : c;
+  };
+
   const abrirTemplate = async (id: number) => {
     const r = await api.get(`/relatorio-layouts/templates/${id}`);
-    const conteudo = (r.data.conteudo || []).map(normalizarCampoLayout);
+    const conteudo = (r.data.conteudo || []).map(normalizarCampoLayout).map(completarColunasTabelaLotes);
     setTemplateAtual({ id: r.data.id, nome: r.data.nome });
     setLayout(conteudo);
     setSelecionadoId(null);

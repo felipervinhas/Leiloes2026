@@ -27,6 +27,7 @@ export interface Lote {
   condic?: number;
   nomeRaca?: string;
   nomeVendedor?: string;
+  estabelecimento?: string;
   nomeLeilao?: string;
   dataLeilao?: Date | string;
   enderecoLeilao?: string;

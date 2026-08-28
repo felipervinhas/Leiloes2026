@@ -28,7 +28,7 @@ function mapRow(c: any, bucket: string): Lote {
     lanmax: c.LANMAX, urlvideo: c.URLVideo, comentario: c.Comentario,
     multiplo: c.MULTIPLO, vendido: c.VENDIDO, publica: c.PUBLICA, qtdAnimais: c.QTDANIMAIS,
     tipoSecao: c.TIPO_SECAO, condic: c.CONDIC,
-    nomeRaca: c.DESCRICAO, nomeVendedor: c.NOMEXX, nomeLeilao: c.LEILAO,
+    nomeRaca: c.DESCRICAO, nomeVendedor: c.NOMEXX, estabelecimento: c.ESTABELECIMENTO, nomeLeilao: c.LEILAO,
     dataLeilao: c.LEI_DATLEI, enderecoLeilao: c.LEI_ENDERE,
     horaInicioLeilao: c.LEI_HORA_INICIO, leiloeiro: c.LEI_LEILOE,
     horaFechamentoPreLeilao: c.LEI_HORA_FECHAMENTO_PRE,
@@ -47,7 +47,9 @@ function mapRow(c: any, bucket: string): Lote {
 }
 
 const SELECT_LOTE = `
-    SELECT L.*, R.DESCRICAO, C.NOMEXX, LEI.LEILAO,
+    SELECT L.*, R.DESCRICAO, C.NOMEXX,
+      (SELECT TOP 1 CP.NOME_PROPRIEDADE FROM CLIENTES_PROPRIEDADES CP WHERE CP.ID_CLIENTE = C.ID ORDER BY CP.ID) AS ESTABELECIMENTO,
+      LEI.LEILAO,
       LEI.DATLEI AS LEI_DATLEI, LEI.ENDERE AS LEI_ENDERE,
       LEI.HORA_INICIO AS LEI_HORA_INICIO, LEI.LEILOE AS LEI_LEILOE,
       LEI.HORA_FECHAMENTO_PRE AS LEI_HORA_FECHAMENTO_PRE,
