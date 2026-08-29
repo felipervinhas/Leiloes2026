@@ -23,11 +23,27 @@ function buildConfig(database: string): sql.config {
     // de latência.
     requestTimeout: 60_000,
     connectionTimeout: 30_000,
-    pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
+    // min:1 mantém sempre uma conexão física aberta por tenant — evita que o
+    // primeiro clique depois de ~30s parado pague o custo de reconectar do
+    // zero (TCP+TLS+auth) contra o SQL Server na AWS.
+    pool: { max: 10, min: 1, idleTimeoutMillis: 30000 },
   };
 }
 
 const pools = new Map<string, sql.ConnectionPool>();
+
+const KEEP_ALIVE_INTERVAL_MS = 20_000;
+
+/** Ping leve periódico por tenant — segunda camada de proteção contra a conexão
+ * cair por ociosidade (ex.: timeout do lado do SQL Server, não só do pool local). */
+function iniciarKeepAlive(banco: string, pool: sql.ConnectionPool) {
+  const timer = setInterval(() => {
+    pool.request().query('SELECT 1').catch(err => {
+      console.error(`[DB] keep-alive falhou (${banco}):`, err.message || err);
+    });
+  }, KEEP_ALIVE_INTERVAL_MS);
+  timer.unref();
+}
 
 export async function getPool(): Promise<sql.ConnectionPool> {
   const banco = getBanco();
@@ -35,6 +51,7 @@ export async function getPool(): Promise<sql.ConnectionPool> {
     const p = await new sql.ConnectionPool(buildConfig(banco)).connect();
     console.log(`[DB] Conectado ao banco: ${banco}`);
     pools.set(banco, p);
+    iniciarKeepAlive(banco, p);
   }
   return pools.get(banco)!;
 }
