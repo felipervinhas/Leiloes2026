@@ -28,8 +28,8 @@ function valorColuna(lote: FaturaUnificadaLote, key: string): string {
 
 const s = StyleSheet.create({
   tabela: { borderWidth: 0.5, borderColor: '#bbb', borderRadius: 3, overflow: 'hidden', backgroundColor: '#fff' },
-  header: { flexDirection: 'row', backgroundColor: '#222', paddingVertical: 3, paddingHorizontal: 4 },
-  row: { flexDirection: 'row', paddingVertical: 2, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: '#eee' },
+  header: { flexDirection: 'row', flexShrink: 0, backgroundColor: '#222', paddingVertical: 3, paddingHorizontal: 4 },
+  row: { flexDirection: 'row', flexShrink: 0, paddingVertical: 2, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: '#eee' },
   rowAlt: { backgroundColor: '#fafafa' },
   th: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#fff' },
 });

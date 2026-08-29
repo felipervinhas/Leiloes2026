@@ -28,16 +28,16 @@ const s = StyleSheet.create({
     marginBottom: 6, overflow: 'hidden', backgroundColor: '#fff',
   },
   tabelaHeader: {
-    backgroundColor: ESCURO, flexDirection: 'row',
+    backgroundColor: ESCURO, flexDirection: 'row', flexShrink: 0,
     paddingVertical: 2, paddingHorizontal: 4,
   },
   tabelaRow: {
-    flexDirection: 'row', paddingVertical: 3.5, paddingHorizontal: 4,
+    flexDirection: 'row', flexShrink: 0, paddingVertical: 3.5, paddingHorizontal: 4,
     borderBottomWidth: 0.5, borderBottomColor: CLARO,
   },
   tabelaRowAlt: { backgroundColor: '#fafafa' },
   tabelaTotal: {
-    backgroundColor: CLARO, flexDirection: 'row',
+    backgroundColor: CLARO, flexDirection: 'row', flexShrink: 0,
     paddingVertical: 3, paddingHorizontal: 4,
   },
   cGrupo:    { flex: 1, flexDirection: 'row', paddingRight: 8 },
