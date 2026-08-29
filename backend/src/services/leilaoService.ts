@@ -67,9 +67,10 @@ export async function criarLeilao(d: Omit<Leilao, 'id' | 'nomeCidade' | 'nomeEst
     .input('regulamento', sql.VarChar, d.regulamento||null).input('observacoes', sql.VarChar, d.observacoes||null)
     .input('urlcatalogo', sql.VarChar, d.urlcatalogo||null).input('link1', sql.VarChar, d.linktransmissao1||null)
     .input('link2', sql.VarChar, d.linktransmissao2||null).input('dataSaldo', sql.Date, d.dataSaldo||null)
-    .query(`INSERT INTO Leiloes (ID,LEILAO,ENDERE,CODCID,DATLEI,LEILOE,CONDIC,COMVEN,COMCOM,ATIVOX,HORA_INICIO,HORA_FECHAMENTO_PRE,TIPO_LEILAO,MULTIPLO,rEGULAMENTO,OBSERVACOES,URLCATALOGO,LINKTRANSMISSAO1,LINKTRANSMISSAO2,DATA_SALDO)
+    .input('transmissao', sql.VarChar, d.transmissao||null)
+    .query(`INSERT INTO Leiloes (ID,LEILAO,ENDERE,CODCID,DATLEI,LEILOE,CONDIC,COMVEN,COMCOM,ATIVOX,HORA_INICIO,HORA_FECHAMENTO_PRE,TIPO_LEILAO,MULTIPLO,rEGULAMENTO,OBSERVACOES,URLCATALOGO,LINKTRANSMISSAO1,LINKTRANSMISSAO2,DATA_SALDO,TRANSMISSAO)
       OUTPUT INSERTED.ID
-      VALUES ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Leiloes WITH (UPDLOCK, HOLDLOCK)),@leilao,@endere,@codcid,@datlei,@leiloe,@condic,@comven,@comcom,@ativox,@horaInicio,@horaFechamento,@tipoLeilao,@multiplo,@regulamento,@observacoes,@urlcatalogo,@link1,@link2,@dataSaldo)`);
+      VALUES ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Leiloes WITH (UPDLOCK, HOLDLOCK)),@leilao,@endere,@codcid,@datlei,@leiloe,@condic,@comven,@comcom,@ativox,@horaInicio,@horaFechamento,@tipoLeilao,@multiplo,@regulamento,@observacoes,@urlcatalogo,@link1,@link2,@dataSaldo,@transmissao)`);
   return r.recordset[0].ID;
 }
 
@@ -86,11 +87,12 @@ export async function atualizarLeilao(id: number, d: Omit<Leilao, 'id' | 'nomeCi
     .input('regulamento', sql.VarChar, d.regulamento||null).input('observacoes', sql.VarChar, d.observacoes||null)
     .input('urlcatalogo', sql.VarChar, d.urlcatalogo||null).input('link1', sql.VarChar, d.linktransmissao1||null)
     .input('link2', sql.VarChar, d.linktransmissao2||null).input('dataSaldo', sql.Date, d.dataSaldo||null)
+    .input('transmissao', sql.VarChar, d.transmissao||null)
     .query(`UPDATE Leiloes SET LEILAO=@leilao,ENDERE=@endere,CODCID=@codcid,DATLEI=@datlei,LEILOE=@leiloe,
       CONDIC=@condic,COMVEN=@comven,COMCOM=@comcom,ATIVOX=@ativox,HORA_INICIO=@horaInicio,
       HORA_FECHAMENTO_PRE=@horaFechamento,TIPO_LEILAO=@tipoLeilao,MULTIPLO=@multiplo,
       rEGULAMENTO=@regulamento,OBSERVACOES=@observacoes,URLCATALOGO=@urlcatalogo,
-      LINKTRANSMISSAO1=@link1,LINKTRANSMISSAO2=@link2,DATA_SALDO=@dataSaldo WHERE ID=@id`);
+      LINKTRANSMISSAO1=@link1,LINKTRANSMISSAO2=@link2,DATA_SALDO=@dataSaldo,TRANSMISSAO=@transmissao WHERE ID=@id`);
 }
 
 export async function deletarLeilao(id: number): Promise<void> {
