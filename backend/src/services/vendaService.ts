@@ -464,8 +464,10 @@ export async function listarCompradores(idMov: number) {
     valorDesconto:     row.VALORDESCONTO,
     valorComissao:     row.VALORCOMISSAO,
     comissao:          row.COMISSAO,
+    valorBaseComissao: row.VALORBASECOMISSAO,
     valorComissaoVendedor: row.VALORCOMISSAOVENDEDOR,
     comissaoVendedor:  row.COMISSAOVENDEDOR,
+    valorBaseComissaoVendedor: row.VALORBASECOMISSAOVENDEDOR,
     formaPagamento:    row.FORMA_PAGAMENTO,
     idPropriedade:     row.ID_PROPRIEDADE,
     nomePropriedade:   row.NOME_PROPRIEDADE,
@@ -652,7 +654,10 @@ export async function atualizarComissaoManual(
     .input('valorComissaoVendedor', sql.Decimal(18, 2), valorComissaoVendedor)
     .query(`
       UPDATE MOVIMENTO_COMPRADOR
-      SET VALORCOMISSAO=@valorComissao, VALORCOMISSAOVENDEDOR=@valorComissaoVendedor
+      SET VALORCOMISSAO=@valorComissao,
+          COMISSAO = CASE WHEN VALORBASECOMISSAO > 0 THEN (@valorComissao / VALORBASECOMISSAO) * 100 ELSE 0 END,
+          VALORCOMISSAOVENDEDOR=@valorComissaoVendedor,
+          COMISSAOVENDEDOR = CASE WHEN VALORBASECOMISSAOVENDEDOR > 0 THEN (@valorComissaoVendedor / VALORBASECOMISSAOVENDEDOR) * 100 ELSE 0 END
       WHERE ID=@id
     `);
 }

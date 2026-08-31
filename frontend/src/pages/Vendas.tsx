@@ -823,6 +823,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   const [compEditando, setCompEditando] = useState<any | null>(null);
   const [comissaoModal, setComissaoModal] = useState(false);
   const [comissaoAlvo, setComissaoAlvo] = useState<any | null>(null);
+  const [modoComissao, setModoComissao] = useState<'valor' | 'percentual'>('valor');
   const [formComissao] = Form.useForm();
 
   // ── step 3 ──────────────────────────────────────────────────────────────
@@ -1165,9 +1166,14 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
 
   const abrirComissaoManual = (comp: any) => {
     setComissaoAlvo(comp);
+    setModoComissao('valor');
     formComissao.setFieldsValue({
       valorComissao: comp.valorComissao ?? 0,
       valorComissaoVendedor: comp.valorComissaoVendedor ?? 0,
+      // Default do % sempre é a comissão padrão do leilão (comcom/comven),
+      // não o % já aplicado ao comprador — ponto de partida pra sobrepor.
+      percComissao: leilaoInfo?.comcom ?? 0,
+      percComissaoVendedor: leilaoInfo?.comven ?? 0,
     });
     setComissaoModal(true);
   };
@@ -1176,7 +1182,15 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     let vals;
     try { vals = await formComissao.validateFields(); } catch { return; }
     if (!comissaoAlvo || !movId) return;
-    await api.put(`/vendas/${movId}/compradores/${comissaoAlvo.id}/comissao`, vals);
+    let valorComissao = vals.valorComissao;
+    let valorComissaoVendedor = vals.valorComissaoVendedor;
+    if (modoComissao === 'percentual') {
+      const baseComprador = comissaoAlvo.valorBaseComissao ?? 0;
+      const baseVendedor   = comissaoAlvo.valorBaseComissaoVendedor ?? 0;
+      valorComissao         = baseComprador * (Number(vals.percComissao) || 0) / 100;
+      valorComissaoVendedor = baseVendedor  * (Number(vals.percComissaoVendedor) || 0) / 100;
+    }
+    await api.put(`/vendas/${movId}/compradores/${comissaoAlvo.id}/comissao`, { valorComissao, valorComissaoVendedor });
     const rc = await api.get(`/vendas/${movId}/compradores`);
     setCompradores(rc.data);
     setComissaoModal(false);
@@ -1803,17 +1817,54 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
             open={comissaoModal} onCancel={() => setComissaoModal(false)}
             onOk={salvarComissaoManual} okText="Salvar"
           >
+            <Radio.Group
+              value={modoComissao}
+              onChange={e => setModoComissao(e.target.value)}
+              style={{ marginBottom: 16 }}
+            >
+              <Radio.Button value="valor">R$</Radio.Button>
+              <Radio.Button value="percentual">%</Radio.Button>
+            </Radio.Group>
             <Form form={formComissao} layout="vertical">
-              <Form.Item name="valorComissao" label="Valor Comissão (Comprador/Leiloeiro)">
-                <InputNumber<number> min={0} step={100} style={{ width: '100%' }}
-                  formatter={v => v != null ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
-                  parser={v => Number(String(v ?? '').replace('R$ ', '').replace(/\./g, '').replace(',', '.')) || 0} />
-              </Form.Item>
-              <Form.Item name="valorComissaoVendedor" label="Valor Comissão Vendedor">
-                <InputNumber<number> min={0} step={100} style={{ width: '100%' }}
-                  formatter={v => v != null ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
-                  parser={v => Number(String(v ?? '').replace('R$ ', '').replace(/\./g, '').replace(',', '.')) || 0} />
-              </Form.Item>
+              {modoComissao === 'valor' ? (
+                <>
+                  <Form.Item name="valorComissao" label="Valor Comissão (Comprador/Leiloeiro)">
+                    <InputNumber<number> min={0} step={100} style={{ width: '100%' }}
+                      formatter={v => v != null ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
+                      parser={v => Number(String(v ?? '').replace('R$ ', '').replace(/\./g, '').replace(',', '.')) || 0} />
+                  </Form.Item>
+                  <Form.Item name="valorComissaoVendedor" label="Valor Comissão Vendedor">
+                    <InputNumber<number> min={0} step={100} style={{ width: '100%' }}
+                      formatter={v => v != null ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
+                      parser={v => Number(String(v ?? '').replace('R$ ', '').replace(/\./g, '').replace(',', '.')) || 0} />
+                  </Form.Item>
+                </>
+              ) : (
+                <>
+                  <Form.Item
+                    name="percComissao"
+                    label="Percentual Comissão (Comprador/Leiloeiro)"
+                    extra={comissaoAlvo?.valorBaseComissao != null
+                      ? `Base: R$ ${Number(comissaoAlvo.valorBaseComissao).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : undefined}
+                  >
+                    <InputNumber<number> min={0} max={100} step={0.5} style={{ width: '100%' }}
+                      formatter={v => v != null ? `${v}%` : ''}
+                      parser={v => Number(String(v ?? '').replace('%', '').replace(',', '.')) || 0} />
+                  </Form.Item>
+                  <Form.Item
+                    name="percComissaoVendedor"
+                    label="Percentual Comissão Vendedor"
+                    extra={comissaoAlvo?.valorBaseComissaoVendedor != null
+                      ? `Base: R$ ${Number(comissaoAlvo.valorBaseComissaoVendedor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : undefined}
+                  >
+                    <InputNumber<number> min={0} max={100} step={0.5} style={{ width: '100%' }}
+                      formatter={v => v != null ? `${v}%` : ''}
+                      parser={v => Number(String(v ?? '').replace('%', '').replace(',', '.')) || 0} />
+                  </Form.Item>
+                </>
+              )}
             </Form>
           </Modal>
         </Card>
@@ -1982,24 +2033,36 @@ export default function Vendas() {
   // Se o filtro ficasse como estado local de Listagem, ele se perdia toda
   // vez que o usuário abria o wizard (Nova Venda/Editar) e voltava.
   const filtroSalvo = lerFiltroPersistido(banco, 'vendas', {
-    tipoBusca: 'todos', busca: '', idLeilao: undefined as number | undefined, jaBuscou: false,
+    tipoBusca: 'todos', busca: '', idLeilao: undefined as number | undefined,
+    dataInicio: undefined as string | undefined, dataFim: undefined as string | undefined,
+    jaBuscou: false,
   });
   const [tipoBusca, setTipoBusca] = useState(filtroSalvo.tipoBusca);
   const [busca, setBusca]         = useState(filtroSalvo.busca);
   const { opcoes: leiloes, carregando: carregandoLeiloes, buscar: buscarLeiloes, garantirOpcao: garantirOpcaoLeilao } = useBuscaLeiloes();
   const [idLeilao, setIdLeilao]   = useState<number | undefined>(filtroSalvo.idLeilao);
+  // Período obrigatório quando tipoBusca==='todos' — antes buscava a VWVendas
+  // inteira (sem filtro nem paginação) com um clique em "Buscar" no estado
+  // padrão da tela.
+  const [dataInicio, setDataInicio] = useState<string | undefined>(filtroSalvo.dataInicio);
+  const [dataFim, setDataFim]       = useState<string | undefined>(filtroSalvo.dataFim);
   const [dados, setDados]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(false);
   const [jaBuscou, setJaBuscou]   = useState(false);
 
   const carregar = async () => {
+    if (tipoBusca === 'todos' && (!dataInicio || !dataFim)) {
+      message.warning('Selecione o período (data inicial e final) antes de buscar todas as vendas');
+      return;
+    }
     setLoading(true);
     setJaBuscou(true);
     try {
-      salvarFiltroPersistido(banco, 'vendas', { tipoBusca, busca, idLeilao, jaBuscou: true });
+      salvarFiltroPersistido(banco, 'vendas', { tipoBusca, busca, idLeilao, dataInicio, dataFim, jaBuscou: true });
       const params: any = { tipoBusca };
       if (busca)    params.busca    = busca;
       if (idLeilao) params.idLeilao = idLeilao;
+      if (tipoBusca === 'todos') { params.dataInicio = dataInicio; params.dataFim = dataFim; }
       const r = await api.get('/vendas', { params });
       setDados(r.data);
     } finally { setLoading(false); }
