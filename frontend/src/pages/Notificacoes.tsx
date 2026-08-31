@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Popconfirm,
-  Typography, Row, Col, message, Tag, Alert } from 'antd';
+  Typography, Row, Col, message, Tag, Alert, Spin } from 'antd';
 import { PlusOutlined, DeleteOutlined, SearchOutlined, BellOutlined, SendOutlined } from '@ant-design/icons';
 import api from '../services/api';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { useBanco } from '../context/BancoContext';
+import { useBuscaClientes } from '../hooks/useBuscaClientes';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -22,7 +23,7 @@ export default function Notificacoes() {
   const [modalOpen, setModalOpen] = useState(false);
   const [sending, setSending]     = useState(false);
   const [busca, setBusca]         = useState(filtroSalvo.busca);
-  const [clientes, setClientes]   = useState<{ value: number; label: string }[]>([]);
+  const { opcoes: clientes, carregando: carregandoClientes, buscar: buscarClientes } = useBuscaClientes();
   const [paraQuem, setParaQuem]   = useState<string>('Todos');
   const [form] = Form.useForm();
 
@@ -37,7 +38,6 @@ export default function Notificacoes() {
 
   useEffect(() => {
     carregar(filtroSalvo.busca);
-    api.get('/clientes').then(r => setClientes(r.data.map((c: any) => ({ value: c.id, label: c.nomexx }))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -161,9 +161,12 @@ export default function Notificacoes() {
             <Form.Item name="idCliente" label="Cliente" rules={[{ required: true, message: 'Selecione o cliente' }]}>
               <Select
                 showSearch
-                placeholder="Selecione o cliente"
+                placeholder="Digite para buscar o cliente..."
                 options={clientes}
-                filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())}
+                onSearch={buscarClientes}
+                filterOption={false}
+                loading={carregandoClientes}
+                notFoundContent={carregandoClientes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
               />
             </Form.Item>
           )}

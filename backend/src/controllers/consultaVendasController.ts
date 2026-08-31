@@ -15,6 +15,15 @@ export const consultar = async (req: Request, res: Response) => {
       : undefined,
   };
 
+  // Sem nenhum filtro reconhecido, a consulta roda irrestrita sobre VWVendas
+  // (8 joins + 3 subqueries correlacionadas) — a tela já bloqueia isso no
+  // cliente, mas o backend precisa recusar também (chamada direta à API,
+  // bug futuro no frontend). idLote/defesa/idRacas sozinhos não bastam:
+  // sem idLeilao/idVendedor/idComprador o filtro por lote ainda varre tudo.
+  if (!filtros.idLeilao && !filtros.idVendedor && !filtros.idComprador) {
+    return res.status(400).json({ error: 'Informe ao menos um filtro (leilão, vendedor ou comprador)' });
+  }
+
   res.json(await svc.consultarVendas(filtros));
 };
 

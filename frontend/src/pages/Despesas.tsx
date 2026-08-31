@@ -64,7 +64,12 @@ function AbaDespesas() {
   };
 
   useEffect(() => {
-    carregar(filtroSalvo.busca, filtroSalvo.leilaoFiltro);
+    // Só busca automaticamente se houver filtro salvo da sessão anterior —
+    // sem isso a tela carregava a tabela DESPESAS inteira (sem filtro) a
+    // cada vez que a aba era aberta.
+    if (filtroSalvo.busca || filtroSalvo.leilaoFiltro) {
+      carregar(filtroSalvo.busca, filtroSalvo.leilaoFiltro);
+    }
     // Se um filtro de leilão foi restaurado da sessão, busca só esse
     // registro pra mostrar o nome no Select (que agora busca por digitação
     // em vez de pré-carregar todos os leilões).
@@ -197,6 +202,7 @@ function AbaDespesas() {
         size="small"
         pagination={{ pageSize: 15, showTotal: t => `${t} registros` }}
         scroll={{ x: 900 }}
+        locale={{ emptyText: 'Nenhum lançamento — use o leilão ou a busca acima para filtrar' }}
       />
 
       <Modal
@@ -323,7 +329,12 @@ function AbaRecibos() {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { carregar(filtroSalvo.busca); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => {
+    // Só busca automaticamente se houver termo salvo da sessão anterior —
+    // evita carregar RECIBOS_AVULSOS inteiro toda vez que a aba é aberta.
+    if (filtroSalvo.busca) carregar(filtroSalvo.busca);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const abrirModal = (item?: any) => {
     setEditando(item || null);
@@ -413,6 +424,7 @@ function AbaRecibos() {
         size="small"
         pagination={{ pageSize: 15, showTotal: t => `${t} registros` }}
         scroll={{ x: 700 }}
+        locale={{ emptyText: 'Nenhum recibo — use a busca acima para filtrar' }}
       />
 
       <Modal
