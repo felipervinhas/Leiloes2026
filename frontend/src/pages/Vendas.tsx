@@ -1075,6 +1075,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
       });
       aplicarCondicaoPadraoLeilao();
       setStep(2);
+    } catch (err: any) {
+      message.error(err?.response?.data?.error || 'Erro ao salvar lote/valores');
     } finally { setSalvando(false); }
   };
 
