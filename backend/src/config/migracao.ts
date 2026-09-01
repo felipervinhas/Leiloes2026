@@ -30,6 +30,13 @@ async function executarMigracaoBanco(banco: string) {
       // de truncamento silencioso (a UI não repassava a mensagem do SQL Server).
       `IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Movimento_Lote' AND COLUMN_NAME = 'LOTEXX' AND CHARACTER_MAXIMUM_LENGTH < 20)
        ALTER TABLE Movimento_Lote ALTER COLUMN LOTEXX VARCHAR(20) NULL`,
+      // Vínculo pra gerarParcelas conseguir gerar/apagar a despesa de comissão
+      // (comprador e vendedor) de cada comprador de forma idempotente, sem
+      // duplicar a cada vez que o parcelamento é reemitido.
+      `IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'DESPESAS' AND COLUMN_NAME = 'IDMOVCOMPRADOR')
+       ALTER TABLE DESPESAS ADD IDMOVCOMPRADOR INT NULL`,
+      `IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'DESPESAS' AND COLUMN_NAME = 'TIPO_ORIGEM')
+       ALTER TABLE DESPESAS ADD TIPO_ORIGEM VARCHAR(20) NULL`,
     ];
 
     for (const query of queries) {
