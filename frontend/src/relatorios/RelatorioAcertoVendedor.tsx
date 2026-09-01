@@ -9,9 +9,9 @@ export interface AcertoVendedorPDF {
   vendedor?: string;
   entradas: Array<{ idMc: number; lotexx?: string; deslot?: string; nomeComprador?: string; valorEntrada: number; leilao?: string }>;
   promissorias: Array<{ datven: string; valor: number }>;
-  lancamentos: Array<{ id: number; dc: string; valor: number; observacoes?: string }>;
+  lancamentos: Array<{ id: number; dc: string; valor: number; observacoes?: string; tipoOrigem?: string }>;
   totais: {
-    totalEntradas: number; totalPromissorias: number;
+    totalEntradas: number; totalPromissorias: number; totalComissao: number;
     totalDespesas: number; totalCreditos: number; totalFechamentos: number; saldo: number;
   };
 }
@@ -206,7 +206,11 @@ function RelatorioAcertoVendedor({ dados, empresa, logoBase64 }: Props) {
           {dados.lancamentos.map(l => (
             <LinhaTabela
               key={`l${l.id}`}
-              det={l.dc === 'F' ? 'FECHAMENTO' : (l.dc === 'C' || l.dc === 'E') ? 'CRÉDITO' : 'DESPESA'}
+              det={
+                l.tipoOrigem === 'COMISSAO_VENDEDOR'  ? 'COMISSÃO VENDEDOR'  :
+                l.tipoOrigem === 'COMISSAO_COMPRADOR' ? 'COMISSÃO COMPRADOR' :
+                l.dc === 'F' ? 'FECHAMENTO' : (l.dc === 'C' || l.dc === 'E') ? 'CRÉDITO' : 'DESPESA'
+              }
               tipo={l.observacoes}
               dc={l.dc}
               valor={l.valor}
@@ -223,6 +227,10 @@ function RelatorioAcertoVendedor({ dados, empresa, logoBase64 }: Props) {
           <View style={s.totaisLinha}>
             <Text style={s.totaisLabel}>Total Promissórias (futuro)</Text>
             <Text style={s.totaisValor}>{fmtR(dados.totais.totalPromissorias)}</Text>
+          </View>
+          <View style={s.totaisLinha}>
+            <Text style={s.totaisLabel}>Total Comissão</Text>
+            <Text style={s.totaisValor}>{fmtR(dados.totais.totalComissao)}</Text>
           </View>
           <View style={s.totaisLinha}>
             <Text style={s.totaisLabel}>Total Despesas</Text>

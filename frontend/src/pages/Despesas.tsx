@@ -39,6 +39,13 @@ const DC_INFO: Record<string, { label: string; color: string; sinal: 1 | -1 }> =
 };
 const dcInfo = (v: string) => DC_INFO[v] || { label: v || '—', color: 'default', sinal: 1 as const };
 
+// Comissão gerada automaticamente ao gerar parcelamento não é uma despesa
+// qualquer — mostrar "Despesa" genérica confundia o cliente na conferência.
+const tipoLancamentoInfo = (r: { dc: string; tipoOrigem?: string }) =>
+  r.tipoOrigem === 'COMISSAO_VENDEDOR'  ? { label: 'Comissão Vendedor',  color: 'orange', sinal: -1 as const } :
+  r.tipoOrigem === 'COMISSAO_COMPRADOR' ? { label: 'Comissão Comprador', color: 'orange', sinal: -1 as const } :
+  dcInfo(r.dc);
+
 function AbaDespesas() {
   const config = useConfig();
   const { banco } = useBanco();
@@ -112,8 +119,8 @@ function AbaDespesas() {
   const saldo            = totalCreditos - totalDespesas - totalFechamentos;
 
   const colunas = [
-    { title: 'Tipo', dataIndex: 'dc', width: 130,
-      render: (v: string) => <Tag color={dcInfo(v).color}>{dcInfo(v).label}</Tag> },
+    { title: 'Tipo', width: 130,
+      render: (_: any, r: any) => <Tag color={tipoLancamentoInfo(r).color}>{tipoLancamentoInfo(r).label}</Tag> },
     { title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 180 },
     { title: 'Cliente', dataIndex: 'cliente', ellipsis: true },
     { title: 'Observações', dataIndex: 'observacoes', ellipsis: true },

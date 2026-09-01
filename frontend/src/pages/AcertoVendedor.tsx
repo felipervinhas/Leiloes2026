@@ -39,6 +39,14 @@ const DC_INFO: Record<string, { label: string; color: string }> = {
 };
 const dcInfo = (v: string) => DC_INFO[v] || { label: v || '—', color: 'default' };
 
+// Comissão gerada automaticamente ao gerar parcelamento não é uma despesa
+// qualquer — mostrar como "Despesa" genérica confundia o vendedor/comprador
+// na hora de conferir o acerto. Sobrepõe o rótulo padrão nesses casos.
+const tipoLancamentoInfo = (r: { dc: string; tipoOrigem?: string }) =>
+  r.tipoOrigem === 'COMISSAO_VENDEDOR'  ? { label: 'Comissão Vendedor',  color: 'orange' } :
+  r.tipoOrigem === 'COMISSAO_COMPRADOR' ? { label: 'Comissão Comprador', color: 'orange' } :
+  dcInfo(r.dc);
+
 interface Acerto {
   idLeilao?: number;
   leilao?: string;
@@ -46,9 +54,9 @@ interface Acerto {
   vendedor?: string;
   entradas: Array<{ idMc: number; lotexx?: string; deslot?: string; nomeComprador?: string; valorEntrada: number; leilao?: string }>;
   promissorias: Array<{ datven: string; valor: number }>;
-  lancamentos: Array<{ id: number; dc: string; valor: number; observacoes?: string; dataInclusao?: string; agrupado?: boolean }>;
+  lancamentos: Array<{ id: number; dc: string; valor: number; observacoes?: string; dataInclusao?: string; agrupado?: boolean; tipoOrigem?: string }>;
   totais: {
-    totalEntradas: number; totalPromissorias: number;
+    totalEntradas: number; totalPromissorias: number; totalComissao: number;
     totalDespesas: number; totalCreditos: number; totalFechamentos: number; saldo: number;
   };
 }
@@ -159,7 +167,7 @@ export default function AcertoVendedor() {
     linhas.push('DESPESAS / CRÉDITOS / FECHAMENTOS');
     linhas.push(['Tipo', 'Leilão', 'Observações', 'Valor', 'Inclusão'].join(';'));
     for (const l of acerto.lancamentos) {
-      linhas.push([dcInfo(l.dc).label, (l as any).leilao, l.observacoes, num(l.valor),
+      linhas.push([tipoLancamentoInfo(l).label, (l as any).leilao, l.observacoes, num(l.valor),
         l.dataInclusao ? fmtDataUTC(l.dataInclusao) : ''].map(csvEsc).join(';'));
     }
     linhas.push('');
@@ -167,6 +175,7 @@ export default function AcertoVendedor() {
     linhas.push('TOTAIS');
     linhas.push(`Total Entradas;${num(acerto.totais.totalEntradas)}`);
     linhas.push(`Total Promissórias (futuro);${num(acerto.totais.totalPromissorias)}`);
+    linhas.push(`Total Comissão;${num(acerto.totais.totalComissao)}`);
     linhas.push(`Total Créditos;${num(acerto.totais.totalCreditos)}`);
     linhas.push(`Total Despesas;${num(acerto.totais.totalDespesas)}`);
     linhas.push(`Total Fechamentos;${num(acerto.totais.totalFechamentos)}`);
@@ -198,7 +207,7 @@ export default function AcertoVendedor() {
   ];
 
   const colunasLancamentos = [
-    { title: 'Tipo', dataIndex: 'dc', width: 130, render: (v: string) => <Tag color={dcInfo(v).color}>{dcInfo(v).label}</Tag> },
+    { title: 'Tipo', width: 130, render: (_: any, r: any) => <Tag color={tipoLancamentoInfo(r).color}>{tipoLancamentoInfo(r).label}</Tag> },
     ...(!acerto?.idLeilao ? [{ title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 160 }] : []),
     {
       title: 'Observações', dataIndex: 'observacoes', ellipsis: true,
@@ -224,6 +233,7 @@ export default function AcertoVendedor() {
   const totalCards = acerto ? [
     { label: 'Total Entradas', value: acerto.totais.totalEntradas, color: '#1677ff' },
     { label: 'Total Promissórias (futuro)', value: acerto.totais.totalPromissorias, color: '#722ed1' },
+    { label: 'Total Comissão', value: acerto.totais.totalComissao, color: '#fa8c16' },
     { label: 'Total Créditos', value: acerto.totais.totalCreditos, color: '#52c41a' },
     { label: 'Total Despesas', value: acerto.totais.totalDespesas, color: '#ff4d4f' },
     { label: 'Total Fechamentos', value: acerto.totais.totalFechamentos, color: '#13c2c2' },

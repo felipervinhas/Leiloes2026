@@ -27,6 +27,7 @@ export interface AcertoVendedor {
   totais: {
     totalEntradas: number;
     totalPromissorias: number;
+    totalComissao: number;
     totalDespesas: number;
     totalCreditos: number;
     totalFechamentos: number;
@@ -121,10 +122,11 @@ export async function calcularAcertoVendedor(idVendedor: number, idLeilao?: numb
 
   const totalEntradas = entradas.reduce((a, e) => a + e.valorEntrada, 0);
   const totalPromissorias = promissorias.reduce((a, p) => a + p.valor, 0);
-  const totalDespesas = lancamentos.filter(l => ehDespesa(l.dc)).reduce((a, l) => a + (l.valor || 0), 0);
-  const totalCreditos = lancamentos.filter(l => ehCredito(l.dc)).reduce((a, l) => a + (l.valor || 0), 0);
-  const totalFechamentos = lancamentos.filter(l => l.dc === 'F').reduce((a, l) => a + (l.valor || 0), 0);
-  const saldo = totalEntradas + totalCreditos - totalDespesas - totalFechamentos;
+  // Comissão sai do total de Despesas — tem linha (e card) própria, não é despesa.
+  const totalDespesas = outrosLancamentos.filter(l => ehDespesa(l.dc)).reduce((a, l) => a + (l.valor || 0), 0);
+  const totalCreditos = outrosLancamentos.filter(l => ehCredito(l.dc)).reduce((a, l) => a + (l.valor || 0), 0);
+  const totalFechamentos = outrosLancamentos.filter(l => l.dc === 'F').reduce((a, l) => a + (l.valor || 0), 0);
+  const saldo = totalEntradas + totalCreditos - totalComissaoVendedor - totalDespesas - totalFechamentos;
 
   let leilao: string | undefined;
   let datlei: string | undefined;
@@ -145,6 +147,6 @@ export async function calcularAcertoVendedor(idVendedor: number, idLeilao?: numb
     entradas,
     promissorias,
     lancamentos,
-    totais: { totalEntradas, totalPromissorias, totalDespesas, totalCreditos, totalFechamentos, saldo },
+    totais: { totalEntradas, totalPromissorias, totalComissao: totalComissaoVendedor, totalDespesas, totalCreditos, totalFechamentos, saldo },
   };
 }
