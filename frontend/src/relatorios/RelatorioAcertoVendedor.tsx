@@ -9,9 +9,10 @@ export interface AcertoVendedorPDF {
   vendedor?: string;
   entradas: Array<{ idMc: number; lotexx?: string; deslot?: string; nomeComprador?: string; valorEntrada: number; leilao?: string }>;
   promissorias: Array<{ datven: string; valor: number }>;
+  comissoes: Array<{ idMl: number; lotexx?: string; deslot?: string; percentual: number; valor: number; leilao?: string }>;
   lancamentos: Array<{ id: number; dc: string; valor: number; observacoes?: string }>;
   totais: {
-    totalEntradas: number; totalPromissorias: number;
+    totalEntradas: number; totalPromissorias: number; totalComissao: number;
     totalDespesas: number; totalCreditos: number; totalFechamentos: number; saldo: number;
   };
 }
@@ -203,6 +204,18 @@ function RelatorioAcertoVendedor({ dados, empresa, logoBase64 }: Props) {
             />
           ))}
 
+          {dados.comissoes.map(c => (
+            <LinhaTabela
+              key={`c${c.idMl}`}
+              lote={c.lotexx}
+              det={`COMISSÃO ${c.percentual.toFixed(2).replace(/\.?0+$/, '')}%`}
+              tipo={c.deslot}
+              dc="D"
+              valor={c.valor}
+              alt={proximaAlt()}
+            />
+          ))}
+
           {dados.lancamentos.map(l => (
             <LinhaTabela
               key={`l${l.id}`}
@@ -223,6 +236,10 @@ function RelatorioAcertoVendedor({ dados, empresa, logoBase64 }: Props) {
           <View style={s.totaisLinha}>
             <Text style={s.totaisLabel}>Total Promissórias (futuro)</Text>
             <Text style={s.totaisValor}>{fmtR(dados.totais.totalPromissorias)}</Text>
+          </View>
+          <View style={s.totaisLinha}>
+            <Text style={s.totaisLabel}>Total Comissão</Text>
+            <Text style={s.totaisValor}>{fmtR(dados.totais.totalComissao)}</Text>
           </View>
           <View style={s.totaisLinha}>
             <Text style={s.totaisLabel}>Total Despesas</Text>

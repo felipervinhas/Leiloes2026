@@ -15,6 +15,15 @@ export interface PromissoriaAcerto {
   valor: number;
 }
 
+export interface ComissaoAcerto {
+  idMl: number;
+  lotexx?: string;
+  deslot?: string;
+  percentual: number;
+  valor: number;
+  leilao?: string;
+}
+
 export interface AcertoVendedor {
   idLeilao?: number;
   leilao?: string;
@@ -23,10 +32,12 @@ export interface AcertoVendedor {
   vendedor?: string;
   entradas: EntradaAcerto[];
   promissorias: PromissoriaAcerto[];
+  comissoes: ComissaoAcerto[];
   lancamentos: Awaited<ReturnType<typeof listarDespesas>>;
   totais: {
     totalEntradas: number;
     totalPromissorias: number;
+    totalComissao: number;
     totalDespesas: number;
     totalCreditos: number;
     totalFechamentos: number;
@@ -90,14 +101,41 @@ export async function calcularAcertoVendedor(idVendedor: number, idLeilao?: numb
     valor: r.VALOR || 0,
   }));
 
+  // Comissão do vendedor — calculada automaticamente a partir do que já foi
+  // gravado em MOVIMENTO_LOTE.COMISS_VENDEDOR (comven% do leilão × valor do
+  // lote, resolvido no momento da venda). Antes disso não aparecia em lugar
+  // nenhum do acerto, e tinha que ser digitada manualmente como Despesa —
+  // o que gerava lançamentos com descrição/valor de outro lote por engano.
+  const reqComissoes = pool.request().input('idVendedor', sql.Int, idVendedor);
+  if (idLeilao) reqComissoes.input('idLeilao', sql.Int, idLeilao);
+  const rComissoes = await reqComissoes.query(`
+      SELECT ML.ID, LO.LOTEXX, LO.DESLOT, ML.VLRTOT, ML.COMISS_VENDEDOR, L.LEILAO
+      FROM MOVIMENTO_LOTE ML
+      LEFT JOIN MOVIMENTO M ON M.ID = ML.IDMOV
+      LEFT JOIN LOTES LO    ON LO.ID = ML.IDLOTE
+      LEFT JOIN LEILOES L   ON L.ID  = M.IDLEILAO
+      WHERE ML.CODVEN = @idVendedor AND ML.COMISS_VENDEDOR > 0 ${idLeilao ? 'AND M.IDLEILAO = @idLeilao' : ''}
+      ORDER BY L.DATLEI DESC, TRY_CAST(LO.LOTEXX AS INT), LO.LOTEXX
+    `);
+
+  const comissoes: ComissaoAcerto[] = rComissoes.recordset.map((r: any) => ({
+    idMl: r.ID,
+    lotexx: r.LOTEXX,
+    deslot: r.DESLOT,
+    percentual: r.VLRTOT > 0 ? (r.COMISS_VENDEDOR / r.VLRTOT) * 100 : 0,
+    valor: r.COMISS_VENDEDOR || 0,
+    leilao: r.LEILAO,
+  }));
+
   const lancamentos = await listarDespesas(idLeilao, undefined, idVendedor);
 
   const totalEntradas = entradas.reduce((a, e) => a + e.valorEntrada, 0);
   const totalPromissorias = promissorias.reduce((a, p) => a + p.valor, 0);
+  const totalComissao = comissoes.reduce((a, c) => a + c.valor, 0);
   const totalDespesas = lancamentos.filter(l => ehDespesa(l.dc)).reduce((a, l) => a + (l.valor || 0), 0);
   const totalCreditos = lancamentos.filter(l => ehCredito(l.dc)).reduce((a, l) => a + (l.valor || 0), 0);
   const totalFechamentos = lancamentos.filter(l => l.dc === 'F').reduce((a, l) => a + (l.valor || 0), 0);
-  const saldo = totalEntradas + totalCreditos - totalDespesas - totalFechamentos;
+  const saldo = totalEntradas + totalCreditos - totalComissao - totalDespesas - totalFechamentos;
 
   let leilao: string | undefined;
   let datlei: string | undefined;
@@ -117,7 +155,8 @@ export async function calcularAcertoVendedor(idVendedor: number, idLeilao?: numb
     vendedor: rVendedor.recordset[0]?.NOMEXX,
     entradas,
     promissorias,
+    comissoes,
     lancamentos,
-    totais: { totalEntradas, totalPromissorias, totalDespesas, totalCreditos, totalFechamentos, saldo },
+    totais: { totalEntradas, totalPromissorias, totalComissao, totalDespesas, totalCreditos, totalFechamentos, saldo },
   };
 }

@@ -46,9 +46,10 @@ interface Acerto {
   vendedor?: string;
   entradas: Array<{ idMc: number; lotexx?: string; deslot?: string; nomeComprador?: string; valorEntrada: number; leilao?: string }>;
   promissorias: Array<{ datven: string; valor: number }>;
+  comissoes: Array<{ idMl: number; lotexx?: string; deslot?: string; percentual: number; valor: number; leilao?: string }>;
   lancamentos: Array<{ id: number; dc: string; valor: number; observacoes?: string; dataInclusao?: string }>;
   totais: {
-    totalEntradas: number; totalPromissorias: number;
+    totalEntradas: number; totalPromissorias: number; totalComissao: number;
     totalDespesas: number; totalCreditos: number; totalFechamentos: number; saldo: number;
   };
 }
@@ -156,6 +157,14 @@ export default function AcertoVendedor() {
     for (const p of acerto.promissorias) linhas.push([p.datven, num(p.valor)].map(csvEsc).join(';'));
     linhas.push('');
 
+    linhas.push(`COMISSÃO (${acerto.comissoes.length})`);
+    linhas.push(['Lote', ...(!acerto.idLeilao ? ['Leilão'] : []), 'Descrição', 'Percentual', 'Valor'].join(';'));
+    for (const c of acerto.comissoes) {
+      linhas.push([c.lotexx, ...(!acerto.idLeilao ? [c.leilao] : []), c.deslot,
+        `${c.percentual.toFixed(2).replace(/\.?0+$/, '')}%`, num(c.valor)].map(csvEsc).join(';'));
+    }
+    linhas.push('');
+
     linhas.push('DESPESAS / CRÉDITOS / FECHAMENTOS');
     linhas.push(['Tipo', 'Leilão', 'Observações', 'Valor', 'Inclusão'].join(';'));
     for (const l of acerto.lancamentos) {
@@ -167,6 +176,7 @@ export default function AcertoVendedor() {
     linhas.push('TOTAIS');
     linhas.push(`Total Entradas;${num(acerto.totais.totalEntradas)}`);
     linhas.push(`Total Promissórias (futuro);${num(acerto.totais.totalPromissorias)}`);
+    linhas.push(`Total Comissão;${num(acerto.totais.totalComissao)}`);
     linhas.push(`Total Créditos;${num(acerto.totais.totalCreditos)}`);
     linhas.push(`Total Despesas;${num(acerto.totais.totalDespesas)}`);
     linhas.push(`Total Fechamentos;${num(acerto.totais.totalFechamentos)}`);
@@ -197,6 +207,15 @@ export default function AcertoVendedor() {
     { title: 'Valor', dataIndex: 'valor', align: 'right' as const, render: fmt },
   ];
 
+  const colunasComissoes = [
+    { title: 'Lote', dataIndex: 'lotexx', width: 70 },
+    ...(!acerto?.idLeilao ? [{ title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 160 }] : []),
+    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true },
+    { title: 'Percentual', dataIndex: 'percentual', width: 100, align: 'right' as const,
+      render: (v: number) => `${v.toFixed(2).replace(/\.?0+$/, '')}%` },
+    { title: 'Valor', dataIndex: 'valor', width: 130, align: 'right' as const, render: fmt },
+  ];
+
   const colunasLancamentos = [
     { title: 'Tipo', dataIndex: 'dc', width: 130, render: (v: string) => <Tag color={dcInfo(v).color}>{dcInfo(v).label}</Tag> },
     ...(!acerto?.idLeilao ? [{ title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 160 }] : []),
@@ -221,6 +240,7 @@ export default function AcertoVendedor() {
   const totalCards = acerto ? [
     { label: 'Total Entradas', value: acerto.totais.totalEntradas, color: '#1677ff' },
     { label: 'Total Promissórias (futuro)', value: acerto.totais.totalPromissorias, color: '#722ed1' },
+    { label: 'Total Comissão', value: acerto.totais.totalComissao, color: '#fa8c16' },
     { label: 'Total Créditos', value: acerto.totais.totalCreditos, color: '#52c41a' },
     { label: 'Total Despesas', value: acerto.totais.totalDespesas, color: '#ff4d4f' },
     { label: 'Total Fechamentos', value: acerto.totais.totalFechamentos, color: '#13c2c2' },
@@ -325,6 +345,14 @@ export default function AcertoVendedor() {
               rowKey="datven" size="small" columns={colunasPromissorias} dataSource={acerto.promissorias}
               pagination={false} scroll={{ y: 220 }}
               locale={{ emptyText: <Empty description="Nenhuma promissória futura" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+            />
+          </Card>
+
+          <Card size="small" title={`Comissão (${acerto.comissoes.length})`} style={{ marginBottom: 12 }}>
+            <Table
+              rowKey="idMl" size="small" columns={colunasComissoes} dataSource={acerto.comissoes}
+              pagination={false} scroll={{ y: 220 }}
+              locale={{ emptyText: <Empty description="Nenhuma comissão registrada no leilão para este vendedor" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
             />
           </Card>
 
