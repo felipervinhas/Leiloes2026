@@ -919,16 +919,24 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
     let parcela = (vlrcalc - soma) / salpar;
     if (safrax) parcela = valorSaldo - descontoSaldo;
 
-    // Última data das PARC01-15 já em memória → incrementa mês a mês
-    let lastDate = rows.length > 0
+    // Última data das PARC01-15 já em memória, convertida em "quantos meses
+    // depois da baseDate" ela cai. As parcelas do saldo continuam contando
+    // meses a partir dessa MESMA baseDate — nunca incrementando a partir da
+    // parcela anterior, porque incMonth clampa pro último dia do mês de
+    // destino: encadear (mês a mês, a partir do resultado anterior) faz a
+    // data "travar" no dia 28 depois de atravessar um fevereiro e nunca mais
+    // voltar pro dia 31 nos meses que têm 31 dias.
+    const lastDate = rows.length > 0
       ? rows.reduce((max, r) => r.datven > max ? r.datven : max, rows[0].datven)
       : new Date(dataLeilao);
+    const mesesBase = (lastDate.getUTCFullYear() - baseDate.getUTCFullYear()) * 12
+      + (lastDate.getUTCMonth() - baseDate.getUTCMonth());
 
     let cont = format;
     for (let x = 1; x <= salpar; x++) {
       const venc = (safrax && dataSaldoSafra)
         ? new Date(dataSaldoSafra)
-        : (lastDate = incMonth(lastDate, 1), lastDate);
+        : incMonth(baseDate, mesesBase + x);
       cont++;
       addParcela(ord2(cont, qtdpar), venc, parcela, 'N');
     }
