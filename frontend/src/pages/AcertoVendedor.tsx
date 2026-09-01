@@ -46,7 +46,7 @@ interface Acerto {
   vendedor?: string;
   entradas: Array<{ idMc: number; lotexx?: string; deslot?: string; nomeComprador?: string; valorEntrada: number; leilao?: string }>;
   promissorias: Array<{ datven: string; valor: number }>;
-  lancamentos: Array<{ id: number; dc: string; valor: number; observacoes?: string; dataInclusao?: string }>;
+  lancamentos: Array<{ id: number; dc: string; valor: number; observacoes?: string; dataInclusao?: string; agrupado?: boolean }>;
   totais: {
     totalEntradas: number; totalPromissorias: number;
     totalDespesas: number; totalCreditos: number; totalFechamentos: number; saldo: number;
@@ -200,12 +200,15 @@ export default function AcertoVendedor() {
   const colunasLancamentos = [
     { title: 'Tipo', dataIndex: 'dc', width: 130, render: (v: string) => <Tag color={dcInfo(v).color}>{dcInfo(v).label}</Tag> },
     ...(!acerto?.idLeilao ? [{ title: 'Leilão', dataIndex: 'leilao', ellipsis: true, width: 160 }] : []),
-    { title: 'Observações', dataIndex: 'observacoes', ellipsis: true },
+    {
+      title: 'Observações', dataIndex: 'observacoes', ellipsis: true,
+      render: (v: string, r: any) => r.agrupado ? <Space size={4}>{v}<Tag color="orange">Automática</Tag></Space> : v,
+    },
     { title: 'Valor', dataIndex: 'valor', width: 130, align: 'right' as const, render: fmt },
-    { title: 'Inclusão', dataIndex: 'dataInclusao', width: 100, render: (v: string) => fmtDataUTC(v) },
+    { title: 'Inclusão', dataIndex: 'dataInclusao', width: 100, render: (v: string) => v ? fmtDataUTC(v) : '—' },
     {
       title: 'Ações', width: 120,
-      render: (_: any, r: any) => (
+      render: (_: any, r: any) => r.agrupado ? null : (
         <Space size={4}>
           <Button size="small" icon={<PrinterOutlined />} title="Imprimir recibo"
             onClick={() => setRecibo({ ...r, cliente: acerto?.vendedor, leilao: r.leilao || acerto?.leilao })} />

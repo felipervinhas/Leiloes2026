@@ -90,7 +90,34 @@ export async function calcularAcertoVendedor(idVendedor: number, idLeilao?: numb
     valor: r.VALOR || 0,
   }));
 
-  const lancamentos = await listarDespesas(idLeilao, undefined, idVendedor);
+  const lancamentosBrutos = await listarDespesas(idLeilao, undefined, idVendedor);
+
+  // Comissão do vendedor é gravada uma despesa por comprador/lote (gerarParcelas),
+  // pra cada uma poder ter recibo próprio — mas no Acerto de Vendedor isso não
+  // interessa individualmente, só o total debitado. Agrupa numa linha só.
+  const comissoesVendedor = lancamentosBrutos.filter(l => l.tipoOrigem === 'COMISSAO_VENDEDOR');
+  const outrosLancamentos = lancamentosBrutos.filter(l => l.tipoOrigem !== 'COMISSAO_VENDEDOR');
+  const totalComissaoVendedor = comissoesVendedor.reduce((a, l) => a + (l.valor || 0), 0);
+
+  const lancamentos = totalComissaoVendedor > 0.01
+    ? [
+        {
+          id: 0,
+          codLei: idLeilao,
+          codigoCliente: idVendedor,
+          dc: 'D' as const,
+          valor: totalComissaoVendedor,
+          observacoes: `COMISSÃO VENDEDOR — ${comissoesVendedor.length} lote${comissoesVendedor.length > 1 ? 's' : ''}`,
+          dataInclusao: undefined,
+          dataAlteracao: undefined,
+          leilao: undefined,
+          cliente: undefined,
+          tipoOrigem: 'COMISSAO_VENDEDOR' as const,
+          agrupado: true,
+        },
+        ...outrosLancamentos,
+      ]
+    : outrosLancamentos;
 
   const totalEntradas = entradas.reduce((a, e) => a + e.valorEntrada, 0);
   const totalPromissorias = promissorias.reduce((a, p) => a + p.valor, 0);

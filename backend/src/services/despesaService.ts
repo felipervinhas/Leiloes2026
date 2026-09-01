@@ -12,7 +12,7 @@ export async function listarDespesas(idLeilao?: number, busca?: string, idClient
   const r = await req.query(`
     SELECT
       D.CODIGO, D.CODLEI, D.CODIGO_CLIENTE, D.D_C, D.VALOR,
-      D.OBSERVACOES, D.DATA_INCLUSAO, D.DATA_ALTERACAO,
+      D.OBSERVACOES, D.DATA_INCLUSAO, D.DATA_ALTERACAO, D.TIPO_ORIGEM,
       L.LEILAO, C.NOMEXX as CLIENTE
     FROM DESPESAS D
     LEFT JOIN LEILOES L ON L.ID = D.CODLEI
@@ -24,7 +24,7 @@ export async function listarDespesas(idLeilao?: number, busca?: string, idClient
     id: row.CODIGO, codLei: row.CODLEI, codigoCliente: row.CODIGO_CLIENTE,
     dc: row.D_C, valor: row.VALOR, observacoes: row.OBSERVACOES,
     dataInclusao: row.DATA_INCLUSAO, dataAlteracao: row.DATA_ALTERACAO,
-    leilao: row.LEILAO, cliente: row.CLIENTE,
+    leilao: row.LEILAO, cliente: row.CLIENTE, tipoOrigem: row.TIPO_ORIGEM,
   }));
 }
 
