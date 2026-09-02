@@ -17,7 +17,7 @@ const TIPO_COLOR: Record<string, string> = { ATENDENTE: 'blue', PISTEIRO: 'purpl
 
 const CONTROLES_GRUPOS = [
   { label: 'Leilões',   itens: ['Leilões', 'Lotes', 'Lançes', 'Ordem de Entrada', 'Painel do Leiloeiro'] },
-  { label: 'Comercial', itens: ['Vendas', 'Consulta Vendas', 'Contratos', 'Cotações', 'Despesas', 'Acerto de Vendedor'] },
+  { label: 'Comercial', itens: ['Vendas', 'Consulta Vendas', 'Contratos', 'Cotações', 'Despesas', 'Acerto de Vendedor', 'Acerto de Comprador'] },
   { label: 'Clientes',  itens: ['Clientes', 'Notificações'] },
   { label: 'Cadastros', itens: ['Cidades', 'Raças', 'Condições de Pagamento', 'Classificações'] },
   { label: 'Sistema',   itens: ['Perfis', 'Usuários', 'Editor de Relatórios'] },

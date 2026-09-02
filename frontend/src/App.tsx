@@ -27,6 +27,7 @@ import ConsultaVendas from './pages/ConsultaVendas';
 import Contratos from './pages/Contratos';
 import Despesas from './pages/Despesas';
 import AcertoVendedor from './pages/AcertoVendedor';
+import AcertoComprador from './pages/AcertoComprador';
 import EditorRelatorios from './pages/EditorRelatorios';
 import PainelLeiloeiro from './pages/PainelLeiloeiro';
 import Chamados from './pages/Chamados';
@@ -108,6 +109,7 @@ function App() {
                 <Route path="contratos" element={<Contratos />} />
                 <Route path="despesas" element={<Despesas />} />
                 <Route path="acerto-vendedor" element={<AcertoVendedor />} />
+                <Route path="acerto-comprador" element={<AcertoComprador />} />
                 <Route path="editor-relatorios" element={<EditorRelatorios />} />
                 <Route path="chamados" element={<Chamados />} />
               </Route>

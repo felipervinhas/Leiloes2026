@@ -25,6 +25,7 @@ import * as notificacao from '../controllers/notificacaoController';
 import * as despesa from '../controllers/despesaController';
 import * as recibo from '../controllers/reciboController';
 import * as acertoVendedor from '../controllers/acertoVendedorController';
+import * as acertoComprador from '../controllers/acertoCompradorController';
 import * as dash     from '../controllers/dashboardController';
 import * as permissaoDash from '../controllers/permissaoDashboardController';
 import * as contrato  from '../controllers/contratoController';
@@ -220,6 +221,7 @@ bancoRouter.put('/recibos/:id', recibo.atualizar);
 bancoRouter.delete('/recibos/:id', recibo.deletar);
 
 bancoRouter.get('/acerto-vendedor', acertoVendedor.buscar);
+bancoRouter.get('/acerto-comprador', acertoComprador.buscar);
 
 bancoRouter.get('/clientes', cliente.listar);
 bancoRouter.get('/clientes/faturamento', cliente.listarFaturamento);
