@@ -1100,7 +1100,16 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     const condicao = condicoes.find(c => c.id === id) ?? null;
     setCondicaoSel(condicao);
     if (condicao?.avista === 'S') {
+      // Campo fica desabilitado ("Não se aplica") — sem initialValue no
+      // Form.Item pra esse undefined realmente "colar" (com initialValue,
+      // o antd volta a devolver o valor padrão em validateFields mesmo com
+      // o Select desabilitado, e a venda salvava PROMISSORIA numa condição
+      // à vista, chamado #1047).
       form2.setFieldValue('formaPagamento', undefined);
+    } else if (!form2.getFieldValue('formaPagamento')) {
+      // Só preenche PROMISSORIA como sugestão quando o campo está vazio —
+      // não sobrescreve uma escolha manual do usuário ao trocar de condição.
+      form2.setFieldValue('formaPagamento', 'PROMISSORIA');
     }
   };
 
@@ -1698,7 +1707,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
                 </Col>
                 <Col xs={12} sm={6} md={4}>
                   <Form.Item name="formaPagamento" label="Forma de Pagamento"
-                    rules={[{ required: condicaoSel?.avista !== 'S' }]} initialValue="PROMISSORIA">
+                    rules={[{ required: condicaoSel?.avista !== 'S' }]}>
                     <Select options={FORMA_PAGAMENTO_OPTS} disabled={condicaoSel?.avista === 'S'}
                       placeholder={condicaoSel?.avista === 'S' ? 'Não se aplica (à vista)' : undefined} />
                   </Form.Item>

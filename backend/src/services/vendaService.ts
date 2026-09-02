@@ -53,7 +53,7 @@ export interface DadosComprador {
   idCli: number;
   idCondPagto: number;
   percen: number;
-  formaPagamento: string;
+  formaPagamento: string | null;
   idPropriedade?: number | null;
   idPisteiro?: number | null;
   tipoDescontoFidelidade?: 'P' | 'V' | null;

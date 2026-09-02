@@ -98,7 +98,10 @@ export const adicionarComprador = async (req: Request, res: Response) => {
     lotexx: lote.lotexx, datlan: String(lote.datlan ?? ''), qtdxxx: lote.qtdxxx,
   }, {
     idCli: Number(idCli), idCondPagto: Number(idCondPagto),
-    percen: Number(percen) || 100, formaPagamento: formaPagamento || 'PROMISSORIA',
+    // Condição à vista não tem forma de pagamento (o campo fica desabilitado
+    // no front) — forçar "PROMISSORIA" aqui fazia a venda salvar uma
+    // promissória inexistente pra vendas à vista (chamado #1047).
+    percen: Number(percen) || 100, formaPagamento: formaPagamento || null,
     idPropriedade: idPropriedade ? Number(idPropriedade) : null,
     idPisteiro: idPisteiro ? Number(idPisteiro) : null,
     tipoDescontoFidelidade: normalizarTipoDescontoFidelidade(tipoDescontoFidelidade),
@@ -135,7 +138,7 @@ export const atualizarComprador = async (req: Request, res: Response) => {
     lotexx: lote.lotexx, datlan: String(lote.datlan ?? ''), qtdxxx: lote.qtdxxx,
   }, {
     idCli: Number(req.body.idCli), idCondPagto: Number(idCondPagto),
-    percen: Number(percen) || 100, formaPagamento: formaPagamento || 'PROMISSORIA',
+    percen: Number(percen) || 100, formaPagamento: formaPagamento || null,
     idPropriedade: idPropriedade ? Number(idPropriedade) : null,
     idPisteiro: idPisteiro ? Number(idPisteiro) : null,
     tipoDescontoFidelidade: normalizarTipoDescontoFidelidade(tipoDescontoFidelidade),
@@ -193,7 +196,13 @@ export const gerarParcelas = async (req: Request, res: Response) => {
     pDataLeilao:      datalei,
     pValorOriginal:   comp.valorOriginal,
     pPercentual:      comp.percen,
-    pValorDesconto:   comp.valorDesconto,
+    // Nunca ler de comp.valorDesconto aqui: essa coluna (VALORDESCONTO) é
+    // sobrescrita pelo próprio gerarParcelas com "desconto do lote + desconto
+    // da condição" somados — reemitir o parcelamento leria esse total de
+    // volta como se fosse só o desconto do lote e aplicaria o da condição
+    // de novo em cima, compondo a cada chamada. A fonte estável é sempre
+    // MOVIMENTO_LOTE.VLRDES × percentual do comprador.
+    pValorDesconto:   (lote.vlrdes || 0) * ((comp.percen || 100) / 100),
     pValorPagar:      comp.valorPagar,
     pInvertQtd:       Number(invertQtd)   || 0,
     pInvertValor:     Number(invertValor) || 0,
