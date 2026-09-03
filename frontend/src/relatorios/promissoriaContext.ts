@@ -46,13 +46,15 @@ export function montarContextoPromissoria(
   ].filter(Boolean).join(', ');
 
   const dataExtenso = fmtDataExtenso(dados.datlei || dados.datlan);
-  // Praça de pagamento é a cidade/estado do vendedor (credor da nota), não
-  // onde o leilão aconteceu — é lá que o título é exigível.
+  // Praça de pagamento (na frase da nota) é a cidade/estado do vendedor
+  // (credor) — é lá que o título é exigível. Já o "Local + Data" da
+  // assinatura (localEmissao) é onde o documento é de fato assinado/emitido:
+  // o leilão, não a cidade pessoal do vendedor.
   const praca = [
     dados.lote?.cidadeVendedor?.toUpperCase(),
     dados.lote?.estadoVendedor?.toUpperCase(),
   ].filter(Boolean).join('/') || '___';
-  const localEmissao = dados.lote?.cidadeVendedor?.toUpperCase() || '___';
+  const localEmissao = dados.cidadeLeilao?.toUpperCase() || '___';
   const fidelidade = fmtFidelidade(comp.tipoDescontoFidelidade, comp.descontoFidelidade) || undefined;
 
   return {
