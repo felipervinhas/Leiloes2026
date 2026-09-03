@@ -16,6 +16,7 @@ export interface VendaPartesPDF {
   // Vendedor
   nomeVendedor?: string;
   cpfVendedor?: string;
+  cnpjVendedor?: string;
   endereVendedor?: string;
   bairroVendedor?: string;
   cepVendedor?: string;
@@ -26,6 +27,7 @@ export interface VendaPartesPDF {
   // Comprador
   nomeComprador?: string;
   cpfComprador?: string;
+  cnpjComprador?: string;
   endereComprador?: string;
   bairroComprador?: string;
   cepComprador?: string;
@@ -275,7 +277,7 @@ function ColunaVendedor({ v }: { v: VendaPartesPDF }) {
       <Text style={s.parteLabel}>Vendedor</Text>
       <Text style={s.parteNome}>{v.nomeVendedor || '—'}</Text>
       <Text style={s.parteCpf}>
-        CPF: <Text style={s.parteCpfValor}>{v.cpfVendedor || 'não informado'}</Text>
+        {v.cpfVendedor || !v.cnpjVendedor ? 'CPF' : 'CNPJ'}: <Text style={s.parteCpfValor}>{v.cpfVendedor || v.cnpjVendedor || 'não informado'}</Text>
       </Text>
       {ende ? <Text style={s.parteEnde}>{ende}</Text> : null}
       {cid  ? <Text style={s.parteCidade}>{cid}</Text> : null}
@@ -296,7 +298,7 @@ function ColunaComprador({ v }: { v: VendaPartesPDF }) {
       <Text style={s.parteLabelGreen}>Comprador</Text>
       <Text style={s.parteNome}>{v.nomeComprador || '—'}</Text>
       <Text style={s.parteCpf}>
-        CPF: <Text style={s.parteCpfValor}>{v.cpfComprador || 'não informado'}</Text>
+        {v.cpfComprador || !v.cnpjComprador ? 'CPF' : 'CNPJ'}: <Text style={s.parteCpfValor}>{v.cpfComprador || v.cnpjComprador || 'não informado'}</Text>
       </Text>
       {ende ? <Text style={s.parteEnde}>{ende}</Text> : null}
       {cid  ? <Text style={s.parteCidade}>{cid}</Text> : null}
