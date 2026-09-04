@@ -530,6 +530,60 @@ function calcularValoresComprador(
   };
 }
 
+// Comissão (comprador e vendedor) vira despesa de verdade em DESPESAS — só
+// assim existe lançamento editável com recibo pra ela, em vez de ficar só
+// guardada em MOVIMENTO_COMPRADOR sem aparecer em lugar nenhum. Chamada a
+// cada vez que o comprador é salvo/editado (não em gerarParcelas): vendas
+// "Acerto Direto" nunca têm parcela gerada — a comissão da casa continua
+// devida mesmo assim, então não pode depender de "Gerar Parcelamento".
+// Sempre apaga e recria (idempotente), usando IDLEILAO fresco de MOVIMENTO
+// a cada chamada — se a venda for movida de leilão depois, a despesa se
+// autocorrige na próxima vez que o comprador for salvo.
+export async function sincronizarDespesasComissao(idComp: number): Promise<void> {
+  const pool = await getPool();
+  const rComp = await pool.request()
+    .input('idComp', sql.Int, idComp)
+    .query(`
+      SELECT MC.ID, MC.IDCLI, MC.VALORCOMISSAO, MC.COMISSAO, MC.VALORCOMISSAOVENDEDOR, MC.COMISSAOVENDEDOR,
+             M.IDLEILAO, ML.CODVEN, ML.LOTEXX
+      FROM MOVIMENTO_COMPRADOR MC
+      LEFT JOIN MOVIMENTO M       ON M.ID  = MC.IDMOV
+      LEFT JOIN MOVIMENTO_LOTE ML ON ML.ID = MC.IDMOVLOTE
+      WHERE MC.ID = @idComp
+    `);
+  const compRow = rComp.recordset[0];
+  if (!compRow) return;
+
+  await pool.request().input('id', sql.Int, compRow.ID)
+    .query(`DELETE FROM DESPESAS WHERE IDMOVCOMPRADOR=@id`);
+
+  const fmtPct = (v: number) => (Number(v) || 0).toFixed(2).replace(/\.?0+$/, '');
+  const inserirDespesaComissao = async (
+    codigoCliente: number | null, tipo: 'COMISSAO_COMPRADOR' | 'COMISSAO_VENDEDOR', valor: number, pct: number,
+  ) => {
+    if (!(valor > 0.01) || !codigoCliente) return;
+    await pool.request()
+      .input('codLei',         sql.Int,     compRow.IDLEILAO)
+      .input('codigoCliente',  sql.Int,     codigoCliente)
+      .input('valor',          sql.Float,   valor)
+      .input('observacoes',    sql.VarChar,
+        `COMISSÃO ${tipo === 'COMISSAO_VENDEDOR' ? 'VENDEDOR' : 'COMPRADOR'} ${fmtPct(pct)}% - ${compRow.LOTEXX || ''}`)
+      .input('idMovComprador', sql.Int,     compRow.ID)
+      .input('tipoOrigem',     sql.VarChar, tipo)
+      .input('dataInclusao',   sql.Date,    new Date())
+      .input('dataAlteracao',  sql.Date,    new Date())
+      .query(`
+        INSERT INTO DESPESAS
+          (CODLEI, CODIGO_CLIENTE, D_C, VALOR, OBSERVACOES, IDMOVCOMPRADOR, TIPO_ORIGEM, DATA_INCLUSAO, DATA_ALTERACAO)
+        VALUES
+          (@codLei, @codigoCliente, 'D', @valor, @observacoes, @idMovComprador, @tipoOrigem, @dataInclusao, @dataAlteracao)
+      `);
+  };
+
+  await inserirDespesaComissao(compRow.IDCLI,  'COMISSAO_COMPRADOR', compRow.VALORCOMISSAO || 0,         compRow.COMISSAO);
+  await inserirDespesaComissao(compRow.CODVEN, 'COMISSAO_VENDEDOR',  compRow.VALORCOMISSAOVENDEDOR || 0, compRow.COMISSAOVENDEDOR);
+}
+
 export async function salvarComprador(
   idMov: number,
   idMovLote: number,
@@ -592,7 +646,9 @@ export async function salvarComprador(
          @tipoDescontoFidelidade,@descontoFidelidade,@valorDescontoFidelidade)
     `);
 
-  return r.recordset[0].ID;
+  const idComp = r.recordset[0].ID;
+  await sincronizarDespesasComissao(idComp);
+  return idComp;
 }
 
 export async function atualizarComprador(
@@ -644,6 +700,8 @@ export async function atualizarComprador(
         VALOR_DESCONTO_FIDELIDADE=@valorDescontoFidelidade
       WHERE ID=@id
     `);
+
+  await sincronizarDespesasComissao(idComp);
 }
 
 export async function atualizarComissaoManual(
@@ -662,6 +720,8 @@ export async function atualizarComissaoManual(
           COMISSAOVENDEDOR = CASE WHEN VALORBASECOMISSAOVENDEDOR > 0 THEN (@valorComissaoVendedor / VALORBASECOMISSAOVENDEDOR) * 100 ELSE 0 END
       WHERE ID=@id
     `);
+
+  await sincronizarDespesasComissao(idComp);
 }
 
 export async function excluirComprador(idMov: number, idComp: number): Promise<void> {
@@ -800,54 +860,6 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
       .query(`UPDATE MOVIMENTO_COMPRADOR
               SET VALORDESCONTO=@desc, VALOR_DESCONTO_FIDELIDADE=@fid, VALORPAGAR=@pagar
               WHERE IDMOV=@idMov AND IDCLI=@idCli AND IDMOVLOTE=@idMovLote`);
-  }
-
-  // Comissão (comprador e vendedor) vira despesa de verdade em DESPESAS — só
-  // assim existe lançamento editável com recibo pra ela, em vez de ficar só
-  // guardada em MOVIMENTO_COMPRADOR sem aparecer em lugar nenhum. Sincroniza
-  // aqui (apaga e recria) toda vez que o parcelamento é (re)gerado, em vez de
-  // tentar manter em dia a cada ponto onde a comissão pode mudar.
-  {
-    const rComp = await pool.request()
-      .input('idMov',     sql.Int, p.pMovimento)
-      .input('idCli',     sql.Int, p.pCliente)
-      .input('idMovLote', sql.Int, p.pIdMovLote)
-      .query(`
-        SELECT ID, VALORCOMISSAO, COMISSAO, VALORCOMISSAOVENDEDOR, COMISSAOVENDEDOR
-        FROM MOVIMENTO_COMPRADOR
-        WHERE IDMOV=@idMov AND IDCLI=@idCli AND IDMOVLOTE=@idMovLote
-      `);
-    const compRow = rComp.recordset[0];
-    if (compRow) {
-      await pool.request().input('id', sql.Int, compRow.ID)
-        .query(`DELETE FROM DESPESAS WHERE IDMOVCOMPRADOR=@id`);
-
-      const fmtPct = (v: number) => (Number(v) || 0).toFixed(2).replace(/\.?0+$/, '');
-      const inserirDespesaComissao = async (
-        codigoCliente: number | null, tipo: 'COMISSAO_COMPRADOR' | 'COMISSAO_VENDEDOR', valor: number, pct: number,
-      ) => {
-        if (!(valor > 0.01) || !codigoCliente) return;
-        await pool.request()
-          .input('codLei',         sql.Int,     p.pLeilao)
-          .input('codigoCliente',  sql.Int,     codigoCliente)
-          .input('valor',          sql.Float,   valor)
-          .input('observacoes',    sql.VarChar,
-            `COMISSÃO ${tipo === 'COMISSAO_VENDEDOR' ? 'VENDEDOR' : 'COMPRADOR'} ${fmtPct(pct)}% - ${p.pLoteNumero}`)
-          .input('idMovComprador', sql.Int,     compRow.ID)
-          .input('tipoOrigem',     sql.VarChar, tipo)
-          .input('dataInclusao',   sql.Date,    new Date())
-          .input('dataAlteracao',  sql.Date,    new Date())
-          .query(`
-            INSERT INTO DESPESAS
-              (CODLEI, CODIGO_CLIENTE, D_C, VALOR, OBSERVACOES, IDMOVCOMPRADOR, TIPO_ORIGEM, DATA_INCLUSAO, DATA_ALTERACAO)
-            VALUES
-              (@codLei, @codigoCliente, 'D', @valor, @observacoes, @idMovComprador, @tipoOrigem, @dataInclusao, @dataAlteracao)
-          `);
-      };
-
-      await inserirDespesaComissao(p.pCliente,        'COMISSAO_COMPRADOR', compRow.VALORCOMISSAO || 0,         compRow.COMISSAO);
-      await inserirDespesaComissao(p.pClienteVendedor, 'COMISSAO_VENDEDOR',  compRow.VALORCOMISSAOVENDEDOR || 0, compRow.COMISSAOVENDEDOR);
-    }
   }
 
   // 6. Safra
