@@ -37,6 +37,13 @@ async function executarMigracaoBanco(banco: string) {
        ALTER TABLE DESPESAS ADD IDMOVCOMPRADOR INT NULL`,
       `IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'DESPESAS' AND COLUMN_NAME = 'TIPO_ORIGEM')
        ALTER TABLE DESPESAS ADD TIPO_ORIGEM VARCHAR(20) NULL`,
+      // Comissão própria do lote — sobrepõe a do leilão quando preenchida.
+      // Leilões "Vendas Diretas" não têm uma taxa única pro leilão inteiro;
+      // cada lote negocia a sua.
+      `IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Lotes' AND COLUMN_NAME = 'COMCOM')
+       ALTER TABLE Lotes ADD COMCOM DECIMAL(9,4) NULL`,
+      `IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Lotes' AND COLUMN_NAME = 'COMVEN')
+       ALTER TABLE Lotes ADD COMVEN DECIMAL(9,4) NULL`,
     ];
 
     for (const query of queries) {

@@ -27,7 +27,7 @@ function mapRow(c: any, bucket: string): Lote {
     pelage: c.PELAGE, datnas: c.DATNAS, obslot: c.OBSLOT, filiacao: c.FILIACAO,
     lanmax: c.LANMAX, urlvideo: c.URLVideo, comentario: c.Comentario,
     multiplo: c.MULTIPLO, vendido: c.VENDIDO, publica: c.PUBLICA, qtdAnimais: c.QTDANIMAIS,
-    tipoSecao: c.TIPO_SECAO, condic: c.CONDIC,
+    tipoSecao: c.TIPO_SECAO, condic: c.CONDIC, comcom: c.COMCOM, comven: c.COMVEN,
     nomeRaca: c.DESCRICAO, nomeVendedor: c.NOMEXX, estabelecimento: c.ESTABELECIMENTO, nomeLeilao: c.LEILAO,
     dataLeilao: c.LEI_DATLEI, enderecoLeilao: c.LEI_ENDERE,
     horaInicioLeilao: c.LEI_HORA_INICIO, leiloeiro: c.LEI_LEILOE,
@@ -158,9 +158,10 @@ export async function criarLote(d: Lote): Promise<number> {
     .input('comentario', sql.VarChar, d.comentario||null).input('multiplo', sql.Int, d.multiplo||null)
     .input('vendido', sql.Char, d.vendido||'N').input('publica', sql.Char, d.publica||'N')
     .input('condic', sql.Int, d.condic||null).input('qtdAnimais', sql.Int, d.qtdAnimais||null)
-    .query(`INSERT INTO Lotes (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,RACAXX,IDLEILAO,CODVEN,ORDEM,CATEGO,VLRINS,PELAGE,DATNAS,OBSLOT,FILIACAO,LANMAX,URLVideo,Comentario,MULTIPLO,VENDIDO,PUBLICA,CONDIC,QTDANIMAIS)
+    .input('comcom', sql.Decimal(9, 4), d.comcom ?? null).input('comven', sql.Decimal(9, 4), d.comven ?? null)
+    .query(`INSERT INTO Lotes (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,RACAXX,IDLEILAO,CODVEN,ORDEM,CATEGO,VLRINS,PELAGE,DATNAS,OBSLOT,FILIACAO,LANMAX,URLVideo,Comentario,MULTIPLO,VENDIDO,PUBLICA,CONDIC,QTDANIMAIS,COMCOM,COMVEN)
       OUTPUT INSERTED.ID
-      VALUES ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@racaxx,@idleilao,@codven,@ordem,@catego,@vlrins,@pelage,@datnas,@obslot,@filiacao,@lanmax,@urlvideo,@comentario,@multiplo,@vendido,@publica,@condic,@qtdAnimais)`);
+      VALUES ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@racaxx,@idleilao,@codven,@ordem,@catego,@vlrins,@pelage,@datnas,@obslot,@filiacao,@lanmax,@urlvideo,@comentario,@multiplo,@vendido,@publica,@condic,@qtdAnimais,@comcom,@comven)`);
   return r.recordset[0].ID;
 }
 
@@ -181,11 +182,12 @@ export async function atualizarLote(id: number, d: Lote): Promise<void> {
     .input('multiplo', sql.Int, d.multiplo||null).input('vendido', sql.Char, d.vendido||'N')
     .input('publica', sql.Char, d.publica||'N').input('condic', sql.Int, d.condic||null)
     .input('qtdAnimais', sql.Int, d.qtdAnimais||null)
+    .input('comcom', sql.Decimal(9, 4), d.comcom ?? null).input('comven', sql.Decimal(9, 4), d.comven ?? null)
     .query(`UPDATE Lotes SET LOTEXX=@lotexx,DESLOT=@deslot,RPXXX=@rpxxx,SBBXXX=@sbbxxx,PESOXX=@pesoxx,
       TATXXX=@tatxxx,RACAXX=@racaxx,IDLEILAO=@idleilao,CODVEN=@codven,ORDEM=@ordem,CATEGO=@catego,
       VLRINS=@vlrins,PELAGE=@pelage,DATNAS=@datnas,OBSLOT=@obslot,FILIACAO=@filiacao,LANMAX=@lanmax,
       URLVideo=@urlvideo,Comentario=@comentario,MULTIPLO=@multiplo,VENDIDO=@vendido,PUBLICA=@publica,
-      CONDIC=@condic,QTDANIMAIS=@qtdAnimais WHERE ID=@id`);
+      CONDIC=@condic,QTDANIMAIS=@qtdAnimais,COMCOM=@comcom,COMVEN=@comven WHERE ID=@id`);
 }
 
 /**
@@ -256,11 +258,13 @@ export async function duplicarLote(id: number): Promise<number> {
     .input('multiplo', sql.Int,     o.MULTIPLO || null)
     .input('condic',   sql.Int,     o.CONDIC   || null)
     .input('qtdAnimais', sql.Int,   o.QTDANIMAIS || null)
+    .input('comcom',   sql.Decimal(9, 4), o.COMCOM ?? null)
+    .input('comven',   sql.Decimal(9, 4), o.COMVEN ?? null)
     .input('iddup',    sql.Int,     id)
     .query(`INSERT INTO Lotes
-      (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,FILIACAO,DATNAS,CATEGO,RACAXX,IDLEILAO,CODVEN,ORDEM,VLRINS,LANMAX,OBSLOT,PELAGE,URLVideo,Comentario,MULTIPLO,CONDIC,QTDANIMAIS,ID_DUPLICADO,VENDIDO,PUBLICA)
+      (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,FILIACAO,DATNAS,CATEGO,RACAXX,IDLEILAO,CODVEN,ORDEM,VLRINS,LANMAX,OBSLOT,PELAGE,URLVideo,Comentario,MULTIPLO,CONDIC,QTDANIMAIS,COMCOM,COMVEN,ID_DUPLICADO,VENDIDO,PUBLICA)
       OUTPUT INSERTED.ID
       VALUES
-      ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@filiacao,@datnas,@catego,@racaxx,@idleilao,@codven,@ordem,@vlrins,@lanmax,@obslot,@pelage,@urlvideo,@comentario,@multiplo,@condic,@qtdAnimais,@iddup,'N','N')`);
+      ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@filiacao,@datnas,@catego,@racaxx,@idleilao,@codven,@ordem,@vlrins,@lanmax,@obslot,@pelage,@urlvideo,@comentario,@multiplo,@condic,@qtdAnimais,@comcom,@comven,@iddup,'N','N')`);
   return nr.recordset[0].ID;
 }

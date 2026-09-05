@@ -947,9 +947,12 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
 
     // Se o lote tem condição de pagamento própria (diferente da padrão do
     // leilão), usa o número de parcelas dela — não da condição do leilão.
+    // Mesma regra pra comissão: "Vendas Diretas" (e afins) não têm um % único
+    // pro leilão inteiro — cada lote negocia a sua. Se o lote não tiver a
+    // própria, cai no padrão do leilão.
     const qtdpar = Number(det?.condicaoQtdpar ?? leilaoInfo?.qtdpar ?? 1);
-    const comcom = leilaoInfo?.comcom ?? 0;
-    const comven = leilaoInfo?.comven ?? 0;
+    const comcom = det?.comcom ?? leilaoInfo?.comcom ?? 0;
+    const comven = det?.comven ?? leilaoInfo?.comven ?? 0;
 
     // Se o lote tem quantidade de animais cadastrada, sugere o que resta
     // vender (o lote pode já ter sido parcialmente vendido em outra venda).
@@ -972,8 +975,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     const vals  = form1.getFieldsValue();
     const qtd   = vals.qtdxxx || 1;
     const qtdpar = Number(loteDetalhes?.condicaoQtdpar ?? leilaoInfo?.qtdpar ?? 1);
-    const comcom = leilaoInfo?.comcom ?? 0;
-    const comven = leilaoInfo?.comven ?? 0;
+    const comcom = loteDetalhes?.comcom ?? leilaoInfo?.comcom ?? 0;
+    const comven = loteDetalhes?.comven ?? leilaoInfo?.comven ?? 0;
 
     let vlrpar = vals.vlrpar || 0;
     let vlrtot = vals.vlrtot || 0;
@@ -1054,8 +1057,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
 
     setSalvando(true);
     try {
-      const comcom = leilaoInfo?.comcom ?? 0;
-      const comven = leilaoInfo?.comven ?? 0;
+      const comcom = loteDetalhes?.comcom ?? leilaoInfo?.comcom ?? 0;
+      const comven = loteDetalhes?.comven ?? leilaoInfo?.comven ?? 0;
       const comiss     = (vals.vlrtot || 0) * (comcom / 100);
       const comissVend = (vals.vlrtot || 0) * (comven / 100);
 
@@ -1574,19 +1577,25 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
               </Col>
             </Row>
 
-            {leilaoInfo && (
-              <Alert
-                type="info" showIcon style={{ marginBottom: 12 }}
-                message={
-                  <span>
-                    Leilão: <strong>{leilaoInfo.qtdpar || '?'}</strong> parcelas ·
-                    Comissão leiloeiro: <strong>{leilaoInfo.comcom ?? 0}%</strong> ·
-                    Comissão vendedor: <strong>{leilaoInfo.comven ?? 0}%</strong>
-                    {leilaoInfo.descricaoCondicao && ` · Condição padrão: ${leilaoInfo.descricaoCondicao}`}
-                  </span>
-                }
-              />
-            )}
+            {leilaoInfo && (() => {
+              const comcomAplicado = loteDetalhes?.comcom ?? leilaoInfo.comcom ?? 0;
+              const comvenAplicado = loteDetalhes?.comven ?? leilaoInfo.comven ?? 0;
+              const comissaoPropriaDoLote = loteDetalhes?.comcom != null || loteDetalhes?.comven != null;
+              return (
+                <Alert
+                  type="info" showIcon style={{ marginBottom: 12 }}
+                  message={
+                    <span>
+                      Leilão: <strong>{leilaoInfo.qtdpar || '?'}</strong> parcelas ·
+                      Comissão leiloeiro: <strong>{comcomAplicado}%</strong> ·
+                      Comissão vendedor: <strong>{comvenAplicado}%</strong>
+                      {comissaoPropriaDoLote && ' (própria do lote)'}
+                      {leilaoInfo.descricaoCondicao && ` · Condição padrão: ${leilaoInfo.descricaoCondicao}`}
+                    </span>
+                  }
+                />
+              );
+            })()}
           </Form>
 
           <Row justify="space-between">

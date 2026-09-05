@@ -224,6 +224,18 @@ export default function Lotes() {
                 <Select showSearch options={condicoes} filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} allowClear />
               </Form.Item>
             </Col>
+            <Col xs={12} sm={6}>
+              <Form.Item name="comcom" label="Comissão Leiloeiro (%)"
+                tooltip="Sobrepõe a comissão padrão do leilão só pra este lote — use em leilões sem taxa única, como Vendas Diretas. Deixe em branco pra usar a do leilão.">
+                <InputNumber style={{ width: '100%' }} min={0} max={100} step={0.5} placeholder="Padrão do leilão" />
+              </Form.Item>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Form.Item name="comven" label="Comissão Vendedor (%)"
+                tooltip="Sobrepõe a comissão padrão do leilão só pra este lote. Deixe em branco pra usar a do leilão.">
+                <InputNumber style={{ width: '100%' }} min={0} max={100} step={0.5} placeholder="Padrão do leilão" />
+              </Form.Item>
+            </Col>
             <Col xs={12} md={6}><Form.Item name="rpxxx" label={labelRP(especiesLote)}><Input /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="sbbxxx" label={labelSBB(especiesLote)}><Input /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="tatxxx" label="TAT"><Input /></Form.Item></Col>

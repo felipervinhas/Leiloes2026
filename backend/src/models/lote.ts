@@ -25,6 +25,11 @@ export interface Lote {
   qtdAnimais?: number;
   tipoSecao?: string;
   condic?: number;
+  // Comissão própria do lote (%) — sobrepõe a do leilão quando preenchida.
+  // Usado principalmente em leilões "Vendas Diretas", onde não há uma taxa
+  // única pro leilão inteiro: cada lote negocia a sua.
+  comcom?: number | null;
+  comven?: number | null;
   nomeRaca?: string;
   nomeVendedor?: string;
   estabelecimento?: string;

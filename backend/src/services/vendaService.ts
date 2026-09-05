@@ -281,6 +281,8 @@ export async function lotesDisponiveis(idLeilao: number) {
     condic:      row.CONDIC,
     condicaoDesfin: row.CONDICAO_DESFIN,
     condicaoQtdpar: row.CONDICAO_QTDPAR,
+    comcom:      row.COMCOM,
+    comven:      row.COMVEN,
     vlrins:      row.VLRINS,
     filiacoa:    row.FILIACAO,
     ordem:       row.ORDEM,
