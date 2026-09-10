@@ -812,6 +812,16 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
   const descon  = parseFloat(cond.DESCON) || 0;
   const entrad  = cond.ENTRAD === 'S';
 
+  // Quantas parcelas de fato têm valor (PARC01..15) — usado abaixo pra detectar
+  // condição de pagamento único (ex.: "À VISTA X% DESC"), independente do que
+  // QTDPAR diga (no cadastro há valor inconsistente nesse campo entre tenants).
+  let qtdParcelasComValor = 0;
+  for (let i = 1; i <= 15; i++) {
+    const k = i <= 9 ? `PARC0${i}` : `PARC${i}`;
+    if ((parseInt(cond[k]) || 0) > 0) qtdParcelasComValor++;
+  }
+  const pagamentoUnico = qtdParcelasComValor === 1;
+
   // 3. Excluir parcelas existentes
   await pool.request()
     .input('idMov',     sql.Int, p.pMovimento)
@@ -918,7 +928,11 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
       if (parcVal <= 0) continue;
 
       if (isFirst) {
-        venc = entrad ? new Date(baseDate) : incMonth(baseDate, x);
+        // Pagamento único (só 1 parcela de valor >0, ex.: "À VISTA X% DESC")
+        // sempre vence na data-base — ENTRAD='N' no cadastro dessas condições
+        // não significa "tem carência de 1 mês", só que não há entrada separada
+        // do valor total (que aqui é a própria parcela única).
+        venc = (entrad || pagamentoUnico) ? new Date(baseDate) : incMonth(baseDate, x);
         isFirst = false;
       } else {
         venc = incMonth(venc, 1);
