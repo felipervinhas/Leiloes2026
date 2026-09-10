@@ -51,7 +51,11 @@ export async function calcularAcertoVendedor(idVendedor: number, idLeilao?: numb
   if (idLeilao) reqEntradas.input('idLeilao', sql.Int, idLeilao);
   const rEntradas = await reqEntradas.query(`
       SELECT MC.ID, LO.LOTEXX, LO.DESLOT, COM.NOMEXX AS NOME_COMPRADOR, MC.VALORPAGAR, L.LEILAO,
-        (SELECT TOP 1 VLRPAR FROM MOVIMENTO_PARCELAMENTO WHERE IDMOVLOTE = MC.IDMOVLOTE AND PRIPAR = 'S') AS VALOR_ENTRADA
+        -- Filtra também por IDCLI: quando o lote é dividido entre vários compradores
+        -- (mesmo IDMOVLOTE), sem esse filtro a subquery pega a parcela de um comprador
+        -- e aplica pra todos os outros do mesmo lote (ex.: Acerto Direto "herdando"
+        -- o valor de entrada de outro comprador do mesmo BOX).
+        (SELECT TOP 1 VLRPAR FROM MOVIMENTO_PARCELAMENTO WHERE IDMOVLOTE = MC.IDMOVLOTE AND IDCLI = MC.IDCLI AND PRIPAR = 'S') AS VALOR_ENTRADA
       FROM MOVIMENTO_COMPRADOR MC
       LEFT JOIN MOVIMENTO M       ON M.ID  = MC.IDMOV
       LEFT JOIN MOVIMENTO_LOTE ML ON ML.ID = MC.IDMOVLOTE
