@@ -273,18 +273,11 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
   // muitas vezes gera uma lista enorme (ex.: 6 lotes x 24 parcelas = 144 linhas).
   const porData = new Map<string, { datven: string; vlrpar: number; temSinal: boolean }>();
   for (const l of grupo.lotes) {
-    if (l.parcelas.length === 0) {
-      // Condições sem parcelamento gerado (ex.: Acerto Direto) não têm linha
-      // em MOVIMENTO_PARCELAMENTO — sem isso o valor do lote simplesmente
-      // some da tabela de vencimentos, mesmo aparecendo na tabela de lotes
-      // acima (que já usa o mesmo fallback l.valorPagar pro "Sinal/1ª Parc.").
-      const key = grupo.datlei || '—';
-      const atual = porData.get(key) || { datven: key, vlrpar: 0, temSinal: false };
-      atual.vlrpar += l.valorPagar || 0;
-      atual.temSinal = true;
-      porData.set(key, atual);
-      continue;
-    }
+    // Condições sem parcelamento gerado (ex.: Acerto Direto) não passam pela
+    // casa — o comprador acerta direto com o vendedor. Não entram aqui de
+    // propósito, senão parece que a casa vai cobrar/repassar esse valor numa
+    // data específica, quando na prática ela não tem nada a ver com esse
+    // dinheiro (só a comissão, já lançada à parte).
     for (const p of l.parcelas) {
       const key = p.datven || '—';
       const atual = porData.get(key) || { datven: key, vlrpar: 0, temSinal: false };
@@ -399,7 +392,11 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
         </View>
         {grupo.lotes.map((l, i) => {
           const primeira = l.parcelas.find(p => p.pripar === 'S');
-          const sinal = primeira ? primeira.vlrpar : l.valorPagar;
+          // Sem parcela real (ex.: Acerto Direto), não há sinal cobrado pela
+          // casa — mostrar l.valorPagar aqui dava a entender que esse valor
+          // ia ser repassado pela casa, quando na verdade o comprador acerta
+          // direto com o vendedor (a casa só cobra a própria comissão).
+          const sinal = primeira ? primeira.vlrpar : 0;
           return (
             <View key={l.idMc} style={i % 2 === 1 ? [s.tRow, s.tRowAlt] : s.tRow} wrap={false}>
               <View style={s.cLote}><Text style={s.tdBold}>{l.lotexx || '—'}</Text></View>
