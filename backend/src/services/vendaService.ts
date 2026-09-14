@@ -1399,11 +1399,20 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
     const grupo = grupos.get(chave)!;
     const parcelas = parcelasPorMovLote[`${r.IDMOVLOTE}_${r.IDCLI}`] || [];
     const qtdparCond = r.COND_QTDPAR != null ? Number(r.COND_QTDPAR) : parcelas.length;
-    const aVista = qtdparCond <= 1;
     const valorOriginal = r.VALORORIGINAL || 0;
     const valorPagar     = r.VALORPAGAR    || 0;
     const primeiraParcela = parcelas.find(p => p.pripar === 'S');
-    const valorSinal = primeiraParcela ? (primeiraParcela.vlrpar || 0) : valorPagar;
+    // Sem parcela marcada como sinal (PRIPAR='S'), nada foi cobrado no ato da
+    // venda — não pode cair em "Sinal"/"À Vista" só porque a condição tem uma
+    // única parcela (ex.: "Vencimento Único" pode vencer meses depois; QTDPAR
+    // baixo não significa que o valor foi pago na hora).
+    const valorSinal = primeiraParcela ? (primeiraParcela.vlrpar || 0) : 0;
+    const aVista = primeiraParcela != null && Math.abs(valorSinal - valorPagar) < 0.01;
+    // Acerto Direto não gera nenhuma linha em MOVIMENTO_PARCELAMENTO — a casa
+    // não cobra nem rastreia esse valor (comprador acerta direto com o
+    // vendedor), então não vira "Promissória" também: só documenta o valor
+    // em Total da Compra/Comissão, sem sugerir cobrança futura pela casa.
+    const temParcelamentoGerado = parcelas.length > 0;
 
     let idContraparte: number | undefined;
     let nomeContraparte: string | undefined;
@@ -1438,7 +1447,7 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
     grupo.totais.totalDesconto += r.VALORDESCONTO || 0;
     grupo.totais.totalDescontoFidelidade += r.VALOR_DESCONTO_FIDELIDADE || 0;
     grupo.totais.totalSinal        += valorSinal;
-    grupo.totais.totalPromissorias += valorPagar - valorSinal;
+    grupo.totais.totalPromissorias += temParcelamentoGerado ? (valorPagar - valorSinal) : 0;
     if (aVista) grupo.totais.totalAVista += valorPagar;
     grupo.totais.totalComissaoVendedor += r.VALORCOMISSAOVENDEDOR || 0;
     grupo.totais.totalLiquidoVendedor  += valorOriginal - (r.VALORCOMISSAOVENDEDOR || 0) - (r.VALORDESCONTO || 0) - (r.VALOR_DESCONTO_FIDELIDADE || 0);

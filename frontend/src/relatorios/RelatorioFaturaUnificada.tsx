@@ -491,18 +491,22 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
           sempre vem do comprador, que assina o próprio recibo na fatura dele). */}
       {!isVendedor && comp ? (
         <View wrap={false}>
-          <View style={s.reciboBox}>
-            <Text style={s.reciboLabel}>Recebemos de:</Text>
-            <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
-            <Text style={s.reciboLabel}>a quantia de, referente ao pagamento do sinal - 1ª parcela(s):</Text>
-            <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalSinal)}</Text>
-          </View>
-          <View style={s.reciboBox}>
-            <Text style={s.reciboLabel}>Recebemos de:</Text>
-            <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
-            <Text style={s.reciboLabel}>a quantia de, referente ao pagamento da comissão à leiloeira:</Text>
-            <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalComissao)}</Text>
-          </View>
+          {grupo.totais.totalSinal > 0.01 ? (
+            <View style={s.reciboBox}>
+              <Text style={s.reciboLabel}>Recebemos de:</Text>
+              <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
+              <Text style={s.reciboLabel}>a quantia de, referente ao pagamento do sinal - 1ª parcela(s):</Text>
+              <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalSinal)}</Text>
+            </View>
+          ) : null}
+          {grupo.totais.totalComissao > 0.01 ? (
+            <View style={s.reciboBox}>
+              <Text style={s.reciboLabel}>Recebemos de:</Text>
+              <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
+              <Text style={s.reciboLabel}>a quantia de, referente ao pagamento da comissão à leiloeira:</Text>
+              <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalComissao)}</Text>
+            </View>
+          ) : null}
         </View>
       ) : null}
 
