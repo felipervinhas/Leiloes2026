@@ -98,6 +98,7 @@ export default function Clientes() {
   const [filtroValor, setFiltroValor] = useState<string | undefined>(filtroSalvo.filtroValor);
   const [filtroClassificacoes, setFiltroClassificacoes] = useState<number[]>(filtroSalvo.filtroClassificacoes);
   const [cepLoading, setCepLoading] = useState(false);
+  const [cepPropLoading, setCepPropLoading] = useState(false);
   const [form] = Form.useForm();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [selectedRows, setSelectedRows] = useState<Cliente[]>([]);
@@ -393,6 +394,22 @@ export default function Clientes() {
       message.error('Erro ao consultar ViaCEP');
     } finally {
       setCepLoading(false);
+    }
+  };
+
+  const buscarCepPropriedade = async () => {
+    const cep = (formProp.getFieldValue('cep') || '').replace(/\D/g, '');
+    if (cep.length !== 8) { message.warning('Digite um CEP com 8 dígitos'); return; }
+    setCepPropLoading(true);
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await r.json();
+      if (data.erro) { message.error('CEP não encontrado'); return; }
+      formProp.setFieldsValue({ cidade: data.localidade || '', estado: data.uf || '' });
+    } catch {
+      message.error('Erro ao consultar ViaCEP');
+    } finally {
+      setCepPropLoading(false);
     }
   };
 
@@ -870,6 +887,7 @@ export default function Clientes() {
       title: 'Cidade/UF', ellipsis: true,
       render: (_: any, r: any) => r.cidade ? `${r.cidade}${r.estado ? `/${r.estado}` : ''}` : '—',
     },
+    { title: 'CEP', dataIndex: 'cep', width: 100 },
     { title: 'Localidade', dataIndex: 'localidade', ellipsis: true },
     { title: 'Código', dataIndex: 'codigoPropriedade', width: 100 },
     {
@@ -1388,8 +1406,13 @@ export default function Clientes() {
             <Col span={12}><Form.Item name="codigoPropriedade" label="Código"><Input /></Form.Item></Col>
           </Row>
           <Row gutter={12}>
-            <Col span={16}><Form.Item name="cidade" label="Cidade"><Input /></Form.Item></Col>
-            <Col span={8}><Form.Item name="estado" label="UF"><Input maxLength={2} /></Form.Item></Col>
+            <Col span={8}>
+              <Form.Item name="cep" label="CEP">
+                <Input.Search placeholder="00000-000" maxLength={9} enterButton={<AimOutlined />} loading={cepPropLoading} onSearch={buscarCepPropriedade} />
+              </Form.Item>
+            </Col>
+            <Col span={12}><Form.Item name="cidade" label="Cidade"><Input /></Form.Item></Col>
+            <Col span={4}><Form.Item name="estado" label="UF"><Input maxLength={2} /></Form.Item></Col>
           </Row>
           <Form.Item name="localidade" label="Localidade"><Input.TextArea rows={2} /></Form.Item>
         </Form>

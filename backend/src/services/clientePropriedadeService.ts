@@ -6,6 +6,7 @@ export interface ClientePropriedade {
   nomePropriedade?: string;
   cidade?: string;
   estado?: string;
+  cep?: string;
   localidade?: string;
   codigoPropriedade?: string;
 }
@@ -22,6 +23,7 @@ export async function listarPropriedades(idCliente: number) {
     nomePropriedade: row.NOME_PROPRIEDADE,
     cidade: row.CIDADE,
     estado: row.ESTADO,
+    cep: row.CEP,
     localidade: row.LOCALIDADE,
     codigoPropriedade: row.CODIGO_PROPRIEDADE,
   }));
@@ -35,11 +37,12 @@ export async function criarPropriedade(d: ClientePropriedade): Promise<number> {
     .input('nomePropriedade', sql.VarChar, d.nomePropriedade || null)
     .input('cidade', sql.VarChar, d.cidade || null)
     .input('estado', sql.VarChar, d.estado || null)
+    .input('cep', sql.VarChar, d.cep || null)
     .input('localidade', sql.VarChar, d.localidade || null)
     .input('codigoPropriedade', sql.VarChar, d.codigoPropriedade || null)
-    .query(`INSERT INTO CLIENTES_PROPRIEDADES (ID_CLIENTE,INSCRICAO,NOME_PROPRIEDADE,CIDADE,ESTADO,LOCALIDADE,CODIGO_PROPRIEDADE)
+    .query(`INSERT INTO CLIENTES_PROPRIEDADES (ID_CLIENTE,INSCRICAO,NOME_PROPRIEDADE,CIDADE,ESTADO,CEP,LOCALIDADE,CODIGO_PROPRIEDADE)
       OUTPUT INSERTED.ID
-      VALUES (@idCliente,@inscricao,@nomePropriedade,@cidade,@estado,@localidade,@codigoPropriedade)`);
+      VALUES (@idCliente,@inscricao,@nomePropriedade,@cidade,@estado,@cep,@localidade,@codigoPropriedade)`);
   return r.recordset[0].ID;
 }
 
@@ -51,11 +54,12 @@ export async function atualizarPropriedade(id: number, d: ClientePropriedade): P
     .input('nomePropriedade', sql.VarChar, d.nomePropriedade || null)
     .input('cidade', sql.VarChar, d.cidade || null)
     .input('estado', sql.VarChar, d.estado || null)
+    .input('cep', sql.VarChar, d.cep || null)
     .input('localidade', sql.VarChar, d.localidade || null)
     .input('codigoPropriedade', sql.VarChar, d.codigoPropriedade || null)
     .query(`UPDATE CLIENTES_PROPRIEDADES SET
       INSCRICAO=@inscricao, NOME_PROPRIEDADE=@nomePropriedade, CIDADE=@cidade,
-      ESTADO=@estado, LOCALIDADE=@localidade, CODIGO_PROPRIEDADE=@codigoPropriedade
+      ESTADO=@estado, CEP=@cep, LOCALIDADE=@localidade, CODIGO_PROPRIEDADE=@codigoPropriedade
       WHERE ID=@id`);
 }
 
