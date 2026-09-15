@@ -837,28 +837,34 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
   }
 
   // 5. Desconto do lote (manual, campo "Desconto (R$)" da venda) + Desconto da condição
-  // de pagamento (%) + Fidelidade — compostos em sequência sobre o valor bruto.
+  // de pagamento (%) + Fidelidade — os dois últimos são aditivos sobre o mesmo valor
+  // bruto (pós-desconto do lote), não compostos em sequência: fidelidade é um benefício
+  // do cliente, independente de como ele decidiu pagar, então não pode "encolher" só
+  // porque a condição de pagamento escolhida (ex.: à vista) já dá desconto — 3% de
+  // fidelidade sobre R$15.000 tem que dar R$450, não 3% sobre os R$13.500 já com os
+  // 10% de desconto à vista aplicados.
   // pValorPagar sempre recomeça do bruto (pValorOriginal) — gerarParcelas pode
   // rodar mais de uma vez pro mesmo comprador (reemitir parcelamento), e usar o
   // p.pValorPagar recebido (que já pode ter os descontos aplicados uma vez pelo
   // cálculo provisório de salvarComprador/atualizarComprador) duplicaria o desconto.
   const { pValorOriginal } = p;
   const valorDescontoLote = p.pValorDesconto || 0;
-  let pValorPagar = pValorOriginal - valorDescontoLote;
+  const valorBaseDescontos = pValorOriginal - valorDescontoLote;
+
   let valorDescontoCondicao = 0;
   if (descon > 0) {
-    valorDescontoCondicao = pValorPagar * (descon / 100);
-    pValorPagar -= valorDescontoCondicao;
+    valorDescontoCondicao = valorBaseDescontos * (descon / 100);
   }
 
   let valorDescontoFidelidade = 0;
   if (p.pTipoDescontoFidelidade === 'P' && (p.pDescontoFidelidade || 0) > 0) {
-    valorDescontoFidelidade = pValorPagar * ((p.pDescontoFidelidade as number) / 100);
+    valorDescontoFidelidade = valorBaseDescontos * ((p.pDescontoFidelidade as number) / 100);
   } else if (p.pTipoDescontoFidelidade === 'V' && (p.pDescontoFidelidade || 0) > 0) {
     valorDescontoFidelidade = p.pDescontoFidelidade as number;
   }
-  valorDescontoFidelidade = Math.min(valorDescontoFidelidade, pValorPagar);
-  pValorPagar -= valorDescontoFidelidade;
+  valorDescontoFidelidade = Math.min(valorDescontoFidelidade, valorBaseDescontos - valorDescontoCondicao);
+
+  let pValorPagar = valorBaseDescontos - valorDescontoCondicao - valorDescontoFidelidade;
 
   {
     const valorDescontoTotal = valorDescontoLote + valorDescontoCondicao;
