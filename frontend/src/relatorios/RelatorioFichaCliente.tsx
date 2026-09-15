@@ -27,6 +27,7 @@ export interface PropriedadeFichaPDF {
   id: number;
   nomePropriedade?: string;
   inscricao?: string;
+  codigoPropriedade?: string;
   cidade?: string;
   estado?: string;
   localidade?: string;
@@ -82,9 +83,10 @@ const s = StyleSheet.create({
   th: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#444' },
   td: { fontSize: 8.5 },
 
-  cPropriedade: { width: '28%' },
-  cIE:          { width: '16%' },
-  cCidade:      { width: '24%' },
+  cPropriedade: { width: '24%' },
+  cIE:          { width: '14%' },
+  cCodigo:      { width: '12%' },
+  cCidade:      { width: '20%' },
   cUf:          { width: '8%' },
   cLocalidade:  { flex: 1 },
 
@@ -164,6 +166,7 @@ function FichaClientePDF({ cliente, propriedades, empresa, logoBase64 }: Props) 
           <View style={s.tHeader}>
             <View style={s.cPropriedade}><Text style={s.th}>Propriedade</Text></View>
             <View style={s.cIE}><Text style={s.th}>IE</Text></View>
+            <View style={s.cCodigo}><Text style={s.th}>Código</Text></View>
             <View style={s.cCidade}><Text style={s.th}>Cidade</Text></View>
             <View style={s.cUf}><Text style={s.th}>UF</Text></View>
             <View style={s.cLocalidade}><Text style={s.th}>Localidade</Text></View>
@@ -177,6 +180,7 @@ function FichaClientePDF({ cliente, propriedades, empresa, logoBase64 }: Props) 
               <View key={p.id} style={i % 2 === 1 ? [s.tRow, s.tRowAlt] : s.tRow} wrap={false}>
                 <View style={s.cPropriedade}><Text style={s.td}>{p.nomePropriedade || '—'}</Text></View>
                 <View style={s.cIE}><Text style={s.td}>{p.inscricao || '—'}</Text></View>
+                <View style={s.cCodigo}><Text style={s.td}>{p.codigoPropriedade || '—'}</Text></View>
                 <View style={s.cCidade}><Text style={s.td}>{p.cidade || '—'}</Text></View>
                 <View style={s.cUf}><Text style={s.td}>{p.estado || '—'}</Text></View>
                 <View style={s.cLocalidade}><Text style={s.td}>{p.localidade || '—'}</Text></View>

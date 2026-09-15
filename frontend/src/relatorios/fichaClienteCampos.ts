@@ -44,6 +44,7 @@ export const FICHA_CLIENTE_CAMPOS: CampoDisponivel[] = [
 export const COLUNAS_PROPRIEDADES_PADRAO: ColunaTabela[] = [
   { key: 'nomePropriedade', label: 'Propriedade', largura: 30, visivel: true },
   { key: 'inscricao', label: 'IE', largura: 16, visivel: true },
+  { key: 'codigoPropriedade', label: 'Código', largura: 12, visivel: true },
   { key: 'cidade', label: 'Cidade', largura: 24, visivel: true },
   { key: 'estado', label: 'UF', largura: 8, visivel: true },
   { key: 'localidade', label: 'Localidade', largura: 32, visivel: true },

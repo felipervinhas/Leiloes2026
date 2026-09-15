@@ -36,6 +36,7 @@ export interface VendaPartesPDF {
   celularComprador?: string;
   // Propriedade (comprador)
   nomePropriedade?: string;
+  inscricao?: string;
   localidade?: string;
   cidadePropriedade?: string;
   estadoPropriedade?: string;
@@ -291,7 +292,7 @@ function ColunaComprador({ v }: { v: VendaPartesPDF }) {
   const ende = linhaEndereco(v.endereComprador, v.bairroComprador);
   const cid  = linhaCidadeEstado(v.cidadeComprador, v.estadoComprador, v.cepComprador);
   const tel  = v.celularComprador;
-  const temProp = v.nomePropriedade || v.localidade || v.cidadePropriedade;
+  const temProp = v.nomePropriedade || v.inscricao || v.localidade || v.cidadePropriedade;
 
   return (
     <View style={s.colDir}>
@@ -308,6 +309,7 @@ function ColunaComprador({ v }: { v: VendaPartesPDF }) {
         <>
           <Text style={s.propLabel}>Propriedade</Text>
           {v.nomePropriedade ? <Text style={s.propText}>{v.nomePropriedade}</Text> : null}
+          {v.inscricao ? <Text style={s.propText}>Inscrição Estadual: {v.inscricao}</Text> : null}
           {v.localidade
             ? <Text style={s.propText}>{v.localidade}{v.cidadePropriedade ? ` — ${v.cidadePropriedade}` : ''}{v.estadoPropriedade ? `/${v.estadoPropriedade}` : ''}</Text>
             : null}
