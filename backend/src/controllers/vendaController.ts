@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as svc from '../services/vendaService';
 import { registrarLog } from '../services/logService';
+import { dadosRelacaoCompradores } from '../services/relacaoCompradoresService';
 
 export const listar = async (req: Request, res: Response) => {
   const { busca, tipoBusca, idLeilao } = req.query;
@@ -243,6 +244,14 @@ export const faturaUnificada = async (req: Request, res: Response) => {
   if (!ids.length) return res.status(400).json({ error: 'Informe ao menos um lote (ids)' });
   const modo = MODOS_FATURA_UNIFICADA.includes(req.body?.modo) ? req.body.modo : 'par';
   res.json(await svc.dadosFaturaUnificada(ids, modo));
+};
+
+export const relacaoCompradores = async (req: Request, res: Response) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter((n: number) => !isNaN(n)) : [];
+  if (!ids.length) return res.status(400).json({ error: 'Informe ao menos um lote (ids)' });
+  const dados = await dadosRelacaoCompradores(ids);
+  if (!dados) return res.status(404).json({ error: 'Nenhum comprador encontrado para os lotes informados' });
+  res.json(dados);
 };
 
 export const listarPropriedades = async (req: Request, res: Response) => {

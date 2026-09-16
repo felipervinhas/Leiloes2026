@@ -7,6 +7,7 @@ export interface ClientePropriedade {
   cidade?: string;
   estado?: string;
   cep?: string;
+  incra?: string;
   localidade?: string;
   codigoPropriedade?: string;
 }
@@ -24,6 +25,7 @@ export async function listarPropriedades(idCliente: number) {
     cidade: row.CIDADE,
     estado: row.ESTADO,
     cep: row.CEP,
+    incra: row.INCRA,
     localidade: row.LOCALIDADE,
     codigoPropriedade: row.CODIGO_PROPRIEDADE,
   }));
@@ -38,11 +40,12 @@ export async function criarPropriedade(d: ClientePropriedade): Promise<number> {
     .input('cidade', sql.VarChar, d.cidade || null)
     .input('estado', sql.VarChar, d.estado || null)
     .input('cep', sql.VarChar, d.cep || null)
+    .input('incra', sql.VarChar, d.incra || null)
     .input('localidade', sql.VarChar, d.localidade || null)
     .input('codigoPropriedade', sql.VarChar, d.codigoPropriedade || null)
-    .query(`INSERT INTO CLIENTES_PROPRIEDADES (ID_CLIENTE,INSCRICAO,NOME_PROPRIEDADE,CIDADE,ESTADO,CEP,LOCALIDADE,CODIGO_PROPRIEDADE)
+    .query(`INSERT INTO CLIENTES_PROPRIEDADES (ID_CLIENTE,INSCRICAO,NOME_PROPRIEDADE,CIDADE,ESTADO,CEP,INCRA,LOCALIDADE,CODIGO_PROPRIEDADE)
       OUTPUT INSERTED.ID
-      VALUES (@idCliente,@inscricao,@nomePropriedade,@cidade,@estado,@cep,@localidade,@codigoPropriedade)`);
+      VALUES (@idCliente,@inscricao,@nomePropriedade,@cidade,@estado,@cep,@incra,@localidade,@codigoPropriedade)`);
   return r.recordset[0].ID;
 }
 
@@ -55,11 +58,12 @@ export async function atualizarPropriedade(id: number, d: ClientePropriedade): P
     .input('cidade', sql.VarChar, d.cidade || null)
     .input('estado', sql.VarChar, d.estado || null)
     .input('cep', sql.VarChar, d.cep || null)
+    .input('incra', sql.VarChar, d.incra || null)
     .input('localidade', sql.VarChar, d.localidade || null)
     .input('codigoPropriedade', sql.VarChar, d.codigoPropriedade || null)
     .query(`UPDATE CLIENTES_PROPRIEDADES SET
       INSCRICAO=@inscricao, NOME_PROPRIEDADE=@nomePropriedade, CIDADE=@cidade,
-      ESTADO=@estado, CEP=@cep, LOCALIDADE=@localidade, CODIGO_PROPRIEDADE=@codigoPropriedade
+      ESTADO=@estado, CEP=@cep, INCRA=@incra, LOCALIDADE=@localidade, CODIGO_PROPRIEDADE=@codigoPropriedade
       WHERE ID=@id`);
 }
 

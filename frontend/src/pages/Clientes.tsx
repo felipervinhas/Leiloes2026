@@ -890,6 +890,7 @@ export default function Clientes() {
     { title: 'CEP', dataIndex: 'cep', width: 100 },
     { title: 'Localidade', dataIndex: 'localidade', ellipsis: true },
     { title: 'Código', dataIndex: 'codigoPropriedade', width: 100 },
+    { title: 'INCRA', dataIndex: 'incra', width: 100 },
     {
       title: '', width: 80,
       render: (_: any, r: any) => (
@@ -1402,8 +1403,9 @@ export default function Clientes() {
         <Form form={formProp} layout="vertical" onFinish={salvarPropriedadeCliente}>
           <Form.Item name="nomePropriedade" label="Nome da Propriedade"><Input /></Form.Item>
           <Row gutter={12}>
-            <Col span={12}><Form.Item name="inscricao" label="Inscrição"><Input /></Form.Item></Col>
-            <Col span={12}><Form.Item name="codigoPropriedade" label="Código"><Input /></Form.Item></Col>
+            <Col span={8}><Form.Item name="inscricao" label="Inscrição"><Input /></Form.Item></Col>
+            <Col span={8}><Form.Item name="codigoPropriedade" label="Código"><Input /></Form.Item></Col>
+            <Col span={8}><Form.Item name="incra" label="INCRA"><Input /></Form.Item></Col>
           </Row>
           <Row gutter={12}>
             <Col span={8}>

@@ -19,13 +19,15 @@ import PartesVendasPDF from '../relatorios/RelatorioPartesVendas';
 import MediasLeilaoPDF from '../relatorios/RelatorioMediasLeilao';
 import RelatorioFaturaUnificada, { FaturaUnificadaGrupo } from '../relatorios/RelatorioFaturaUnificada';
 import MapaSeguroPDF from '../relatorios/RelatorioMapaSeguro';
+import RelatorioRelacaoCompradores, { RelacaoCompradoresPDF } from '../relatorios/RelatorioRelacaoCompradores';
 import { useConfig } from '../context/ConfigContext';
 import { useBanco } from '../context/BancoContext';
+import { useAuth } from '../context/AuthContext';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { labelRP, labelSBB } from '../utils/lote';
 
 type Orientacao = 'retrato' | 'paisagem';
-type TipoRelatorio = 'vendas' | 'partes' | 'medias' | 'fatura' | 'seguro' | 'seguroCompradores';
+type TipoRelatorio = 'vendas' | 'partes' | 'medias' | 'fatura' | 'seguro' | 'seguroCompradores' | 'relacaoCompradores';
 type MediaCategoria = {
   key: string;
   categoria: string;
@@ -101,6 +103,7 @@ const COMPARADORES: Record<string, (a: any, b: any) => number> = {
 export default function ConsultaVendas() {
   const config = useConfig();
   const { banco } = useBanco();
+  const { usuario } = useAuth();
   const filtroSalvo = lerFiltroPersistido(banco, 'consulta-vendas', {
     leilaoSel: undefined as number | undefined,
     loteSel: undefined as number | undefined,
@@ -145,6 +148,9 @@ export default function ConsultaVendas() {
   const [gerandoFaturaUnificada, setGerandoFaturaUnificada] = useState(false);
   const [faturasUnificadas, setFaturasUnificadas] = useState<FaturaUnificadaGrupo[] | null>(null);
   const [modalFaturaOpen, setModalFaturaOpen] = useState(false);
+  const [gerandoRelacaoCompradores, setGerandoRelacaoCompradores] = useState(false);
+  const [relacaoCompradoresDados, setRelacaoCompradoresDados] = useState<RelacaoCompradoresPDF | null>(null);
+  const [modalRelacaoOpen, setModalRelacaoOpen] = useState(false);
 
   const { rz: rzCV } = useColumnWidths('consulta_vendas', {
     lotexx: 70, leilao: 160, datlei: 100, deslot: 180, descricaoRaca: 120, especies: 90, rpxxx: 90, sbbxxx: 90,
@@ -287,6 +293,29 @@ export default function ConsultaVendas() {
       setModalFaturaOpen(true);
     } catch { message.error('Erro ao gerar fatura unificada'); }
     finally { setGerandoFaturaUnificada(false); }
+  };
+
+  // Lista todos os compradores distintos dos lotes filtrados (normalmente
+  // um leilão inteiro) e todas as propriedades cadastradas de cada um — não
+  // só a vinculada à venda específica, já que um comprador pode ter várias
+  // fazendas (relatório "Relação de Compradores", nos moldes do usado por
+  // outras casas de leilão).
+  const gerarRelacaoCompradores = async () => {
+    if (!leilaoSel) {
+      message.warning('Selecione o Leilão antes de gerar a Relação de Compradores');
+      return;
+    }
+    setGerandoRelacaoCompradores(true);
+    try {
+      const idsMc = dados
+        .map(d => d.idMovimentoComprador)
+        .filter((id): id is number => id != null);
+      if (!idsMc.length) { message.warning('Nenhum lote encontrado nos filtros atuais'); return; }
+      const r = await api.post('/vendas/relacao-compradores', { ids: idsMc });
+      setRelacaoCompradoresDados(r.data);
+      setModalRelacaoOpen(true);
+    } catch { message.error('Erro ao gerar relação de compradores'); }
+    finally { setGerandoRelacaoCompradores(false); }
   };
 
   const limpar = () => {
@@ -648,9 +677,10 @@ export default function ConsultaVendas() {
                   { value: 'fatura', label: 'Fatura Unificada' },
                   { value: 'seguro', label: 'Mapa de Seguradoras' },
                   { value: 'seguroCompradores', label: 'Mapa de Compradores' },
+                  { value: 'relacaoCompradores', label: 'Relação de Compradores' },
                 ]}
               />
-              {tipoRelatorio !== 'medias' && tipoRelatorio !== 'fatura' && (
+              {tipoRelatorio !== 'medias' && tipoRelatorio !== 'fatura' && tipoRelatorio !== 'relacaoCompradores' && (
                 <Radio.Group
                   value={orientacaoImp}
                   onChange={e => setOrientacaoImp(e.target.value)}
@@ -709,6 +739,17 @@ export default function ConsultaVendas() {
                   {!leilaoSel || (!vendedorSel && !compradorSel)
                     ? 'Selecione Leilão e Vendedor/Comprador'
                     : `Gerar Fatura Unificada (${dados.length} lote${dados.length !== 1 ? 's' : ''})`}
+                </Button>
+              ) : tipoRelatorio === 'relacaoCompradores' ? (
+                <Button
+                  type="primary"
+                  icon={<FileTextOutlined />}
+                  loading={gerandoRelacaoCompradores}
+                  onClick={gerarRelacaoCompradores}
+                  disabled={!leilaoSel || !dados.length}
+                  title={!leilaoSel ? 'Selecione o Leilão primeiro' : undefined}
+                >
+                  {!leilaoSel ? 'Selecione o Leilão' : 'Gerar Relação de Compradores'}
                 </Button>
               ) : (
                 <PDFDownloadLink
@@ -887,6 +928,44 @@ export default function ConsultaVendas() {
               })}
             </ul>
             <BlobProvider document={<RelatorioFaturaUnificada grupos={faturasUnificadas} empresa={config.empresa} logoBase64={config.logoBase64} colunasVisiveis={colunasVisiveis} />}>
+              {({ url, loading }) => (
+                <Button
+                  type="primary"
+                  icon={<EyeOutlined />}
+                  loading={loading}
+                  disabled={!url}
+                  onClick={() => url && window.open(url, '_blank')}
+                  block
+                  size="large"
+                >
+                  {loading ? 'Gerando PDF...' : 'Visualizar / Imprimir'}
+                </Button>
+              )}
+            </BlobProvider>
+          </>
+        )}
+      </Modal>
+
+      {/* Modal de resultado da relação de compradores */}
+      <Modal
+        title="Relação de Compradores"
+        open={modalRelacaoOpen}
+        onCancel={() => setModalRelacaoOpen(false)}
+        footer={null}
+      >
+        {relacaoCompradoresDados && (
+          <>
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+              {relacaoCompradoresDados.totalPessoas} comprador{relacaoCompradoresDados.totalPessoas !== 1 ? 'es' : ''} · {relacaoCompradoresDados.totalFazendas} fazenda{relacaoCompradoresDados.totalFazendas !== 1 ? 's' : ''} — {relacaoCompradoresDados.leilao}
+            </Typography.Paragraph>
+            <BlobProvider document={
+              <RelatorioRelacaoCompradores
+                dados={relacaoCompradoresDados}
+                empresa={config.empresa}
+                logoBase64={config.logoBase64}
+                impressoPor={usuario?.email}
+              />
+            }>
               {({ url, loading }) => (
                 <Button
                   type="primary"

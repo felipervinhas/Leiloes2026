@@ -170,6 +170,7 @@ bancoRouter.post('/vendas', venda.criar);
 bancoRouter.get('/vendas/lotes-disponiveis/:idLeilao', venda.lotesDisponiveis);
 bancoRouter.get('/vendas/:id/fatura', venda.fatura);
 bancoRouter.post('/vendas/fatura-unificada', venda.faturaUnificada);
+bancoRouter.post('/vendas/relacao-compradores', venda.relacaoCompradores);
 bancoRouter.get('/vendas/:id', venda.buscar);
 bancoRouter.put('/vendas/:id', venda.atualizar);
 bancoRouter.delete('/vendas/:id', venda.excluir);
