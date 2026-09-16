@@ -84,6 +84,9 @@ interface Props {
   grupos: FaturaUnificadaGrupo[];
   empresa?: string;
   logoBase64?: string | null;
+  /** Chaves de COLUNAS_CONSULTA_VENDAS (RelatorioConsultaVendas) a exibir — reaproveita
+   * o mesmo toggle "Colunas" da tela de Consulta de Vendas. Se omitido, mostra tudo. */
+  colunasVisiveis?: string[];
 }
 
 const PRETO  = '#000';
@@ -256,7 +259,10 @@ function docContraparte(p: { cpfxxx?: string; cnpjxx?: string }) {
   return p.cnpjxx ? `CNPJ: ${p.cnpjxx}` : `CPF: ${p.cpfxxx || 'não informado'}`;
 }
 
-function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: string, agora: string, logoBase64?: string | null) {
+function paginaFatura(
+  grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: string, agora: string,
+  logoBase64?: string | null, colunasVisiveis?: string[],
+) {
   const comp = grupo.comprador;
   const ven  = grupo.vendedor;
   const enderecoComp = comp ? [comp.endere, comp.bairro].filter(Boolean).join(', ') : '';
@@ -267,6 +273,9 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
   // Fatura de vendedor: documento é do vendedor, não interessa a ele o parcelamento
   // do comprador — interessa quanto vendeu, quanto de comissão paga e quanto recebe líquido.
   const isVendedor = grupo.modo === 'vendedor';
+  // Mesmo toggle "Colunas" da tela de Consulta de Vendas (chave 'comissao') — sem
+  // colunasVisiveis, mantém o comportamento atual (mostra tudo).
+  const mostrarComissao = !colunasVisiveis || colunasVisiveis.includes('comissao');
 
   // Agrupa as parcelas de todos os lotes por data de vencimento, somando os valores
   // que caem no mesmo dia — sem isso, um comprador com vários lotes parcelados em
@@ -380,7 +389,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
           <View style={s.cBruto}><Text style={[s.th, { textAlign: 'right' }]}>Vlr. Bruto</Text></View>
           {isVendedor ? (
             <>
-              <View style={s.cComVen}><Text style={[s.th, { textAlign: 'right' }]}>Comissão Vend.</Text></View>
+              {mostrarComissao ? <View style={s.cComVen}><Text style={[s.th, { textAlign: 'right' }]}>Comissão Vend.</Text></View> : null}
               <View style={s.cSinal}><Text style={[s.th, { textAlign: 'right' }]}>Sinal/1ª Parc.</Text></View>
             </>
           ) : (
@@ -417,7 +426,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
               <View style={s.cBruto}><Text style={s.td}>{fmtR(l.valorOriginal)}</Text></View>
               {isVendedor ? (
                 <>
-                  <View style={s.cComVen}><Text style={s.td}>{fmtR(l.valorComissaoVendedor)}</Text></View>
+                  {mostrarComissao ? <View style={s.cComVen}><Text style={s.td}>{fmtR(l.valorComissaoVendedor)}</Text></View> : null}
                   <View style={s.cSinal}><Text style={s.tdBold}>{fmtR(sinal)}</Text></View>
                 </>
               ) : (
@@ -469,7 +478,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
           {isVendedor ? (
             <>
               <InfoItem label="Total Vendido" value={fmtR(grupo.totais.totalCompra)} />
-              <InfoItem label="Total Comissão do Vendedor" value={fmtR(grupo.totais.totalComissaoVendedor)} />
+              {mostrarComissao ? <InfoItem label="Total Comissão do Vendedor" value={fmtR(grupo.totais.totalComissaoVendedor)} /> : null}
               <InfoItem label="Total Desconto Fidelidade" value={fmtR(grupo.totais.totalDescontoFidelidade)} />
               <InfoItem label="Total Líquido ao Vendedor" value={fmtR(grupo.totais.totalLiquidoVendedor)} />
             </>
@@ -479,7 +488,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
               <InfoItem label="Total Pagto. à Vista" value={fmtR(grupo.totais.totalAVista)} />
               <InfoItem label="Total em Promissórias" value={fmtR(grupo.totais.totalPromissorias)} />
               <InfoItem label="Total do Sinal / 1ª Parcela(s)" value={fmtR(grupo.totais.totalSinal)} />
-              <InfoItem label="Total da Comissão" value={fmtR(grupo.totais.totalComissao)} />
+              {mostrarComissao ? <InfoItem label="Total da Comissão" value={fmtR(grupo.totais.totalComissao)} /> : null}
               <InfoItem label="Total Desconto p/ Pagto. à Vista" value={fmtR(grupo.totais.totalDesconto)} />
               <InfoItem label="Total Desconto Fidelidade" value={fmtR(grupo.totais.totalDescontoFidelidade)} />
             </>
@@ -499,7 +508,7 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
               <Text style={s.reciboExtenso}>{valorExtenso(grupo.totais.totalSinal)}</Text>
             </View>
           ) : null}
-          {grupo.totais.totalComissao > 0.01 ? (
+          {mostrarComissao && grupo.totais.totalComissao > 0.01 ? (
             <View style={s.reciboBox}>
               <Text style={s.reciboLabel}>Recebemos de:</Text>
               <Text style={s.reciboNome}>{comp.nomexx || '—'}</Text>
@@ -541,13 +550,13 @@ function paginaFatura(grupo: FaturaUnificadaGrupo, index: number, nomeEmpresa: s
   );
 }
 
-function RelatorioFaturaUnificada({ grupos, empresa, logoBase64 }: Props) {
+function RelatorioFaturaUnificada({ grupos, empresa, logoBase64, colunasVisiveis }: Props) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
   return (
     <Document title="Fatura Unificada" author={nomeEmpresa}>
-      {grupos.map((grupo, i) => paginaFatura(grupo, i, nomeEmpresa, agora, logoBase64))}
+      {grupos.map((grupo, i) => paginaFatura(grupo, i, nomeEmpresa, agora, logoBase64, colunasVisiveis))}
     </Document>
   );
 }

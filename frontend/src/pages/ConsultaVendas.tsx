@@ -886,7 +886,7 @@ export default function ConsultaVendas() {
                 );
               })}
             </ul>
-            <BlobProvider document={<RelatorioFaturaUnificada grupos={faturasUnificadas} empresa={config.empresa} logoBase64={config.logoBase64} />}>
+            <BlobProvider document={<RelatorioFaturaUnificada grupos={faturasUnificadas} empresa={config.empresa} logoBase64={config.logoBase64} colunasVisiveis={colunasVisiveis} />}>
               {({ url, loading }) => (
                 <Button
                   type="primary"
