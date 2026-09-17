@@ -880,13 +880,26 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
               WHERE IDMOV=@idMov AND IDCLI=@idCli AND IDMOVLOTE=@idMovLote`);
   }
 
-  // 6. Safra
-  let valorEntrada = 0, valorSaldo = 0, descontoEntrada = 0, descontoSaldo = 0;
-  if (safrax) {
-    valorEntrada   = pValorPagar * ((parseFloat(cond.ENTRADA_SAFRA) || 0) / 100);
-    valorSaldo     = pValorPagar * ((parseFloat(cond.SALDO_SAFRA)   || 0) / 100);
-    descontoEntrada = valorEntrada * ((parseFloat(cond.DESCONTO_ENTRADA_SAFRA) || 0) / 100);
-    descontoSaldo   = valorSaldo   * ((parseFloat(cond.DESCONTO_SALDO_SAFRA)   || 0) / 100);
+  // Plano Safra tem dois esquemas coexistindo: condições antigas com
+  // ENTRADA_SAFRA/SALDO_SAFRA preenchidos (% fixo do total, ex.: "10%+90%")
+  // continuam usando essa conta — já têm vendas reais gerando parcelas
+  // corretamente, mudar isso agora quebraria elas na próxima reemissão.
+  // Condições sem % preenchido (esquema novo) usam a mesma conta por
+  // unidade do parcelamento normal (total/QTDPAR), permitindo várias
+  // parcelas antes do saldo (ex.: 2+2+SALDO com QTDPAR=30 → parcelas de
+  // R$1.000 cada) — só o vencimento do SALPAR continua indo pra DATA_SALDO
+  // do leilão nos dois esquemas.
+  const percentualEntradaSafra = parseFloat(cond.ENTRADA_SAFRA) || 0;
+  const percentualSaldoSafra   = parseFloat(cond.SALDO_SAFRA)   || 0;
+  const safraPercentual = safrax && (percentualEntradaSafra > 0 || percentualSaldoSafra > 0);
+  let valorEntradaSafra = 0, valorSaldoSafra = 0;
+  if (safraPercentual) {
+    const descontoEntradaSafra = (parseFloat(cond.DESCONTO_ENTRADA_SAFRA) || 0) / 100;
+    const descontoSaldoSafra   = (parseFloat(cond.DESCONTO_SALDO_SAFRA)   || 0) / 100;
+    const baseEntrada = pValorPagar * (percentualEntradaSafra / 100);
+    const baseSaldo   = pValorPagar * (percentualSaldoSafra   / 100);
+    valorEntradaSafra = baseEntrada - (baseEntrada * descontoEntradaSafra);
+    valorSaldoSafra   = baseSaldo   - (baseSaldo   * descontoSaldoSafra);
   }
 
   const baseDate = new Date(p.pDataBase);
@@ -983,7 +996,7 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
     const ordxxx = ord2(format, qtdpar);
 
     const vlrcalc = pValorPagar; // já líquido de condição de pagamento + fidelidade
-    const parcela = safrax ? (valorEntrada - descontoEntrada) : (vlrcalc / qtdpar);
+    const parcela = safraPercentual ? valorEntradaSafra : (vlrcalc / qtdpar);
     const vlrpar  = parcela * parcVal;
 
     // Datas: primeiras 2 parcelas usam baseDate, restantes incrementam
@@ -1003,8 +1016,7 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
     const soma = rows.reduce((acc, r) => acc + r.vlrpar, 0);
 
     const vlrcalc = pValorPagar; // já líquido de condição de pagamento + fidelidade
-    let parcela = (vlrcalc - soma) / salpar;
-    if (safrax) parcela = valorSaldo - descontoSaldo;
+    const parcela = safraPercentual ? valorSaldoSafra : (vlrcalc - soma) / salpar;
 
     // Última data das PARC01-15 já em memória, convertida em "quantos meses
     // depois da baseDate" ela cai. As parcelas do saldo continuam contando
