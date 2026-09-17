@@ -11,12 +11,14 @@ import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
-import { Button, Space, Divider, Tooltip, Segmented, Input } from 'antd';
+import ImageExtension from '@tiptap/extension-image';
+import { Button, Space, Divider, Tooltip, Segmented, Input, message } from 'antd';
 import {
   BoldOutlined, ItalicOutlined, UnderlineOutlined,
   AlignLeftOutlined, AlignCenterOutlined, AlignRightOutlined,
   OrderedListOutlined, UnorderedListOutlined,
   UndoOutlined, RedoOutlined, PrinterOutlined, CodeOutlined, EyeOutlined,
+  PictureOutlined,
 } from '@ant-design/icons';
 
 const { TextArea } = Input;
@@ -117,6 +119,7 @@ interface Props {
 export default function ContratoEditor({ content, onChange, onPrint, readOnly }: Props) {
   const [modo, setModo] = useState<Modo>('visual');
   const [htmlEdit, setHtmlEdit] = useState(content);
+  const inputImagemRef = React.useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -142,6 +145,9 @@ export default function ContratoEditor({ content, onChange, onPrint, readOnly }:
       TableCell.extend({
         addAttributes() { return { ...this.parent?.(), ...rawStyleAttr }; },
       }),
+      ImageExtension.extend({
+        addAttributes() { return { ...this.parent?.(), ...rawStyleAttr }; },
+      }).configure({ inline: false }),
     ],
     content,
     editable: !readOnly,
@@ -186,6 +192,25 @@ export default function ContratoEditor({ content, onChange, onPrint, readOnly }:
     </Tooltip>
   );
 
+  // Imagem embutida como data URI direto no HTML do contrato — o conteúdo já
+  // é salvo como HTML puro (sem storage de assets próprio), então não tem
+  // onde hospedar um arquivo separado; base64 mantém tudo num campo só.
+  const selecionarImagem = () => inputImagemRef.current?.click();
+
+  const arquivoSelecionado = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { message.error('Selecione um arquivo de imagem'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = reader.result as string;
+      editor?.chain().focus().setImage({ src }).run();
+    };
+    reader.onerror = () => message.error('Erro ao ler a imagem');
+    reader.readAsDataURL(file);
+  };
+
   const handlePrint = () => {
     if (onPrint) { onPrint(); return; }
     const html = modo === 'html' ? htmlEdit : (editor?.getHTML() ?? '');
@@ -198,6 +223,7 @@ export default function ContratoEditor({ content, onChange, onPrint, readOnly }:
         @page { size: A4; margin: 2cm; }
         body { font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.6; color: #000; }
         h1 { font-size: 16pt; } h2 { font-size: 14pt; } h3 { font-size: 13pt; }
+        img { max-width: 100%; height: auto; }
         p { margin: 0 0 8pt; text-align: justify; }
         ul, ol { margin: 0 0 8pt; padding-left: 20pt; }
         @media print { body { margin: 0; } }
@@ -263,6 +289,17 @@ export default function ContratoEditor({ content, onChange, onPrint, readOnly }:
                   () => editor.chain().focus().redo().run())}
 
                 <Divider type="vertical" style={{ margin: '0 2px' }} />
+
+                {btn('Inserir imagem', <PictureOutlined />, false, selecionarImagem)}
+                <input
+                  ref={inputImagemRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={arquivoSelecionado}
+                />
+
+                <Divider type="vertical" style={{ margin: '0 2px' }} />
               </>
             )}
 
@@ -297,6 +334,7 @@ export default function ContratoEditor({ content, onChange, onPrint, readOnly }:
           .ProseMirror p { margin: 0 0 8px; }
           .ProseMirror h1, .ProseMirror h2, .ProseMirror h3 { margin: 12px 0 6px; }
           .ProseMirror ul, .ProseMirror ol { padding-left: 24px; }
+          .ProseMirror img { max-width: 100%; height: auto; }
         `}</style>
         {modo === 'html' ? (
           <TextArea
