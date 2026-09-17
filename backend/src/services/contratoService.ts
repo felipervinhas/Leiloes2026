@@ -14,6 +14,11 @@ async function ensureTable() {
       ATIVO    BIT             DEFAULT 1,
       DATCRI   DATETIME        DEFAULT GETDATE()
     )
+
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='CONTRATOS_TEMPLATES' AND COLUMN_NAME='IMAGEM_TOPO')
+      ALTER TABLE CONTRATOS_TEMPLATES ADD IMAGEM_TOPO NVARCHAR(MAX) NULL;
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='CONTRATOS_TEMPLATES' AND COLUMN_NAME='IMAGEM_RODAPE')
+      ALTER TABLE CONTRATOS_TEMPLATES ADD IMAGEM_RODAPE NVARCHAR(MAX) NULL;
   `);
 }
 
@@ -41,37 +46,51 @@ export async function buscarTemplate(id: number) {
   const pool = await getPool();
   const r = await pool.request()
     .input('id', id)
-    .query(`SELECT ID, NOME, TIPO, CONTEUDO, ATIVO FROM CONTRATOS_TEMPLATES WHERE ID = @id`);
+    .query(`SELECT ID, NOME, TIPO, CONTEUDO, IMAGEM_TOPO, IMAGEM_RODAPE, ATIVO FROM CONTRATOS_TEMPLATES WHERE ID = @id`);
   const t = r.recordset[0];
   if (!t) throw new Error('Template não encontrado');
-  return { id: t.ID, nome: t.NOME, tipo: t.TIPO, conteudo: t.CONTEUDO, ativo: t.ATIVO };
+  return {
+    id: t.ID, nome: t.NOME, tipo: t.TIPO, conteudo: t.CONTEUDO,
+    imagemTopo: t.IMAGEM_TOPO, imagemRodape: t.IMAGEM_RODAPE, ativo: t.ATIVO,
+  };
 }
 
-export async function criarTemplate(nome: string, tipo: string | null, conteudo: string) {
+export async function criarTemplate(
+  nome: string, tipo: string | null, conteudo: string,
+  imagemTopo: string | null, imagemRodape: string | null,
+) {
   await ensureTable();
   const pool = await getPool();
   const r = await pool.request()
     .input('nome', nome)
     .input('tipo', tipo)
     .input('conteudo', conteudo)
+    .input('imagemTopo', imagemTopo)
+    .input('imagemRodape', imagemRodape)
     .query(`
-      INSERT INTO CONTRATOS_TEMPLATES (NOME, TIPO, CONTEUDO)
+      INSERT INTO CONTRATOS_TEMPLATES (NOME, TIPO, CONTEUDO, IMAGEM_TOPO, IMAGEM_RODAPE)
       OUTPUT INSERTED.ID
-      VALUES (@nome, @tipo, @conteudo)
+      VALUES (@nome, @tipo, @conteudo, @imagemTopo, @imagemRodape)
     `);
   return { id: r.recordset[0].ID };
 }
 
-export async function atualizarTemplate(id: number, nome: string, tipo: string | null, conteudo: string) {
+export async function atualizarTemplate(
+  id: number, nome: string, tipo: string | null, conteudo: string,
+  imagemTopo: string | null, imagemRodape: string | null,
+) {
+  await ensureTable();
   const pool = await getPool();
   await pool.request()
     .input('id', id)
     .input('nome', nome)
     .input('tipo', tipo)
     .input('conteudo', conteudo)
+    .input('imagemTopo', imagemTopo)
+    .input('imagemRodape', imagemRodape)
     .query(`
       UPDATE CONTRATOS_TEMPLATES
-      SET NOME=@nome, TIPO=@tipo, CONTEUDO=@conteudo
+      SET NOME=@nome, TIPO=@tipo, CONTEUDO=@conteudo, IMAGEM_TOPO=@imagemTopo, IMAGEM_RODAPE=@imagemRodape
       WHERE ID=@id
     `);
 }
@@ -91,7 +110,7 @@ export async function gerarContrato(idMov: number, idCli: number, idTemplate: nu
   const [rTemplate, rDados, rParcelas] = await Promise.all([
     pool.request()
       .input('idTemplate', idTemplate)
-      .query(`SELECT CONTEUDO FROM CONTRATOS_TEMPLATES WHERE ID=@idTemplate`),
+      .query(`SELECT CONTEUDO, IMAGEM_TOPO, IMAGEM_RODAPE FROM CONTRATOS_TEMPLATES WHERE ID=@idTemplate`),
 
     pool.request()
       .input('idMov', idMov)
@@ -285,7 +304,7 @@ export async function gerarContrato(idMov: number, idCli: number, idTemplate: nu
     html = html.split(`%${k}%`).join(v);
   }
 
-  return { html, dados: vars };
+  return { html, dados: vars, imagemTopo: tmpl.IMAGEM_TOPO, imagemRodape: tmpl.IMAGEM_RODAPE };
 }
 
 // ── Variáveis disponíveis (para referência no editor) ────────────────────────

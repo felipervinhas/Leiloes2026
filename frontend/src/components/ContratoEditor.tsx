@@ -18,7 +18,7 @@ import {
   AlignLeftOutlined, AlignCenterOutlined, AlignRightOutlined,
   OrderedListOutlined, UnorderedListOutlined,
   UndoOutlined, RedoOutlined, PrinterOutlined, CodeOutlined, EyeOutlined,
-  PictureOutlined,
+  PictureOutlined, CloseOutlined,
 } from '@ant-design/icons';
 
 const { TextArea } = Input;
@@ -114,12 +114,21 @@ interface Props {
   onChange?: (html: string) => void;
   onPrint?: () => void;
   readOnly?: boolean;
+  imagemTopo?: string | null;
+  imagemRodape?: string | null;
+  onChangeImagemTopo?: (src: string | undefined) => void;
+  onChangeImagemRodape?: (src: string | undefined) => void;
 }
 
-export default function ContratoEditor({ content, onChange, onPrint, readOnly }: Props) {
+export default function ContratoEditor({
+  content, onChange, onPrint, readOnly,
+  imagemTopo, imagemRodape, onChangeImagemTopo, onChangeImagemRodape,
+}: Props) {
   const [modo, setModo] = useState<Modo>('visual');
   const [htmlEdit, setHtmlEdit] = useState(content);
   const inputImagemRef = React.useRef<HTMLInputElement>(null);
+  const inputTopoRef = React.useRef<HTMLInputElement>(null);
+  const inputRodapeRef = React.useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -211,6 +220,36 @@ export default function ContratoEditor({ content, onChange, onPrint, readOnly }:
     reader.readAsDataURL(file);
   };
 
+  // Cabeçalho/rodapé ficam fora do conteúdo do editor (não são um node do
+  // Tiptap) porque precisam se repetir em toda página impressa, não aparecer
+  // uma única vez no meio do texto como a imagem inserida no corpo.
+  const lerImagemPagina = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    aplicar: ((src: string | undefined) => void) | undefined,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { message.error('Selecione um arquivo de imagem'); return; }
+    const reader = new FileReader();
+    reader.onload = () => aplicar?.(reader.result as string);
+    reader.onerror = () => message.error('Erro ao ler a imagem');
+    reader.readAsDataURL(file);
+  };
+
+  // Cabeçalho/rodapé repetidos em toda página impressa: o truque robusto entre
+  // navegadores é <thead>/<tfoot> de uma tabela (repetem nativamente a cada
+  // quebra de página), diferente de position:fixed que é inconsistente ao
+  // imprimir/exportar PDF.
+  const montarCorpoImpressao = (html: string) => {
+    if (!imagemTopo && !imagemRodape) return html;
+    return `<table style="width:100%; border-collapse:collapse;">
+      ${imagemTopo ? `<thead><tr><td style="padding-bottom:12pt;"><img src="${imagemTopo}" style="max-width:100%; display:block; margin:0 auto;" /></td></tr></thead>` : ''}
+      ${imagemRodape ? `<tfoot><tr><td style="padding-top:12pt;"><img src="${imagemRodape}" style="max-width:100%; display:block; margin:0 auto;" /></td></tr></tfoot>` : ''}
+      <tbody><tr><td>${html}</td></tr></tbody>
+    </table>`;
+  };
+
   const handlePrint = () => {
     if (onPrint) { onPrint(); return; }
     const html = modo === 'html' ? htmlEdit : (editor?.getHTML() ?? '');
@@ -228,7 +267,7 @@ export default function ContratoEditor({ content, onChange, onPrint, readOnly }:
         ul, ol { margin: 0 0 8pt; padding-left: 20pt; }
         @media print { body { margin: 0; } }
       </style>
-    </head><body>${html}</body></html>`);
+    </head><body>${montarCorpoImpressao(html)}</body></html>`);
     win.document.close();
     win.focus();
     setTimeout(() => { win.print(); }, 400);
@@ -290,13 +329,63 @@ export default function ContratoEditor({ content, onChange, onPrint, readOnly }:
 
                 <Divider type="vertical" style={{ margin: '0 2px' }} />
 
-                {btn('Inserir imagem', <PictureOutlined />, false, selecionarImagem)}
+                {btn('Inserir imagem no texto', <PictureOutlined />, false, selecionarImagem)}
                 <input
                   ref={inputImagemRef}
                   type="file"
                   accept="image/*"
                   hidden
                   onChange={arquivoSelecionado}
+                />
+
+                <Divider type="vertical" style={{ margin: '0 2px' }} />
+
+                <Tooltip title="Imagem fixa no topo de toda página impressa">
+                  <Button
+                    size="small"
+                    type={imagemTopo ? 'primary' : 'default'}
+                    icon={<PictureOutlined />}
+                    onClick={() => inputTopoRef.current?.click()}
+                  >
+                    Cabeçalho
+                  </Button>
+                </Tooltip>
+                {imagemTopo && (
+                  <Tooltip title="Remover imagem de cabeçalho">
+                    <Button size="small" danger icon={<CloseOutlined />}
+                      onClick={() => onChangeImagemTopo?.(undefined)} />
+                  </Tooltip>
+                )}
+                <input
+                  ref={inputTopoRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={e => lerImagemPagina(e, onChangeImagemTopo)}
+                />
+
+                <Tooltip title="Imagem fixa no rodapé de toda página impressa">
+                  <Button
+                    size="small"
+                    type={imagemRodape ? 'primary' : 'default'}
+                    icon={<PictureOutlined />}
+                    onClick={() => inputRodapeRef.current?.click()}
+                  >
+                    Rodapé
+                  </Button>
+                </Tooltip>
+                {imagemRodape && (
+                  <Tooltip title="Remover imagem de rodapé">
+                    <Button size="small" danger icon={<CloseOutlined />}
+                      onClick={() => onChangeImagemRodape?.(undefined)} />
+                  </Tooltip>
+                )}
+                <input
+                  ref={inputRodapeRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={e => lerImagemPagina(e, onChangeImagemRodape)}
                 />
 
                 <Divider type="vertical" style={{ margin: '0 2px' }} />

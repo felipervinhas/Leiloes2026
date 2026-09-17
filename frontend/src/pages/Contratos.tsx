@@ -53,6 +53,8 @@ export default function Contratos() {
   const [drawerOpen, setDrawerOpen]     = useState(false);
   const [editando, setEditando]         = useState<any | null>(null);
   const [conteudo, setConteudo]         = useState('');
+  const [imagemTopo, setImagemTopo]     = useState<string | undefined>();
+  const [imagemRodape, setImagemRodape] = useState<string | undefined>();
   const [varDrawer, setVarDrawer]       = useState(false);
   const [variaveis, setVariaveis]       = useState<any[]>([]);
   const [saving, setSaving]             = useState(false);
@@ -78,6 +80,8 @@ export default function Contratos() {
     setEditando(null);
     form.resetFields();
     setConteudo(TEMPLATE_INICIAL);
+    setImagemTopo(undefined);
+    setImagemRodape(undefined);
     setDrawerOpen(true);
   };
 
@@ -87,6 +91,8 @@ export default function Contratos() {
     setEditando(t);
     form.setFieldsValue({ nome: t.nome, tipo: t.tipo });
     setConteudo(t.conteudo);
+    setImagemTopo(t.imagemTopo || undefined);
+    setImagemRodape(t.imagemRodape || undefined);
     setDrawerOpen(true);
   };
 
@@ -95,11 +101,12 @@ export default function Contratos() {
     if (!conteudo.trim()) { message.warning('O conteúdo não pode estar vazio'); return; }
     setSaving(true);
     try {
+      const payload = { ...vals, conteudo, imagemTopo: imagemTopo ?? null, imagemRodape: imagemRodape ?? null };
       if (editando) {
-        await api.put(`/contratos/templates/${editando.id}`, { ...vals, conteudo });
+        await api.put(`/contratos/templates/${editando.id}`, payload);
         message.success('Template atualizado');
       } else {
-        await api.post('/contratos/templates', { ...vals, conteudo });
+        await api.post('/contratos/templates', payload);
         message.success('Template criado');
       }
       setDrawerOpen(false);
@@ -211,7 +218,14 @@ export default function Contratos() {
           </Button>
         </Form>
 
-        <ContratoEditor content={conteudo} onChange={setConteudo} />
+        <ContratoEditor
+          content={conteudo}
+          onChange={setConteudo}
+          imagemTopo={imagemTopo}
+          imagemRodape={imagemRodape}
+          onChangeImagemTopo={setImagemTopo}
+          onChangeImagemRodape={setImagemRodape}
+        />
       </Drawer>
 
       {/* Drawer de variáveis */}

@@ -13,16 +13,16 @@ export const buscar  = async (req: Request, res: Response) => {
 };
 
 export const criar   = async (req: Request, res: Response) => {
-  const { nome, tipo, conteudo } = req.body;
-  const resultado = await criarTemplate(nome, tipo ?? null, conteudo);
+  const { nome, tipo, conteudo, imagemTopo, imagemRodape } = req.body;
+  const resultado = await criarTemplate(nome, tipo ?? null, conteudo, imagemTopo ?? null, imagemRodape ?? null);
   await registrarLog((req as any).usuario, 'Inserir', 'Contratos', resultado.id);
   res.json(resultado);
 };
 
 export const atualizar = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  const { nome, tipo, conteudo } = req.body;
-  await atualizarTemplate(id, nome, tipo ?? null, conteudo);
+  const { nome, tipo, conteudo, imagemTopo, imagemRodape } = req.body;
+  await atualizarTemplate(id, nome, tipo ?? null, conteudo, imagemTopo ?? null, imagemRodape ?? null);
   await registrarLog((req as any).usuario, 'Alterar', 'Contratos', id);
   res.json({ ok: true });
 };
