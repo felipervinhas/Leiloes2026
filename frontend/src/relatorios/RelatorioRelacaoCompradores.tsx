@@ -50,9 +50,6 @@ const MEDIO  = '#555';
 const CINZA  = '#bbb';
 const CLARO  = '#f0f0f0';
 
-const docContraparte = (p: { cpfxxx?: string; cnpjxx?: string }) =>
-  p.cnpjxx ? `CNPJ: ${p.cnpjxx}` : `CPF: ${p.cpfxxx || 'não informado'}`;
-
 const s = StyleSheet.create({
   page: {
     fontFamily: 'Helvetica',

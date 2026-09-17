@@ -14,7 +14,7 @@ import {
   DeleteOutlined, DollarOutlined, EditOutlined, FileSearchOutlined,
   FileDoneOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UserOutlined,
   FileTextOutlined, AuditOutlined, EyeOutlined, FileExcelOutlined, FlagOutlined,
-  PercentageOutlined, SyncOutlined, MoreOutlined,
+  PercentageOutlined, SyncOutlined, MoreOutlined, BarChartOutlined, CloseOutlined,
 } from '@ant-design/icons';
 import { BlobProvider } from '@react-pdf/renderer';
 import FaturaCompraPDF, { FaturaData, VarianteFatura } from '../relatorios/RelatorioFaturaCompra';
@@ -117,6 +117,8 @@ function Listagem({
   const [contratoTemplates, setContratoTemplates]   = useState<any[]>([]);
   const [contratoIdTemplate, setContratoIdTemplate] = useState<number | undefined>();
   const [contratoHtml, setContratoHtml]             = useState('');
+  const [contratoImagemTopo, setContratoImagemTopo]     = useState<string | undefined>();
+  const [contratoImagemRodape, setContratoImagemRodape] = useState<string | undefined>();
   const [contratoStep, setContratoStep]             = useState<'select' | 'edit'>('select');
   const [contratoLoading, setContratoLoading]       = useState(false);
 
@@ -188,6 +190,8 @@ function Listagem({
     setContratoVenda(row);
     setContratoIdTemplate(undefined);
     setContratoHtml('');
+    setContratoImagemTopo(undefined);
+    setContratoImagemRodape(undefined);
     setContratoStep('select');
     const r = await api.get('/contratos/templates');
     setContratoTemplates(r.data);
@@ -202,6 +206,8 @@ function Listagem({
         `/contratos/gerar/${contratoVenda.id}/${contratoVenda.idcli}/${contratoIdTemplate}`
       );
       setContratoHtml(r.data.html);
+      setContratoImagemTopo(r.data.imagemTopo || undefined);
+      setContratoImagemRodape(r.data.imagemRodape || undefined);
       setContratoStep('edit');
     } catch { message.error('Erro ao gerar contrato'); }
     finally { setContratoLoading(false); }
@@ -626,6 +632,10 @@ function Listagem({
             <ContratoEditor
               content={contratoHtml}
               onChange={setContratoHtml}
+              imagemTopo={contratoImagemTopo}
+              imagemRodape={contratoImagemRodape}
+              onChangeImagemTopo={setContratoImagemTopo}
+              onChangeImagemRodape={setContratoImagemRodape}
             />
           </div>
         )}
@@ -774,6 +784,59 @@ const FORMA_PAGAMENTO_LABEL: Record<string, string> = {
 };
 const FORMA_PAGAMENTO_OPTS = FORMAS_PAGAMENTO.map(f => ({ value: f, label: FORMA_PAGAMENTO_LABEL[f] }));
 
+type MediaCategoriaWizard = { categoria: string; qtd: number; valor: number; media: number };
+
+/** Letreiro (ticker) com as médias do leilão em lançamento, rolando no topo
+ * da tela — o texto é duplicado uma vez e a faixa anda de 0% a -50% da sua
+ * própria largura, então quando a cópia "acaba" a original já está exatamente
+ * na mesma posição, sem salto no loop. */
+function LetreiroMedias({ medias, loading, onRefresh, onClose }: {
+  medias: MediaCategoriaWizard[];
+  loading: boolean;
+  onRefresh: () => void;
+  onClose: () => void;
+}) {
+  const itens = medias.map(m => `${m.categoria}: ${fmt(m.media)}/un. (${m.qtd} ${m.qtd === 1 ? 'unidade' : 'unidades'})`);
+  const texto = itens.length > 0 ? itens : (loading ? ['Calculando médias...'] : ['Nenhuma venda lançada ainda neste leilão']);
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'stretch', height: 36, marginBottom: 20,
+      background: '#0f172a', borderRadius: 6, overflow: 'hidden',
+    }}>
+      <div style={{
+        flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8,
+        padding: '0 12px', background: '#1e293b', zIndex: 1,
+      }}>
+        <BarChartOutlined style={{ color: '#fff' }} />
+        <Text style={{ color: '#fff', fontSize: 12, fontWeight: 600 }}>MÉDIAS</Text>
+      </div>
+      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+        <div className="letreiro-medias-track" style={{
+          position: 'absolute', top: 0, bottom: 0, display: 'flex', alignItems: 'center',
+          whiteSpace: 'nowrap', animationDuration: `${Math.max(15, texto.length * 5)}s`,
+        }}>
+          {[...texto, ...texto].map((t, i) => (
+            <span key={i} style={{ color: '#e2e8f0', fontSize: 13, padding: '0 28px' }}>{t}</span>
+          ))}
+        </div>
+      </div>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', background: '#1e293b' }}>
+        <Tooltip title="Atualizar">
+          <Button size="small" type="text" icon={<ReloadOutlined style={{ color: '#fff' }} />} loading={loading} onClick={onRefresh} />
+        </Tooltip>
+        <Tooltip title="Fechar">
+          <Button size="small" type="text" icon={<CloseOutlined style={{ color: '#fff' }} />} onClick={onClose} />
+        </Tooltip>
+      </div>
+      <style>{`
+        @keyframes letreiro-medias-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .letreiro-medias-track { animation-name: letreiro-medias-scroll; animation-timing-function: linear; animation-iteration-count: infinite; }
+      `}</style>
+    </div>
+  );
+}
+
 function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   editId?: number;
   leilaoInicial?: { id: number; nome: string };
@@ -807,6 +870,10 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   const [vendedores, setVendedores] = useState<{ value: number; label: string }[]>([]);
   const [loadingVend, setLoadingVend] = useState(false);
   const timerVend = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [mediasLeilao, setMediasLeilao] = useState<MediaCategoriaWizard[]>([]);
+  const [mediasLoading, setMediasLoading] = useState(false);
+  const [mediasPanelAberto, setMediasPanelAberto] = useState(true);
+  const idLeilaoWatch = Form.useWatch('idLeilao', form0);
 
   // ── step 2 ──────────────────────────────────────────────────────────────
   const [form2]         = Form.useForm();
@@ -907,6 +974,37 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     const r = await api.get(`/vendas/lotes-disponiveis/${idLeilao}`);
     setLotesDisp(r.data);
   };
+
+  // Médias por categoria do próprio leilão que está sendo lançado — ajuda o
+  // usuário a comparar o valor que está digitando com o que já saiu pros
+  // outros lotes da mesma raça/espécie. Botão de atualizar manual porque
+  // outros lançamentos (inclusive de outro usuário) podem mudar a média
+  // enquanto este aqui trabalha nas etapas seguintes de uma venda.
+  const buscarMedias = async (idLeilao: number) => {
+    setMediasLoading(true);
+    try {
+      const r = await api.get('/consulta-vendas', { params: { idLeilao } });
+      const porCategoria = new Map<string, { categoria: string; qtd: number; valor: number }>();
+      for (const v of r.data as any[]) {
+        const categoria = [v.descricaoRaca, v.especies].filter(Boolean).join(' / ') || 'Sem categoria';
+        const atual = porCategoria.get(categoria) ?? { categoria, qtd: 0, valor: 0 };
+        atual.qtd += Number(v.qtdxxx || 0);
+        atual.valor += Number(v.valorPagar || 0);
+        porCategoria.set(categoria, atual);
+      }
+      setMediasLeilao(
+        Array.from(porCategoria.values())
+          .map(c => ({ ...c, media: c.qtd > 0 ? c.valor / c.qtd : 0 }))
+          .sort((a, b) => a.categoria.localeCompare(b.categoria))
+      );
+    } finally { setMediasLoading(false); }
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!idLeilaoWatch) { setMediasLeilao([]); return; }
+    buscarMedias(idLeilaoWatch);
+  }, [idLeilaoWatch]);
 
   const onLeilaoChange = async (id: number) => {
     setLoteDetalhes(null);
@@ -1381,6 +1479,15 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
 
   return (
     <div>
+      {idLeilaoWatch && mediasPanelAberto && (
+        <LetreiroMedias
+          medias={mediasLeilao}
+          loading={mediasLoading}
+          onRefresh={() => buscarMedias(idLeilaoWatch)}
+          onClose={() => setMediasPanelAberto(false)}
+        />
+      )}
+
       {/* cabeçalho */}
       <Row align="middle" justify="space-between" style={{ marginBottom: 20 }}>
         <Col>
@@ -1392,6 +1499,13 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
             </Title>
           </Space>
         </Col>
+        {idLeilaoWatch && !mediasPanelAberto && (
+          <Col>
+            <Button icon={<BarChartOutlined />} onClick={() => setMediasPanelAberto(true)}>
+              Médias do leilão
+            </Button>
+          </Col>
+        )}
       </Row>
 
       <Steps
