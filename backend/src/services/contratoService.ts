@@ -297,6 +297,6 @@ export const VARIAVEIS_DISPONIVEIS = [
   { grupo: 'Comprador',   vars: ['NOMCOM','CPFCOM','ENDCOM','BAICOM','CEPCOM','MUNCOM','ESTCOM','EMACOM','FONCOM','ESTCIV','PROFISS','PAIXXX','MAEXXX'] },
   { grupo: 'Vendedor',    vars: ['NOMVEN','CPFVEN','ENDVEN','BAIVEN','CEPVEN','MUNVEN','ESTVEN','FONVEN'] },
   { grupo: 'Lote',        vars: ['LOTEXX','DESLOT','RACACOM','RPXXXX','SBBXXX','DATNAS','CATEGO','PELAGE','OBSLOT'] },
-  { grupo: 'Financeiro',  vars: ['VLRTOT','VLRLIQ','VLRPAR','DESFIN','PARC01','QTDPARA'] },
+  { grupo: 'Financeiro',  vars: ['VLRTOT','VLRLIQ','VLRPAR','DESFIN','PARC01','QTDPARA','CODNOT'] },
   { grupo: 'Parcelas',    vars: ['PARCELAINICIAL','PRIMEIRO_VENCIMENTO_DATA','PRIMEIRO_VENCIMENTO_VALOR','SALDOFINAL'] },
 ];
