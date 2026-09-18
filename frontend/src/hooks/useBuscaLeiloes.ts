@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import api from '../services/api';
+import { fmtDataUTC } from '../utils/data';
 
 export interface OpcaoLeilao { value: number; label: string; }
 
@@ -21,7 +22,14 @@ export function useBuscaLeiloes() {
       setCarregando(true);
       try {
         const r = await api.get('/leiloes', { params: { busca } });
-        setOpcoes(r.data.map((l: any) => ({ value: l.id, label: l.leilao || `Leilão #${l.id}` })));
+        // Data junto do nome — leilões recorrentes (ex.: mesmo remate todo ano)
+        // têm o mesmo nome, e sem a data não dá pra saber qual escolher na busca.
+        setOpcoes(r.data.map((l: any) => ({
+          value: l.id,
+          label: l.leilao
+            ? `${l.leilao}${l.datlei ? ` — ${fmtDataUTC(l.datlei)}` : ''}`
+            : `Leilão #${l.id}`,
+        })));
       } finally { setCarregando(false); }
     }, 350);
   }, []);

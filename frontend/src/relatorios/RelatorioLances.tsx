@@ -12,6 +12,9 @@ export interface LancePDF {
   celu1?: string;
   celu2?: string;
   valor?: number;
+  data?: string;
+  cidade?: string;
+  estado?: string;
 }
 
 interface DocProps {
@@ -29,6 +32,14 @@ const fmtR = (v?: number | null) =>
   v != null
     ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : '—';
+
+const fmtDataHora = (v?: string | null) => {
+  if (!v) return '—';
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return '—';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 
 const s = StyleSheet.create({
   page: {
@@ -90,9 +101,11 @@ const s = StyleSheet.create({
     backgroundColor: CINZA,
   },
 
-  colNome:     { flex: 3 },
-  colTelefone: { flex: 2 },
-  colValor:    { flex: 1.5, textAlign: 'right' },
+  colData:     { flex: 1.7 },
+  colNome:     { flex: 2.3 },
+  colCidade:   { flex: 1.5 },
+  colTelefone: { flex: 1.7 },
+  colValor:    { flex: 1.3, textAlign: 'right' },
 
   headerCell: { fontFamily: 'Helvetica-Bold', fontSize: 6.5, color: '#445' },
   cell:       { fontSize: 7.5 },
@@ -162,7 +175,9 @@ function LancesDoc({ lances, leilao, empresa, logoBase64 }: DocProps) {
                 <Text style={s.loteQtd}>{grupo.lances.length} lance{grupo.lances.length !== 1 ? 's' : ''}</Text>
               </View>
               <View style={s.tableHeader}>
+                <Text style={[s.colData, s.headerCell]}>Data/Hora</Text>
                 <Text style={[s.colNome, s.headerCell]}>Nome</Text>
+                <Text style={[s.colCidade, s.headerCell]}>Cidade</Text>
                 <Text style={[s.colTelefone, s.headerCell]}>Telefone(s)</Text>
                 <Text style={[s.colValor, s.headerCell]}>Valor</Text>
               </View>
@@ -171,7 +186,11 @@ function LancesDoc({ lances, leilao, empresa, logoBase64 }: DocProps) {
             {/* Linhas dos lances — valor DESC (já vem ordenado da API) */}
             {grupo.lances.map((l, i) => (
               <View key={l.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+                <Text style={[s.colData, s.cell]}>{fmtDataHora(l.data)}</Text>
                 <Text style={[s.colNome, s.cell]}>{l.nomeCliente || '—'}</Text>
+                <Text style={[s.colCidade, s.cell]}>
+                  {[l.cidade, l.estado].filter(Boolean).join(' / ') || '—'}
+                </Text>
                 <Text style={[s.colTelefone, s.cell]}>
                   {[l.celu1, l.celu2].filter(Boolean).join(' / ') || '—'}
                 </Text>

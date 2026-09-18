@@ -13,11 +13,13 @@ export async function listarLances(idLeilao?: number, idLote?: number) {
       LL.IP, LL.OrigemLance,
       L.LOTEXX, L.DESLOT,
       LEI.LEILAO,
-      C.NOMEXX, C.CELU_1, C.CELU_2
+      C.NOMEXX, C.CELU_1, C.CELU_2,
+      CID.CIDADE, CID.ESTADO
     FROM LOTES_LANCES LL
     LEFT JOIN LOTES L   ON L.ID = LL.IDLOTE
     LEFT JOIN LEILOES LEI ON LEI.ID = L.IDLEILAO
     LEFT JOIN CLIENTES C  ON C.ID = LL.IDCLIENTE
+    LEFT JOIN CIDADES CID ON CID.ID = C.CIDADE
     WHERE ${where}
     ORDER BY LL.IDLOTE, LL.VALOR DESC, LL.DATA DESC
   `);
@@ -36,6 +38,8 @@ export async function listarLances(idLeilao?: number, idLote?: number) {
     nomeCliente: row.NOMEXX,
     celu1: row.CELU_1,
     celu2: row.CELU_2,
+    cidade: row.CIDADE,
+    estado: row.ESTADO,
   }));
 }
 
