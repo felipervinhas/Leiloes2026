@@ -101,7 +101,11 @@ export async function calcularAcertoVendedor(idVendedor: number, idLeilao?: numb
   // pra cada uma poder ter recibo próprio — mas no Acerto de Vendedor isso não
   // interessa individualmente, só o total debitado. Agrupa numa linha só.
   const comissoesVendedor = lancamentosBrutos.filter(l => l.tipoOrigem === 'COMISSAO_VENDEDOR');
-  const outrosLancamentos = lancamentosBrutos.filter(l => l.tipoOrigem !== 'COMISSAO_VENDEDOR');
+  // Um cliente pode ser vendedor num lote e comprador em outro (até no mesmo
+  // leilão) — sem excluir COMISSAO_COMPRADOR aqui, a comissão que ele deve
+  // como comprador vazava pro acerto dele como vendedor.
+  const outrosLancamentos = lancamentosBrutos.filter(l =>
+    l.tipoOrigem !== 'COMISSAO_VENDEDOR' && l.tipoOrigem !== 'COMISSAO_COMPRADOR');
   const totalComissaoVendedor = comissoesVendedor.reduce((a, l) => a + (l.valor || 0), 0);
 
   const lancamentos = totalComissaoVendedor > 0.01
