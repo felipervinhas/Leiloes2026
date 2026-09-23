@@ -35,7 +35,8 @@ export default function TabelaLotesBloco({ lotes, colunas, fontFamily, fontSize,
 
   return (
     <View style={style ? [s.tabela, style] : s.tabela}>
-      <View style={s.header}>
+      {/* fixed: o cabeçalho se repete no topo de cada página por onde a tabela passar */}
+      <View style={s.header} fixed>
         {visiveis.map(c => (
           <Text key={c.key} style={[s.th, { width: `${(c.largura / totalLargura) * 100}%` }]}>{c.label}</Text>
         ))}
