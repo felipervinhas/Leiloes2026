@@ -55,12 +55,78 @@ function BolhaUsuario({ texto }: { texto: string }) {
   );
 }
 
+const BOTAO_TAMANHO = 52;
+const POSICAO_STORAGE_KEY = 'aiChatBotaoPos';
+
+/** Lê a posição salva (o usuário já arrastou antes) ou usa o canto inferior
+ * direito como padrão — sempre dentro da tela atual, caso a janela tenha
+ * mudado de tamanho desde a última vez. */
+function posicaoInicial(): { top: number; left: number } {
+  try {
+    const salva = localStorage.getItem(POSICAO_STORAGE_KEY);
+    if (salva) {
+      const { top, left } = JSON.parse(salva);
+      if (typeof top === 'number' && typeof left === 'number') {
+        return {
+          top: Math.min(Math.max(0, top), window.innerHeight - BOTAO_TAMANHO),
+          left: Math.min(Math.max(0, left), window.innerWidth - BOTAO_TAMANHO),
+        };
+      }
+    }
+  } catch { /* localStorage indisponível — segue com o padrão */ }
+  return { top: window.innerHeight - 80, left: window.innerWidth - 80 };
+}
+
 export default function AIChat() {
   const [aberto, setAberto] = useState(false);
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [input, setInput] = useState('');
   const [carregando, setCarregando] = useState(false);
   const fimRef = useRef<HTMLDivElement>(null);
+
+  // Botão arrastável — o ícone flutuante às vezes cobre algo importante da
+  // tela, então o usuário pode arrastar pra outro canto; a posição escolhida
+  // fica salva (localStorage) e não volta pro canto padrão ao recarregar.
+  const [pos, setPos] = useState(posicaoInicial);
+  const arrastandoRef = useRef<{ x: number; y: number; top: number; left: number } | null>(null);
+  const moveuRef = useRef(false);
+
+  const onMouseDownBotao = (e: React.MouseEvent) => {
+    arrastandoRef.current = { x: e.clientX, y: e.clientY, top: pos.top, left: pos.left };
+    moveuRef.current = false;
+
+    const onMove = (ev: MouseEvent) => {
+      const inicio = arrastandoRef.current;
+      if (!inicio) return;
+      const dx = ev.clientX - inicio.x;
+      const dy = ev.clientY - inicio.y;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moveuRef.current = true;
+      setPos({
+        top: Math.min(Math.max(0, inicio.top + dy), window.innerHeight - BOTAO_TAMANHO),
+        left: Math.min(Math.max(0, inicio.left + dx), window.innerWidth - BOTAO_TAMANHO),
+      });
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      arrastandoRef.current = null;
+      if (moveuRef.current) {
+        setPos(atual => {
+          try { localStorage.setItem(POSICAO_STORAGE_KEY, JSON.stringify(atual)); } catch { /* ignora */ }
+          return atual;
+        });
+      }
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  // Só abre o chat se o mouseup não veio de um arraste — sem isso, soltar o
+  // botão depois de arrastar também dispararia o clique e abriria o drawer.
+  const onClickBotao = () => {
+    if (moveuRef.current) { moveuRef.current = false; return; }
+    setAberto(true);
+  };
 
   useEffect(() => {
     fimRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -98,19 +164,21 @@ export default function AIChat() {
 
   return (
     <>
-      {/* Botão flutuante */}
-      <Tooltip title="Assistente IA" placement="left">
+      {/* Botão flutuante — arrastável, segura e solta em qualquer canto da tela */}
+      <Tooltip title="Assistente IA (arraste para mover)" placement="left">
         <Button
           type="primary"
           shape="circle"
           size="large"
           icon={<RobotOutlined style={{ fontSize: 20 }} />}
-          onClick={() => setAberto(true)}
+          onMouseDown={onMouseDownBotao}
+          onClick={onClickBotao}
           style={{
-            position: 'fixed', bottom: 28, right: 28, zIndex: 1000,
-            width: 52, height: 52,
+            position: 'fixed', top: pos.top, left: pos.left, zIndex: 1000,
+            width: BOTAO_TAMANHO, height: BOTAO_TAMANHO,
             backgroundColor: '#222', borderColor: '#222',
             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            cursor: 'grab',
           }}
         />
       </Tooltip>
