@@ -303,8 +303,10 @@ export default function Lotes() {
       {/* ── Filtros ── */}
       <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={{ flex: '0 0 220px' }}>
+          {/* value controlado: sem ele, o leilão restaurado do filtro persistido
+              continuava filtrando a busca mas o campo aparecia vazio, sem como limpar */}
           <Select placeholder="Digite para buscar o leilão..." allowClear style={{ width: '100%' }}
-            options={leiloes} onChange={v => setLeilaoFiltro(v)} onSearch={buscarLeiloes}
+            value={leilaoFiltro} options={leiloes} onChange={v => setLeilaoFiltro(v)} onSearch={buscarLeiloes}
             showSearch filterOption={false} loading={carregandoLeiloes}
             notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'} />
         </Col>
