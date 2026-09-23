@@ -249,6 +249,12 @@ export default function ConsultaVendas() {
 
   const limparSelecao = () => setSelectedRowKeys([]);
 
+  // Mesmo critério nos dois botões: só Vendedor filtrado → fatura de vendedor
+  // (sem comissão de comprador); só Comprador → fatura de comprador; senão o par.
+  const modoFaturaUnificada = () => vendedorSel && !compradorSel ? 'vendedor'
+                                  : compradorSel && !vendedorSel ? 'comprador'
+                                  : 'par';
+
   const gerarFaturaUnificada = async () => {
     setGerandoFaturaUnificada(true);
     try {
@@ -257,7 +263,7 @@ export default function ConsultaVendas() {
         .map(d => d.idMovimentoComprador)
         .filter((id): id is number => id != null);
       if (!idsMc.length) { message.warning('Nenhum lote válido selecionado'); return; }
-      const r = await api.post('/vendas/fatura-unificada', { ids: idsMc });
+      const r = await api.post('/vendas/fatura-unificada', { ids: idsMc, modo: modoFaturaUnificada() });
       if (!r.data.length) { message.warning('Nenhum dado encontrado para os lotes selecionados'); return; }
       setFaturasUnificadas(r.data);
       setModalFaturaOpen(true);
@@ -278,9 +284,7 @@ export default function ConsultaVendas() {
       message.warning('Selecione o Leilão e o Vendedor ou o Comprador antes de gerar a Fatura Unificada');
       return;
     }
-    const modo = vendedorSel && !compradorSel ? 'vendedor'
-               : compradorSel && !vendedorSel ? 'comprador'
-               : 'par';
+    const modo = modoFaturaUnificada();
     setGerandoFaturaUnificada(true);
     try {
       const idsMc = dados
