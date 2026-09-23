@@ -20,7 +20,7 @@ interface LoteOrdem {
   nomeVendedor?: string;
   nomeRaca?: string;
   catego?: string;
-  tatxxx?: string;
+  rpxxx?: string;
   obslot?: string;
   ordem?: string;
   dataLeilao?: string;

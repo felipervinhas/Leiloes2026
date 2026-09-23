@@ -250,7 +250,6 @@ export default function PainelLeiloeiro() {
                   <DadoItem label="Peso" valor={lote.pesoxx ? `${lote.pesoxx} kg` : undefined} />
                   <DadoItem label={labelRP(especies)} valor={lote.rpxxx} />
                   <DadoItem label={labelSBB(especies)} valor={lote.sbbxxx} />
-                  <DadoItem label="TAT" valor={lote.tatxxx} />
                   <DadoItem label="Data Nasc." valor={lote.datnas ? fmtDataUTC(lote.datnas) : undefined} />
                 </Row>
 

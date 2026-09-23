@@ -10,7 +10,7 @@ export interface LoteOrdemPDF {
   estabelecimento?: string;
   nomeRaca?: string;
   catego?: string;
-  tatxxx?: string;
+  rpxxx?: string;
   obslot?: string;
   ordem: string;
   dataLeilao?: string;
@@ -74,9 +74,16 @@ export const COLUNAS_LOTES_PADRAO: ColunaTabela[] = [
   { key: 'estabelecimento', label: 'Estabelecimento', largura: 22, visivel: false },
   { key: 'nomeRaca', label: 'Raça', largura: 12, visivel: true },
   { key: 'catego', label: 'Sexo', largura: 6, visivel: true },
-  { key: 'tatxxx', label: 'Tatuagem', largura: 12, visivel: false },
+  { key: 'rpxxx', label: 'Tatuagem / RP', largura: 12, visivel: false },
   { key: 'obslot', label: 'Observação', largura: 30, visivel: false },
 ];
+
+/**
+ * A tatuagem fica em RPXXX (RP nos equinos, Tatuagem nas demais espécies — padrão
+ * do Delphi e do app). A coluna chegou a ser criada lendo TATXXX, que ninguém
+ * preenche; templates salvos com essa chave são lidos como rpxxx.
+ */
+export const CHAVES_COLUNA_LOTES_LEGADAS: Record<string, string> = { tatxxx: 'rpxxx' };
 
 export function resolverCampoOrdemEntrada(key: string, ctx: OrdemEntradaContexto): string {
   const valor = (ctx as any)[key];

@@ -16,7 +16,7 @@ import { CampoLayout, normalizarCampoLayout } from '../relatorios/tipoLayout';
 import { CampoDisponivel, PROMISSORIA_CAMPOS } from '../relatorios/promissoriaCampos';
 import PromissoriaDinamica from '../relatorios/PromissoriaDinamica';
 import { FaturaData } from '../relatorios/RelatorioFaturaCompra';
-import { ORDEM_ENTRADA_CAMPOS, COLUNAS_LOTES_PADRAO, LoteOrdemPDF } from '../relatorios/ordemEntradaCampos';
+import { ORDEM_ENTRADA_CAMPOS, COLUNAS_LOTES_PADRAO, LoteOrdemPDF, CHAVES_COLUNA_LOTES_LEGADAS } from '../relatorios/ordemEntradaCampos';
 import OrdemEntradaDinamica from '../relatorios/OrdemEntradaDinamica';
 import RelatorioFaturaCompradorDinamico from '../relatorios/RelatorioFaturaCompradorDinamico';
 import EditorBlocoCartao from '../components/relatorioEditor/EditorBlocoCartao';
@@ -203,7 +203,7 @@ export default function EditorRelatorios() {
     api.get('/lotes', { params: { idLeilao: leilaoTesteId, ordemEntrada: 1 } }).then(r => {
       setLotesTeste((r.data || []).map((l: any) => ({
         id: l.id, lotexx: l.lotexx, deslot: l.deslot, nomeVendedor: l.nomeVendedor,
-        nomeRaca: l.nomeRaca, catego: l.catego, tatxxx: l.tatxxx, obslot: l.obslot, ordem: l.ordem || '',
+        nomeRaca: l.nomeRaca, catego: l.catego, rpxxx: l.rpxxx, obslot: l.obslot, ordem: l.ordem || '',
         dataLeilao: l.dataLeilao, enderecoLeilao: l.enderecoLeilao,
         cidadeLeilao: l.cidadeLeilao, estadoLeilao: l.estadoLeilao,
         horaInicioLeilao: l.horaInicioLeilao, horaFechamentoPreLeilao: l.horaFechamentoPreLeilao,
@@ -254,9 +254,16 @@ export default function EditorRelatorios() {
   /** Completa blocos de tabela de lotes salvos antes de uma coluna nova existir no catálogo (ex.: Estabelecimento), sem alterar as colunas já configuradas pelo usuário. */
   const completarColunasTabelaLotes = (c: CampoLayout): CampoLayout => {
     if (c.tipo !== 'bloco:tabela-lotes') return c;
-    const existentes = new Set((c.colunas || []).map(col => col.key));
+    // Renomeia chaves antigas (ex.: tatxxx → rpxxx) mantendo rótulo, largura e visibilidade
+    const colunas = (c.colunas || []).map(col => {
+      const nova = CHAVES_COLUNA_LOTES_LEGADAS[col.key];
+      if (!nova) return col;
+      const padrao = COLUNAS_LOTES_PADRAO.find(p => p.key === nova);
+      return { ...col, key: nova, label: col.label === 'Tatuagem' && padrao ? padrao.label : col.label };
+    });
+    const existentes = new Set(colunas.map(col => col.key));
     const faltantes = COLUNAS_LOTES_PADRAO.filter(col => !existentes.has(col.key)).map(col => ({ ...col, visivel: false }));
-    return faltantes.length ? { ...c, colunas: [...(c.colunas || []), ...faltantes] } : c;
+    return { ...c, colunas: [...colunas, ...faltantes] };
   };
 
   const abrirTemplate = async (id: number) => {

@@ -5,7 +5,9 @@
  * Tatuagem (rpxxx) e Registro (sbbxxx).
  */
 export function isEquino(especies?: string | null): boolean {
-  return (especies || '').toUpperCase().startsWith('EQUINO');
+  // Cadastro de raças tem variações: EQUINOS, EQUINO, Equina, Eqüina
+  const e = (especies || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  return e.startsWith('EQUIN');
 }
 
 export function labelRP(especies?: string | null): string {

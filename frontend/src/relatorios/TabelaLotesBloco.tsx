@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet } from '@react-pdf/renderer';
 import { ColunaTabela } from './tipoLayout';
-import { LoteOrdemPDF } from './ordemEntradaCampos';
+import { LoteOrdemPDF, CHAVES_COLUNA_LOTES_LEGADAS } from './ordemEntradaCampos';
 
 interface Props {
   lotes: LoteOrdemPDF[];
@@ -14,7 +14,8 @@ interface Props {
 
 const SEXO: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C: 'Castrado' };
 
-function valorColuna(lote: LoteOrdemPDF, key: string): string {
+function valorColuna(lote: LoteOrdemPDF, chave: string): string {
+  const key = CHAVES_COLUNA_LOTES_LEGADAS[chave] || chave;
   const v = (lote as any)[key];
   if (key === 'catego') return SEXO[v as string] || v || '—';
   return v ?? '—';

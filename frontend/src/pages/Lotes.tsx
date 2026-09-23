@@ -247,7 +247,6 @@ export default function Lotes() {
             </Col>
             <Col xs={12} md={6}><Form.Item name="rpxxx" label={labelRP(especiesLote)}><Input /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="sbbxxx" label={labelSBB(especiesLote)}><Input /></Form.Item></Col>
-            <Col xs={12} md={6}><Form.Item name="tatxxx" label="TAT"><Input /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="pesoxx" label="Peso"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
             <Col xs={24} sm={12}><Form.Item name="pelage" label="Pelagem"><Input /></Form.Item></Col>
             <Col xs={24} sm={12}><Form.Item name="filiacao" label="Filiação"><Input /></Form.Item></Col>
