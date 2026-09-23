@@ -13,6 +13,8 @@ export interface Usuario {
   adm?: string;
   perfis: Perfil[];
   controles: string[];
+  /** Só na Macedo: 'W' (pisteiro, acesso web) ou 'I' (interno). null/ausente nos demais bancos. */
+  tipoSecao?: 'I' | 'W' | null;
 }
 
 export interface LoginResponse {

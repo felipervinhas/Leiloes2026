@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as svc from '../services/loteService';
 import { registrarLog } from '../services/logService';
+import { tipoSecaoDoUsuario, usaSecaoInternaWeb } from '../services/secaoAcessoService';
 
 export const listar = async (req: Request, res: Response) => {
   const idLeilao = req.query.idLeilao ? Number(req.query.idLeilao) : undefined;
@@ -13,7 +14,9 @@ export const listar = async (req: Request, res: Response) => {
     const pageSize = Number(req.query.pageSize) || 15;
     res.json(await svc.listarLotesPaginado(idLeilao, busca, page, pageSize));
   } else {
-    res.json(await svc.listarLotes(idLeilao, busca));
+    // ordemEntrada=1: na Macedo, a Ordem de Entrada lista só os lotes Web não vendidos, como no Delphi
+    const somenteWeb = req.query.ordemEntrada === '1' && usaSecaoInternaWeb();
+    res.json(await svc.listarLotes(idLeilao, busca, somenteWeb));
   }
 };
 export const buscar = async (req: Request, res: Response) => {
@@ -22,19 +25,33 @@ export const buscar = async (req: Request, res: Response) => {
   res.json(data);
 };
 export const criar = async (req: Request, res: Response) => {
-  const id = await svc.criarLote(req.body);
+  const dados = { ...req.body };
+  const tipoSecao = await tipoSecaoDoUsuario((req as any).usuario?.id);
+  if (tipoSecao) {
+    dados.tipoSecao = tipoSecao;
+    // Usuário interno não publica lote no site (no Delphi o "Público" ficava travado)
+    if (tipoSecao === 'I') dados.publica = 'N';
+  }
+  const id = await svc.criarLote(dados);
   await registrarLog((req as any).usuario, 'Inserir', 'Lotes', id);
   res.status(201).json({ id });
 };
 export const atualizar = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  await svc.atualizarLote(id, req.body);
+  const dados = { ...req.body };
+  if (await tipoSecaoDoUsuario((req as any).usuario?.id) === 'I') {
+    const atual = await svc.buscarLotePorId(id);
+    dados.publica = atual?.publica || 'N';
+  }
+  await svc.atualizarLote(id, dados);
   await registrarLog((req as any).usuario, 'Alterar', 'Lotes', id);
   res.json({ ok: true });
 };
 export const atualizarStatus = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  const { vendido, publica } = req.body;
+  const { vendido } = req.body;
+  let { publica } = req.body;
+  if (await tipoSecaoDoUsuario((req as any).usuario?.id) === 'I') publica = undefined;
   await svc.atualizarStatusLote(id, { vendido, publica });
   await registrarLog((req as any).usuario, 'Alterar', 'Lotes', id);
   res.json({ ok: true });
@@ -55,7 +72,8 @@ export const salvarOrdens = async (req: Request, res: Response) => {
 
 export const duplicar = async (req: Request, res: Response) => {
   try {
-    const novoId = await svc.duplicarLote(Number(req.params.id));
+    const tipoSecao = await tipoSecaoDoUsuario((req as any).usuario?.id);
+    const novoId = await svc.duplicarLote(Number(req.params.id), tipoSecao);
     await registrarLog((req as any).usuario, 'Inserir', 'Lotes', novoId);
     res.status(201).json({ id: novoId });
   } catch (e: any) {

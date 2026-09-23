@@ -70,11 +70,13 @@ const SELECT_LOTE = `
     LEFT JOIN Cidades LEICID ON LEICID.ID = TRY_CAST(LEI.CODCID AS INT)
     LEFT JOIN CondicaoPagtos LEICP ON LEICP.ID = LEI.CONDIC`;
 
-export async function listarLotes(idLeilao?: number, busca?: string): Promise<Lote[]> {
+/** somenteWebNaoVendidos: filtro da Ordem de Entrada do Delphi (TIPO_SECAO = 'W' e não vendido) — só aplicado pelo controller na Macedo. */
+export async function listarLotes(idLeilao?: number, busca?: string, somenteWebNaoVendidos = false): Promise<Lote[]> {
   await garantirColunaQtdAnimais();
   const pool = await getPool();
   const req = pool.request();
   const filtros: string[] = [];
+  if (somenteWebNaoVendidos) filtros.push(`L.TIPO_SECAO = 'W' AND ISNULL(L.VENDIDO, 'N') <> 'S'`);
   if (idLeilao) { req.input('idLeilao', sql.Int, idLeilao); filtros.push(`L.IDLEILAO = @idLeilao`); }
   if (busca) { req.input('busca', sql.VarChar, `%${busca}%`); filtros.push(`(L.DESLOT LIKE @busca OR L.LOTEXX LIKE @busca)`); }
   const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
@@ -159,9 +161,10 @@ export async function criarLote(d: Lote): Promise<number> {
     .input('vendido', sql.Char, d.vendido||'N').input('publica', sql.Char, d.publica||'N')
     .input('condic', sql.Int, d.condic||null).input('qtdAnimais', sql.Int, d.qtdAnimais||null)
     .input('comcom', sql.Decimal(9, 4), d.comcom ?? null).input('comven', sql.Decimal(9, 4), d.comven ?? null)
-    .query(`INSERT INTO Lotes (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,RACAXX,IDLEILAO,CODVEN,ORDEM,CATEGO,VLRINS,PELAGE,DATNAS,OBSLOT,FILIACAO,LANMAX,URLVideo,Comentario,MULTIPLO,VENDIDO,PUBLICA,CONDIC,QTDANIMAIS,COMCOM,COMVEN)
+    .input('tipoSecao', sql.VarChar, d.tipoSecao || null)
+    .query(`INSERT INTO Lotes (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,RACAXX,IDLEILAO,CODVEN,ORDEM,CATEGO,VLRINS,PELAGE,DATNAS,OBSLOT,FILIACAO,LANMAX,URLVideo,Comentario,MULTIPLO,VENDIDO,PUBLICA,CONDIC,QTDANIMAIS,COMCOM,COMVEN,TIPO_SECAO)
       OUTPUT INSERTED.ID
-      VALUES ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@racaxx,@idleilao,@codven,@ordem,@catego,@vlrins,@pelage,@datnas,@obslot,@filiacao,@lanmax,@urlvideo,@comentario,@multiplo,@vendido,@publica,@condic,@qtdAnimais,@comcom,@comven)`);
+      VALUES ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@racaxx,@idleilao,@codven,@ordem,@catego,@vlrins,@pelage,@datnas,@obslot,@filiacao,@lanmax,@urlvideo,@comentario,@multiplo,@vendido,@publica,@condic,@qtdAnimais,@comcom,@comven,@tipoSecao)`);
   return r.recordset[0].ID;
 }
 
@@ -230,7 +233,8 @@ export async function deletarLote(id: number): Promise<void> {
   await pool.request().input('id', sql.Int, id).query(`DELETE FROM Lotes WHERE ID=@id`);
 }
 
-export async function duplicarLote(id: number): Promise<number> {
+/** tipoSecao: seção do usuário que está duplicando (Macedo); sem ela, a cópia herda a do original. */
+export async function duplicarLote(id: number, tipoSecao?: string | null): Promise<number> {
   const pool = await getPool();
   const r = await pool.request().input('id', sql.Int, id).query(`SELECT * FROM Lotes WHERE ID=@id`);
   if (!r.recordset.length) throw new Error('Lote não encontrado');
@@ -261,10 +265,11 @@ export async function duplicarLote(id: number): Promise<number> {
     .input('comcom',   sql.Decimal(9, 4), o.COMCOM ?? null)
     .input('comven',   sql.Decimal(9, 4), o.COMVEN ?? null)
     .input('iddup',    sql.Int,     id)
+    .input('tipoSecao', sql.VarChar, tipoSecao || o.TIPO_SECAO || null)
     .query(`INSERT INTO Lotes
-      (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,FILIACAO,DATNAS,CATEGO,RACAXX,IDLEILAO,CODVEN,ORDEM,VLRINS,LANMAX,OBSLOT,PELAGE,URLVideo,Comentario,MULTIPLO,CONDIC,QTDANIMAIS,COMCOM,COMVEN,ID_DUPLICADO,VENDIDO,PUBLICA)
+      (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,FILIACAO,DATNAS,CATEGO,RACAXX,IDLEILAO,CODVEN,ORDEM,VLRINS,LANMAX,OBSLOT,PELAGE,URLVideo,Comentario,MULTIPLO,CONDIC,QTDANIMAIS,COMCOM,COMVEN,ID_DUPLICADO,VENDIDO,PUBLICA,TIPO_SECAO)
       OUTPUT INSERTED.ID
       VALUES
-      ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@filiacao,@datnas,@catego,@racaxx,@idleilao,@codven,@ordem,@vlrins,@lanmax,@obslot,@pelage,@urlvideo,@comentario,@multiplo,@condic,@qtdAnimais,@comcom,@comven,@iddup,'N','N')`);
+      ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@filiacao,@datnas,@catego,@racaxx,@idleilao,@codven,@ordem,@vlrins,@lanmax,@obslot,@pelage,@urlvideo,@comentario,@multiplo,@condic,@qtdAnimais,@comcom,@comven,@iddup,'N','N',@tipoSecao)`);
   return nr.recordset[0].ID;
 }

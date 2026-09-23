@@ -77,7 +77,7 @@ export default function OrdemEntrada() {
   const carregarLotes = async (id: number, label: string) => {
     setLoading(true);
     try {
-      const r = await api.get('/lotes', { params: { idLeilao: id } });
+      const r = await api.get('/lotes', { params: { idLeilao: id, ordemEntrada: 1 } });
       const data: LoteOrdem[] = r.data;
       setLotes(data);
       const init: Record<number, string> = {};

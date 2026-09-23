@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker,
-  Space, Popconfirm, Typography, Row, Col, message, Switch, Tabs, Divider, Image, Grid, Spin } from 'antd';
+  Space, Popconfirm, Typography, Row, Col, message, Switch, Tabs, Divider, Image, Grid, Spin, Tag } from 'antd';
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
@@ -13,6 +13,7 @@ import ImageUpload from '../components/ImageUpload';
 import { labelRP, labelSBB } from '../utils/lote';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { useBanco } from '../context/BancoContext';
+import { useAuth } from '../context/AuthContext';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -27,6 +28,10 @@ export default function Lotes() {
   const isMobile = screens.md === false;
   const { rz: rzLot } = useColumnWidths('lotes', { lotexx: 70, deslot: 300, nomeVendedor: 160 });
   const { banco } = useBanco();
+  const { usuario } = useAuth();
+  // Macedo: usuário interno não publica lote no site (como no Delphi); a coluna Tipo só aparece lá
+  const usaSecao = !!usuario?.tipoSecao;
+  const usuarioInterno = usuario?.tipoSecao === 'I';
   const filtroSalvo = lerFiltroPersistido<{ busca: string; leilaoFiltro?: number }>(banco, 'lotes', { busca: '' });
 
   const [dados, setDados] = useState<any[]>([]);
@@ -163,6 +168,10 @@ export default function Lotes() {
     { title: 'Lote', dataIndex: 'lotexx', ...rzLot('lotexx') },
     { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzLot('deslot') },
     { title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, ...rzLot('nomeVendedor') },
+    ...(usaSecao ? [{
+      title: 'Tipo', dataIndex: 'tipoSecao', width: 80,
+      render: (v: string) => v === 'W' ? <Tag color="blue">Web</Tag> : v === 'I' ? <Tag>Interno</Tag> : '—',
+    }] : []),
     {
       title: 'Ações', width: 120,
       render: (_: any, r: any) => (
@@ -251,7 +260,9 @@ export default function Lotes() {
                 <InputNumber min={1} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col xs={6} md={3}><Form.Item name="publica" label="Público" valuePropName="checked"><Switch /></Form.Item></Col>
+            <Col xs={6} md={3}><Form.Item name="publica" label="Público" valuePropName="checked"
+              tooltip={usuarioInterno ? 'Somente usuários pisteiros (acesso web) publicam lotes no site' : undefined}>
+              <Switch disabled={usuarioInterno} /></Form.Item></Col>
             <Col xs={6} md={3}><Form.Item name="vendido" label="Vendido" valuePropName="checked"><Switch /></Form.Item></Col>
             <Col span={24}><Form.Item name="urlvideo" label="URL Vídeo"><Input /></Form.Item></Col>
             <Col span={24}><Form.Item name="obslot" label="Observações"><TextArea rows={2} /></Form.Item></Col>

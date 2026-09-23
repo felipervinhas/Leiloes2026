@@ -200,7 +200,7 @@ export default function EditorRelatorios() {
 
   useEffect(() => {
     if (!leilaoTesteId) { setLotesTeste([]); return; }
-    api.get('/lotes', { params: { idLeilao: leilaoTesteId } }).then(r => {
+    api.get('/lotes', { params: { idLeilao: leilaoTesteId, ordemEntrada: 1 } }).then(r => {
       setLotesTeste((r.data || []).map((l: any) => ({
         id: l.id, lotexx: l.lotexx, deslot: l.deslot, nomeVendedor: l.nomeVendedor,
         nomeRaca: l.nomeRaca, catego: l.catego, tatxxx: l.tatxxx, obslot: l.obslot, ordem: l.ordem || '',

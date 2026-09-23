@@ -16,6 +16,7 @@ import { dataUTC, fmtDataUTC } from '../utils/data';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
 import { useBanco } from '../context/BancoContext';
+import { useAuth } from '../context/AuthContext';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { BlobProvider } from '@react-pdf/renderer';
 import FaturaCompraPDF, { FaturaData } from '../relatorios/RelatorioFaturaCompra';
@@ -59,6 +60,9 @@ const PAGE_SIZE = 20;
 
 export default function Clientes() {
   const config = useConfig();
+  // Macedo: só pisteiro (acesso web) mexe em Bloqueado/Acesso App, como no Delphi
+  const usuarioInterno = useAuth().usuario?.tipoSecao === 'I';
+  const dicaSomenteWeb = usuarioInterno ? 'Somente usuários pisteiros (acesso web) alteram este campo' : undefined;
   const navigate = useNavigate();
   const location = useLocation();
   const { banco } = useBanco();
@@ -734,8 +738,8 @@ export default function Clientes() {
   const tabSistema = (
     <Row gutter={[12, 0]}>
       <Col xs={12} sm={8} md={6}><Form.Item name="ativox" label="Ativo"><Select options={SN} /></Form.Item></Col>
-      <Col xs={12} sm={8} md={6}><Form.Item name="blocli" label="Bloqueado"><Select options={[{ value: 'Não', label: 'Não' }, { value: 'Sim', label: 'Sim' }]} /></Form.Item></Col>
-      <Col xs={12} sm={8} md={6}><Form.Item name="acessoApp" label="Acesso App"><Select options={ACESSO} allowClear /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="blocli" label="Bloqueado" tooltip={dicaSomenteWeb}><Select disabled={usuarioInterno} options={[{ value: 'Não', label: 'Não' }, { value: 'Sim', label: 'Sim' }]} /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="acessoApp" label="Acesso App" tooltip={dicaSomenteWeb}><Select disabled={usuarioInterno} options={ACESSO} allowClear /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="limcre" label="Limite de Crédito"><Input /></Form.Item></Col>      
       <Col xs={24} sm={16} md={12}>
         <Form.Item name="classificacoes" label="Classificações">

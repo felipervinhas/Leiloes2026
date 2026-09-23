@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { buscarUsuarioPorLogin } from '../services/authService';
+import { tipoSecaoDoUsuario } from '../services/secaoAcessoService';
 
 export async function login(req: Request, res: Response) {
   const { cpf, senha } = req.body;
@@ -15,6 +16,9 @@ export async function login(req: Request, res: Response) {
     return res.status(401).json({ error: 'CPF, senha inválidos ou usuário sem acesso' });
   }
 
+  // Só na Macedo: 'W' (pisteiro) ou 'I' (demais). Nos outros bancos fica null.
+  const tipoSecao = await tipoSecaoDoUsuario(usuario.id);
+
   const token = jwt.sign(
     { 
       id: usuario.id, 
@@ -22,7 +26,8 @@ export async function login(req: Request, res: Response) {
       email: usuario.email, 
       adm: usuario.adm,
       perfis: usuario.perfis, 
-      controles: usuario.controles 
+      controles: usuario.controles,
+      tipoSecao,
     },
     process.env.JWT_SECRET!,
     { expiresIn: (process.env.JWT_EXPIRES_IN || '4h') as any }
@@ -37,6 +42,7 @@ export async function login(req: Request, res: Response) {
       adm: usuario.adm,
       perfis: usuario.perfis,
       controles: usuario.controles,
+      tipoSecao,
     },
   });
 }

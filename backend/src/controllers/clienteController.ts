@@ -4,6 +4,7 @@ import { DuplicidadeError } from '../services/clienteService';
 import { consultarVendas } from '../services/consultaVendasService';
 import { buscarHistoricoLegado } from '../services/clienteLegadoService';
 import { registrarLog } from '../services/logService';
+import { tipoSecaoDoUsuario, definirSessaoCliente } from '../services/secaoAcessoService';
 
 const filtrosDaQuery = (req: Request): svc.FiltrosCliente => ({
   nome: req.query.nome as string, cpf: req.query.cpf as string,
@@ -38,7 +39,12 @@ export const buscar = async (req: Request, res: Response) => {
 export const criar = async (req: Request, res: Response) => {
   try {
     const idUsuario = (req as any).usuario?.id ?? null;
-    const id = await svc.criarCliente({ ...req.body, usucad: idUsuario });
+    const dados = { ...req.body, usucad: idUsuario };
+    const tipoSecao = await tipoSecaoDoUsuario(idUsuario);
+    // Macedo: usuário interno não define Acesso App/Bloqueado (travados no Delphi); vale o padrão do cadastro novo
+    if (tipoSecao === 'I') { dados.acessoApp = '2 - Bloqueado'; dados.blocli = 'Não'; }
+    const id = await svc.criarCliente(dados);
+    if (tipoSecao) await definirSessaoCliente(id, tipoSecao);
     await registrarLog((req as any).usuario, 'Inserir', 'Clientes', id);
     res.status(201).json({ id });
   } catch (err) {
@@ -50,7 +56,13 @@ export const atualizar = async (req: Request, res: Response) => {
   try {
     const idUsuario = (req as any).usuario?.id ?? null;
     const id = Number(req.params.id);
-    await svc.atualizarCliente(id, { ...req.body, usualt: idUsuario });
+    const dados = { ...req.body, usualt: idUsuario };
+    if (await tipoSecaoDoUsuario(idUsuario) === 'I') {
+      const atual = await svc.buscarClientePorId(id);
+      dados.acessoApp = atual?.acessoApp ?? null;
+      dados.blocli = atual?.blocli ?? 'Não';
+    }
+    await svc.atualizarCliente(id, dados);
     await registrarLog((req as any).usuario, 'Alterar', 'Clientes', id);
     res.json({ ok: true });
   } catch (err) {
