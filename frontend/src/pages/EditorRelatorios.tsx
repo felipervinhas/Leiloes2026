@@ -203,7 +203,7 @@ export default function EditorRelatorios() {
     api.get('/lotes', { params: { idLeilao: leilaoTesteId } }).then(r => {
       setLotesTeste((r.data || []).map((l: any) => ({
         id: l.id, lotexx: l.lotexx, deslot: l.deslot, nomeVendedor: l.nomeVendedor,
-        nomeRaca: l.nomeRaca, catego: l.catego, ordem: l.ordem || '',
+        nomeRaca: l.nomeRaca, catego: l.catego, tatxxx: l.tatxxx, obslot: l.obslot, ordem: l.ordem || '',
         dataLeilao: l.dataLeilao, enderecoLeilao: l.enderecoLeilao,
         cidadeLeilao: l.cidadeLeilao, estadoLeilao: l.estadoLeilao,
         horaInicioLeilao: l.horaInicioLeilao, horaFechamentoPreLeilao: l.horaFechamentoPreLeilao,
