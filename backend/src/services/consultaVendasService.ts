@@ -6,7 +6,16 @@ export interface FiltrosConsulta {
   idVendedor?: number;
   idComprador?: number;
   idRacas?: number[];
+  ano?: number; // ano da data do leilão
   defesa?: 'S' | 'N'; // S=vendido, N=não vendido
+}
+
+/** Filtro por ano do leilão em faixa de datas (usa índice de DATLEI, ao contrário de YEAR()). */
+function condicaoAno(req: any, ano?: number): string | null {
+  if (!ano) return null;
+  req.input('anoIni', sql.Date, `${ano}-01-01`);
+  req.input('anoFim', sql.Date, `${ano + 1}-01-01`);
+  return 'L.DATLEI >= @anoIni AND L.DATLEI < @anoFim';
 }
 
 const BASE_SQL = `
@@ -60,9 +69,10 @@ const BASE_SQL = `
     PG.DESFIN,
     (V.QTDXXX * (V.PERCEN / 100))   AS QTDXXX,
     CASE WHEN V.QTDXXX > 0 THEN (V.VALORORIGINAL / V.QTDXXX) ELSE 0 END AS VALOR_UNIDADE,
-    (SELECT TOP 1 VLRPAR  FROM MOVIMENTO_PARCELAMENTO WHERE IDMOV = V.ID AND IDCLI = COM.ID AND PRIPAR = 'S') AS PARCELAINICIAL,
-    (SELECT TOP 1 FORMAT(DATVEN,'dd/MM/yyyy') FROM MOVIMENTO_PARCELAMENTO WHERE IDMOV = V.ID AND IDCLI = COM.ID AND PRIPAR = 'S') AS PRIMEIRO_VENCIMENTO_DATA,
-    (SELECT TOP 1 VLRPAR  FROM MOVIMENTO_PARCELAMENTO WHERE IDMOV = V.ID AND IDCLI = COM.ID AND PRIPAR = 'S') AS PRIMEIRO_VENCIMENTO_VALOR,
+    /* Parcela inicial / 1º vencimento saem das parcelas buscadas depois, em
+       consultarVendas — MOVIMENTO_PARCELAMENTO não tem índice em IDMOV, e 3
+       subqueries correlacionadas por linha custavam ~10ms cada (varredura de
+       128 mil linhas), deixando consultas de centenas de vendas em 10s+. */
     V.VALORORIGINAL  AS VALORPAGAR,
     V.VALORCOMISSAO,
     V.VALORDESCONTO,
@@ -82,8 +92,9 @@ const BASE_SQL = `
   /* Quando a venda não teve propriedade de destino selecionada, cai pra
      propriedade cadastrada no próprio comprador (a mais antiga, se houver
      mais de uma) em vez de deixar Localidade/Propriedade/Inscrição em branco. */
-  LEFT JOIN Clientes_Propriedades CP ON CP.ID = ISNULL(V.ID_PROPRIEDADE,
-    (SELECT TOP 1 ID FROM Clientes_Propriedades WHERE ID_CLIENTE = COM.ID ORDER BY ID))
+  LEFT JOIN (SELECT ID_CLIENTE, MIN(ID) AS ID FROM Clientes_Propriedades GROUP BY ID_CLIENTE) CPPAD
+                                   ON CPPAD.ID_CLIENTE = COM.ID
+  LEFT JOIN Clientes_Propriedades CP ON CP.ID = ISNULL(V.ID_PROPRIEDADE, CPPAD.ID)
   LEFT JOIN Cidades CIDVEN         ON CIDVEN.ID = VEN.CIDADE
   LEFT JOIN Cidades CIDCOM         ON CIDCOM.ID = COM.CIDADE
   WHERE V.ID > 0 AND V.VALORPAGAR >= 0
@@ -107,6 +118,8 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
     });
     conds.push(`R.ID IN (${placeholders.join(',')})`);
   }
+  const condAno = condicaoAno(req, filtros.ano);
+  if (condAno) conds.push(condAno);
 
   const where = conds.length ? ' AND ' + conds.join(' AND ') : '';
   const sql_text = BASE_SQL + where + ' ORDER BY L.DATLEI DESC, TRY_CAST(LO.LOTEXX AS INT), LO.LOTEXX';
@@ -138,7 +151,10 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
     }
   }
 
-  return r.recordset.map((row: any) => ({
+  return r.recordset.map((row: any) => {
+    const parcelas = parcelasPorMovLote[`${row.ID_MOVLOTE}_${row.IDCLI}`] || [];
+    const inicial = parcelas.find(p => p.pripar === 'S');
+    return {
     id:                    row.ID,
     idMovimentoComprador:  row.ID_MC,
     codnot:                row.CODNOT,
@@ -183,9 +199,9 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
     desfin:                row.DESFIN,
     qtdxxx:                row.QTDXXX,
     valorUnidade:          row.VALOR_UNIDADE,
-    parcelaInicial:        row.PARCELAINICIAL,
-    primeiroVencimentoData: row.PRIMEIRO_VENCIMENTO_DATA,
-    primeiroVencimentoValor: row.PRIMEIRO_VENCIMENTO_VALOR,
+    parcelaInicial:        inicial?.vlrpar ?? null,
+    primeiroVencimentoData: inicial?.datven ?? null,
+    primeiroVencimentoValor: inicial?.vlrpar ?? null,
     valorPagar:            row.VALORPAGAR,
     valorComissao:         row.VALORCOMISSAO,
     valorDesconto:         row.VALORDESCONTO,
@@ -194,8 +210,9 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
     valorComissaoVendedor: row.VALORCOMISSAOVENDEDOR,
     comissaoVendedor:      row.COMISSAOVENDEDOR,
     defesa:                row.DEFESA,
-    parcelas:              parcelasPorMovLote[`${row.ID_MOVLOTE}_${row.IDCLI}`] || [],
-  }));
+    parcelas,
+  };
+  });
 }
 
 /**
@@ -203,7 +220,7 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
  * comprador) — permite filtrar por raça sem escolher leilão, ex.: o que um
  * comprador arrematou de uma raça em todos os leilões.
  */
-export async function racasDasVendas(f: { idLeilao?: number; idVendedor?: number; idComprador?: number }) {
+export async function racasDasVendas(f: { idLeilao?: number; idVendedor?: number; idComprador?: number; ano?: number }) {
   const pool = await getPool();
   const req = pool.request();
   const conds: string[] = [];
@@ -211,13 +228,16 @@ export async function racasDasVendas(f: { idLeilao?: number; idVendedor?: number
   if (f.idVendedor)  { req.input('idVendedor', sql.Int, f.idVendedor); conds.push('LO.CODVEN = @idVendedor'); }
   // V.IDCLI em VWVendas é VARCHAR (ver consultarVendas)
   if (f.idComprador) { req.input('idComprador', sql.VarChar, String(f.idComprador)); conds.push('V.IDCLI = @idComprador'); }
-  if (!conds.length) return [];
+  const condAno = condicaoAno(req, f.ano);
+  if (condAno) conds.push(condAno);
+  // Sem filtro nenhum: todas as raças que já tiveram venda (consulta leve, só DISTINCT)
   const r = await req.query(`
     SELECT DISTINCT R.ID, R.DESCRICAO, R.ESPECIES
     FROM VWVendas V
-    INNER JOIN Lotes LO ON LO.ID = V.IDLOTE
-    INNER JOIN Racas R  ON R.ID  = LO.RACAXX
-    WHERE V.ID > 0 AND V.VALORPAGAR >= 0 AND ${conds.join(' AND ')}
+    INNER JOIN Lotes LO  ON LO.ID = V.IDLOTE
+    INNER JOIN Racas R   ON R.ID  = LO.RACAXX
+    LEFT JOIN Leiloes L  ON L.ID  = V.IDLEILAO
+    WHERE V.ID > 0 AND V.VALORPAGAR >= 0${conds.length ? ' AND ' + conds.join(' AND ') : ''}
     ORDER BY R.DESCRICAO
   `);
   return r.recordset.map((row: any) => ({ id: row.ID, descricao: row.DESCRICAO, especies: row.ESPECIES }));

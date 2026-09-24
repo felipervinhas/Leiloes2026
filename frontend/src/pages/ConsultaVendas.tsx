@@ -43,6 +43,11 @@ const fmt = (v: number | null | undefined) =>
     ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
     : '—';
 
+const ANOS = Array.from({ length: new Date().getFullYear() - 2009 }, (_, i) => {
+  const ano = new Date().getFullYear() - i;
+  return { value: ano, label: String(ano) };
+});
+
 const DEFESA_OPTS = [
   { value: '', label: 'Todos' },
   { value: 'S', label: 'Vendido' },
@@ -111,6 +116,7 @@ export default function ConsultaVendas() {
     compradorSel: undefined as number | undefined,
     defesaSel: '',
     racasSel: [] as number[],
+    anoSel: undefined as number | undefined,
   });
   const [tipoRelatorio, setTipoRelatorio] = useState<TipoRelatorio>('vendas');
   const [orientacaoImp, setOrientacaoImp] = useState<Orientacao>('paisagem');
@@ -129,6 +135,7 @@ export default function ConsultaVendas() {
   const [vendedorSel, setVendedorSel] = useState<number | undefined>(filtroSalvo.vendedorSel);
   const [compradorSel, setCompradorSel] = useState<number | undefined>(filtroSalvo.compradorSel);
   const [defesaSel, setDefesaSel]     = useState<string>(filtroSalvo.defesaSel);
+  const [anoSel, setAnoSel]           = useState<number | undefined>(filtroSalvo.anoSel);
   const [racasSel, setRacasSel]       = useState<number[]>(filtroSalvo.racasSel);
 
   const [dados, setDados]   = useState<any[]>([]);
@@ -192,8 +199,8 @@ export default function ConsultaVendas() {
     setLotes(rl.data.map((l: any) => ({ value: l.id, label: `${l.lotexx} — ${l.deslot}` })));
   };
 
-  // Raças das vendas que os filtros atuais alcançam — com comprador ou vendedor,
-  // não precisa de leilão (ex.: tudo que o comprador arrematou de Crioulo).
+  // Raças das vendas que os filtros atuais alcançam (leilão, vendedor, comprador,
+  // ano); sem filtro nenhum, todas as raças que já tiveram venda.
   // Mantém só as raças já marcadas que continuam na lista nova.
   const reqRacasRef = useRef(0);
   useEffect(() => {
@@ -201,26 +208,30 @@ export default function ConsultaVendas() {
     if (leilaoSel)    params.idLeilao    = leilaoSel;
     if (vendedorSel)  params.idVendedor  = vendedorSel;
     if (compradorSel) params.idComprador = compradorSel;
+    if (anoSel)       params.ano         = anoSel;
     const n = ++reqRacasRef.current;
-    if (!Object.keys(params).length) { setRacas([]); return; }
     api.get('/consulta-vendas/racas', { params }).then(rr => {
       if (n !== reqRacasRef.current) return;
       const lista = rr.data.map((r: any) => ({ id: r.id, label: r.descricao + (r.especies ? ` (${r.especies})` : '') }));
       setRacas(lista);
       setRacasSel(prev => prev.filter(id => lista.some((r: { id: number }) => r.id === id)));
     }).catch(() => {});
-  }, [leilaoSel, vendedorSel, compradorSel]);
+  }, [leilaoSel, vendedorSel, compradorSel, anoSel]);
 
   const consultar = async () => {
-    if (!leilaoSel && !vendedorSel && !compradorSel) {
-      message.warning('Selecione ao menos um filtro: Leilão, Vendedor ou Comprador');
+    // Raça + Ano basta (todos os compradores daquela raça no ano); raça sozinha
+    // traria a base inteira, por isso o ano é obrigatório nesse caso.
+    if (!leilaoSel && !vendedorSel && !compradorSel && !(racasSel.length && anoSel)) {
+      message.warning(racasSel.length
+        ? 'Para consultar só por raça, selecione também o Ano'
+        : 'Selecione ao menos um filtro: Leilão, Vendedor, Comprador ou Raça + Ano');
       return;
     }
     setLoading(true);
     setConsultou(true);
     setSelectedRowKeys([]);
     try {
-      salvarFiltroPersistido(banco, 'consulta-vendas', { leilaoSel, loteSel, vendedorSel, compradorSel, defesaSel, racasSel });
+      salvarFiltroPersistido(banco, 'consulta-vendas', { leilaoSel, loteSel, vendedorSel, compradorSel, defesaSel, racasSel, anoSel });
       const params: any = {};
       if (leilaoSel)    params.idLeilao    = leilaoSel;
       if (loteSel)      params.idLote      = loteSel;
@@ -228,6 +239,7 @@ export default function ConsultaVendas() {
       if (compradorSel) params.idComprador = compradorSel;
       if (defesaSel)    params.defesa      = defesaSel;
       if (racasSel.length) params.idRacas  = racasSel.join(',');
+      if (anoSel)       params.ano         = anoSel;
       const r = await api.get('/consulta-vendas', { params });
       setDados(r.data);
       setConsultaVersao(v => v + 1);
@@ -334,7 +346,7 @@ export default function ConsultaVendas() {
   const limpar = () => {
     setLeilaoSel(undefined); setLoteSel(undefined);
     setVendedorSel(undefined); setCompradorSel(undefined);
-    setDefesaSel(''); setRacasSel([]);
+    setDefesaSel(''); setRacasSel([]); setAnoSel(undefined);
     setLotes([]); setRacas([]);
     setVendedores([]); setCompradores([]);
     setDados([]); setConsultou(false);
@@ -371,6 +383,7 @@ export default function ConsultaVendas() {
     nomeVendedorSel  && `Vendedor: ${nomeVendedorSel}`,
     nomeCompradorSel && `Comprador: ${nomeCompradorSel}`,
     defesaSel        && `Status: ${DEFESA_OPTS.find(d => d.value === defesaSel)?.label}`,
+    anoSel           && `Ano: ${anoSel}`,
     racasSel.length > 0 && `Raças: ${racasSel.map(id => racas.find(r => r.id === id)?.label).filter(Boolean).join(', ')}`,
   ].filter(Boolean).join(' | ') || undefined;
 
@@ -562,21 +575,29 @@ export default function ConsultaVendas() {
               notFoundContent={loadingComp ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
             />
           </Col>
-          <Col span={24}>
+          <Col span={18}>
             <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Raças / Categorias</div>
             <Select
               mode="multiple"
               allowClear
               style={{ width: '100%' }}
-              placeholder={leilaoSel || vendedorSel || compradorSel
-                ? 'Todas — selecione uma ou mais para filtrar'
-                : 'Escolha um leilão, vendedor ou comprador para listar as raças'}
-              disabled={!racas.length}
+              placeholder="Todas — selecione uma ou mais para filtrar"
               value={racasSel}
               onChange={setRacasSel}
               options={racas.map(r => ({ value: r.id, label: r.label }))}
               optionFilterProp="label"
               maxTagCount="responsive"
+            />
+          </Col>
+          <Col span={6}>
+            <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Ano do Leilão</div>
+            <Select
+              allowClear
+              style={{ width: '100%' }}
+              placeholder="Todos"
+              value={anoSel}
+              onChange={setAnoSel}
+              options={ANOS}
             />
           </Col>
         </Row>
