@@ -9,6 +9,8 @@ type Orientacao = 'retrato' | 'paisagem';
 
 export interface VendaPDF {
   id: number;
+  idLeilao?: number;
+  leilao?: string;
   datlei?: string;
   lotexx?: string;
   deslot?: string;
@@ -228,6 +230,28 @@ const s = StyleSheet.create({
   tdTotGreen:  { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#fff', textAlign: 'right' as const },
   tdTotOrange: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#ddd', textAlign: 'right' as const },
 
+  // Agrupamento por leilão (só quando a impressão tem lotes de mais de um leilão)
+  grupoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#ddd',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    marginTop: 6,
+  },
+  grupoTitulo: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: ESCURO },
+  grupoInfo:   { fontSize: 7, color: MEDIO },
+  subtotalRow: {
+    flexDirection: 'row',
+    backgroundColor: '#e8e8e8',
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    borderBottomColor: CINZA,
+    borderBottomWidth: 0.5,
+  },
+  tdSubLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: ESCURO },
+  tdSubVal:   { fontSize: 7, fontFamily: 'Helvetica-Bold', color: ESCURO, textAlign: 'right' as const },
+
   // Rodapé
   footer: {
     position: 'absolute',
@@ -243,17 +267,98 @@ const s = StyleSheet.create({
   footerText: { fontSize: 6, color: '#aaa' },
 });
 
+interface GrupoLeilao {
+  chave: string;
+  leilao?: string;
+  datlei?: string;
+  vendas: VendaPDF[];
+}
+
+/** Agrupa mantendo a ordem da consulta: cada leilão aparece na posição do seu primeiro lote. */
+function agruparPorLeilao(vendas: VendaPDF[]): GrupoLeilao[] {
+  const grupos = new Map<string, GrupoLeilao>();
+  for (const venda of vendas) {
+    const chave = String(venda.idLeilao ?? venda.leilao ?? '');
+    if (!grupos.has(chave)) grupos.set(chave, { chave, leilao: venda.leilao, datlei: venda.datlei, vendas: [] });
+    grupos.get(chave)!.vendas.push(venda);
+  }
+  return Array.from(grupos.values());
+}
+
 function ConsultaVendasPDF({
   vendas, totais, titulo, empresa, filtrosDesc, logoBase64, colunasVisiveis, orientacao = 'paisagem',
 }: Props & { orientacao?: Orientacao }) {
   const nomeEmpresa = empresa || 'Leilões 2026';
   const agora = new Date().toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
   const pageSize: any = orientacao === 'paisagem' ? [841.89, 595.28] : 'A4';
-  const subtitulo = titulo || 'Todas as vendas';
-  const dataLeilao = fmtData(vendas[0]?.datlei);
+  // Sem filtro de leilão (ex.: só o comprador), os lotes podem ser de vários
+  // leilões — aí eles saem agrupados por leilão; com um leilão só, ele vai pro título.
+  const grupos = agruparPorLeilao(vendas);
+  const variosLeiloes = grupos.length > 1;
+  const subtitulo = titulo
+    || (variosLeiloes ? `${grupos.length} leilões` : grupos[0]?.leilao)
+    || 'Todas as vendas';
+  const dataLeilao = variosLeiloes ? null : fmtData(grupos[0]?.datlei);
   const v = (chave: string) => !colunasVisiveis || colunasVisiveis.includes(chave);
   // Cabeçalho não pode variar por linha — usa a espécie do primeiro lote, igual à grade on-screen.
   const labelTatuagem = labelRP(vendas[0]?.especies);
+
+  const renderLinha = (venda: VendaPDF, i: number) => (
+    <View key={venda.id} style={[s.row, i % 2 === 1 ? s.rowAlt : {}]} wrap={false}>
+      {v('lote') && (
+        <View style={s.cLote}>
+          <Text style={[s.tdBold, { color: ESCURO }]}>{venda.lotexx || '—'}</Text>
+        </View>
+      )}
+      {v('tatuagem') && (
+        <View style={s.cTat}>
+          <Text style={s.tdSmall}>{venda.rpxxx || '—'}</Text>
+        </View>
+      )}
+      {v('comprador') && (
+        <View style={s.cComp}>
+          <Text style={s.tdNormal}>{venda.nomeComprador || '—'}</Text>
+        </View>
+      )}
+      {v('vendedor') && (
+        <View style={s.cVend}>
+          <Text style={s.tdNormal}>{venda.nomeVendedor || '—'}</Text>
+        </View>
+      )}
+      {v('descricao') && (
+        <View style={s.cDes}>
+          <Text style={s.tdNormal}>{venda.deslot || '—'}</Text>
+        </View>
+      )}
+      {v('raca') && (
+        <View style={s.cRaca}>
+          <Text style={s.tdSmall}>
+            {[venda.descricaoRaca, venda.especies].filter(Boolean).join(' / ') || '—'}
+          </Text>
+        </View>
+      )}
+      {v('qtd') && (
+        <View style={s.cQtd}>
+          <Text style={s.tdNormalRight}>{fmtN(venda.qtdxxx)}</Text>
+        </View>
+      )}
+      {v('valorPagar') && (
+        <View style={s.cPagar}>
+          <Text style={s.tdBoldRight}>{fmtR(venda.valorPagar)}</Text>
+        </View>
+      )}
+      {v('comissao') && (
+        <View style={s.cComissao}>
+          <Text style={[s.tdNormalRight, { color: ESCURO }]}>{fmtR(venda.valorComissao)}</Text>
+        </View>
+      )}
+      {v('liquido') && (
+        <View style={s.cLiquido}>
+          <Text style={[s.tdBoldRight, { color: '#000' }]}>{fmtR(venda.valorLiquido)}</Text>
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <Document title={`Relatório de Vendas — ${subtitulo}`} author={nomeEmpresa}>
@@ -376,63 +481,41 @@ function ConsultaVendasPDF({
           {v('liquido') && <View style={s.cLiquido}><Text style={s.thRight}>Vlr. Líquido</Text></View>}
         </View>
 
-        {/* Linhas */}
-        {vendas.map((venda, i) => (
-          <View key={venda.id} style={[s.row, i % 2 === 1 ? s.rowAlt : {}]} wrap={false}>
-            {v('lote') && (
-              <View style={s.cLote}>
-                <Text style={[s.tdBold, { color: ESCURO }]}>{venda.lotexx || '—'}</Text>
-              </View>
-            )}
-            {v('tatuagem') && (
-              <View style={s.cTat}>
-                <Text style={s.tdSmall}>{venda.rpxxx || '—'}</Text>
-              </View>
-            )}
-            {v('comprador') && (
-              <View style={s.cComp}>
-                <Text style={s.tdNormal}>{venda.nomeComprador || '—'}</Text>
-              </View>
-            )}
-            {v('vendedor') && (
-              <View style={s.cVend}>
-                <Text style={s.tdNormal}>{venda.nomeVendedor || '—'}</Text>
-              </View>
-            )}
-            {v('descricao') && (
-              <View style={s.cDes}>
-                <Text style={s.tdNormal}>{venda.deslot || '—'}</Text>
-              </View>
-            )}
-            {v('raca') && (
-              <View style={s.cRaca}>
-                <Text style={s.tdSmall}>
-                  {[venda.descricaoRaca, venda.especies].filter(Boolean).join(' / ') || '—'}
-                </Text>
-              </View>
-            )}
-            {v('qtd') && (
-              <View style={s.cQtd}>
-                <Text style={s.tdNormalRight}>{fmtN(venda.qtdxxx)}</Text>
-              </View>
-            )}
-            {v('valorPagar') && (
-              <View style={s.cPagar}>
-                <Text style={s.tdBoldRight}>{fmtR(venda.valorPagar)}</Text>
-              </View>
-            )}
-            {v('comissao') && (
-              <View style={s.cComissao}>
-                <Text style={[s.tdNormalRight, { color: ESCURO }]}>{fmtR(venda.valorComissao)}</Text>
-              </View>
-            )}
-            {v('liquido') && (
-              <View style={s.cLiquido}>
-                <Text style={[s.tdBoldRight, { color: '#000' }]}>{fmtR(venda.valorLiquido)}</Text>
-              </View>
-            )}
-          </View>
-        ))}
+        {/* Linhas — agrupadas por leilão quando há mais de um */}
+        {variosLeiloes
+          ? grupos.map(g => {
+              const sub = g.vendas.reduce((a, x) => ({
+                qtd: a.qtd + (x.qtdxxx || 0),
+                pagar: a.pagar + (x.valorPagar || 0),
+                comissao: a.comissao + (x.valorComissao || 0),
+                liquido: a.liquido + (x.valorLiquido || 0),
+              }), { qtd: 0, pagar: 0, comissao: 0, liquido: 0 });
+              return (
+                <View key={g.chave}>
+                  {/* minPresenceAhead: não deixa a faixa do leilão sozinha no pé da página */}
+                  <View style={s.grupoHeader} wrap={false} minPresenceAhead={40}>
+                    <Text style={s.grupoTitulo}>Leilão: {g.leilao || '—'}</Text>
+                    <Text style={s.grupoInfo}>
+                      {fmtData(g.datlei) ? `Data: ${fmtData(g.datlei)}   ·   ` : ''}{g.vendas.length} lote{g.vendas.length !== 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                  {g.vendas.map((venda, i) => renderLinha(venda, i))}
+                  <View style={s.subtotalRow} wrap={false}>
+                    {v('lote') && <View style={s.cLote}><Text style={s.tdSubLabel} /></View>}
+                    {v('tatuagem') && <View style={s.cTat}><Text style={s.tdSubLabel} /></View>}
+                    {v('comprador') && <View style={s.cComp}><Text style={s.tdSubLabel} /></View>}
+                    {v('vendedor') && <View style={s.cVend}><Text style={s.tdSubLabel} /></View>}
+                    {v('descricao') && <View style={s.cDes}><Text style={s.tdSubLabel}>Subtotal do leilão</Text></View>}
+                    {v('raca') && <View style={s.cRaca}><Text style={s.tdSubLabel} /></View>}
+                    {v('qtd') && <View style={s.cQtd}><Text style={s.tdSubVal}>{fmtN(sub.qtd)}</Text></View>}
+                    {v('valorPagar') && <View style={s.cPagar}><Text style={s.tdSubVal}>{fmtR(sub.pagar)}</Text></View>}
+                    {v('comissao') && <View style={s.cComissao}><Text style={s.tdSubVal}>{fmtR(sub.comissao)}</Text></View>}
+                    {v('liquido') && <View style={s.cLiquido}><Text style={s.tdSubVal}>{fmtR(sub.liquido)}</Text></View>}
+                  </View>
+                </View>
+              );
+            })
+          : vendas.map((venda, i) => renderLinha(venda, i))}
 
         {/* Linha de totais */}
         {vendas.length > 0 && (
