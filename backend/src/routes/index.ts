@@ -161,6 +161,7 @@ bancoRouter.post('/lotes/:id/imagens/:num', memStorage.single('file'), reafirmar
 bancoRouter.delete('/lotes/:id/imagens/:num', upload.deletarLoteImagem);
 
 bancoRouter.get('/consulta-vendas', consultaVendas.consultar);
+bancoRouter.get('/consulta-vendas/racas', consultaVendas.racasDasVendas);
 bancoRouter.get('/consulta-vendas/racas/:idLeilao', consultaVendas.racas);
 bancoRouter.get('/consulta-vendas/lotes/:idLeilao', consultaVendas.lotes);
 

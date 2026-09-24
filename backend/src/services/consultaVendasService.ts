@@ -118,9 +118,13 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
   // IDMOVLOTE juntava as parcelas de todos os compradores numa lista só,
   // duplicando vencimentos no relatório (chamado #61).
   const parcelasPorMovLote: Record<string, any[]> = {};
-  if (idMovLotes.length) {
+  // Em blocos: o SQL Server aceita no máximo 2100 parâmetros por request, e uma
+  // consulta sem leilão (ex.: só por raça) passa fácil de 2 mil vendas.
+  const TAMANHO_BLOCO = 1000;
+  for (let ini = 0; ini < idMovLotes.length; ini += TAMANHO_BLOCO) {
+    const bloco = idMovLotes.slice(ini, ini + TAMANHO_BLOCO);
     const reqParc = pool.request();
-    const ph = idMovLotes.map((id, i) => { reqParc.input(`ml${i}`, sql.Int, id as number); return `@ml${i}`; });
+    const ph = bloco.map((id, i) => { reqParc.input(`ml${i}`, sql.Int, id as number); return `@ml${i}`; });
     const rParc = await reqParc.query(`
       SELECT IDMOVLOTE, IDCLI, ORDXXX, FORMAT(DATVEN,'dd/MM/yyyy') AS DATVEN_F, VLRPAR, PRIPAR
       FROM MOVIMENTO_PARCELAMENTO
@@ -192,6 +196,31 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
     defesa:                row.DEFESA,
     parcelas:              parcelasPorMovLote[`${row.ID_MOVLOTE}_${row.IDCLI}`] || [],
   }));
+}
+
+/**
+ * Raças presentes nas vendas que a consulta vai devolver (leilão, vendedor e/ou
+ * comprador) — permite filtrar por raça sem escolher leilão, ex.: o que um
+ * comprador arrematou de uma raça em todos os leilões.
+ */
+export async function racasDasVendas(f: { idLeilao?: number; idVendedor?: number; idComprador?: number }) {
+  const pool = await getPool();
+  const req = pool.request();
+  const conds: string[] = [];
+  if (f.idLeilao)    { req.input('idLeilao', sql.Int, f.idLeilao); conds.push('V.IDLEILAO = @idLeilao'); }
+  if (f.idVendedor)  { req.input('idVendedor', sql.Int, f.idVendedor); conds.push('LO.CODVEN = @idVendedor'); }
+  // V.IDCLI em VWVendas é VARCHAR (ver consultarVendas)
+  if (f.idComprador) { req.input('idComprador', sql.VarChar, String(f.idComprador)); conds.push('V.IDCLI = @idComprador'); }
+  if (!conds.length) return [];
+  const r = await req.query(`
+    SELECT DISTINCT R.ID, R.DESCRICAO, R.ESPECIES
+    FROM VWVendas V
+    INNER JOIN Lotes LO ON LO.ID = V.IDLOTE
+    INNER JOIN Racas R  ON R.ID  = LO.RACAXX
+    WHERE V.ID > 0 AND V.VALORPAGAR >= 0 AND ${conds.join(' AND ')}
+    ORDER BY R.DESCRICAO
+  `);
+  return r.recordset.map((row: any) => ({ id: row.ID, descricao: row.DESCRICAO, especies: row.ESPECIES }));
 }
 
 export async function racasPorLeilao(idLeilao: number) {

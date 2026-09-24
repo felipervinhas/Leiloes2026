@@ -27,6 +27,15 @@ export const consultar = async (req: Request, res: Response) => {
   res.json(await svc.consultarVendas(filtros));
 };
 
+export const racasDasVendas = async (req: Request, res: Response) => {
+  const num = (v: unknown) => (v ? Number(v) : undefined);
+  res.json(await svc.racasDasVendas({
+    idLeilao: num(req.query.idLeilao),
+    idVendedor: num(req.query.idVendedor),
+    idComprador: num(req.query.idComprador),
+  }));
+};
+
 export const racas = async (req: Request, res: Response) => {
   const idLeilao = Number(req.params.idLeilao);
   if (!idLeilao) return res.status(400).json({ error: 'idLeilao obrigatório' });

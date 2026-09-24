@@ -186,17 +186,30 @@ export default function ConsultaVendas() {
   const onLeilao = async (idLeilao: number | undefined) => {
     setLeilaoSel(idLeilao);
     setLoteSel(undefined);
-    setRacasSel([]);
-    setRacas([]);
     setLotes([]);
     if (!idLeilao) return;
-    const [rl, rr] = await Promise.all([
-      api.get(`/consulta-vendas/lotes/${idLeilao}`),
-      api.get(`/consulta-vendas/racas/${idLeilao}`),
-    ]);
+    const rl = await api.get(`/consulta-vendas/lotes/${idLeilao}`);
     setLotes(rl.data.map((l: any) => ({ value: l.id, label: `${l.lotexx} — ${l.deslot}` })));
-    setRacas(rr.data.map((r: any) => ({ id: r.id, label: r.descricao + (r.especies ? ` (${r.especies})` : '') })));
   };
+
+  // Raças das vendas que os filtros atuais alcançam — com comprador ou vendedor,
+  // não precisa de leilão (ex.: tudo que o comprador arrematou de Crioulo).
+  // Mantém só as raças já marcadas que continuam na lista nova.
+  const reqRacasRef = useRef(0);
+  useEffect(() => {
+    const params: any = {};
+    if (leilaoSel)    params.idLeilao    = leilaoSel;
+    if (vendedorSel)  params.idVendedor  = vendedorSel;
+    if (compradorSel) params.idComprador = compradorSel;
+    const n = ++reqRacasRef.current;
+    if (!Object.keys(params).length) { setRacas([]); return; }
+    api.get('/consulta-vendas/racas', { params }).then(rr => {
+      if (n !== reqRacasRef.current) return;
+      const lista = rr.data.map((r: any) => ({ id: r.id, label: r.descricao + (r.especies ? ` (${r.especies})` : '') }));
+      setRacas(lista);
+      setRacasSel(prev => prev.filter(id => lista.some((r: { id: number }) => r.id === id)));
+    }).catch(() => {});
+  }, [leilaoSel, vendedorSel, compradorSel]);
 
   const consultar = async () => {
     if (!leilaoSel && !vendedorSel && !compradorSel) {
@@ -229,12 +242,8 @@ export default function ConsultaVendas() {
   useEffect(() => {
     if (filtroSalvo.leilaoSel) {
       api.get(`/leiloes/${filtroSalvo.leilaoSel}`).then(r => garantirOpcaoLeilao(r.data.id, r.data.leilao)).catch(() => {});
-      Promise.all([
-        api.get(`/consulta-vendas/lotes/${filtroSalvo.leilaoSel}`),
-        api.get(`/consulta-vendas/racas/${filtroSalvo.leilaoSel}`),
-      ]).then(([rl, rr]) => {
+      api.get(`/consulta-vendas/lotes/${filtroSalvo.leilaoSel}`).then(rl => {
         setLotes(rl.data.map((l: any) => ({ value: l.id, label: `${l.lotexx} — ${l.deslot}` })));
-        setRacas(rr.data.map((r: any) => ({ id: r.id, label: r.descricao + (r.especies ? ` (${r.especies})` : '') })));
       }).catch(() => {});
     }
     if (filtroSalvo.vendedorSel) {
@@ -553,28 +562,23 @@ export default function ConsultaVendas() {
               notFoundContent={loadingComp ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
             />
           </Col>
-          {racas.length > 0 && (
-            <Col span={24}>
-              <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>
-                Raças / Categorias (selecione para filtrar)
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {racas.map(r => (
-                  <Tag.CheckableTag
-                    key={r.id}
-                    checked={racasSel.includes(r.id)}
-                    onChange={checked =>
-                      setRacasSel(prev =>
-                        checked ? [...prev, r.id] : prev.filter(id => id !== r.id)
-                      )
-                    }
-                  >
-                    {r.label}
-                  </Tag.CheckableTag>
-                ))}
-              </div>
-            </Col>
-          )}
+          <Col span={24}>
+            <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Raças / Categorias</div>
+            <Select
+              mode="multiple"
+              allowClear
+              style={{ width: '100%' }}
+              placeholder={leilaoSel || vendedorSel || compradorSel
+                ? 'Todas — selecione uma ou mais para filtrar'
+                : 'Escolha um leilão, vendedor ou comprador para listar as raças'}
+              disabled={!racas.length}
+              value={racasSel}
+              onChange={setRacasSel}
+              options={racas.map(r => ({ value: r.id, label: r.label }))}
+              optionFilterProp="label"
+              maxTagCount="responsive"
+            />
+          </Col>
         </Row>
 
         <Divider style={{ margin: '12px 0' }} />
