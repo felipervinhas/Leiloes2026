@@ -1,5 +1,6 @@
 import { FaturaData, fmtFidelidade } from './RelatorioFaturaCompra';
 import { valorExtenso, fmtDataExtenso } from './promissoriaUtils';
+import { fmtDocumento } from '../utils/documento';
 
 export interface PromissoriaCalc {
   totalParcelas: number;
@@ -10,6 +11,11 @@ export interface PromissoriaCalc {
   localEmissao: string;
   credor: string;
   cpfCredor?: string;
+  /** "CNPJ 00.000.000/0001-00" ou "CPF 000.000.000-00" do credor (vendedor) — vazio se não tiver nenhum */
+  documentoCredor?: string;
+  /** CPF/CNPJ do comprador e do vendedor com o rótulo ("CNPJ: ...") */
+  documentoComprador: string;
+  documentoVendedor: string;
   endereVend: string;
   agora: string;
   nomeEmpresa: string;
@@ -37,6 +43,10 @@ export function montarContextoPromissoria(
   const extenso       = valorExtenso(totalValor).toUpperCase();
   const credor        = dados.lote?.nomeVendedor || nomeEmpresa;
   const cpfCredor     = dados.lote?.cpfVendedor;
+  const documentoVendedor  = fmtDocumento(dados.lote?.cpfVendedor, dados.lote?.cnpjVendedor);
+  const documentoComprador = fmtDocumento(comp.cpfxxx, comp.cnpjxx);
+  const documentoCredor = (dados.lote?.cnpjVendedor || dados.lote?.cpfVendedor)
+    ? documentoVendedor.replace(': ', ' ') : undefined;
 
   const endereVend = [
     dados.lote?.endereVendedor,
@@ -63,7 +73,7 @@ export function montarContextoPromissoria(
     comp,
     calc: {
       totalParcelas, totalValor, extenso, dataExtenso, praca, localEmissao,
-      credor, cpfCredor, endereVend, agora, nomeEmpresa, fidelidade,
+      credor, cpfCredor, documentoCredor, documentoComprador, documentoVendedor, endereVend, agora, nomeEmpresa, fidelidade,
     },
   };
 }

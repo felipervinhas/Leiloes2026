@@ -2,6 +2,7 @@ import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/render
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { FaturaData, fmtFidelidade } from './RelatorioFaturaCompra';
 import { valorExtenso } from './RelatorioPromissoria';
+import { documentoCliente } from '../utils/documento';
 import { labelRP, labelSBB } from '../utils/lote';
 
 interface Props {
@@ -100,7 +101,7 @@ function NotaVendaPagina({ dados, comp, empresa, logoBase64 }: { dados: FaturaDa
         <View style={[s.secBox, s.colHalf]}>
           <Text style={s.secLabel}>Vendedor</Text>
           <Text style={s.nome}>{lote?.nomeVendedor || '—'}</Text>
-          <Text style={s.linha}>CPF/CNPJ: {lote?.cpfVendedor || 'não informado'}</Text>
+          <Text style={s.linha}>CPF/CNPJ: {documentoCliente(lote?.cpfVendedor, lote?.cnpjVendedor).numero || 'não informado'}</Text>
           <Text style={s.linha}>
             {[lote?.cidadeVendedor, lote?.estadoVendedor].filter(Boolean).join(' — ') || '—'}
           </Text>
@@ -108,7 +109,7 @@ function NotaVendaPagina({ dados, comp, empresa, logoBase64 }: { dados: FaturaDa
         <View style={[s.secBox, s.colHalf]}>
           <Text style={s.secLabel}>Comprador</Text>
           <Text style={s.nome}>{comp.nomexx || '—'}</Text>
-          <Text style={s.linha}>CPF/CNPJ: {comp.cpfxxx || 'não informado'}</Text>
+          <Text style={s.linha}>CPF/CNPJ: {documentoCliente(comp.cpfxxx, comp.cnpjxx).numero || 'não informado'}</Text>
           <Text style={s.linha}>
             {[comp.nomeCidade, comp.nomeEstado].filter(Boolean).join(' — ') || '—'}
           </Text>

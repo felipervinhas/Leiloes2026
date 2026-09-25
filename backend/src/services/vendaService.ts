@@ -442,7 +442,7 @@ export async function listarCompradores(idMov: number) {
   const r = await pool.request()
     .input('idMov', sql.Int, idMov)
     .query(`
-      SELECT MC.*, C.NOMEXX, C.CPFXXX, CP.DESFIN,
+      SELECT MC.*, C.NOMEXX, C.CPFXXX, C.CNPJXX, CP.DESFIN,
              CP_PROP.NOME_PROPRIEDADE, CP_PROP.CIDADE, CP_PROP.ESTADO,
              PIST.NOMEXX AS NOME_PISTEIRO
       FROM MOVIMENTO_COMPRADOR MC
@@ -460,6 +460,7 @@ export async function listarCompradores(idMov: number) {
     idCli:             Number(row.IDCLI),
     nomexx:            row.NOMEXX,
     cpfxxx:            row.CPFXXX,
+    cnpjxx:            row.CNPJXX,
     idCondPagto:       row.IDCONDPAGTO,
     desfin:            row.DESFIN,
     percen:            row.PERCEN,
@@ -1096,7 +1097,7 @@ export async function dadosFatura(idMov: number) {
            LO.LOTEXX, LO.DESLOT, LO.RPXXX, LO.SBBXXX, LO.PESOXX, LO.DATNAS, LO.OBSLOT,
            LO.PELAGE, LO.FILIACAO, LO.CATEGO,
            R.DESCRICAO AS DESCRICAORACA, R.ESPECIES,
-           VEN.NOMEXX  AS NOME_VENDEDOR,  VEN.CPFXXX  AS CPF_VENDEDOR,
+           VEN.NOMEXX  AS NOME_VENDEDOR,  VEN.CPFXXX  AS CPF_VENDEDOR,  VEN.CNPJXX AS CNPJ_VENDEDOR,
            VEN.ENDERE  AS ENDERE_VENDEDOR, VEN.BAIRRO AS BAIRRO_VENDEDOR,
            VEN.CEPXXX  AS CEP_VENDEDOR,   VEN.CELU_1  AS CELULAR_VENDEDOR,
            VEN.TELRES  AS TELRES_VENDEDOR, VEN.EMAILX  AS EMAIL_VENDEDOR,
@@ -1115,7 +1116,7 @@ export async function dadosFatura(idMov: number) {
            MC.VALORCOMISSAOVENDEDOR, MC.COMISSAOVENDEDOR,
            MC.TIPO_DESCONTO_FIDELIDADE, MC.DESCONTO_FIDELIDADE, MC.VALOR_DESCONTO_FIDELIDADE,
            MC.IDCONDPAGTO,
-           C.NOMEXX, C.CPFXXX, C.ENDERE, C.BAIRRO, C.CEPXXX, C.CELU_1, C.EMAILX,
+           C.NOMEXX, C.CPFXXX, C.CNPJXX, C.ENDERE, C.BAIRRO, C.CEPXXX, C.CELU_1, C.EMAILX,
            CIDC.CIDADE  AS NOMECIDADE,    CIDC.ESTADO  AS ESTADO,
            CP.DESFIN, CP.QTDPAR AS COND_QTDPAR,
            CPR.NOME_PROPRIEDADE, CPR.CIDADE AS CIDADE_PROP, CPR.ESTADO AS ESTADO_PROP
@@ -1180,6 +1181,7 @@ export async function dadosFatura(idMov: number) {
       pelagem:       l.PELAGE,
       nomeVendedor:  l.NOME_VENDEDOR,
       cpfVendedor:   l.CPF_VENDEDOR,
+      cnpjVendedor:  l.CNPJ_VENDEDOR,
       endereVendedor:  l.ENDERE_VENDEDOR,
       bairroVendedor:  l.BAIRRO_VENDEDOR,
       cepVendedor:     l.CEP_VENDEDOR,
@@ -1194,6 +1196,7 @@ export async function dadosFatura(idMov: number) {
       idCli:          c.IDCLI,
       nomexx:         c.NOMEXX,
       cpfxxx:         c.CPFXXX,
+      cnpjxx:         c.CNPJXX,
       endere:         c.ENDERE,
       bairro:         c.BAIRRO,
       cepxxx:         c.CEPXXX,

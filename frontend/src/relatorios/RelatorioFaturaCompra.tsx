@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
+import { fmtDocumento } from '../utils/documento';
 import { labelRP, labelSBB } from '../utils/lote';
 
 export interface FaturaData {
@@ -30,6 +31,7 @@ export interface FaturaData {
     pelagem?: string;
     nomeVendedor?: string;
     cpfVendedor?: string;
+    cnpjVendedor?: string;
     endereVendedor?: string;
     bairroVendedor?: string;
     cepVendedor?: string;
@@ -43,6 +45,7 @@ export interface FaturaData {
     id: number;
     nomexx?: string;
     cpfxxx?: string;
+    cnpjxx?: string;
     endere?: string;
     bairro?: string;
     cepxxx?: string;
@@ -332,7 +335,7 @@ function SecaoVendedor({ lote }: { lote: NonNullable<FaturaData['lote']> }) {
     <View style={s.colVendedor}>
       <Text style={s.secLabelOrange}>Vendedor</Text>
       <Text style={s.nomeXX}>{lote.nomeVendedor || '—'}</Text>
-      <Text style={s.cpfXX}>CPF: {lote.cpfVendedor || 'não informado'}</Text>
+      <Text style={s.cpfXX}>{fmtDocumento(lote.cpfVendedor, lote.cnpjVendedor)}</Text>
       {ende ? <Text style={s.endereco}>{ende}</Text> : null}
       {cid  ? <Text style={s.endereco}>{cid}{lote.cepVendedor ? `  CEP ${lote.cepVendedor}` : ''}</Text> : null}
       {tel  ? <Text style={s.telefone}>Tel: {tel}</Text> : null}
@@ -375,7 +378,7 @@ function SecaoComprador({ comp, index, variante }: { comp: FaturaData['comprador
               Comprador{index > 0 ? ` ${index + 1}` : ''}
             </Text>
             <Text style={s.nomeXX}>{comp.nomexx || '—'}</Text>
-            <Text style={s.cpfXX}>CPF: {comp.cpfxxx || 'não informado'}</Text>
+            <Text style={s.cpfXX}>{fmtDocumento(comp.cpfxxx, comp.cnpjxx)}</Text>
             {ende ? <Text style={s.endereco}>{ende}</Text> : null}
             {cid  ? <Text style={s.endereco}>{cid}{comp.cepxxx ? `  CEP ${comp.cepxxx}` : ''}</Text> : null}
             {comp.celu1  ? <Text style={s.telefone}>Tel: {comp.celu1}</Text> : null}

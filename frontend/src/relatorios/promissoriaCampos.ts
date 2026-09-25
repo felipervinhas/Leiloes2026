@@ -31,6 +31,8 @@ export const PROMISSORIA_CAMPOS: CampoDisponivel[] = [
 
   { grupo: 'Vendedor', key: 'lote.nomeVendedor', label: 'Nome do Vendedor' },
   { grupo: 'Vendedor', key: 'lote.cpfVendedor', label: 'CPF do Vendedor' },
+  { grupo: 'Vendedor', key: 'lote.cnpjVendedor', label: 'CNPJ do Vendedor' },
+  { grupo: 'Vendedor', key: 'calc.documentoVendedor', label: 'CPF/CNPJ do Vendedor' },
   { grupo: 'Vendedor', key: 'lote.endereVendedor', label: 'Endereço do Vendedor' },
   { grupo: 'Vendedor', key: 'lote.bairroVendedor', label: 'Bairro do Vendedor' },
   { grupo: 'Vendedor', key: 'lote.cidadeVendedor', label: 'Cidade do Vendedor' },
@@ -42,6 +44,8 @@ export const PROMISSORIA_CAMPOS: CampoDisponivel[] = [
 
   { grupo: 'Comprador', key: 'comp.nomexx', label: 'Nome do Comprador' },
   { grupo: 'Comprador', key: 'comp.cpfxxx', label: 'CPF do Comprador' },
+  { grupo: 'Comprador', key: 'comp.cnpjxx', label: 'CNPJ do Comprador' },
+  { grupo: 'Comprador', key: 'calc.documentoComprador', label: 'CPF/CNPJ do Comprador' },
   { grupo: 'Comprador', key: 'comp.endere', label: 'Endereço do Comprador' },
   { grupo: 'Comprador', key: 'comp.bairro', label: 'Bairro do Comprador' },
   { grupo: 'Comprador', key: 'comp.nomeCidade', label: 'Cidade do Comprador' },
@@ -76,6 +80,7 @@ export const PROMISSORIA_CAMPOS: CampoDisponivel[] = [
   { grupo: 'Calculados', key: 'calc.localEmissao', label: 'Local de Emissão' },
   { grupo: 'Calculados', key: 'calc.credor', label: 'Credor' },
   { grupo: 'Calculados', key: 'calc.cpfCredor', label: 'CPF do Credor' },
+  { grupo: 'Calculados', key: 'calc.documentoCredor', label: 'CPF/CNPJ do Credor' },
   { grupo: 'Calculados', key: 'calc.endereVend', label: 'Endereço do Vendedor (completo)' },
   { grupo: 'Calculados', key: 'calc.agora', label: 'Data/Hora de Emissão' },
   { grupo: 'Calculados', key: 'calc.nomeEmpresa', label: 'Nome da Empresa' },

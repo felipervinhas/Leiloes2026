@@ -2,6 +2,7 @@ import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/render
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import lacrePromissoria from '../assets/lacre_promissoria.png';
 import { labelRP, labelSBB } from '../utils/lote';
+import { fmtDocumento, documentoCliente } from '../utils/documento';
 import { FaturaData, fmtFidelidade } from './RelatorioFaturaCompra';
 import { montarContextoPromissoria } from './promissoriaContext';
 import TabelaParcelasBloco from './TabelaParcelasBloco';
@@ -214,7 +215,8 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
     >
       {dados.compradores.map((comp, ci) => {
         const ctx = montarContextoPromissoria(dados, comp, empresa);
-        const { totalValor, extenso, credor, cpfCredor, endereVend } = ctx.calc;
+        const { totalValor, extenso, credor, documentoCredor, endereVend } = ctx.calc;
+        const docComp = documentoCliente(comp.cpfxxx, comp.cnpjxx);
 
         return (
           <Page key={ci} size="A4" style={s.page}>
@@ -273,7 +275,7 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
                 <View style={s.colVendedor}>
                   <Text style={s.secLabelOrange}>Vendedor</Text>
                   <Text style={s.nomeXX}>{dados.lote.nomeVendedor || '—'}</Text>
-                  <Text style={s.cpfXX}>CPF: {dados.lote.cpfVendedor || 'não informado'}</Text>
+                  <Text style={s.cpfXX}>{fmtDocumento(dados.lote.cpfVendedor, dados.lote.cnpjVendedor)}</Text>
                   {endereVend ? <Text style={s.endereXX}>{endereVend}</Text> : null}
                   {dados.lote.cepVendedor ? <Text style={s.endereXX}>CEP {dados.lote.cepVendedor}</Text> : null}
                   {dados.lote.celularVendedor || dados.lote.telresVendedor ? (
@@ -296,7 +298,7 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
               <View style={s.comprRow}>
                 <View style={s.comprCol}>
                   <Text style={s.nomeXX}>{comp.nomexx || '—'}</Text>
-                  <Text style={s.cpfXX}>CPF: {comp.cpfxxx || 'não informado'}</Text>
+                  <Text style={s.cpfXX}>{fmtDocumento(comp.cpfxxx, comp.cnpjxx)}</Text>
                   {comp.endere  ? <Text style={s.endereXX}>{[comp.endere, comp.bairro].filter(Boolean).join(', ')}</Text> : null}
                   {comp.nomeCidade ? (
                     <Text style={s.endereXX}>
@@ -374,7 +376,7 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
 
                       {/* Texto */}
                       <Text style={s.promTexto}>
-                        {`NO DIA ${dataExtenso}, PAGAREI POR ESTA NOTA PROMISSÓRIA ÚNICA A ${(credor).toUpperCase()}${cpfCredor ? `, CPF ${cpfCredor}` : ''} OU A SUA ORDEM A QUANTIA DE (${extenso}) EM MOEDA CORRENTE DO PAÍS NA PRAÇA DE ${praca} PELA COMPRA QUE FIZ, NO LEILÃO ${(dados.leilao || '—').toUpperCase()}.`}
+                        {`NO DIA ${dataExtenso}, PAGAREI POR ESTA NOTA PROMISSÓRIA ÚNICA A ${(credor).toUpperCase()}${documentoCredor ? `, ${documentoCredor}` : ''} OU A SUA ORDEM A QUANTIA DE (${extenso}) EM MOEDA CORRENTE DO PAÍS NA PRAÇA DE ${praca} PELA COMPRA QUE FIZ, NO LEILÃO ${(dados.leilao || '—').toUpperCase()}.`}
                       </Text>
 
                       {/* Local + Data */}
@@ -386,7 +388,7 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
                       <View style={s.promRodape}>
                         <View style={s.promComprDados}>
                           <Text style={s.promComprNome}>{comp.nomexx?.toUpperCase() || '___'}</Text>
-                          {comp.cpfxxx     ? <Text style={s.promComprLinha}>{comp.cpfxxx}</Text> : null}
+                          {docComp.numero  ? <Text style={s.promComprLinha}>{docComp.numero}</Text> : null}
                           {comp.endere     ? <Text style={s.promComprLinha}>{[comp.endere, comp.bairro].filter(Boolean).join('   ')}</Text> : null}
                           {comp.nomeCidade ? <Text style={s.promComprLinha}>{comp.nomeCidade?.toUpperCase()}{comp.nomeEstado ? ` ${comp.nomeEstado.toUpperCase()}` : ''}</Text> : null}
                           {comp.cepxxx     ? <Text style={s.promComprLinha}>{comp.cepxxx}</Text> : null}
@@ -396,7 +398,7 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
                         <View style={s.promAssinItem}>
                           <View style={s.promAssinLinha} />
                           <Text style={s.promAssinNome}>{comp.nomexx?.toUpperCase() || 'COMPRADOR'}</Text>
-                          {comp.cpfxxx ? <Text style={s.promAssinRole}>{comp.cpfxxx}</Text> : null}
+                          {docComp.numero ? <Text style={s.promAssinRole}>{docComp.numero}</Text> : null}
                         </View>
                       </View>
                     </View>
