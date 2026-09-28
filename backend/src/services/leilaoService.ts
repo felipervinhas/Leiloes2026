@@ -21,7 +21,25 @@ export async function listarLeiloes(busca?: string, ativo?: string): Promise<Lei
   const pool = await getPool();
   const req = pool.request();
   const filtros: string[] = [];
-  if (busca) { req.input('busca', sql.VarChar, `%${busca}%`); filtros.push(`L.LEILAO LIKE @busca`); }
+  if (busca) {
+    // Busca por palavras (todas precisam aparecer, em qualquer ordem), ignorando
+    // espaços repetidos e pontuação — os nomes são digitados sem padrão
+    // ("Nº 1535  - ...", "Nº1509", "Nº - 1514"), e o texto exato digitado
+    // pelo usuário quase nunca batia com o LIKE da frase inteira.
+    const palavras = busca.split(/\s+/)
+      .map(p => p.replace(/[^\p{L}\p{N}]/gu, ''))
+      .filter(Boolean);
+    if (palavras.length) {
+      palavras.forEach((p, i) => {
+        req.input(`busca${i}`, sql.VarChar, `%${p}%`);
+        // COLLATE: ignora maiúsculas/acentos — no LoteRural a coluna LEILAO é case-sensitive (CS_AS)
+        filtros.push(`L.LEILAO COLLATE Latin1_General_CI_AI LIKE @busca${i}`);
+      });
+    } else {
+      req.input('busca', sql.VarChar, `%${busca}%`);
+      filtros.push(`L.LEILAO LIKE @busca`);
+    }
+  }
   if (ativo) { req.input('ativo', sql.VarChar, ativo); filtros.push(`L.ATIVOX = @ativo`); }
   const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
   const [r, bucket] = await Promise.all([
