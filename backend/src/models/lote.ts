@@ -31,6 +31,7 @@ export interface Lote {
   comcom?: number | null;
   comven?: number | null;
   nomeRaca?: string;
+  especies?: string;
   nomeVendedor?: string;
   estabelecimento?: string;
   nomeLeilao?: string;

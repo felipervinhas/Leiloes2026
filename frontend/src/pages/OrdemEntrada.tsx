@@ -21,7 +21,9 @@ interface LoteOrdem {
   nomeRaca?: string;
   catego?: string;
   rpxxx?: string;
+  pesoxx?: number;
   obslot?: string;
+  especies?: string;
   ordem?: string;
   dataLeilao?: string;
   enderecoLeilao?: string;
@@ -269,6 +271,7 @@ export default function OrdemEntrada() {
                 Painel do Leiloeiro
               </Button>
               <BotaoBaixarPDFOrdem
+                banco={banco}
                 lotes={lotesParaPDF}
                 titulo={nomeLeilao}
                 empresa={config.empresa}
