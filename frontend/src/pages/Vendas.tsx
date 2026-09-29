@@ -120,6 +120,8 @@ function Listagem({
   const [contratoImagemTopo, setContratoImagemTopo]     = useState<string | undefined>();
   const [contratoImagemRodape, setContratoImagemRodape] = useState<string | undefined>();
   const [contratoStep, setContratoStep]             = useState<'select' | 'edit'>('select');
+  const [contratoAvalista1, setContratoAvalista1]   = useState('');
+  const [contratoAvalista2, setContratoAvalista2]   = useState('');
   const [contratoLoading, setContratoLoading]       = useState(false);
 
   const [faturaVariante, setFaturaVariante] = useState<VarianteFatura>('comprador');
@@ -193,6 +195,8 @@ function Listagem({
     setContratoImagemTopo(undefined);
     setContratoImagemRodape(undefined);
     setContratoStep('select');
+    setContratoAvalista1('');
+    setContratoAvalista2('');
     const r = await api.get('/contratos/templates');
     setContratoTemplates(r.data);
     setContratoModal(true);
@@ -203,7 +207,8 @@ function Listagem({
     setContratoLoading(true);
     try {
       const r = await api.get(
-        `/contratos/gerar/${contratoVenda.id}/${contratoVenda.idcli}/${contratoIdTemplate}`
+        `/contratos/gerar/${contratoVenda.id}/${contratoVenda.idcli}/${contratoIdTemplate}`,
+        { params: { avalista1: contratoAvalista1 || undefined, avalista2: contratoAvalista2 || undefined } }
       );
       setContratoHtml(r.data.html);
       setContratoImagemTopo(r.data.imagemTopo || undefined);
@@ -608,6 +613,22 @@ function Listagem({
                 }))}
               />
             )}
+            {/* Preenchem %NOMFIA1% / %NOMFIA2% do modelo; vazio sai como linha de assinatura em branco */}
+            <div style={{ marginBottom: 8 }}>
+              <Text>Avalistas / Fiadores (opcional):</Text>
+            </div>
+            <Input
+              style={{ marginBottom: 8 }}
+              placeholder="Avalista 1"
+              value={contratoAvalista1}
+              onChange={e => setContratoAvalista1(e.target.value)}
+            />
+            <Input
+              style={{ marginBottom: 16 }}
+              placeholder="Avalista 2"
+              value={contratoAvalista2}
+              onChange={e => setContratoAvalista2(e.target.value)}
+            />
             <div style={{ textAlign: 'right' }}>
               <Space>
                 <Button onClick={() => setContratoModal(false)}>Cancelar</Button>

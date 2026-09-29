@@ -19,7 +19,33 @@ async function ensureTable() {
       ALTER TABLE CONTRATOS_TEMPLATES ADD IMAGEM_TOPO NVARCHAR(MAX) NULL;
     IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='CONTRATOS_TEMPLATES' AND COLUMN_NAME='IMAGEM_RODAPE')
       ALTER TABLE CONTRATOS_TEMPLATES ADD IMAGEM_RODAPE NVARCHAR(MAX) NULL;
+
+    -- Testemunhas fixas dos contratos (%NOMTEST1% / %NOMTEST2%) — no Delphi vinham
+    -- de um testemunhas.txt por cliente; aqui ficam na Configuracoes de cada banco.
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Configuracoes' AND COLUMN_NAME='TESTEMUNHA1')
+      ALTER TABLE Configuracoes ADD TESTEMUNHA1 VARCHAR(200) NULL;
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Configuracoes' AND COLUMN_NAME='TESTEMUNHA2')
+      ALTER TABLE Configuracoes ADD TESTEMUNHA2 VARCHAR(200) NULL;
   `);
+}
+
+// ── Testemunhas (Configuracoes) ──────────────────────────────────────────────
+
+export async function buscarTestemunhas(): Promise<{ testemunha1: string; testemunha2: string }> {
+  await ensureTable();
+  const pool = await getPool();
+  const r = await pool.request().query(`SELECT TOP 1 TESTEMUNHA1, TESTEMUNHA2 FROM Configuracoes`);
+  const c = r.recordset[0] || {};
+  return { testemunha1: c.TESTEMUNHA1 || '', testemunha2: c.TESTEMUNHA2 || '' };
+}
+
+export async function salvarTestemunhas(testemunha1: string, testemunha2: string): Promise<void> {
+  await ensureTable();
+  const pool = await getPool();
+  await pool.request()
+    .input('t1', testemunha1?.trim() || null)
+    .input('t2', testemunha2?.trim() || null)
+    .query(`UPDATE Configuracoes SET TESTEMUNHA1 = @t1, TESTEMUNHA2 = @t2`);
 }
 
 // ── CRUD Templates ───────────────────────────────────────────────────────────
@@ -104,7 +130,12 @@ export async function deletarTemplate(id: number) {
 
 // ── Geração de contrato ──────────────────────────────────────────────────────
 
-export async function gerarContrato(idMov: number, idCli: number, idTemplate: number) {
+/** avalistas: digitados na tela antes de gerar (%NOMFIA1% / %NOMFIA2%); vazios saem em branco. */
+export async function gerarContrato(
+  idMov: number, idCli: number, idTemplate: number,
+  avalistas: { avalista1?: string; avalista2?: string } = {},
+) {
+  const testemunhas = await buscarTestemunhas();
   const pool = await getPool();
 
   const [rTemplate, rDados, rParcelas] = await Promise.all([
@@ -239,7 +270,7 @@ export async function gerarContrato(idMov: number, idCli: number, idTemplate: nu
     EMPRESA:       d.EMPRESA || '',
     LEILAO:        d.LEILAO  || '',
     LEILOE:        d.LEILOE  || '',
-    CIDLEI:        d.CIDLEI  || '',
+    CIDLEI:        (d.CIDLEI || '').trim(),
     ESTLEI:        d.ESTLEI  || '',
     DATLEI:        d.DATLEI  || '',
     DATLAN:        d.DATLAN  || '',
@@ -247,6 +278,16 @@ export async function gerarContrato(idMov: number, idCli: number, idTemplate: nu
     MES:           String(d.MES),
     MESEXTENSO:    meses[d.MES] || '',
     ANO:           String(d.ANO),
+    // Mesma data do leilão com os nomes usados no modelo "Parceria Genetica" da Knorr
+    DIALEI:        String(d.DIA),
+    MESLEI:        meses[d.MES] || '',
+    ANOLEI:        String(d.ANO),
+
+    // Assinaturas: testemunhas fixas (Configuracoes) e avalistas digitados na geração
+    NOMTEST1:      testemunhas.testemunha1,
+    NOMTEST2:      testemunhas.testemunha2,
+    NOMFIA1:       (avalistas.avalista1 || '').trim(),
+    NOMFIA2:       (avalistas.avalista2 || '').trim(),
 
     NOMCOM:        d.NOMCOM  || '',
     CPFCOM:        d.CPFCOM  || d.CNPJCOM || '',
@@ -311,11 +352,12 @@ export async function gerarContrato(idMov: number, idCli: number, idTemplate: nu
 
 export const VARIAVEIS_DISPONIVEIS = [
   { grupo: 'Empresa',     vars: ['EMPRESA'] },
-  { grupo: 'Leilão',      vars: ['LEILAO','LEILOE','CIDLEI','ESTLEI','DATLEI'] },
+  { grupo: 'Leilão',      vars: ['LEILAO','LEILOE','CIDLEI','ESTLEI','DATLEI','DIALEI','MESLEI','ANOLEI'] },
   { grupo: 'Data',        vars: ['DATLAN','DIA','MES','MESEXTENSO','ANO'] },
   { grupo: 'Comprador',   vars: ['NOMCOM','CPFCOM','ENDCOM','BAICOM','CEPCOM','MUNCOM','ESTCOM','EMACOM','FONCOM','ESTCIV','PROFISS','PAIXXX','MAEXXX'] },
   { grupo: 'Vendedor',    vars: ['NOMVEN','CPFVEN','ENDVEN','BAIVEN','CEPVEN','MUNVEN','ESTVEN','FONVEN'] },
   { grupo: 'Lote',        vars: ['LOTEXX','DESLOT','RACACOM','RPXXXX','SBBXXX','DATNAS','CATEGO','PELAGE','OBSLOT'] },
   { grupo: 'Financeiro',  vars: ['VLRTOT','VLRLIQ','VLRPAR','DESFIN','PARC01','QTDPARA','CODNOT'] },
   { grupo: 'Parcelas',    vars: ['PARCELAINICIAL','PRIMEIRO_VENCIMENTO_DATA','PRIMEIRO_VENCIMENTO_VALOR','SALDOFINAL'] },
+  { grupo: 'Assinaturas', vars: ['NOMTEST1','NOMTEST2','NOMFIA1','NOMFIA2'] },
 ];

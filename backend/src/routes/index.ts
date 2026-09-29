@@ -75,6 +75,8 @@ bancoRouter.get('/dashboard/cadastros-incompletos', dash.cadastrosIncompletos);
 
 // Contratos
 bancoRouter.get('/contratos/variaveis',                              contrato.variaveis);
+bancoRouter.get('/contratos/testemunhas',                            contrato.testemunhas);
+bancoRouter.put('/contratos/testemunhas',                            contrato.salvarTestemunhasCtrl);
 bancoRouter.get('/contratos/templates',                              contrato.listar);
 bancoRouter.post('/contratos/templates',                             contrato.criar);
 bancoRouter.get('/contratos/templates/:id',                          contrato.buscar);

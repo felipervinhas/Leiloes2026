@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Button, Card, Col, Drawer, Form, Input, message,
+  Button, Card, Col, Drawer, Form, Input, message, Modal,
   Popconfirm, Row, Select, Space, Spin, Tag, Tooltip, Typography,
 } from 'antd';
 import {
   DeleteOutlined, EditOutlined, FileTextOutlined,
-  PlusOutlined, QuestionCircleOutlined,
+  PlusOutlined, QuestionCircleOutlined, TeamOutlined,
 } from '@ant-design/icons';
 import api from '../services/api';
 import ContratoEditor from '../components/ContratoEditor';
@@ -57,6 +57,30 @@ export default function Contratos() {
   const [imagemRodape, setImagemRodape] = useState<string | undefined>();
   const [varDrawer, setVarDrawer]       = useState(false);
   const [variaveis, setVariaveis]       = useState<any[]>([]);
+  // Testemunhas fixas dos contratos (%NOMTEST1% / %NOMTEST2%), salvas em Configuracoes
+  const [testemunhasOpen, setTestemunhasOpen] = useState(false);
+  const [testemunha1, setTestemunha1] = useState('');
+  const [testemunha2, setTestemunha2] = useState('');
+  const [salvandoTestemunhas, setSalvandoTestemunhas] = useState(false);
+
+  const abrirTestemunhas = async () => {
+    try {
+      const r = await api.get('/contratos/testemunhas');
+      setTestemunha1(r.data.testemunha1 || '');
+      setTestemunha2(r.data.testemunha2 || '');
+      setTestemunhasOpen(true);
+    } catch { message.error('Erro ao carregar testemunhas'); }
+  };
+
+  const salvarTestemunhas = async () => {
+    setSalvandoTestemunhas(true);
+    try {
+      await api.put('/contratos/testemunhas', { testemunha1, testemunha2 });
+      message.success('Testemunhas salvas');
+      setTestemunhasOpen(false);
+    } catch { message.error('Erro ao salvar testemunhas'); }
+    finally { setSalvandoTestemunhas(false); }
+  };
   const [saving, setSaving]             = useState(false);
   const [form] = Form.useForm();
 
@@ -136,11 +160,30 @@ export default function Contratos() {
           <Button icon={<QuestionCircleOutlined />} onClick={carregarVariaveis}>
             Variáveis disponíveis
           </Button>
+          <Button icon={<TeamOutlined />} onClick={abrirTestemunhas}>
+            Testemunhas
+          </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={abrirNovo}>
             Novo modelo
           </Button>
         </Space>
       </div>
+
+      <Modal
+        title="Testemunhas dos contratos"
+        open={testemunhasOpen}
+        onCancel={() => setTestemunhasOpen(false)}
+        onOk={salvarTestemunhas}
+        okText="Salvar"
+        cancelText="Cancelar"
+        confirmLoading={salvandoTestemunhas}
+      >
+        <Paragraph type="secondary" style={{ fontSize: 12 }}>
+          Usadas em todos os contratos, nos campos <code>%NOMTEST1%</code> e <code>%NOMTEST2%</code>.
+        </Paragraph>
+        <Input style={{ marginBottom: 8 }} placeholder="Testemunha 1" value={testemunha1} onChange={e => setTestemunha1(e.target.value)} />
+        <Input placeholder="Testemunha 2" value={testemunha2} onChange={e => setTestemunha2(e.target.value)} />
+      </Modal>
 
       <Spin spinning={loading}>
         {templates.length === 0 && !loading ? (

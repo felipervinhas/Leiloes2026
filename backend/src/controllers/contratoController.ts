@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import {
   listarTemplates, buscarTemplate, criarTemplate, atualizarTemplate,
   deletarTemplate, gerarContrato, VARIAVEIS_DISPONIVEIS,
+  buscarTestemunhas, salvarTestemunhas,
 } from '../services/contratoService';
 import { registrarLog } from '../services/logService';
 
@@ -36,8 +37,20 @@ export const deletar = async (req: Request, res: Response) => {
 
 export const gerar   = async (req: Request, res: Response) => {
   const { idMov, idCli, idTemplate } = req.params;
-  const result = await gerarContrato(Number(idMov), Number(idCli), Number(idTemplate));
+  const result = await gerarContrato(Number(idMov), Number(idCli), Number(idTemplate), {
+    avalista1: req.query.avalista1 as string | undefined,
+    avalista2: req.query.avalista2 as string | undefined,
+  });
   res.json(result);
+};
+
+export const testemunhas = async (_req: Request, res: Response) => res.json(await buscarTestemunhas());
+
+export const salvarTestemunhasCtrl = async (req: Request, res: Response) => {
+  const { testemunha1, testemunha2 } = req.body;
+  await salvarTestemunhas(testemunha1 || '', testemunha2 || '');
+  await registrarLog((req as any).usuario, 'Alterar', 'Contratos', 'testemunhas');
+  res.json({ ok: true });
 };
 
 export const variaveis = (_req: Request, res: Response) =>
