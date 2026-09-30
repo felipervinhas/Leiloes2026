@@ -1,5 +1,6 @@
 import { getPool, sql } from '../config/database';
 import { getBanco } from '../config/bancoContext';
+import { idParaInsert } from '../utils/idLegado';
 
 export interface UsuarioSistema {
   id: number;
@@ -65,6 +66,9 @@ export async function buscarUsuarioPorId(id: number): Promise<UsuarioSistema | n
 export async function criarUsuario(dados: UsuarioSistema): Promise<number> {
   await garantirColuna();
   const pool = await getPool();
+  // ID: não é IDENTITY no LoteRural. OUTPUT ... INTO: a Clientes do LoteRural tem trigger,
+  // e OUTPUT sem INTO é recusado em tabela com trigger.
+  const idIns = await idParaInsert('Clientes');
   const r = await pool.request()
     .input('nomexx',      sql.VarChar, dados.nomexx)
     .input('emailx',      sql.VarChar, dados.emailx      || null)
@@ -74,9 +78,11 @@ export async function criarUsuario(dados: UsuarioSistema): Promise<number> {
     .input('acessoApp',   sql.VarChar, dados.acessoApp   || null)
     .input('senhax',      sql.VarChar, dados.senhax      || '')
     .input('tipoUsuario', sql.NVarChar, dados.tipoUsuario || null)
-    .query(`INSERT INTO Clientes (NOMEXX,EMAILX,CPFXXX,ATIVOX,BLOCLI,ACESSO_APP,SENHAX,ADM,TIPO_USUARIO)
-      OUTPUT INSERTED.ID
-      VALUES (@nomexx,@emailx,@cpfxxx,@ativox,@blocli,@acessoApp,@senhax,'S',@tipoUsuario)`);
+    .query(`DECLARE @InsertedIds TABLE (ID INT);
+      INSERT INTO Clientes (${idIns.coluna}NOMEXX,EMAILX,CPFXXX,ATIVOX,BLOCLI,ACESSO_APP,SENHAX,ADM,TIPO_USUARIO)
+      OUTPUT INSERTED.ID INTO @InsertedIds
+      VALUES (${idIns.valor}@nomexx,@emailx,@cpfxxx,@ativox,@blocli,@acessoApp,@senhax,'S',@tipoUsuario);
+      SELECT ID FROM @InsertedIds;`);
   return r.recordset[0].ID;
 }
 

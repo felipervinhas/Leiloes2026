@@ -2,6 +2,7 @@ import { getPool, sql } from '../config/database';
 import { getBanco } from '../config/bancoContext';
 import { Cliente } from '../models/cliente';
 import { listarClassificacoesDoCliente, salvarClassificacoesDoCliente, garantirTabelasClassificacao } from './classificacaoService';
+import { idParaInsert } from '../utils/idLegado';
 
 const JOIN_CLASSIFICACOES = `
   LEFT JOIN (
@@ -360,6 +361,8 @@ export async function criarCliente(d: Cliente): Promise<number> {
   await garantirColunaSolicitadoPor();
   await garantirColunasUsu();
   const pool = await getPool();
+  // No LoteRural o ID de Clientes não é IDENTITY (erro "Cannot insert NULL into column 'ID'")
+  const idIns = await idParaInsert('Clientes');
   const r = await pool.request()
     .input('nomexx', sql.VarChar, d.nomexx||null).input('endere', sql.VarChar, d.endere||null)
     .input('bairro', sql.VarChar, d.bairro||null).input('cepxxx', sql.VarChar, d.cepxxx||null)
@@ -391,9 +394,9 @@ export async function criarCliente(d: Cliente): Promise<number> {
     .input('idSolicitadoPor', sql.Int, d.idSolicitadoPor||null)
     .input('usucad', sql.Int, d.usucad||null)
     .query(`DECLARE @InsertedIds TABLE (ID INT);
-      INSERT INTO Clientes (NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,ORG_EM,EMISSA,PAIXXX,MAEXXX,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,CODCLA,ESTCIV,OBSXXX,OCORRENCIAS,DATCAD,BANCOX,AGENCI,CONTAX,PIX,BANCO1,AGENCIA1,CONTA1,PIX1,BANCO2,AGENCIA2,CONTA2,PIX2,REFER1,TELREFERE1,REFER2,TELREFERE2,ID_SOLICITADO_POR,USUCAD)
+      INSERT INTO Clientes (${idIns.coluna}NOMEXX,ENDERE,BAIRRO,CEPXXX,CPFXXX,CNPJXX,TELRES,TELCOM,CELU_1,CELU_2,RGXXXX,DATNAS,ORG_EM,EMISSA,PAIXXX,MAEXXX,EMAILX,EMAIL2,CIDADE,COMPLE,PROFISS,EMPRES,RENDAX,SENHAX,ATIVOX,BLOCLI,ADM,ACESSO_APP,LIMCRE,CLASSIFICACAO,CODCLA,ESTCIV,OBSXXX,OCORRENCIAS,DATCAD,BANCOX,AGENCI,CONTAX,PIX,BANCO1,AGENCIA1,CONTA1,PIX1,BANCO2,AGENCIA2,CONTA2,PIX2,REFER1,TELREFERE1,REFER2,TELREFERE2,ID_SOLICITADO_POR,USUCAD)
       OUTPUT INSERTED.ID INTO @InsertedIds
-      VALUES (@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@orgem,@emissa,@paixxx,@maexxx,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@codcla,@estciv,@obsxxx,@ocorrencias,@datcad,@bancox,@agenci,@contax,@pix,@banco1,@agencia1,@conta1,@pix1,@banco2,@agencia2,@conta2,@pix2,@refer1,@telrefere1,@refer2,@telrefere2,@idSolicitadoPor,@usucad);
+      VALUES (${idIns.valor}@nomexx,@endere,@bairro,@cepxxx,@cpfxxx,@cnpjxx,@telres,@telcom,@celu1,@celu2,@rgxxxx,@datnas,@orgem,@emissa,@paixxx,@maexxx,@emailx,@email2,@cidade,@comple,@profiss,@empres,@rendax,@senhax,@ativox,@blocli,@adm,@acessoApp,@limcre,@classificacao,@codcla,@estciv,@obsxxx,@ocorrencias,@datcad,@bancox,@agenci,@contax,@pix,@banco1,@agencia1,@conta1,@pix1,@banco2,@agencia2,@conta2,@pix2,@refer1,@telrefere1,@refer2,@telrefere2,@idSolicitadoPor,@usucad);
       SELECT ID FROM @InsertedIds;`);
   const id = r.recordset[0].ID;
   await salvarClassificacoesDoCliente(id, d.classificacoes || []);
