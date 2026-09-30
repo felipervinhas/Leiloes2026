@@ -15,7 +15,7 @@ import * as lote from '../controllers/loteController';
 import * as cliente from '../controllers/clienteController';
 import * as clientePropriedade from '../controllers/clientePropriedadeController';
 import * as ocorrenciaCliente from '../controllers/ocorrenciaClienteController';
-import { getConfiguracoes, getLogoBase64, getLogoImagem } from '../controllers/configController';
+import { getConfiguracoes, getLogoBase64, getLogoImagem, uploadLogo } from '../controllers/configController';
 import * as upload from '../controllers/uploadController';
 import * as lance from '../controllers/lanceController';
 import * as consultaVendas from '../controllers/consultaVendasController';
@@ -68,6 +68,9 @@ bancoRouter.get('/configuracoes/logo-imagem', getLogoImagem);
 
 // Rotas protegidas
 bancoRouter.use(authMiddleware);
+
+// Troca do logotipo do tenant (S3) — protegida; a leitura (GET acima) é pública pro Login
+bancoRouter.post('/configuracoes/logo', memStorage.single('file'), reafirmarBanco, uploadLogo);
 
 bancoRouter.get('/dashboard', dash.dashboard);
 bancoRouter.get('/dashboard/tops-categoria', dash.topsPorCategoria);

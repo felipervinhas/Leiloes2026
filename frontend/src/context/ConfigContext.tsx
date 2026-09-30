@@ -29,6 +29,8 @@ export interface Configuracoes {
   corLetraBottom: string;
   /** Logotipo em data URI (base64), pronto para embutir em PDFs (@react-pdf/renderer). */
   logoBase64: string | null;
+  /** Busca de novo configurações e logotipo (ex.: depois de trocar o logo). */
+  recarregar?: () => void;
 }
 
 const defaultConfig: Configuracoes = {
@@ -49,6 +51,7 @@ const ConfigContext = createContext<Configuracoes>(defaultConfig);
 export function ConfigProvider({ children }: { children: ReactNode }) {
   const { banco } = useBanco();
   const [config, setConfig] = useState<Configuracoes>(defaultConfig);
+  const [versao, setVersao] = useState(0);
 
   useEffect(() => {
     if (!banco) return;
@@ -58,9 +61,13 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     api.get('/configuracoes/logo')
       .then(r => setConfig(cfg => ({ ...cfg, logoBase64: r.data?.logo ?? logoFallbackPorBanco(banco) })))
       .catch(() => setConfig(cfg => ({ ...cfg, logoBase64: logoFallbackPorBanco(banco) })));
-  }, [banco]);
+  }, [banco, versao]);
 
-  return <ConfigContext.Provider value={config}>{children}</ConfigContext.Provider>;
+  return (
+    <ConfigContext.Provider value={{ ...config, recarregar: () => setVersao(v => v + 1) }}>
+      {children}
+    </ConfigContext.Provider>
+  );
 }
 
 export function useConfig() {

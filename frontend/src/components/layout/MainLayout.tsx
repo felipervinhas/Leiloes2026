@@ -65,6 +65,7 @@ const ALL_MENU_ITEMS = [
       { key: '/perfis', icon: <SafetyOutlined />, label: 'Perfis', controle: 'Perfis' },
       { key: '/usuarios', icon: <UserOutlined />, label: 'Usuários', controle: 'Usuários' },
       { key: '/editor-relatorios', icon: <FileTextOutlined />, label: 'Editor de Relatórios', controle: 'Editor de Relatórios', adminOnly: true },
+      { key: '/configuracoes', icon: <SettingOutlined />, label: 'Configurações', controle: 'Configurações', adminOnly: true },
     ],
   },
 ];
@@ -92,6 +93,7 @@ const ROUTE_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
   '/perfis': { label: 'Perfis', icon: <SafetyOutlined /> },
   '/usuarios': { label: 'Usuários', icon: <UserOutlined /> },
   '/editor-relatorios': { label: 'Editor de Relatórios', icon: <FileTextOutlined /> },
+  '/configuracoes': { label: 'Configurações', icon: <SettingOutlined /> },
 };
 
 function temAcesso(controle: string | undefined, controles: string[]): boolean {

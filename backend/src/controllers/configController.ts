@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import axios from 'axios';
-import { buscarConfiguracoes } from '../services/configService';
+import { buscarConfiguracoes, trocarLogotipo } from '../services/configService';
+import { registrarLog } from '../services/logService';
 
 export async function getConfiguracoes(req: Request, res: Response) {
   const config = await buscarConfiguracoes();
@@ -35,4 +36,21 @@ export async function getLogoImagem(req: Request, res: Response) {
   } catch {
     res.status(502).end();
   }
+}
+
+const TIPOS_LOGO = ['image/png', 'image/jpeg'];
+const TAMANHO_MAX_LOGO = 2 * 1024 * 1024;
+
+// PNG ou JPG apenas: são os formatos que o gerador de PDF (@react-pdf) embute nos relatórios
+export async function uploadLogo(req: Request, res: Response) {
+  if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+  if (!TIPOS_LOGO.includes(req.file.mimetype)) {
+    return res.status(400).json({ error: 'Envie uma imagem PNG ou JPG' });
+  }
+  if (req.file.size > TAMANHO_MAX_LOGO) {
+    return res.status(400).json({ error: 'A imagem deve ter no máximo 2 MB' });
+  }
+  const resultado = await trocarLogotipo(req.file.buffer, req.file.mimetype);
+  await registrarLog((req as any).usuario, 'Alterar', 'Configurações', 'logotipo');
+  res.json(resultado);
 }

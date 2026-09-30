@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3';
 import { getPool } from '../config/database';
 import { getBanco } from '../config/bancoContext';
 
@@ -44,6 +44,32 @@ export async function uploadS3(key: string, buffer: Buffer, mimetype: string): P
     Key: key,
     Body: buffer,
     ContentType: mimetype,
+  }));
+  uploadedAt.set(key, Date.now());
+  return s3PublicUrl(bucket, key);
+}
+
+/** Copia um objeto dentro do bucket do tenant; retorna false se a origem não existir. */
+export async function copiarS3(origem: string, destino: string): Promise<boolean> {
+  const bucket = await resolveBucket();
+  if (!(await existeS3(origem))) return false;
+  await s3.send(new CopyObjectCommand({
+    Bucket: bucket,
+    CopySource: `${bucket}/${encodeURIComponent(origem)}`,
+    Key: destino,
+  }));
+  return true;
+}
+
+/** Upload que não deve ficar em cache (ex.: logotipo, que mantém sempre o mesmo nome). */
+export async function uploadS3SemCache(key: string, buffer: Buffer, mimetype: string): Promise<string> {
+  const bucket = await resolveBucket();
+  await s3.send(new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    Body: buffer,
+    ContentType: mimetype,
+    CacheControl: 'no-cache',
   }));
   uploadedAt.set(key, Date.now());
   return s3PublicUrl(bucket, key);

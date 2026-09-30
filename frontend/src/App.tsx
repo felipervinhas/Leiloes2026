@@ -29,6 +29,7 @@ import Despesas from './pages/Despesas';
 import AcertoVendedor from './pages/AcertoVendedor';
 import AcertoComprador from './pages/AcertoComprador';
 import EditorRelatorios from './pages/EditorRelatorios';
+import Configuracoes from './pages/Configuracoes';
 import PainelLeiloeiro from './pages/PainelLeiloeiro';
 import Chamados from './pages/Chamados';
 import { BANCOS_PERMITIDOS } from './config/bancos';
@@ -111,6 +112,7 @@ function App() {
                 <Route path="acerto-vendedor" element={<AcertoVendedor />} />
                 <Route path="acerto-comprador" element={<AcertoComprador />} />
                 <Route path="editor-relatorios" element={<EditorRelatorios />} />
+                <Route path="configuracoes" element={<Configuracoes />} />
                 <Route path="chamados" element={<Chamados />} />
               </Route>
             </Route>
