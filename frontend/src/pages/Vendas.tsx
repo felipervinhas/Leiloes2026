@@ -17,7 +17,8 @@ import {
   PercentageOutlined, SyncOutlined, MoreOutlined, BarChartOutlined, CloseOutlined,
 } from '@ant-design/icons';
 import { BlobProvider } from '@react-pdf/renderer';
-import FaturaCompraPDF, { FaturaData, VarianteFatura } from '../relatorios/RelatorioFaturaCompra';
+import FaturaCompraPDF, { FaturaData, Avalista, VarianteFatura } from '../relatorios/RelatorioFaturaCompra';
+import AvalistasPromissoria from '../components/AvalistasPromissoria';
 import PromissoriaPDF from '../relatorios/RelatorioPromissoria';
 import PromissoriaDinamica from '../relatorios/PromissoriaDinamica';
 import RelatorioFaturaCompradorDinamico from '../relatorios/RelatorioFaturaCompradorDinamico';
@@ -108,6 +109,8 @@ function Listagem({
   const [faturaModal, setFaturaModal]               = useState(false);
   const [promissoriaLoading, setPromissoriaLoading] = useState<number | null>(null);
   const [promissoriaData, setPromissoriaData]       = useState<FaturaData | null>(null);
+  // Avalistas confirmados na janela (leilão com "Avalista obrigatório")
+  const [promissoriaAvalistas, setPromissoriaAvalistas] = useState<Avalista[] | null>(null);
   const [promissoriaModal, setPromissoriaModal]     = useState(false);
   const [promissoriaLayout, setPromissoriaLayout]   = useState<CampoLayout[] | null>(null);
 
@@ -166,6 +169,7 @@ function Listagem({
         api.get('/relatorio-layouts/ativo/promissoria').catch(() => ({ data: null })),
       ]);
       setPromissoriaData(rDados.data);
+      setPromissoriaAvalistas(null);
       definirCompradorInicial(rDados.data);
       setPromissoriaLayout(rLayout.data?.conteudo || null);
       setPromissoriaModal(true);
@@ -463,7 +467,11 @@ function Listagem({
         width={480}
       >
         {promissoriaData && (() => {
-          const dadosSel = dadosDoComprador(promissoriaData, docCompradorId);
+          const exigeAvalista = promissoriaData.avalistaObrigatorio === 'S';
+          const dadosBase = dadosDoComprador(promissoriaData, docCompradorId);
+          const dadosSel = dadosBase && (!exigeAvalista || promissoriaAvalistas)
+            ? { ...dadosBase, avalistas: promissoriaAvalistas || undefined }
+            : null;
           return (
           <div style={{ padding: '16px 0', textAlign: 'center' }}>
             {seletorComprador(promissoriaData)}
@@ -480,6 +488,7 @@ function Listagem({
                 {promissoriaData.compradores.reduce((t, c) => t + (c.qtdparCond ?? c.parcelas.length), 0)} parcelas
               </div>
             </div>
+            {exigeAvalista && <AvalistasPromissoria key={promissoriaData.id} onConfirmar={setPromissoriaAvalistas} />}
             {dadosSel && (
               <BlobProvider
                 document={

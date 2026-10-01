@@ -75,6 +75,13 @@ export const PROMISSORIA_CAMPOS: CampoDisponivel[] = [
   { grupo: 'Calculados', key: 'calc.totalValor', label: 'Valor Total da Promissória', formato: 'moeda' },
   { grupo: 'Calculados', key: 'calc.totalParcelas', label: 'Soma das Parcelas', formato: 'moeda' },
   { grupo: 'Calculados', key: 'calc.extenso', label: 'Valor por Extenso' },
+  { grupo: 'Avalista', key: 'aval1.nome', label: 'Nome do Avalista 1' },
+  { grupo: 'Avalista', key: 'aval1.documento', label: 'CPF/CNPJ do Avalista 1' },
+  { grupo: 'Avalista', key: 'aval1.endereco', label: 'Endereço do Avalista 1' },
+  { grupo: 'Avalista', key: 'aval2.nome', label: 'Nome do Avalista 2' },
+  { grupo: 'Avalista', key: 'aval2.documento', label: 'CPF/CNPJ do Avalista 2' },
+  { grupo: 'Avalista', key: 'aval2.endereco', label: 'Endereço do Avalista 2' },
+
   { grupo: 'Calculados', key: 'calc.dataExtenso', label: 'Data por Extenso' },
   { grupo: 'Calculados', key: 'calc.praca', label: 'Praça (Cidade/UF Vendedor)' },
   { grupo: 'Calculados', key: 'calc.localEmissao', label: 'Local de Emissão' },

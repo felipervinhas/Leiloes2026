@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker,
-  Space, Popconfirm, Typography, Row, Col, message, Tag, Tabs, Divider, Image, Grid } from 'antd';
+  Space, Popconfirm, Typography, Row, Col, message, Tag, Tabs, Divider, Image, Grid, Checkbox } from 'antd';
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CalendarOutlined } from '@ant-design/icons';
@@ -57,12 +57,12 @@ export default function Leiloes() {
         api.get(`/leiloes/${item.id}/imagens`),
       ]);
       const d = r.data;
-      form.setFieldsValue({ ...d, datlei: dataUTC(d.datlei), dataSaldo: dataUTC(d.dataSaldo) });
+      form.setFieldsValue({ ...d, datlei: dataUTC(d.datlei), dataSaldo: dataUTC(d.dataSaldo), avalistaObrigatorio: d.avalistaObrigatorio === 'S' });
       setEditando(d);
       setImagens(imgs.data);
     } else {
       form.resetFields();
-      form.setFieldsValue({ ativox: 'S' });
+      form.setFieldsValue({ ativox: 'S', avalistaObrigatorio: false });
       setEditando(null);
     }
     setModalOpen(true);
@@ -73,6 +73,7 @@ export default function Leiloes() {
       ...values,
       datlei: values.datlei?.format('YYYY-MM-DD') || null,
       dataSaldo: values.dataSaldo?.format('YYYY-MM-DD') || null,
+      avalistaObrigatorio: values.avalistaObrigatorio ? 'S' : 'N',
     };
     try {
       if (editando) await api.put(`/leiloes/${editando.id}`, payload);
@@ -127,6 +128,12 @@ export default function Leiloes() {
           <Row gutter={12}>
             <Col xs={24} md={16}><Form.Item name="leilao" label="Nome do Leilão" rules={[{ required: true }]}><Input /></Form.Item></Col>
             <Col xs={24} md={8}><Form.Item name="ativox" label="Ativo"><Select options={[{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }]} /></Form.Item></Col>
+            <Col xs={24}>
+              <Form.Item name="avalistaObrigatorio" valuePropName="checked" style={{ marginBottom: 8 }}
+                tooltip="Ao gerar a promissória de uma venda deste leilão, o usuário precisa informar o avalista">
+                <Checkbox>Avalista obrigatório</Checkbox>
+              </Form.Item>
+            </Col>
             <Col xs={24} sm={12} md={8}><Form.Item name="datlei" label="Data do Leilão"><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
             <Col xs={24} sm={12} md={8}><Form.Item name="horaInicio" label="Hora Início"><Input placeholder="HH:MM" /></Form.Item></Col>
             <Col xs={24} sm={12} md={8}><Form.Item name="horaFechamentoPre" label="Hora Fechamento"><Input placeholder="HH:MM" /></Form.Item></Col>

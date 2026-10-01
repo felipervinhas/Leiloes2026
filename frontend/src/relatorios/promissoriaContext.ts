@@ -23,6 +23,9 @@ export interface PromissoriaCalc {
 }
 
 export interface PromissoriaContexto {
+  /** Avalistas digitados antes de gerar (vazios quando o leilão não exige) */
+  aval1: { nome?: string; documento?: string; endereco?: string };
+  aval2: { nome?: string; documento?: string; endereco?: string };
   dados: FaturaData;
   lote?: FaturaData['lote'];
   comp: FaturaData['compradores'][number];
@@ -68,6 +71,8 @@ export function montarContextoPromissoria(
   const fidelidade = fmtFidelidade(comp.tipoDescontoFidelidade, comp.descontoFidelidade) || undefined;
 
   return {
+    aval1: dados.avalistas?.[0] || {},
+    aval2: dados.avalistas?.[1] || {},
     dados,
     lote: dados.lote,
     comp,

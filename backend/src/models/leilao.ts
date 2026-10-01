@@ -22,6 +22,8 @@ export interface Leilao {
   observacoes?: string;
   tipo?: string;
   dataSaldo?: Date | string;
+  /** 'S' = promissória exige avalista digitado antes de gerar */
+  avalistaObrigatorio?: string;
   nomeCidade?: string;
   nomeEstado?: string;
   descricaoCondicao?: string;

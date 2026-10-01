@@ -3,6 +3,12 @@ import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { fmtDocumento } from '../utils/documento';
 import { labelRP, labelSBB } from '../utils/lote';
 
+export interface Avalista {
+  nome: string;
+  documento?: string;
+  endereco?: string;
+}
+
 export interface FaturaData {
   id: number;
   codnot?: string;
@@ -11,6 +17,10 @@ export interface FaturaData {
   datlei?: string;
   cidadeLeilao?: string;
   estadoLeilao?: string;
+  /** 'S' = leilão exige avalista na promissória */
+  avalistaObrigatorio?: string;
+  /** Digitados na tela antes de gerar a promissória (não vêm do banco) */
+  avalistas?: Avalista[];
   lote?: {
     lotexx?: string;
     deslot?: string;

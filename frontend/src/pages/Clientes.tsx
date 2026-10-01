@@ -19,7 +19,8 @@ import { useBanco } from '../context/BancoContext';
 import { useAuth } from '../context/AuthContext';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { BlobProvider } from '@react-pdf/renderer';
-import FaturaCompraPDF, { FaturaData } from '../relatorios/RelatorioFaturaCompra';
+import FaturaCompraPDF, { FaturaData, Avalista } from '../relatorios/RelatorioFaturaCompra';
+import AvalistasPromissoria from '../components/AvalistasPromissoria';
 import PromissoriaPDF from '../relatorios/RelatorioPromissoria';
 import { BotaoBaixarPDF, ClienteCompleto } from '../relatorios/RelatorioClientes';
 import { exportarClientesExcel } from '../relatorios/exportarExcel';
@@ -131,6 +132,7 @@ export default function Clientes() {
   const [faturaModal, setFaturaModal] = useState(false);
   const [promissoriaLoading, setPromissoriaLoading] = useState<number | null>(null);
   const [promissoriaData, setPromissoriaData] = useState<FaturaData | null>(null);
+  const [promissoriaAvalistas, setPromissoriaAvalistas] = useState<Avalista[] | null>(null);
   const [promissoriaModal, setPromissoriaModal] = useState(false);
   const [enviandoDocumento, setEnviandoDocumento] = useState<string | null>(null);
   const [statusDocumentos, setStatusDocumentos] = useState<Record<string, { enviado: boolean; urlJpg: string | null; urlPdf: string | null }>>({});
@@ -245,6 +247,7 @@ export default function Clientes() {
     try {
       const r = await api.get(`/vendas/${id}/fatura`);
       setPromissoriaData(r.data);
+      setPromissoriaAvalistas(null);
       setPromissoriaModal(true);
     } catch { message.error('Erro ao carregar promissórias'); }
     finally { setPromissoriaLoading(null); }
@@ -1380,7 +1383,11 @@ export default function Clientes() {
               <div><strong>Compradores:</strong> {promissoriaData.compradores.map((c: any) => c.nomexx).filter(Boolean).join(', ')}</div>
               <div><strong>Total de promissórias:</strong> {promissoriaData.compradores.reduce((t: number, c: any) => t + (c.qtdparCond ?? c.parcelas.length), 0)} parcelas</div>
             </div>
-            <BlobProvider document={<PromissoriaPDF dados={promissoriaData} empresa={config.empresa} logoBase64={config.logoBase64} />}>
+            {promissoriaData.avalistaObrigatorio === 'S' && (
+              <AvalistasPromissoria key={promissoriaData.id} onConfirmar={setPromissoriaAvalistas} />
+            )}
+            {(promissoriaData.avalistaObrigatorio !== 'S' || promissoriaAvalistas) && (
+            <BlobProvider document={<PromissoriaPDF dados={{ ...promissoriaData, avalistas: promissoriaAvalistas || undefined }} empresa={config.empresa} logoBase64={config.logoBase64} />}>
               {({ url, loading }: { url: string | null; loading: boolean }) => (
                 <Button
                   type="primary" size="large" icon={<EyeOutlined />}
@@ -1392,6 +1399,7 @@ export default function Clientes() {
                 </Button>
               )}
             </BlobProvider>
+            )}
           </div>
         )}
       </Modal>

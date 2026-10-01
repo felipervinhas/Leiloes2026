@@ -1,4 +1,5 @@
 import { getPool, sql } from '../config/database';
+import { garantirColunaAvalistaObrigatorio } from './leilaoService';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -1082,11 +1083,12 @@ export async function salvarPropriedadeComprador(
 // ─── fatura de compras ──────────────────────────────────────────────────────
 
 export async function dadosFatura(idMov: number) {
+  await garantirColunaAvalistaObrigatorio();
   const pool = await getPool();
 
   const rMov = await pool.request().input('id', sql.Int, idMov).query(`
     SELECT M.ID, M.IDLEILAO, M.CODNOT, M.DATLAN, M.DEFESA,
-           L.LEILAO, L.DATLEI, L.COMCOM, L.COMVEN,
+           L.LEILAO, L.DATLEI, L.COMCOM, L.COMVEN, L.AVALISTA_OBRIGATORIO,
            CIDLEI.CIDADE AS CIDADE_LEILAO, CIDLEI.ESTADO AS ESTADO_LEILAO
     FROM MOVIMENTO M
     LEFT JOIN LEILOES L ON L.ID = M.IDLEILAO
@@ -1165,6 +1167,7 @@ export async function dadosFatura(idMov: number) {
     datlei:   mov.DATLEI ? new Date(mov.DATLEI).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—',
     cidadeLeilao: mov.CIDADE_LEILAO,
     estadoLeilao: mov.ESTADO_LEILAO,
+    avalistaObrigatorio: mov.AVALISTA_OBRIGATORIO === 'S' ? 'S' : 'N',
     lote: l ? {
       lotexx:        l.LOTEXX,
       deslot:        l.DESLOT,

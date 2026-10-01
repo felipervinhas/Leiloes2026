@@ -180,6 +180,8 @@ const s = StyleSheet.create({
   promAssinLinha: { borderTopWidth: 0.5, borderTopColor: '#333', width: '100%', marginBottom: 3 },
   promAssinNome: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#222', textAlign: 'center' },
   promAssinRole: { fontSize: 7, color: '#555', textAlign: 'center' },
+  promAvalistas: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 26 },
+  promAvalItem: { alignItems: 'center', width: 200 },
 
   // ── Rodapé ──
   footer: {
@@ -401,6 +403,20 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
                           {docComp.numero ? <Text style={s.promAssinRole}>{docComp.numero}</Text> : null}
                         </View>
                       </View>
+
+                      {/* Avalistas — digitados antes de gerar quando o leilão exige */}
+                      {dados.avalistas?.length ? (
+                        <View style={s.promAvalistas} wrap={false}>
+                          {dados.avalistas.map((a, ai) => (
+                            <View key={ai} style={s.promAvalItem}>
+                              <View style={s.promAssinLinha} />
+                              <Text style={s.promAssinNome}>{a.nome.toUpperCase()}</Text>
+                              <Text style={s.promAssinRole}>{`Avalista${a.documento ? ` · ${a.documento}` : ''}`}</Text>
+                              {a.endereco ? <Text style={s.promAssinRole}>{a.endereco}</Text> : null}
+                            </View>
+                          ))}
+                        </View>
+                      ) : null}
                     </View>
                   </View>
                 </View>
