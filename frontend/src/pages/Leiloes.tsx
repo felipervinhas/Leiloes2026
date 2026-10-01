@@ -130,7 +130,7 @@ export default function Leiloes() {
             <Col xs={24} md={8}><Form.Item name="ativox" label="Ativo"><Select options={[{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }]} /></Form.Item></Col>
             <Col xs={24}>
               <Form.Item name="avalistaObrigatorio" valuePropName="checked" style={{ marginBottom: 8 }}
-                tooltip="Ao gerar a promissória de uma venda deste leilão, o usuário precisa informar o avalista">
+                tooltip="Mostra os campos de avalista ao gerar a promissória das vendas deste leilão (preenchimento opcional)">
                 <Checkbox>Avalista obrigatório</Checkbox>
               </Form.Item>
             </Col>

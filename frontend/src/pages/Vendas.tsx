@@ -469,9 +469,8 @@ function Listagem({
         {promissoriaData && (() => {
           const exigeAvalista = promissoriaData.avalistaObrigatorio === 'S';
           const dadosBase = dadosDoComprador(promissoriaData, docCompradorId);
-          const dadosSel = dadosBase && (!exigeAvalista || promissoriaAvalistas)
-            ? { ...dadosBase, avalistas: promissoriaAvalistas || undefined }
-            : null;
+          // Avalistas são opcionais: sem preencher, a promissória sai sem eles
+          const dadosSel = dadosBase ? { ...dadosBase, avalistas: promissoriaAvalistas || undefined } : null;
           return (
           <div style={{ padding: '16px 0', textAlign: 'center' }}>
             {seletorComprador(promissoriaData)}
@@ -488,7 +487,7 @@ function Listagem({
                 {promissoriaData.compradores.reduce((t, c) => t + (c.qtdparCond ?? c.parcelas.length), 0)} parcelas
               </div>
             </div>
-            {exigeAvalista && <AvalistasPromissoria key={promissoriaData.id} onConfirmar={setPromissoriaAvalistas} />}
+            {exigeAvalista && <AvalistasPromissoria key={promissoriaData.id} onAlterar={setPromissoriaAvalistas} />}
             {dadosSel && (
               <BlobProvider
                 document={

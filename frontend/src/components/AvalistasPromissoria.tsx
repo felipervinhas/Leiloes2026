@@ -1,75 +1,49 @@
 import React, { useState } from 'react';
-import { Alert, Button, Input, Space, Typography } from 'antd';
-import { CheckCircleOutlined, EditOutlined } from '@ant-design/icons';
+import { Input, Space, Typography } from 'antd';
 import type { Avalista } from '../relatorios/RelatorioFaturaCompra';
 
 const { Text } = Typography;
 
 interface Props {
-  /** Chamado com os avalistas confirmados, ou null quando o usuário volta a editar. */
-  onConfirmar: (avalistas: Avalista[] | null) => void;
+  /** Avalistas preenchidos (só os com nome); lista vazia quando nenhum foi informado. */
+  onAlterar: (avalistas: Avalista[]) => void;
 }
 
 const vazio = (): Avalista => ({ nome: '', documento: '', endereco: '' });
 
 /**
- * Formulário de avalistas exigido antes de gerar a promissória quando o leilão
- * está marcado como "Avalista obrigatório". Avalista 1 é obrigatório (nome e
- * CPF/CNPJ); o 2 é opcional. O PDF só é montado depois de confirmar — assim não
- * é regerado a cada tecla digitada.
+ * Campos de avalista mostrados na geração da promissória quando o leilão está
+ * marcado como "Avalista obrigatório". Nada é exigido: o que não for preenchido
+ * simplesmente não aparece na promissória. Os valores vão pro PDF ao sair do
+ * campo (onBlur) — assim o PDF não é regerado a cada tecla digitada.
  */
-export default function AvalistasPromissoria({ onConfirmar }: Props) {
+export default function AvalistasPromissoria({ onAlterar }: Props) {
   const [avalistas, setAvalistas] = useState<Avalista[]>([vazio(), vazio()]);
-  const [confirmado, setConfirmado] = useState(false);
 
   const alterar = (i: number, campo: keyof Avalista, valor: string) =>
     setAvalistas(prev => prev.map((a, j) => (j === i ? { ...a, [campo]: valor } : a)));
 
-  const primeiroCompleto = !!avalistas[0].nome.trim() && !!(avalistas[0].documento || '').trim();
-
-  const confirmar = () => {
-    const preenchidos = avalistas
+  const publicar = () => onAlterar(
+    avalistas
       .map(a => ({ nome: a.nome.trim(), documento: (a.documento || '').trim(), endereco: (a.endereco || '').trim() }))
-      .filter(a => a.nome);
-    setConfirmado(true);
-    onConfirmar(preenchidos);
-  };
-
-  if (confirmado) {
-    return (
-      <div style={{ marginBottom: 16, textAlign: 'left' }}>
-        <Alert
-          type="success"
-          showIcon
-          icon={<CheckCircleOutlined />}
-          message={`Avalista${avalistas.filter(a => a.nome.trim()).length > 1 ? 's' : ''}: ${avalistas.filter(a => a.nome.trim()).map(a => a.nome.trim()).join(' e ')}`}
-          action={
-            <Button size="small" icon={<EditOutlined />} onClick={() => { setConfirmado(false); onConfirmar(null); }}>
-              Alterar
-            </Button>
-          }
-        />
-      </div>
-    );
-  }
+      .filter(a => a.nome),
+  );
 
   return (
     <div style={{ marginBottom: 16, textAlign: 'left' }}>
-      <Alert type="warning" showIcon style={{ marginBottom: 12 }}
-        message="Este leilão exige avalista. Informe o avalista antes de gerar a promissória." />
+      <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+        Avalistas da promissória (opcional — o que não for preenchido não aparece):
+      </Text>
       {avalistas.map((a, i) => (
         <div key={i} style={{ marginBottom: 12 }}>
-          <Text strong>{i === 0 ? 'Avalista 1 *' : 'Avalista 2 (opcional)'}</Text>
+          <Text strong>Avalista {i + 1}</Text>
           <Space direction="vertical" style={{ width: '100%', marginTop: 4 }} size={6}>
-            <Input placeholder="Nome" value={a.nome} onChange={e => alterar(i, 'nome', e.target.value)} />
-            <Input placeholder="CPF / CNPJ" value={a.documento} onChange={e => alterar(i, 'documento', e.target.value)} />
-            <Input placeholder="Endereço (opcional)" value={a.endereco} onChange={e => alterar(i, 'endereco', e.target.value)} />
+            <Input placeholder="Nome" value={a.nome} onChange={e => alterar(i, 'nome', e.target.value)} onBlur={publicar} />
+            <Input placeholder="CPF / CNPJ" value={a.documento} onChange={e => alterar(i, 'documento', e.target.value)} onBlur={publicar} />
+            <Input placeholder="Endereço" value={a.endereco} onChange={e => alterar(i, 'endereco', e.target.value)} onBlur={publicar} />
           </Space>
         </div>
       ))}
-      <Button type="primary" block disabled={!primeiroCompleto} onClick={confirmar}>
-        Confirmar avalista
-      </Button>
     </div>
   );
 }

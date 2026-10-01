@@ -1384,9 +1384,8 @@ export default function Clientes() {
               <div><strong>Total de promissórias:</strong> {promissoriaData.compradores.reduce((t: number, c: any) => t + (c.qtdparCond ?? c.parcelas.length), 0)} parcelas</div>
             </div>
             {promissoriaData.avalistaObrigatorio === 'S' && (
-              <AvalistasPromissoria key={promissoriaData.id} onConfirmar={setPromissoriaAvalistas} />
+              <AvalistasPromissoria key={promissoriaData.id} onAlterar={setPromissoriaAvalistas} />
             )}
-            {(promissoriaData.avalistaObrigatorio !== 'S' || promissoriaAvalistas) && (
             <BlobProvider document={<PromissoriaPDF dados={{ ...promissoriaData, avalistas: promissoriaAvalistas || undefined }} empresa={config.empresa} logoBase64={config.logoBase64} />}>
               {({ url, loading }: { url: string | null; loading: boolean }) => (
                 <Button
@@ -1399,7 +1398,6 @@ export default function Clientes() {
                 </Button>
               )}
             </BlobProvider>
-            )}
           </div>
         )}
       </Modal>
