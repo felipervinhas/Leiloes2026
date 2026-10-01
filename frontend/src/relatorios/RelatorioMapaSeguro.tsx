@@ -23,6 +23,11 @@ export interface VendaSeguroPDF {
   cpfVendedor?: string;
   nomeComprador?: string;
   cpfComprador?: string;
+  cnpjComprador?: string;
+  celularComprador?: string;
+  celular2Comprador?: string;
+  telcomComprador?: string;
+  telresComprador?: string;
   cidadeComprador?: string;
   estadoComprador?: string;
   inscricao?: string;
@@ -267,10 +272,16 @@ function MapaSeguroPDF({
   // comprador pode ter comprado mais de um lote, cada um com sua própria
   // propriedade de destino (Localidade/Propriedade/Inscrição).
   const grupos = Array.from(
-    vendas.reduce<Map<string, { nome: string; cpf?: string; cidade?: string; estado?: string; lotes: VendaSeguroPDF[] }>>((map, v) => {
+    vendas.reduce<Map<string, { nome: string; cpf?: string; telefones: string[]; cidade?: string; estado?: string; lotes: VendaSeguroPDF[] }>>((map, v) => {
       const chave = v.nomeComprador || '—';
       const atual = map.get(chave) ?? {
-        nome: v.nomeComprador || '—', cpf: v.cpfComprador,
+        // CNPJ quando o comprador é pessoa jurídica (antes saía "não informado")
+        nome: v.nomeComprador || '—', cpf: v.cpfComprador || v.cnpjComprador,
+        // Os 4 telefones do cadastro, sem vazios nem repetidos
+        telefones: Array.from(new Set(
+          [v.celularComprador, v.celular2Comprador, v.telcomComprador, v.telresComprador]
+            .map(t => (t || '').trim()).filter(Boolean)
+        )),
         cidade: v.cidadePropriedade, estado: v.estadoPropriedade, lotes: [],
       };
       atual.lotes.push(v);
@@ -375,6 +386,7 @@ function MapaSeguroPDF({
               <Text style={s.grupoInfo}>
                 CPF/CNPJ: {g.cpf || 'não informado'}
                 {(g.cidade || g.estado) ? `   •   ${[g.cidade, g.estado].filter(Boolean).join(' / ')}` : ''}
+                {g.telefones.length ? `   •   Tel.: ${g.telefones.join(' , ')}` : ''}
               </Text>
             </View>
             {g.lotes.map((v, i) => (
