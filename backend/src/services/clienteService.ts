@@ -455,8 +455,29 @@ export async function atualizarCliente(id: number, d: Cliente): Promise<void> {
   await salvarClassificacoesDoCliente(id, d.classificacoes || []);
 }
 
+export class ClienteComHistoricoError extends Error {
+  constructor(msg: string) { super(msg); this.name = 'ClienteComHistoricoError'; }
+}
+
+/**
+ * Não exclui cliente com compra ou lote (como vendedor): as vendas ficariam sem
+ * o cadastro do comprador/vendedor (nome, CPF, endereço somem dos relatórios).
+ * Em 30/09/2026 foram apagados 72 clientes com histórico no LoteRural assim.
+ */
 export async function deletarCliente(id: number): Promise<void> {
   const pool = await getPool();
+  // MOVIMENTO_COMPRADOR.IDCLI é varchar — compara como texto pra não converter a coluna
+  const h = (await pool.request().input('id', sql.Int, id).input('idTxt', sql.VarChar, String(id)).query(`
+    SELECT (SELECT COUNT(*) FROM MOVIMENTO_COMPRADOR WHERE IDCLI = @idTxt) AS COMPRAS,
+           (SELECT COUNT(*) FROM Lotes WHERE CODVEN = @id) AS LOTES`)).recordset[0];
+  if (h.COMPRAS > 0 || h.LOTES > 0) {
+    const partes = [
+      h.COMPRAS > 0 ? `${h.COMPRAS} compra${h.COMPRAS > 1 ? 's' : ''}` : '',
+      h.LOTES > 0 ? `${h.LOTES} lote${h.LOTES > 1 ? 's' : ''} como vendedor` : '',
+    ].filter(Boolean).join(' e ');
+    throw new ClienteComHistoricoError(
+      `Este cliente tem ${partes} e não pode ser excluído. Para tirá-lo de uso, desative-o (Ativo = Não).`);
+  }
   await pool.request().input('id', sql.Int, id).query(`DELETE FROM Clientes WHERE ID=@id`);
 }
 

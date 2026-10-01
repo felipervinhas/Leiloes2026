@@ -72,7 +72,12 @@ export const atualizar = async (req: Request, res: Response) => {
 };
 export const deletar = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  await svc.deletarCliente(id);
+  try {
+    await svc.deletarCliente(id);
+  } catch (err) {
+    if (err instanceof svc.ClienteComHistoricoError) return res.status(409).json({ error: err.message });
+    throw err;
+  }
   await registrarLog((req as any).usuario, 'Deletar', 'Clientes', id);
   res.status(204).send();
 };

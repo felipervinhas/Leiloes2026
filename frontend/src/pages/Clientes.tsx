@@ -509,7 +509,7 @@ export default function Clientes() {
 
   const deletar = async (id: number) => {
     try { await api.delete(`/clientes/${id}`); message.success('Excluído'); carregar(); }
-    catch { message.error('Erro ao excluir'); }
+    catch (err: any) { message.error(err?.response?.data?.error || 'Erro ao excluir', 6); }
   };
 
   const rowSelection = {
