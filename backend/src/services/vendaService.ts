@@ -962,6 +962,10 @@ export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
       const vlrpar = totpar > 0 ? (pValorPagar / totpar) * parcVal : 0;
       addParcela(ordxxx, venc, vlrpar, x === 1 ? 'S' : 'N');
     }
+    // Condição à vista sem nenhuma PARCxx configurada (ex.: Macedo "30% DESCONTO À
+    // VISTA": PARC01=0, SALPAR=1) — antes não gerava parcela nenhuma (venda sem
+    // cobrança). É pagamento único: uma parcela de entrada na data-base.
+    if (rows.length === 0) addParcela('01/1', new Date(baseDate), pValorPagar, 'S');
     await flushParcelas();
 
     // Atualiza VLRPAR do lote com valor da 1ª parcela (disponível em memória)
@@ -1335,7 +1339,7 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
            C.NOMEXX, C.CPFXXX, C.CNPJXX, C.ENDERE, C.BAIRRO, C.CEPXXX,
            C.CELU_1, C.CELU_2, C.TELCOM, C.TELRES, C.EMAILX,
            CIDC.CIDADE AS NOMECIDADE, CIDC.ESTADO AS ESTADO,
-           CP.DESFIN, CP.QTDPAR AS COND_QTDPAR,
+           CP.DESFIN, CP.QTDPAR AS COND_QTDPAR, CP.AVISTA AS COND_AVISTA,
            CPR.NOME_PROPRIEDADE
     FROM MOVIMENTO_COMPRADOR MC
     LEFT JOIN MOVIMENTO M       ON M.ID  = MC.IDMOV
@@ -1422,7 +1426,13 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
     const qtdparCond = r.COND_QTDPAR != null ? Number(r.COND_QTDPAR) : parcelas.length;
     const valorOriginal = r.VALORORIGINAL || 0;
     const valorPagar     = r.VALORPAGAR    || 0;
-    const primeiraParcela = parcelas.find(p => p.pripar === 'S');
+    // Condição à vista com parcela única gravada como saldo (PRIPAR='N' — vendas
+    // do Delphi na "30% DESCONTO À VISTA" da Macedo) também é pagamento à vista:
+    // antes caía em "Total em Promissórias". AVISTA sozinho não basta: no cadastro
+    // ele também está ligado em condições parceladas ("25 PARCELAS COM 10% ..."),
+    // por isso exige parcela única.
+    const pagamentoUnicoAVista = r.COND_AVISTA === 'S' && parcelas.length === 1;
+    const primeiraParcela = parcelas.find(p => p.pripar === 'S') ?? (pagamentoUnicoAVista ? parcelas[0] : undefined);
     // Sem parcela marcada como sinal (PRIPAR='S'), nada foi cobrado no ato da
     // venda — não pode cair em "Sinal"/"À Vista" só porque a condição tem uma
     // única parcela (ex.: "Vencimento Único" pode vencer meses depois; QTDPAR
