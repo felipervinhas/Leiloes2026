@@ -40,12 +40,15 @@ export interface TotaisVendas {
   totalLiquido: number;
   totalQtd: number;
   mediaGeral: number;
+  /** Valor ÷ peso (kg) — só dos lotes com peso cadastrado; 0 quando nenhum tem peso */
+  mediaKgGeral?: number;
   mediasCategoria?: {
     key: string;
     categoria: string;
     qtd: number;
     valor: number;
     media: number;
+    mediaKg?: number;
   }[];
 }
 
@@ -445,6 +448,15 @@ function ConsultaVendasPDF({
               {fmtR(totais.mediaGeral)}
             </Text>
           </View>
+          {totais.mediaKgGeral ? (
+            <>
+              <View style={s.resumoSep} />
+              <View style={s.resumoItem}>
+                <Text style={s.resumoLabel}>Média/Kg</Text>
+                <Text style={[s.resumoValor, { color: ESCURO }]}>{fmtR(totais.mediaKgGeral)}</Text>
+              </View>
+            </>
+          ) : null}
         </View>
 
         {/* Cabeçalho da tabela */}
@@ -455,7 +467,8 @@ function ConsultaVendasPDF({
               <Text style={[s.mediaCat, { fontFamily: 'Helvetica-Bold' }]}>Categoria</Text>
               <Text style={[s.mediaQtd, { fontFamily: 'Helvetica-Bold' }]}>Qtd.</Text>
               <Text style={[s.mediaValor, { fontFamily: 'Helvetica-Bold' }]}>Total</Text>
-              <Text style={s.mediaMedia}>Média</Text>
+              <Text style={s.mediaMedia}>Média/Cab.</Text>
+              {totais.mediaKgGeral ? <Text style={s.mediaMedia}>Média/Kg</Text> : null}
             </View>
             {totais.mediasCategoria.map(cat => (
               <View key={cat.key} style={s.mediasRow} wrap={false}>
@@ -463,6 +476,7 @@ function ConsultaVendasPDF({
                 <Text style={s.mediaQtd}>{fmtN(cat.qtd)}</Text>
                 <Text style={s.mediaValor}>{fmtR(cat.valor)}</Text>
                 <Text style={s.mediaMedia}>{fmtR(cat.media)}</Text>
+                {totais.mediaKgGeral ? <Text style={s.mediaMedia}>{fmtR(cat.mediaKg)}</Text> : null}
               </View>
             ))}
           </View>

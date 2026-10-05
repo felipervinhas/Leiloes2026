@@ -112,6 +112,8 @@ function MediasLeilaoPDF({ titulo, empresa, filtrosDesc, logoBase64, totais, dat
   const subtitulo = titulo || 'Todos os leilões';
   const dataLeilaoFmt = fmtData(dataLeilao);
   const medias = totais.mediasCategoria || [];
+  // Coluna/resumo de média por kg só quando algum lote tem peso cadastrado
+  const comKg = !!totais.mediaKgGeral;
 
   return (
     <Document title={`Médias por Categoria — ${subtitulo}`} author={nomeEmpresa}>
@@ -151,6 +153,15 @@ function MediasLeilaoPDF({ titulo, empresa, filtrosDesc, logoBase64, totais, dat
             <Text style={s.resumoLabel}>Média Geral / Cabeça</Text>
             <Text style={[s.resumoValor, { color: '#722ed1' }]}>{fmtR(totais.mediaGeral)}</Text>
           </View>
+          {comKg ? (
+            <>
+              <View style={s.resumoSep} />
+              <View style={s.resumoItem}>
+                <Text style={s.resumoLabel}>Média Geral / Kg</Text>
+                <Text style={[s.resumoValor, { color: '#722ed1' }]}>{fmtR(totais.mediaKgGeral)}</Text>
+              </View>
+            </>
+          ) : null}
         </View>
 
         <View style={s.tabela}>
@@ -158,7 +169,8 @@ function MediasLeilaoPDF({ titulo, empresa, filtrosDesc, logoBase64, totais, dat
             <View style={s.cCategoria}><Text style={s.th}>Categoria</Text></View>
             <View style={s.cQtd}><Text style={s.thRight}>Qtd.</Text></View>
             <View style={s.cValor}><Text style={s.thRight}>Total</Text></View>
-            <View style={s.cMedia}><Text style={s.thRight}>Média</Text></View>
+            <View style={s.cMedia}><Text style={s.thRight}>Média / Cabeça</Text></View>
+            {comKg ? <View style={s.cMedia}><Text style={s.thRight}>Média / Kg</Text></View> : null}
           </View>
           {medias.length === 0 ? (
             <Text style={{ padding: 12, textAlign: 'center', fontSize: 8, color: '#aaa', fontStyle: 'italic' }}>
@@ -170,6 +182,7 @@ function MediasLeilaoPDF({ titulo, empresa, filtrosDesc, logoBase64, totais, dat
               <View style={s.cQtd}><Text style={s.tdRight}>{fmtN(cat.qtd)}</Text></View>
               <View style={s.cValor}><Text style={s.tdRight}>{fmtR(cat.valor)}</Text></View>
               <View style={s.cMedia}><Text style={s.tdMedia}>{fmtR(cat.media)}</Text></View>
+              {comKg ? <View style={s.cMedia}><Text style={s.tdMedia}>{fmtR(cat.mediaKg)}</Text></View> : null}
             </View>
           ))}
           {medias.length > 0 && (
@@ -178,6 +191,7 @@ function MediasLeilaoPDF({ titulo, empresa, filtrosDesc, logoBase64, totais, dat
               <View style={s.cQtd}><Text style={s.tdTotVal}>{fmtN(totais.totalQtd)}</Text></View>
               <View style={s.cValor}><Text style={s.tdTotVal}>{fmtR(totais.totalValor)}</Text></View>
               <View style={s.cMedia}><Text style={s.tdTotVal}>{fmtR(totais.mediaGeral)}</Text></View>
+              {comKg ? <View style={s.cMedia}><Text style={s.tdTotVal}>{fmtR(totais.mediaKgGeral)}</Text></View> : null}
             </View>
           )}
         </View>

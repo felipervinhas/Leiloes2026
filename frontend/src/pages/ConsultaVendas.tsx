@@ -34,6 +34,10 @@ type MediaCategoria = {
   qtd: number;
   valor: number;
   media: number;
+  mediaKg: number;
+  /** peso (kg) e valor só dos lotes com peso — base da média por kg */
+  pesoKg: number;
+  valorComPeso: number;
 };
 
 const { Title, Text } = Typography;
@@ -397,21 +401,38 @@ export default function ConsultaVendas() {
     const totalDescontoFidelidade = lista.reduce((a, d) => a + (d.valorDescontoFidelidade || 0), 0);
     const totalQtd        = lista.reduce((a, d) => a + (d.qtdxxx         || 0), 0);
     const mediaGeral      = totalQtd > 0 ? totalValor / totalQtd : 0;
+    // Média por kg (mesma conta do Delphi): PESOXX é por cabeça, peso do lote =
+    // qtd × peso (ou só o peso se qtd = 0); valor ÷ peso. Lotes sem peso ficam de
+    // fora do numerador e do denominador, pra não puxar a média pra baixo.
+    const pesoDoLote = (d: any) => {
+      const peso = Number(d.pesoxx || 0);
+      const qtd = Number(d.qtdxxx || 0);
+      return peso > 0 ? (qtd > 0 ? qtd * peso : peso) : 0;
+    };
+    const comPeso = lista.filter(d => pesoDoLote(d) > 0 && (d.valorPagar || 0) > 0);
+    const pesoTotalKg = comPeso.reduce((a, d) => a + pesoDoLote(d), 0);
+    const mediaKgGeral = pesoTotalKg > 0 ? comPeso.reduce((a, d) => a + (d.valorPagar || 0), 0) / pesoTotalKg : 0;
     const mediasCategoria: MediaCategoria[] = Array.from(
       lista.reduce<Map<string, MediaCategoria>>((map, d) => {
         const key = String(d.idCategoria ?? d.descricaoRaca ?? 'sem-categoria');
         const categoria = [d.descricaoRaca, d.especies].filter(Boolean).join(' / ') || 'Sem categoria';
-        const atual = map.get(key) ?? { key, categoria, qtd: 0, valor: 0, media: 0 };
+        const atual = map.get(key) ?? { key, categoria, qtd: 0, valor: 0, media: 0, mediaKg: 0, pesoKg: 0, valorComPeso: 0 };
         atual.qtd += Number(d.qtdxxx || 0);
         atual.valor += Number(d.valorPagar || 0);
         atual.media = atual.qtd > 0 ? atual.valor / atual.qtd : 0;
+        const peso = pesoDoLote(d);
+        if (peso > 0 && (d.valorPagar || 0) > 0) {
+          atual.pesoKg += peso;
+          atual.valorComPeso += Number(d.valorPagar || 0);
+        }
+        atual.mediaKg = atual.pesoKg > 0 ? atual.valorComPeso / atual.pesoKg : 0;
         return map.set(key, atual);
       }, new Map<string, MediaCategoria>()).values()
     ).sort((a, b) => a.categoria.localeCompare(b.categoria));
-    return { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediasCategoria };
+    return { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediaKgGeral, mediasCategoria };
   }
 
-  const { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediasCategoria } = calcularTotais(dados);
+  const { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediaKgGeral, mediasCategoria } = calcularTotais(dados);
 
   // Reordena os dados igual ao que o usuário escolheu clicando no cabeçalho da
   // tabela (sortField/sortOrder, capturado no onChange do Table), pra impressão
@@ -632,8 +653,9 @@ export default function ConsultaVendas() {
             { title: 'Desc. Fidelidade', value: totalDescontoFidelidade, suffix: 'R$', color: '#ff4d4f' },
             { title: 'Valor Líquido',   value: totalLiquido,  suffix: 'R$', color: '#52c41a' },
             { title: 'Média/Cabeça',    value: mediaGeral,    suffix: 'R$', color: '#722ed1' },
+            ...(mediaKgGeral > 0 ? [{ title: 'Média/Kg', value: mediaKgGeral, suffix: 'R$', color: '#722ed1' }] : []),
           ].map(({ title, value, suffix, color }) => (
-            <Col span={4} key={title}>
+            <Col xs={12} sm={8} md={6} lg={3} key={title}>
               <Card size="small" styles={{ body: { padding: '10px 14px' } }}>
                 <div style={{ fontSize: 11, color: '#888' }}>{title}</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: color || undefined }}>
@@ -679,11 +701,19 @@ export default function ConsultaVendas() {
                     </Text>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <Text style={{ fontSize: 11, color: '#8c8c8c' }}>Média</Text>
+                    <Text style={{ fontSize: 11, color: '#8c8c8c' }}>Média/Cabeça</Text>
                     <Text strong style={{ fontSize: 13, color: '#722ed1' }}>
                       R$ {cat.media.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </Text>
                   </div>
+                  {cat.mediaKg > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                      <Text style={{ fontSize: 11, color: '#8c8c8c' }}>Média/Kg</Text>
+                      <Text strong style={{ fontSize: 13, color: '#722ed1' }}>
+                        R$ {cat.mediaKg.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </Text>
+                    </div>
+                  )}
                 </div>
               </Col>
             ))}
