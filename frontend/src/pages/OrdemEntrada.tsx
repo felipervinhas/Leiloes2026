@@ -4,7 +4,7 @@ import { Select, Button, Table, Input, Space, message, Typography, Row, Col, Tag
 import {
   SaveOutlined, OrderedListOutlined, ClearOutlined, CalendarOutlined, EyeOutlined, HolderOutlined, SoundOutlined,
 } from '@ant-design/icons';
-import { BlobProvider } from '@react-pdf/renderer';
+import { pdf } from '@react-pdf/renderer';
 import api from '../services/api';
 import { BotaoBaixarPDFOrdem, LoteOrdemPDF } from '../relatorios/RelatorioOrdemEntrada';
 import OrdemEntradaDinamica from '../relatorios/OrdemEntradaDinamica';
@@ -171,6 +171,28 @@ export default function OrdemEntrada() {
 
   const comOrdem = lotes.filter(l => ordens[l.id]);
 
+  // Modelo personalizado: gera só no clique (o BlobProvider remontava a cada mudança
+  // na tela e as montagens simultâneas duplicavam lotes no PDF)
+  const [gerandoPersonalizado, setGerandoPersonalizado] = useState(false);
+  const imprimirPersonalizado = async () => {
+    if (!layoutAtivo) return;
+    // Abre a aba antes do await — depois dele o navegador bloquearia como pop-up
+    const janela = window.open('', '_blank');
+    setGerandoPersonalizado(true);
+    try {
+      const blob = await pdf(
+        <OrdemEntradaDinamica lotes={lotesParaPDF} layout={layoutAtivo} titulo={nomeLeilao} empresa={config.empresa} logoBase64={config.logoBase64} />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      if (janela) janela.location.href = url; else window.open(url, '_blank');
+    } catch {
+      janela?.close();
+      message.error('Erro ao gerar o PDF');
+    } finally {
+      setGerandoPersonalizado(false);
+    }
+  };
+
   const lotesParaPDF: LoteOrdemPDF[] = lotes
     .map(l => ({ ...l, ordem: ordens[l.id] || l.ordem || '' }))
     .sort((a, b) => {
@@ -278,28 +300,14 @@ export default function OrdemEntrada() {
                 logoBase64={config.logoBase64}
               />
               {layoutAtivo && (
-                <BlobProvider
-                  document={
-                    <OrdemEntradaDinamica
-                      lotes={lotesParaPDF}
-                      layout={layoutAtivo}
-                      titulo={nomeLeilao}
-                      empresa={config.empresa}
-                      logoBase64={config.logoBase64}
-                    />
-                  }
+                <Button
+                  icon={<EyeOutlined />}
+                  loading={gerandoPersonalizado}
+                  disabled={gerandoPersonalizado || lotesParaPDF.length === 0}
+                  onClick={imprimirPersonalizado}
                 >
-                  {({ url, loading: gerandoPdf }) => (
-                    <Button
-                      icon={<EyeOutlined />}
-                      loading={gerandoPdf}
-                      disabled={!url}
-                      onClick={() => url && window.open(url, '_blank')}
-                    >
-                      Imprimir (modelo personalizado)
-                    </Button>
-                  )}
-                </BlobProvider>
+                  Imprimir (modelo personalizado)
+                </Button>
               )}
             </Space>
           </Col>

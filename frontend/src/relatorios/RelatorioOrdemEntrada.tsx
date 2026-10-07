@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Image } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image, pdf } from '@react-pdf/renderer';
 import { Button, Checkbox, Popover, Radio, Space } from 'antd';
 import { PrinterOutlined, SettingOutlined } from '@ant-design/icons';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
@@ -245,6 +245,27 @@ export function BotaoBaixarPDFOrdem({ lotes, titulo, empresa, logoBase64, banco 
     try { localStorage.setItem(CHAVE_OPCOES(banco), JSON.stringify(novas)); } catch { /* sem storage: vale só nesta tela */ }
   };
   const nomeArquivo = `ordem-entrada-${new Date().toISOString().slice(0, 10)}.pdf`;
+  // Gera o PDF só no clique, com a lista daquele momento. Antes o PDFDownloadLink
+  // remontava o documento a cada mudança na tela (arrastar lote, digitar ordem,
+  // marcar coluna); montagens simultâneas do @react-pdf misturavam o resultado e
+  // o PDF saía com lotes repetidos (ex.: 35 lotes viraram ~95 linhas).
+  const [gerando, setGerando] = useState(false);
+  const imprimir = async () => {
+    setGerando(true);
+    try {
+      const blob = await pdf(
+        <OrdemEntradaPDF lotes={lotes} titulo={titulo} empresa={empresa} logoBase64={logoBase64} orientacao={orientacao} opcoes={opcoes} />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nomeArquivo;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } finally {
+      setGerando(false);
+    }
+  };
   return (
     <Space size={4}>
       <Radio.Group
@@ -272,17 +293,9 @@ export function BotaoBaixarPDFOrdem({ lotes, titulo, empresa, logoBase64, banco 
       >
         <Button size="small" icon={<SettingOutlined />}>Colunas</Button>
       </Popover>
-      <PDFDownloadLink
-        document={<OrdemEntradaPDF lotes={lotes} titulo={titulo} empresa={empresa} logoBase64={logoBase64} orientacao={orientacao} opcoes={opcoes} />}
-        fileName={nomeArquivo}
-        style={{ textDecoration: 'none' }}
-      >
-        {({ loading }) => (
-          <Button icon={<PrinterOutlined />} loading={loading} disabled={lotes.length === 0}>
-            {loading ? 'Gerando PDF...' : 'Imprimir'}
-          </Button>
-        )}
-      </PDFDownloadLink>
+      <Button icon={<PrinterOutlined />} loading={gerando} disabled={lotes.length === 0 || gerando} onClick={imprimir}>
+        {gerando ? 'Gerando PDF...' : 'Imprimir'}
+      </Button>
     </Space>
   );
 }
