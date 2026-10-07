@@ -40,6 +40,12 @@ export interface BoletoLegado {
 export async function buscarHistoricoLegado(idCliente: number) {
   const pool = await getPool();
 
+  // Só bancos importados do sistema antigo têm Boletos/VW_BOLETOS_LEGADO (ex.: G2
+  // não tem) — sem eles não há histórico legado, em vez de erro "Invalid object name".
+  const objetos = (await pool.request().query(
+    `SELECT OBJECT_ID('Boletos') AS BOLETOS, OBJECT_ID('VW_BOLETOS_LEGADO') AS VW`)).recordset[0];
+  if (!objetos.BOLETOS || !objetos.VW) return { totalPorLeilao: [], boletos: [] };
+
   const totais = await pool.request().input('id', sql.Int, idCliente).query(`
     SELECT
       Leiloes.ID,
