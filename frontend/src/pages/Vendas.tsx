@@ -100,7 +100,7 @@ function Listagem({
 
   const { rz: rzV } = useColumnWidths('vendas', {
     id: 70, defesa: 100, codnot: 100, leilao: 200, datlan: 110,
-    lotexx: 70, deslot: 200, nomexx: 180, qtdxxx: 70, vlrpar: 120, vlrtot: 120,
+    lotexx: 70, deslot: 200, nomexx: 180, nomeVendedor: 180, qtdxxx: 70, vlrpar: 120, vlrtot: 120,
   });
 
   const config = useConfig();
@@ -298,6 +298,11 @@ function Listagem({
           ? <Text type="secondary" italic>Lote não vendido</Text>
           : (v || '—')
       ),
+    },
+    {
+      title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, ...rzV('nomeVendedor'),
+      sorter: (a: any, b: any) => String(a.nomeVendedor || '').localeCompare(String(b.nomeVendedor || '')),
+      render: (v: string) => v || '—',
     },
     {
       title: 'Qtd', dataIndex: 'qtdxxx', ...rzV('qtdxxx'), align: 'right' as const,

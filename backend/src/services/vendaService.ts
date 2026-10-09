@@ -112,7 +112,7 @@ export async function listarVendas(filtros: FiltrosListagem) {
   }
 
   const r = await req.query(`
-    SELECT V.*, L.LEILAO
+    SELECT V.*, L.LEILAO, CV.NOMEXX AS NOME_VENDEDOR
     FROM VWVendas V
     LEFT JOIN Leiloes L ON L.ID = V.IDLEILAO
     LEFT JOIN LOTES LOV ON LOV.ID = V.IDLOTE
@@ -133,6 +133,7 @@ export async function listarVendas(filtros: FiltrosListagem) {
     deslot:       row.DESLOT,
     idcli:        Number(row.IDCLI),
     nomexx:       row.NOMEXX,
+    nomeVendedor: row.NOME_VENDEDOR,
     qtdxxx:       row.QTDXXX,
     vlrpar:       row.VLRPAR,
     // VLRTOT vem de Movimento_Lote (valor do lote inteiro) — quando o lote é
