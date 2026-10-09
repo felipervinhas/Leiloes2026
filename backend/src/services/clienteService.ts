@@ -487,29 +487,57 @@ export async function alterarSenhaCliente(id: number, senhax: string): Promise<v
     .query(`UPDATE Clientes SET SENHAX=@senhax WHERE ID=@id`);
 }
 
-export async function listarClientesPendentes(): Promise<any[]> {
+/**
+ * Cadastros que aguardam decisão no dashboard, em dois grupos:
+ *  - analise:    '3 - Em Analise' (valor do Delphi) e os antigos '3 - Pendente'/'2 - Em Análise',
+ *                cadastrados nos últimos 12 meses — na Knorr '3 - Em Analise' é o padrão de
+ *                quase toda a base antiga (11 mil clientes) e não é fila de verdade.
+ *  - bloqueados: '2 - Bloqueado' cadastrados nos últimos 30 dias — o site/app (APILeiloesNode)
+ *                grava todo cadastro novo como '2 - Bloqueado'; os bloqueados antigos são
+ *                bloqueios de propósito e ficam fora.
+ * Antes só se olhava '3 - Pendente', que ninguém grava, e a lista nunca se atualizava.
+ */
+export type GrupoPendentes = 'analise' | 'bloqueados';
+export const DIAS_BLOQUEADOS_RECENTES = 30;
+export const DIAS_EM_ANALISE = 365;
+// DATCAD <= hoje descarta datas digitadas erradas (há cadastro no ano 7088 na Knorr)
+const cadastradoNosUltimos = (dias: number) =>
+  `C.DATCAD >= DATEADD(DAY, -${dias}, CAST(GETDATE() AS DATE)) AND C.DATCAD <= GETDATE()`;
+
+const CONDICAO_GRUPO: Record<GrupoPendentes, string> = {
+  analise:    `C.ACESSO_APP IN ('3 - Em Analise', '3 - Pendente', '2 - Em Análise') AND ${cadastradoNosUltimos(DIAS_EM_ANALISE)}`,
+  bloqueados: `C.ACESSO_APP = '2 - Bloqueado' AND ${cadastradoNosUltimos(DIAS_BLOQUEADOS_RECENTES)}`,
+};
+
+export async function listarClientesPendentes(grupo: GrupoPendentes = 'analise'): Promise<any[]> {
   const pool = await getPool();
   const r = await pool.request().query(`
-    SELECT C.ID, C.NOMEXX, C.CPFXXX, C.CNPJXX, C.EMAILX, C.CELU_1, C.DATCAD,
+    SELECT C.ID, C.NOMEXX, C.CPFXXX, C.CNPJXX, C.EMAILX, C.CELU_1, C.DATCAD, C.ACESSO_APP,
       CID.CIDADE AS NOMECIDADE, CID.ESTADO AS NOMEESTADO
     FROM Clientes C
     LEFT JOIN Cidades CID ON CID.ID = C.CIDADE
-    WHERE C.ACESSO_APP = '3 - Pendente'
-    ORDER BY C.DATCAD DESC
+    WHERE ${CONDICAO_GRUPO[grupo]}
+    ORDER BY C.DATCAD DESC, C.ID DESC
   `);
   return r.recordset.map((c: any) => ({
     id: c.ID, nomexx: c.NOMEXX, cpfxxx: c.CPFXXX, cnpjxx: c.CNPJXX,
-    emailx: c.EMAILX, celu1: c.CELU_1, datcad: c.DATCAD,
+    emailx: c.EMAILX, celu1: c.CELU_1, datcad: c.DATCAD, acessoApp: c.ACESSO_APP,
     nomeCidade: c.NOMECIDADE, nomeEstado: c.NOMEESTADO,
   }));
 }
 
-export async function contarClientesPendentes(): Promise<number> {
+export async function contarClientesPendentes(): Promise<{ analise: number; bloqueados: number; total: number }> {
   const pool = await getPool();
-  const r = await pool.request().query(
-    `SELECT COUNT(*) AS TOTAL FROM Clientes WHERE ACESSO_APP = '3 - Pendente'`
-  );
-  return r.recordset[0]?.TOTAL ?? 0;
+  const r = await pool.request().query(`
+    SELECT
+      SUM(CASE WHEN ${CONDICAO_GRUPO.analise}    THEN 1 ELSE 0 END) AS ANALISE,
+      SUM(CASE WHEN ${CONDICAO_GRUPO.bloqueados} THEN 1 ELSE 0 END) AS BLOQUEADOS
+    FROM Clientes C
+    WHERE C.ACESSO_APP IN ('3 - Em Analise', '3 - Pendente', '2 - Em Análise', '2 - Bloqueado')
+  `);
+  const analise = r.recordset[0]?.ANALISE ?? 0;
+  const bloqueados = r.recordset[0]?.BLOQUEADOS ?? 0;
+  return { analise, bloqueados, total: analise + bloqueados };
 }
 
 export async function aprovarCliente(id: number): Promise<void> {
@@ -533,5 +561,5 @@ export async function analisarCliente(id: number): Promise<void> {
   await pool.request()
     .input('id', sql.Int, id)
     .input('datalt', sql.DateTime, new Date())
-    .query(`UPDATE Clientes SET ACESSO_APP='2 - Em Análise', DATALT=@datalt WHERE ID=@id`);
+    .query(`UPDATE Clientes SET ACESSO_APP='3 - Em Analise', DATALT=@datalt WHERE ID=@id`);
 }

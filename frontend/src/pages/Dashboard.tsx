@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Card, Col, Row, Spin, Typography, Tag, Progress, Empty, Badge, Drawer, Button, message, Popconfirm, List, Collapse, Tooltip } from 'antd';
 import {
   DollarOutlined, TrophyOutlined, TeamOutlined, CalendarOutlined,
@@ -179,7 +179,8 @@ export default function Dashboard() {
   const [topsPorCategoria, setTopsPorCategoria] = useState<TopsPorCategoria | null>(null);
   const [topsCategoryLoading, setTopsCategoryLoading] = useState(false);
 
-  const [pendentesCount, setPendentesCount] = useState(0);
+  const [pendentesCount, setPendentesCount] = useState({ analise: 0, bloqueados: 0 });
+  const [grupoDrawer, setGrupoDrawer]       = useState<'analise' | 'bloqueados'>('analise');
 
   const [cadastrosIncompletos, setCadastrosIncompletos] = useState<CadastroIncompleto[]>([]);
   const [incompletosLoading, setIncompletosLoading] = useState(false);
@@ -199,16 +200,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!banco) return;
-    const poll = async () => {
-      try {
-        const r = await api.get(`/${banco}/clientes/pendentes/count`);
-        setPendentesCount(r.data.total);
-      } catch {}
-    };
     poll();
     const timer = setInterval(poll, 60_000);
     return () => clearInterval(timer);
-  }, [banco]);
+  }, [banco]); // poll só depende de banco
 
   useEffect(() => {
     if (!banco) return;
@@ -260,13 +255,23 @@ export default function Dashboard() {
       .finally(() => setTopsCategoryLoading(false));
   }, [banco, selectedCategorias]);
 
-  const abrirDrawer = async () => {
+  const poll = useCallback(async () => {
+    if (!banco) return;
+    try {
+      const r = await api.get(`/${banco}/clientes/pendentes/count`);
+      setPendentesCount({ analise: r.data.analise ?? 0, bloqueados: r.data.bloqueados ?? 0 });
+    } catch {}
+  }, [banco]);
+
+  const abrirDrawer = async (grupo: 'analise' | 'bloqueados') => {
+    setGrupoDrawer(grupo);
+    setPendentes([]);
     setDrawerOpen(true);
     setDrawerLoading(true);
     try {
-      const r = await api.get(`/${banco}/clientes/pendentes`);
+      const r = await api.get(`/${banco}/clientes/pendentes`, { params: { grupo } });
       setPendentes(r.data);
-      setPendentesCount(r.data.length);
+      setPendentesCount(c => ({ ...c, [grupo]: r.data.length }));
     } catch {
       message.error('Erro ao carregar cadastros pendentes');
     } finally {
@@ -279,9 +284,8 @@ export default function Dashboard() {
     try {
       await api.patch(`/${banco}/clientes/${id}/aprovar`);
       message.success('Cliente aprovado com sucesso');
-      const novos = pendentes.filter(c => c.id !== id);
-      setPendentes(novos);
-      setPendentesCount(novos.length);
+      setPendentes(p => p.filter(c => c.id !== id));
+      poll();
     } catch {
       message.error('Erro ao aprovar cliente');
     } finally {
@@ -294,9 +298,8 @@ export default function Dashboard() {
     try {
       await api.patch(`/${banco}/clientes/${id}/recusar`);
       message.warning('Cadastro recusado');
-      const novos = pendentes.filter(c => c.id !== id);
-      setPendentes(novos);
-      setPendentesCount(novos.length);
+      setPendentes(p => p.filter(c => c.id !== id));
+      poll();
     } catch {
       message.error('Erro ao recusar cliente');
     } finally {
@@ -309,9 +312,8 @@ export default function Dashboard() {
     try {
       await api.patch(`/${banco}/clientes/${id}/analisar`);
       message.info('Cadastro marcado como "Em Análise"');
-      const novos = pendentes.filter(c => c.id !== id);
-      setPendentes(novos);
-      setPendentesCount(novos.length);
+      setPendentes(p => p.filter(c => c.id !== id));
+      poll();
     } catch {
       message.error('Erro ao analisar cliente');
     } finally {
@@ -346,47 +348,48 @@ export default function Dashboard() {
         {loading && <Spin />}
       </div>
 
-      {/* ── Cadastros pendentes (Site/App) ──────────────────────────────── */}
-      {pendentesCount > 0 && (
+      {/* ── Cadastros aguardando decisão: Em Análise e Bloqueados recentes ─ */}
+      {([
+        { grupo: 'analise' as const, count: pendentesCount.analise, cor: '#fa8c16', corEsc: '#d46b08',
+          fundo: 'linear-gradient(135deg, #fffbe6 0%, #fff7e6 100%)', borda: '#ffc53d',
+          titulo: (n: number) => `${n} cadastro${n !== 1 ? 's' : ''} em análise`,
+          sub: 'Clientes "Em Análise" cadastrados nos últimos 12 meses — clique para revisar' },
+        { grupo: 'bloqueados' as const, count: pendentesCount.bloqueados, cor: '#f5222d', corEsc: '#cf1322',
+          fundo: 'linear-gradient(135deg, #fff1f0 0%, #fff2e8 100%)', borda: '#ffa39e',
+          titulo: (n: number) => `${n} cadastro${n !== 1 ? 's' : ''} bloqueado${n !== 1 ? 's' : ''} recente${n !== 1 ? 's' : ''}`,
+          sub: 'Cadastros novos do Site / App (últimos 30 dias) aguardando liberação' },
+      ]).filter(c => c.count > 0).map(c => (
         <Card
-          style={{
-            borderRadius: 12, marginBottom: 14, cursor: 'pointer',
-            background: 'linear-gradient(135deg, #fffbe6 0%, #fff7e6 100%)',
-            borderColor: '#ffc53d',
-          }}
+          key={c.grupo}
+          style={{ borderRadius: 12, marginBottom: 14, cursor: 'pointer', background: c.fundo, borderColor: c.borda }}
           styles={{ body: { padding: '12px 20px' } }}
-          onClick={abrirDrawer}
+          onClick={() => abrirDrawer(c.grupo)}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <Badge count={pendentesCount} color="#fa8c16" offset={[-4, 4]}>
+            <Badge count={c.count} color={c.cor} offset={[-4, 4]} overflowCount={999}>
               <div style={{
                 width: 44, height: 44, borderRadius: 10,
-                background: 'linear-gradient(135deg, #fa8c16 0%, #d46b08 100%)',
+                background: `linear-gradient(135deg, ${c.cor} 0%, ${c.corEsc} 100%)`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(250,140,22,0.35)',
               }}>
                 <UserAddOutlined style={{ fontSize: 22, color: '#fff' }} />
               </div>
             </Badge>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#d46b08' }}>
-                {pendentesCount} cadastro{pendentesCount !== 1 ? 's' : ''} aguardando aprovação
-              </div>
-              <Text style={{ fontSize: 12, color: '#8c8c8c' }}>
-                Clientes registrados pelo Site / App — clique para revisar
-              </Text>
+              <div style={{ fontWeight: 700, fontSize: 14, color: c.corEsc }}>{c.titulo(c.count)}</div>
+              <Text style={{ fontSize: 12, color: '#8c8c8c' }}>{c.sub}</Text>
             </div>
             <Button
               type="primary"
               size="small"
-              style={{ background: '#fa8c16', borderColor: '#fa8c16' }}
-              onClick={e => { e.stopPropagation(); abrirDrawer(); }}
+              style={{ background: c.cor, borderColor: c.cor }}
+              onClick={e => { e.stopPropagation(); abrirDrawer(c.grupo); }}
             >
               Revisar
             </Button>
           </div>
         </Card>
-      )}
+      ))}
 
       {/* ── KPIs principais ─────────────────────────────────────────────── */}
       <Row gutter={[14, 14]} style={{ marginBottom: 14 }}>
@@ -888,7 +891,7 @@ export default function Dashboard() {
         title={
           <span>
             <UserAddOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
-            Cadastros Pendentes
+            {grupoDrawer === 'bloqueados' ? 'Cadastros Bloqueados Recentes' : 'Cadastros em Análise'}
             {pendentes.length > 0 && (
               <Tag color="orange" style={{ marginLeft: 8 }}>{pendentes.length}</Tag>
             )}
@@ -930,7 +933,7 @@ export default function Dashboard() {
                       Aprovar
                     </Button>
                   </Popconfirm>,
-                  <Popconfirm
+                  grupoDrawer === 'bloqueados' && <Popconfirm
                     key="analisar"
                     title="Marcar como em análise?"
                     description="O cadastro será revisado posteriormente."

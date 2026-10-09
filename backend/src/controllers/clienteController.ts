@@ -87,11 +87,12 @@ export const alterarSenha = async (req: Request, res: Response) => {
   await registrarLog((req as any).usuario, 'Alterar', 'Clientes', id);
   res.json({ ok: true });
 };
-export const listarPendentes = async (_req: Request, res: Response) => {
-  res.json(await svc.listarClientesPendentes());
+export const listarPendentes = async (req: Request, res: Response) => {
+  const grupo = req.query.grupo === 'bloqueados' ? 'bloqueados' : 'analise';
+  res.json(await svc.listarClientesPendentes(grupo));
 };
 export const contarPendentes = async (_req: Request, res: Response) => {
-  res.json({ total: await svc.contarClientesPendentes() });
+  res.json(await svc.contarClientesPendentes());
 };
 export const aprovar = async (req: Request, res: Response) => {
   const id = Number(req.params.id);

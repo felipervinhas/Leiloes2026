@@ -11,7 +11,7 @@ import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPers
 const { Title, Text } = Typography;
 const SN          = [{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }];
 const BLOCLI      = [{ value: 'Não', label: 'Não' }, { value: 'Sim', label: 'Sim' }];
-const ACESSO      = ['1 - Liberado', '2 - Bloqueado', '3 - Pendente', '4 - Reprovado'].map(v => ({ value: v, label: v }));
+const ACESSO      = ['1 - Liberado', '2 - Bloqueado', '3 - Em Analise', '3 - Pendente', '4 - Reprovado'].map(v => ({ value: v, label: v }));
 const TIPO_USR    = [{ value: 'ATENDENTE', label: 'Atendente' }, { value: 'PISTEIRO', label: 'Pisteiro' }];
 const TIPO_COLOR: Record<string, string> = { ATENDENTE: 'blue', PISTEIRO: 'purple' };
 

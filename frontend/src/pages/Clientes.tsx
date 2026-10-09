@@ -46,7 +46,7 @@ const fmt = (v: number) => v > 0 ? v.toLocaleString('pt-BR', { style: 'currency'
 const STATUS_COLOR: Record<string, string> = { S: 'green', N: 'red' };
 const SN = [{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }];
 const ESTADO_CIVIL = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'União Estável'].map(v => ({ value: v, label: v }));
-const ACESSO = ['1 - Liberado', '2 - Bloqueado', '3 - Pendente', '4 - Reprovado'].map(v => ({ value: v, label: v }));
+const ACESSO = ['1 - Liberado', '2 - Bloqueado', '3 - Em Analise', '3 - Pendente', '4 - Reprovado'].map(v => ({ value: v, label: v }));
 const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB',
   'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'].map(v => ({ value: v, label: v }));
 const SITUACOES = [
