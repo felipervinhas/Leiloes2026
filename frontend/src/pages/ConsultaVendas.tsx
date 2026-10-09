@@ -118,6 +118,7 @@ export default function ConsultaVendas() {
     loteSel: undefined as number | undefined,
     vendedorSel: undefined as number | undefined,
     compradorSel: undefined as number | undefined,
+    pisteiroSel: undefined as number | undefined,
     defesaSel: '',
     racasSel: [] as number[],
     anoSel: undefined as number | undefined,
@@ -138,6 +139,15 @@ export default function ConsultaVendas() {
   const [loteSel, setLoteSel]         = useState<number | undefined>(filtroSalvo.loteSel);
   const [vendedorSel, setVendedorSel] = useState<number | undefined>(filtroSalvo.vendedorSel);
   const [compradorSel, setCompradorSel] = useState<number | undefined>(filtroSalvo.compradorSel);
+  // Pisteiro (usuários TIPO_USUARIO = PISTEIRO — hoje só a Macedo tem). Só filtro e coluna
+  // na grade; não entra em PDF, Excel nem no texto de filtros dos relatórios.
+  const [pisteiroSel, setPisteiroSel] = useState<number | undefined>(filtroSalvo.pisteiroSel);
+  const [pisteiros, setPisteiros] = useState<{ value: number; label: string }[]>([]);
+  useEffect(() => {
+    api.get('/usuarios', { params: { tipo: 'PISTEIRO' } })
+      .then(r => setPisteiros((r.data || []).map((u: any) => ({ value: u.id, label: u.nomexx }))))
+      .catch(() => setPisteiros([]));
+  }, []);
   const [defesaSel, setDefesaSel]     = useState<string>(filtroSalvo.defesaSel);
   const [anoSel, setAnoSel]           = useState<number | undefined>(filtroSalvo.anoSel);
   const [racasSel, setRacasSel]       = useState<number[]>(filtroSalvo.racasSel);
@@ -225,22 +235,23 @@ export default function ConsultaVendas() {
   const consultar = async () => {
     // Raça + Ano basta (todos os compradores daquela raça no ano); raça sozinha
     // traria a base inteira, por isso o ano é obrigatório nesse caso.
-    if (!leilaoSel && !vendedorSel && !compradorSel && !(racasSel.length && anoSel)) {
+    if (!leilaoSel && !vendedorSel && !compradorSel && !pisteiroSel && !(racasSel.length && anoSel)) {
       message.warning(racasSel.length
         ? 'Para consultar só por raça, selecione também o Ano'
-        : 'Selecione ao menos um filtro: Leilão, Vendedor, Comprador ou Raça + Ano');
+        : 'Selecione ao menos um filtro: Leilão, Vendedor, Comprador, Pisteiro ou Raça + Ano');
       return;
     }
     setLoading(true);
     setConsultou(true);
     setSelectedRowKeys([]);
     try {
-      salvarFiltroPersistido(banco, 'consulta-vendas', { leilaoSel, loteSel, vendedorSel, compradorSel, defesaSel, racasSel, anoSel });
+      salvarFiltroPersistido(banco, 'consulta-vendas', { leilaoSel, loteSel, vendedorSel, compradorSel, pisteiroSel, defesaSel, racasSel, anoSel });
       const params: any = {};
       if (leilaoSel)    params.idLeilao    = leilaoSel;
       if (loteSel)      params.idLote      = loteSel;
       if (vendedorSel)  params.idVendedor  = vendedorSel;
       if (compradorSel) params.idComprador = compradorSel;
+      if (pisteiroSel)  params.idPisteiro  = pisteiroSel;
       if (defesaSel)    params.defesa      = defesaSel;
       if (racasSel.length) params.idRacas  = racasSel.join(',');
       if (anoSel)       params.ano         = anoSel;
@@ -268,7 +279,7 @@ export default function ConsultaVendas() {
     if (filtroSalvo.compradorSel) {
       api.get(`/clientes/${filtroSalvo.compradorSel}`).then(r => setCompradores([{ value: r.data.id, label: r.data.nomexx }])).catch(() => {});
     }
-    if (filtroSalvo.leilaoSel || filtroSalvo.vendedorSel || filtroSalvo.compradorSel) consultar();
+    if (filtroSalvo.leilaoSel || filtroSalvo.vendedorSel || filtroSalvo.compradorSel || filtroSalvo.pisteiroSel) consultar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -349,7 +360,7 @@ export default function ConsultaVendas() {
 
   const limpar = () => {
     setLeilaoSel(undefined); setLoteSel(undefined);
-    setVendedorSel(undefined); setCompradorSel(undefined);
+    setVendedorSel(undefined); setCompradorSel(undefined); setPisteiroSel(undefined);
     setDefesaSel(''); setRacasSel([]); setAnoSel(undefined);
     setLotes([]); setRacas([]);
     setVendedores([]); setCompradores([]);
@@ -360,7 +371,8 @@ export default function ConsultaVendas() {
 
   const exportarCSV = () => {
     if (!dados.length) return;
-    const cols = colunas.filter(c => c.dataIndex);
+    // Pisteiro é só para consulta na tela — não vai para o Excel
+    const cols = colunas.filter(c => c.dataIndex && c.dataIndex !== 'nomePisteiro');
     const header = cols.map(c => c.title).join(';');
     const rows = dadosOrdenados.map(row =>
       cols.map(c => {
@@ -467,6 +479,11 @@ export default function ConsultaVendas() {
       sorter: COMPARADORES.nomeComprador },
     { title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, ...rzCV('nomeVendedor'),
       sorter: COMPARADORES.nomeVendedor },
+    ...(pisteiros.length ? [{
+      title: 'Pisteiro', dataIndex: 'nomePisteiro', ellipsis: true, width: 150,
+      sorter: (a: any, b: any) => String(a.nomePisteiro || '').localeCompare(String(b.nomePisteiro || ''), 'pt-BR'),
+      render: (v: string) => v || '—',
+    }] : []),
     { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzCV('deslot'),
       sorter: COMPARADORES.deslot },
     { title: 'Raça', dataIndex: 'descricaoRaca', ...rzCV('descricaoRaca'), ellipsis: true,
@@ -596,7 +613,7 @@ export default function ConsultaVendas() {
               notFoundContent={loadingComp ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
             />
           </Col>
-          <Col span={18}>
+          <Col span={pisteiros.length ? 12 : 18}>
             <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Raças / Categorias</div>
             <Select
               mode="multiple"
@@ -610,6 +627,14 @@ export default function ConsultaVendas() {
               maxTagCount="responsive"
             />
           </Col>
+          {pisteiros.length > 0 && (
+            <Col span={6}>
+              <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Pisteiro</div>
+              <Select allowClear showSearch style={{ width: '100%' }} placeholder="Todos"
+                value={pisteiroSel} onChange={setPisteiroSel} options={pisteiros}
+                filterOption={(i, o) => String(o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
+            </Col>
+          )}
           <Col span={6}>
             <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>Ano do Leilão</div>
             <Select

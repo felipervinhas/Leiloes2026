@@ -1,10 +1,13 @@
 import { getPool, sql } from '../config/database';
+import { garantirColunaMovCompPisteiro } from './vendaService';
 
 export interface FiltrosConsulta {
   idLeilao?: number;
   idLote?: number;
   idVendedor?: number;
   idComprador?: number;
+  /** Usuário PISTEIRO gravado na venda (MOVIMENTO_COMPRADOR.ID_PISTEIRO) */
+  idPisteiro?: number;
   idRacas?: number[];
   ano?: number; // ano da data do leilão
   defesa?: 'S' | 'N'; // S=vendido, N=não vendido
@@ -83,7 +86,9 @@ const BASE_SQL = `
     V.VALORPAGAR AS VALOR_LIQUIDO,
     V.VALORCOMISSAOVENDEDOR,
     V.COMISSAOVENDEDOR,
-    V.DEFESA
+    V.DEFESA,
+    MC.ID_PISTEIRO,
+    PIST.NOMEXX AS NOME_PISTEIRO
   FROM VWVendas V
   LEFT JOIN Leiloes L              ON L.ID  = V.IDLEILAO
   LEFT JOIN Lotes LO               ON LO.ID = V.IDLOTE
@@ -92,6 +97,7 @@ const BASE_SQL = `
   LEFT JOIN CondicaoPagtos PG      ON PG.ID  = V.IDCONDPAGTO
   LEFT JOIN Clientes COM           ON COM.ID = V.IDCLI
   LEFT JOIN Movimento_Comprador MC ON MC.IDMOV = V.ID AND MC.IDCLI = V.IDCLI
+  LEFT JOIN Clientes PIST          ON PIST.ID = MC.ID_PISTEIRO
   /* Quando a venda não teve propriedade de destino selecionada, cai pra
      propriedade cadastrada no próprio comprador (a mais antiga, se houver
      mais de uma) em vez de deixar Localidade/Propriedade/Inscrição em branco. */
@@ -104,6 +110,7 @@ const BASE_SQL = `
 `;
 
 export async function consultarVendas(filtros: FiltrosConsulta) {
+  await garantirColunaMovCompPisteiro();
   const pool = await getPool();
   const req  = pool.request();
   const conds: string[] = [];
@@ -113,6 +120,7 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
   if (filtros.idVendedor) { req.input('idVendedor', sql.Int,     filtros.idVendedor);              conds.push('LO.CODVEN = @idVendedor'); }
   // V.IDCLI em VWVendas é VARCHAR — passamos como string para evitar incompatibilidade de tipo
   if (filtros.idComprador){ req.input('idComprador', sql.VarChar, String(filtros.idComprador)); conds.push('V.IDCLI = @idComprador'); }
+  if (filtros.idPisteiro) { req.input('idPisteiro', sql.Int, filtros.idPisteiro); conds.push('MC.ID_PISTEIRO = @idPisteiro'); }
   if (filtros.defesa)     { req.input('defesa',     sql.Char, filtros.defesa);    conds.push("V.DEFESA = @defesa"); }
   if (filtros.idRacas && filtros.idRacas.length > 0) {
     const placeholders = filtros.idRacas.map((id, i) => {
@@ -216,6 +224,8 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
     valorComissaoVendedor: row.VALORCOMISSAOVENDEDOR,
     comissaoVendedor:      row.COMISSAOVENDEDOR,
     defesa:                row.DEFESA,
+    idPisteiro:            row.ID_PISTEIRO,
+    nomePisteiro:          row.NOME_PISTEIRO,
     parcelas,
   };
   });

@@ -424,7 +424,7 @@ export async function buscarLoteMovimento(idMov: number) {
 // ─── compradores ─────────────────────────────────────────────────────────────
 
 let colunaPisteiroMovComp = false;
-async function garantirColunaMovCompPisteiro() {
+export async function garantirColunaMovCompPisteiro() {
   if (colunaPisteiroMovComp) return;
   const pool = await getPool();
   await pool.request().query(`

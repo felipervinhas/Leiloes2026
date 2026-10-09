@@ -2,13 +2,14 @@ import { Request, Response } from 'express';
 import * as svc from '../services/consultaVendasService';
 
 export const consultar = async (req: Request, res: Response) => {
-  const { idLeilao, idLote, idVendedor, idComprador, defesa, idRacas, ano } = req.query;
+  const { idLeilao, idLote, idVendedor, idComprador, idPisteiro, defesa, idRacas, ano } = req.query;
 
   const filtros: svc.FiltrosConsulta = {
     idLeilao:    idLeilao    ? Number(idLeilao)    : undefined,
     idLote:      idLote      ? Number(idLote)      : undefined,
     idVendedor:  idVendedor  ? Number(idVendedor)  : undefined,
     idComprador: idComprador ? Number(idComprador) : undefined,
+    idPisteiro:  idPisteiro ? Number(idPisteiro) : undefined,
     defesa:      defesa as 'S' | 'N' | undefined,
     idRacas:     idRacas
       ? String(idRacas).split(',').map(Number).filter(Boolean)
@@ -24,7 +25,8 @@ export const consultar = async (req: Request, res: Response) => {
   // Raça + Ano também basta (ex.: todos os compradores de Crioulo em 2025) —
   // raça sozinha varreria a base inteira (15s+ nas raças maiores).
   const racaComAno = !!filtros.idRacas?.length && !!filtros.ano;
-  if (!filtros.idLeilao && !filtros.idVendedor && !filtros.idComprador && !racaComAno) {
+  // Pisteiro também restringe bem (só as vendas dele)
+  if (!filtros.idLeilao && !filtros.idVendedor && !filtros.idComprador && !filtros.idPisteiro && !racaComAno) {
     return res.status(400).json({ error: 'Informe leilão, vendedor, comprador ou raça + ano' });
   }
 
