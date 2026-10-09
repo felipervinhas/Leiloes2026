@@ -95,3 +95,41 @@ export function exportarVendasExcel(vendas: any[], nomeArquivo = 'vendas') {
   const data = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(wb, `${nomeArquivo}-${data}.xlsx`);
 }
+
+/** Lotes cadastrados num leilão (tela de Lotes) — conferência antes do lançamento das vendas. */
+export function exportarLotesExcel(lotes: any[], condicoes: Record<number, string>, nomeArquivo = 'lotes') {
+  const sexo = (c?: string) => (c === 'M' ? 'Macho' : c === 'F' ? 'Fêmea' : c === 'N' ? 'Neutro' : '');
+  const linhas = lotes.map(l => ({
+    'Lote': l.lotexx ?? '',
+    'Ordem': l.ordem ?? '',
+    'Descrição': l.deslot ?? '',
+    'Vendedor': l.nomeVendedor ?? '',
+    'Raça': l.nomeRaca ?? '',
+    'Sexo': sexo(l.catego),
+    'Qtd. Animais': l.qtdAnimais ?? '',
+    'Peso': l.pesoxx ?? '',
+    'RP / Tatuagem': l.rpxxx ?? '',
+    'SBB / Registro': l.sbbxxx ?? '',
+    'Pelagem': l.pelage ?? '',
+    'Data Nasc.': fmtDataUTC(l.datnas, ''),
+    'Filiação': l.filiacao ?? '',
+    'Condição Pagto.': l.condic ? (condicoes[l.condic] ?? '') : '',
+    'Comissão Leiloeiro (%)': l.comcom ?? '',
+    'Comissão Vendedor (%)': l.comven ?? '',
+    'Vendido': l.vendido === 'S' ? 'Sim' : 'Não',
+    'Observações': l.obslot ?? '',
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(linhas);
+  ws['!cols'] = [
+    { wch: 8 }, { wch: 7 }, { wch: 40 }, { wch: 30 }, { wch: 20 }, { wch: 8 }, { wch: 10 },
+    { wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 11 }, { wch: 30 }, { wch: 22 },
+    { wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 40 },
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Lotes');
+
+  const data = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `${nomeArquivo}-${data}.xlsx`);
+}

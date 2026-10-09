@@ -5,7 +5,8 @@ import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import { useBuscaClientes } from '../hooks/useBuscaClientes';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CopyOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CopyOutlined, AppstoreOutlined, FileExcelOutlined } from '@ant-design/icons';
+import { exportarLotesExcel } from '../relatorios/exportarExcel';
 import dayjs from 'dayjs';
 import { dataUTC } from '../utils/data';
 import api from '../services/api';
@@ -66,6 +67,24 @@ export default function Lotes() {
       setTotalLotes(r.data.total);
       setPagina(pag);
     } finally { setLoading(false); }
+  };
+
+  // Excel com todos os lotes do leilão filtrado (não só a página atual)
+  const [exportando, setExportando] = useState(false);
+  const exportarExcel = async () => {
+    if (!leilaoFiltro) return;
+    setExportando(true);
+    try {
+      const r = await api.get('/lotes', { params: { idLeilao: leilaoFiltro, busca: busca || undefined } });
+      const lotes = [...(r.data || [])].sort((a: any, b: any) =>
+        String(a.lotexx ?? '').localeCompare(String(b.lotexx ?? ''), 'pt-BR', { numeric: true }));
+      if (!lotes.length) { message.info('Nenhum lote cadastrado neste leilão'); return; }
+      const nomeCond = Object.fromEntries(condicoes.map(c => [c.value, c.label]));
+      const nomeLeilao = String(leiloes.find(l => l.value === leilaoFiltro)?.label ?? lotes[0].nomeLeilao ?? 'leilao');
+      exportarLotesExcel(lotes, nomeCond, `lotes-${nomeLeilao.replace(/[^\w\-]+/g, '_').slice(0, 60)}`);
+    } catch {
+      message.error('Erro ao exportar os lotes');
+    } finally { setExportando(false); }
   };
 
   const carregarAuxiliares = async () => {
@@ -307,7 +326,13 @@ export default function Lotes() {
             <span style={{ fontSize: 12, color: '#94a3b8' }}>{dados.length} registro{dados.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()} style={{ background: '#16a34a', borderColor: '#16a34a' }}>Novo Lote</Button>
+        <Space>
+          <Button icon={<FileExcelOutlined />} onClick={exportarExcel} loading={exportando} disabled={!leilaoFiltro}
+            title={leilaoFiltro ? 'Exportar para Excel os lotes do leilão selecionado' : 'Selecione um leilão para exportar'}>
+            Excel
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => abrirModal()} style={{ background: '#16a34a', borderColor: '#16a34a' }}>Novo Lote</Button>
+        </Space>
       </div>
 
       {/* ── Filtros ── */}
