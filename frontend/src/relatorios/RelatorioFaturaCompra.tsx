@@ -79,6 +79,8 @@ export interface FaturaData {
     qtdparCond?: number | null;
     nomePropriedade?: string;
     cidadeProp?: string;
+    inscricaoProp?: string;
+    localidadeProp?: string;
     estadoProp?: string;
     parcelas: Array<{
       ordxxx?: string;
@@ -404,10 +406,12 @@ function SecaoComprador({ comp, index, variante }: { comp: FaturaData['comprador
         </View>
 
         {/* Propriedade */}
-        {comp.nomePropriedade ? (
+        {comp.nomePropriedade || comp.inscricaoProp ? (
           <View style={s.propBox}>
             <Text style={s.propLabel}>Propriedade</Text>
-            <Text style={s.propText}>{comp.nomePropriedade}</Text>
+            {comp.nomePropriedade ? <Text style={s.propText}>{comp.nomePropriedade}</Text> : null}
+            {comp.inscricaoProp ? <Text style={s.propText}>Inscrição Estadual: {comp.inscricaoProp}</Text> : null}
+            {comp.localidadeProp ? <Text style={s.propText}>{comp.localidadeProp}</Text> : null}
             {comp.cidadeProp ? (
               <Text style={s.propText}>
                 {comp.cidadeProp}{comp.estadoProp ? `/${comp.estadoProp}` : ''}

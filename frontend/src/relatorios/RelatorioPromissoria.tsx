@@ -311,10 +311,11 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
                   {comp.celu1   ? <Text style={s.endereXX}>Tel: {comp.celu1}</Text> : null}
                   {comp.emailx  ? <Text style={s.endereXX}>{comp.emailx}</Text> : null}
                 </View>
-                {comp.nomePropriedade ? (
+                {comp.nomePropriedade || comp.inscricaoProp ? (
                   <View style={s.comprCol}>
                     <Text style={[s.acertoLabel, { marginBottom: 2 }]}>Propriedade de Destino</Text>
-                    <Text style={s.nomeXX}>{comp.nomePropriedade}</Text>
+                    {comp.nomePropriedade ? <Text style={s.nomeXX}>{comp.nomePropriedade}</Text> : null}
+                    {comp.inscricaoProp ? <Text style={s.endereXX}>Inscrição Estadual: {comp.inscricaoProp}</Text> : null}
                     {comp.cidadeProp ? (
                       <Text style={s.endereXX}>
                         {comp.cidadeProp}{comp.estadoProp ? `/${comp.estadoProp}` : ''}

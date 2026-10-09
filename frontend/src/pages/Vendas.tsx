@@ -913,6 +913,21 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   const [condicoes, setCondicoes] = useState<any[]>([]);
   const [condicaoSel, setCondicaoSel] = useState<any>(null);
   const [propriedades, setPropriedades] = useState<any[]>([]);
+  // Opções do campo "Propriedade" do formulário do comprador. Antes o idPropriedade
+  // era preenchido num campo sem Form.Item e o antd o descartava ao salvar — quase
+  // nenhuma venda gravava a propriedade/inscrição escolhida.
+  const [propriedadesComprador, setPropriedadesComprador] = useState<{ value: number; label: string }[]>([]);
+  const carregarPropriedadesComprador = async (idCli?: number, manterAtual = false) => {
+    if (!idCli) { setPropriedadesComprador([]); return; }
+    const r = await api.get(`/clientes/${idCli}/propriedades`);
+    const opcoes = (r.data || []).map((p: any) => ({
+      value: p.id,
+      label: [p.nomePropriedade || 'Sem nome', p.inscricao ? `IE ${p.inscricao}` : null,
+        [p.cidade, p.estado].filter(Boolean).join('/') || null].filter(Boolean).join(' · '),
+    }));
+    setPropriedadesComprador(opcoes);
+    if (!manterAtual) form2.setFieldValue('idPropriedade', opcoes.length === 1 ? opcoes[0].value : undefined);
+  };
   const [modalProps, setModalProps] = useState(false);
   const [compSelecionado, setCompSelecionado] = useState<any>(null);
   const [pisteiros, setPisteiros] = useState<{ value: number; label: string }[]>([]);
@@ -1277,6 +1292,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
 
   const iniciarEdicaoComprador = (comp: any) => {
     setCompEditando(comp);
+    carregarPropriedadesComprador(comp.idCli, true);
     setClientes([{ value: comp.idCli, label: comp.nomexx }]);
     onCondicaoChange(comp.idCondPagto);
     form2.setFieldsValue({
@@ -1296,6 +1312,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     setCondicaoSel(null);
     setClientes([]);
     form2.resetFields(['idCli', 'idCondPagto', 'percen', 'formaPagamento', 'idPropriedade', 'idPisteiro', 'tipoDescontoFidelidade', 'descontoFidelidade']);
+    setPropriedadesComprador([]);
     aplicarCondicaoPadraoLeilao();
   };
 
@@ -1824,14 +1841,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
                       options={clientes} loading={loadingCli} onSearch={buscarClientes}
                       disabled={!!compEditando}
                       notFoundContent={loadingCli ? <Spin size="small" /> : 'Digite 2+ letras'}
-                      onChange={() => {
-                        const id = form2.getFieldValue('idCli');
-                        if (id) {
-                          api.get(`/clientes/${id}/propriedades`).then(r => {
-                            if (r.data.length === 1) form2.setFieldValue('idPropriedade', r.data[0].id);
-                          });
-                        }
-                      }}
+                      onChange={() => carregarPropriedadesComprador(form2.getFieldValue('idCli'))}
                     />
                   </Form.Item>
                 </Col>
@@ -1855,6 +1865,13 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
                   <Form.Item name="formaPagamento" label="Forma de Pagamento"
                     rules={[{ required: true, message: 'Selecione a forma de pagamento' }]}>
                     <Select options={FORMA_PAGAMENTO_OPTS} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                  <Form.Item name="idPropriedade" label="Propriedade / Inscrição">
+                    <Select options={propriedadesComprador} allowClear
+                      placeholder={propriedadesComprador.length ? 'Selecione...' : 'Comprador sem propriedade cadastrada'}
+                      disabled={!propriedadesComprador.length} />
                   </Form.Item>
                 </Col>
                 {pisteiros.length > 0 && (

@@ -63,7 +63,7 @@ export interface FaturaUnificadaGrupo {
     id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string;
     endere?: string; bairro?: string; cepxxx?: string;
     celu1?: string; celu2?: string; telcom?: string; telres?: string; emailx?: string;
-    nomeCidade?: string; nomeEstado?: string; nomePropriedade?: string;
+    nomeCidade?: string; nomeEstado?: string; nomePropriedade?: string; inscricaoProp?: string; cidadeProp?: string; estadoProp?: string;
   } | null;
   contrapartes: FaturaUnificadaParte[];
   lotes: FaturaUnificadaLote[];
@@ -343,10 +343,12 @@ function paginaFatura(
               {cidadeComp   ? <Text style={s.endereco}>{cidadeComp}{comp.cepxxx ? `  CEP ${comp.cepxxx}` : ''}</Text> : null}
               {(comp.celu1 || comp.telres) ? <Text style={s.telefone}>Tel: {comp.celu1 || comp.telres}</Text> : null}
               {comp.emailx ? <Text style={s.telefone}>{comp.emailx}</Text> : null}
-              {comp.nomePropriedade ? (
+              {comp.nomePropriedade || comp.inscricaoProp ? (
                 <View style={s.propBox}>
                   <Text style={s.propLabel}>Propriedade</Text>
-                  <Text style={s.propText}>{comp.nomePropriedade}</Text>
+                  {comp.nomePropriedade ? <Text style={s.propText}>{comp.nomePropriedade}</Text> : null}
+                  {comp.inscricaoProp ? <Text style={s.propText}>Inscrição Estadual: {comp.inscricaoProp}</Text> : null}
+                  {comp.cidadeProp ? <Text style={s.propText}>{comp.cidadeProp}{comp.estadoProp ? `/${comp.estadoProp}` : ''}</Text> : null}
                 </View>
               ) : null}
             </>

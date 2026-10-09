@@ -1125,12 +1125,17 @@ export async function dadosFatura(idMov: number) {
            C.NOMEXX, C.CPFXXX, C.CNPJXX, C.ENDERE, C.BAIRRO, C.CEPXXX, C.CELU_1, C.EMAILX,
            CIDC.CIDADE  AS NOMECIDADE,    CIDC.ESTADO  AS ESTADO,
            CP.DESFIN, CP.QTDPAR AS COND_QTDPAR,
-           CPR.NOME_PROPRIEDADE, CPR.CIDADE AS CIDADE_PROP, CPR.ESTADO AS ESTADO_PROP
+           CPR.NOME_PROPRIEDADE, CPR.CIDADE AS CIDADE_PROP, CPR.ESTADO AS ESTADO_PROP,
+           CPR.INSCRICAO AS INSCRICAO_PROP, CPR.LOCALIDADE AS LOCALIDADE_PROP
     FROM MOVIMENTO_COMPRADOR MC
     LEFT JOIN CLIENTES C        ON C.ID   = MC.IDCLI
     LEFT JOIN CIDADES CIDC      ON CIDC.ID = C.CIDADE
     LEFT JOIN CONDICAOPAGTOS CP ON CP.ID   = MC.IDCONDPAGTO
-    LEFT JOIN CLIENTES_PROPRIEDADES CPR ON CPR.ID = MC.ID_PROPRIEDADE
+    -- Venda sem propriedade escolhida: usa a propriedade cadastrada do comprador (a mais
+    -- antiga), igual à Consulta de Vendas — antes a fatura saía sem propriedade/inscrição
+    LEFT JOIN (SELECT ID_CLIENTE, MIN(ID) AS ID FROM CLIENTES_PROPRIEDADES GROUP BY ID_CLIENTE) CPPAD
+                                ON CPPAD.ID_CLIENTE = C.ID
+    LEFT JOIN CLIENTES_PROPRIEDADES CPR ON CPR.ID = ISNULL(MC.ID_PROPRIEDADE, CPPAD.ID)
     WHERE MC.IDMOV = @id
     ORDER BY MC.ID
   `);
@@ -1228,6 +1233,8 @@ export async function dadosFatura(idMov: number) {
       nomePropriedade: c.NOME_PROPRIEDADE,
       cidadeProp:      c.CIDADE_PROP,
       estadoProp:      c.ESTADO_PROP,
+      inscricaoProp:   c.INSCRICAO_PROP,
+      localidadeProp:  c.LOCALIDADE_PROP,
       parcelas:        parcelasPorMovLote[`${c.IDMOVLOTE}_${c.IDCLI}`] || [],
     })),
   };
@@ -1300,7 +1307,7 @@ export interface FaturaUnificadaGrupo {
     id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string;
     endere?: string; bairro?: string; cepxxx?: string;
     celu1?: string; celu2?: string; telcom?: string; telres?: string; emailx?: string;
-    nomeCidade?: string; nomeEstado?: string; nomePropriedade?: string;
+    nomeCidade?: string; nomeEstado?: string; nomePropriedade?: string; inscricaoProp?: string; cidadeProp?: string; estadoProp?: string;
   } | null;
   // Lista da parte que varia (compradores quando modo='vendedor', vendedores
   // quando modo='comprador'); vazio quando modo='par'.
@@ -1343,7 +1350,8 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
            C.CELU_1, C.CELU_2, C.TELCOM, C.TELRES, C.EMAILX,
            CIDC.CIDADE AS NOMECIDADE, CIDC.ESTADO AS ESTADO,
            CP.DESFIN, CP.QTDPAR AS COND_QTDPAR, CP.AVISTA AS COND_AVISTA,
-           CPR.NOME_PROPRIEDADE
+           CPR.NOME_PROPRIEDADE, CPR.INSCRICAO AS INSCRICAO_PROP,
+           CPR.CIDADE AS CIDADE_PROP, CPR.ESTADO AS ESTADO_PROP
     FROM MOVIMENTO_COMPRADOR MC
     LEFT JOIN MOVIMENTO M       ON M.ID  = MC.IDMOV
     LEFT JOIN LEILOES LEI       ON LEI.ID = M.IDLEILAO
@@ -1355,7 +1363,11 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
     LEFT JOIN CLIENTES C        ON C.ID   = MC.IDCLI
     LEFT JOIN CIDADES CIDC      ON CIDC.ID = C.CIDADE
     LEFT JOIN CONDICAOPAGTOS CP ON CP.ID   = MC.IDCONDPAGTO
-    LEFT JOIN CLIENTES_PROPRIEDADES CPR ON CPR.ID = MC.ID_PROPRIEDADE
+    -- Venda sem propriedade escolhida: usa a propriedade cadastrada do comprador (a mais
+    -- antiga), igual à Consulta de Vendas — antes a fatura saía sem propriedade/inscrição
+    LEFT JOIN (SELECT ID_CLIENTE, MIN(ID) AS ID FROM CLIENTES_PROPRIEDADES GROUP BY ID_CLIENTE) CPPAD
+                                ON CPPAD.ID_CLIENTE = C.ID
+    LEFT JOIN CLIENTES_PROPRIEDADES CPR ON CPR.ID = ISNULL(MC.ID_PROPRIEDADE, CPPAD.ID)
     WHERE MC.ID IN (${placeholders.join(',')})
     ORDER BY M.IDLEILAO, MC.IDCLI, ML.CODVEN, TRY_CAST(LO.LOTEXX AS INT), LO.LOTEXX
   `);
@@ -1405,6 +1417,8 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
         celu1: r.CELU_1, celu2: r.CELU_2, telcom: r.TELCOM, telres: r.TELRES, emailx: r.EMAILX,
         nomeCidade: r.NOMECIDADE, nomeEstado: r.ESTADO,
         nomePropriedade: r.NOME_PROPRIEDADE,
+        inscricaoProp: r.INSCRICAO_PROP,
+        cidadeProp: r.CIDADE_PROP, estadoProp: r.ESTADO_PROP,
       };
       grupos.set(chave, {
         idLeilao: r.IDLEILAO,
