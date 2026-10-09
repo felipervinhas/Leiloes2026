@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Select, Button, Table, Input, Space, message, Typography, Row, Col, Tag, Grid, Tooltip, Spin } from 'antd';
 import {
   SaveOutlined, OrderedListOutlined, ClearOutlined, CalendarOutlined, EyeOutlined, HolderOutlined, SoundOutlined,
+  CaretUpOutlined, CaretDownOutlined,
 } from '@ant-design/icons';
 import { pdf } from '@react-pdf/renderer';
 import api from '../services/api';
@@ -51,6 +52,11 @@ interface LoteOrdem {
 const CATEGO_COR: Record<string, string> = { M: 'blue', F: 'magenta', N: 'default', C: 'orange' };
 const CATEGO_LABEL: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C: 'Castrado' };
 
+type CampoOrdenavel = 'lotexx' | 'deslot' | 'nomeVendedor' | 'nomeRaca' | 'catego';
+const ROTULO_ORDENAVEL: Record<CampoOrdenavel, string> = {
+  lotexx: 'Lote', deslot: 'Descrição', nomeVendedor: 'Vendedor', nomeRaca: 'Raça', catego: 'Sexo',
+};
+
 export default function OrdemEntrada() {
   const config = useConfig();
   const navigate = useNavigate();
@@ -69,6 +75,8 @@ export default function OrdemEntrada() {
   const [salvando, setSalvando] = useState(false);
   const [layoutAtivo, setLayoutAtivo] = useState<CampoLayout[] | null>(null);
   const dragIdRef = useRef<number | null>(null);
+  // Ordenação por clique no título da coluna (define a ordem de entrada em um clique)
+  const [ordenacao, setOrdenacao] = useState<{ campo: CampoOrdenavel; dir: 'asc' | 'desc' } | null>(null);
 
   useEffect(() => {
     api.get('/relatorio-layouts/ativo/ordem_entrada')
@@ -86,6 +94,7 @@ export default function OrdemEntrada() {
       data.forEach(l => { init[l.id] = l.ordem || ''; });
       setOrdens(init);
       setOrdemIds(ordenarIdsInicial(data, init));
+      setOrdenacao(null);
       setNomeLeilao(label);
     } finally {
       setLoading(false);
@@ -113,8 +122,38 @@ export default function OrdemEntrada() {
     setOrdens(novas);
   };
 
+  const ordenarPor = (campo: CampoOrdenavel) => {
+    const dir: 'asc' | 'desc' = ordenacao?.campo === campo && ordenacao.dir === 'asc' ? 'desc' : 'asc';
+    const texto = (l: LoteOrdem) => String((l as any)[campo] ?? '').trim();
+    const ids = [...lotes]
+      .sort((a, b) => {
+        const va = texto(a), vb = texto(b);
+        if (!va && vb) return 1;   // vazios sempre no fim
+        if (va && !vb) return -1;
+        const c = va.localeCompare(vb, 'pt-BR', { numeric: true, sensitivity: 'base' });
+        return (dir === 'asc' ? c : -c) || a.lotexx.localeCompare(b.lotexx, 'pt-BR', { numeric: true });
+      })
+      .map(l => l.id);
+    setOrdemIds(ids);
+    renumerar(ids);
+    setOrdenacao({ campo, dir });
+    message.info(`Ordem definida por ${ROTULO_ORDENAVEL[campo]} — clique em Salvar para confirmar`);
+  };
+
+  const tituloOrdenavel = (campo: CampoOrdenavel) => (
+    <Tooltip title="Clique para ordenar (de novo inverte)">
+      <span style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }} onClick={() => ordenarPor(campo)}>
+        {ROTULO_ORDENAVEL[campo]}{' '}
+        {ordenacao?.campo === campo
+          ? (ordenacao.dir === 'asc' ? <CaretUpOutlined style={{ color: '#1677ff' }} /> : <CaretDownOutlined style={{ color: '#1677ff' }} />)
+          : <CaretUpOutlined style={{ color: '#d9d9d9' }} />}
+      </span>
+    </Tooltip>
+  );
+
   const moverLinha = (origemId: number | null, destinoId: number) => {
     if (origemId == null || origemId === destinoId) return;
+    setOrdenacao(null); // ajuste manual: a lista deixa de seguir a coluna ordenada
     setOrdemIds(prev => {
       const lista = [...prev];
       const de = lista.indexOf(origemId);
@@ -230,12 +269,12 @@ export default function OrdemEntrada() {
         />
       ),
     },
-    { title: 'Lote', dataIndex: 'lotexx', width: 70 },
-    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true },
-    ...(sm ? [{ title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, width: 180 }] : []),
-    ...(sm ? [{ title: 'Raça', dataIndex: 'nomeRaca', width: 120, ellipsis: true }] : []),
+    { title: tituloOrdenavel('lotexx'), dataIndex: 'lotexx', width: 80 },
+    { title: tituloOrdenavel('deslot'), dataIndex: 'deslot', ellipsis: true },
+    ...(sm ? [{ title: tituloOrdenavel('nomeVendedor'), dataIndex: 'nomeVendedor', ellipsis: true, width: 180 }] : []),
+    ...(sm ? [{ title: tituloOrdenavel('nomeRaca'), dataIndex: 'nomeRaca', width: 120, ellipsis: true }] : []),
     {
-      title: 'Sexo',
+      title: tituloOrdenavel('catego'),
       dataIndex: 'catego',
       width: 70,
       render: (v: string) => v
