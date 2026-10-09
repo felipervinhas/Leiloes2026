@@ -3,7 +3,7 @@ import { Table, Select, Typography, Row, Col, Tag, Statistic, Card, Space, Butto
 import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
-import { TrophyOutlined, FileDoneOutlined } from '@ant-design/icons';
+import { TrophyOutlined, FileDoneOutlined, PrinterOutlined } from '@ant-design/icons';
 import api from '../services/api';
 import { useConfig } from '../context/ConfigContext';
 import { useBanco } from '../context/BancoContext';
@@ -30,7 +30,9 @@ export default function Lances() {
 
   const [relatorioModal, setRelatorioModal]     = useState(false);
   const [lancesRelatorio, setLancesRelatorio]   = useState<LancePDF[]>([]);
-  const [loadingRelatorio, setLoadingRelatorio] = useState(false);
+  const [loadingRelatorio, setLoadingRelatorio] = useState<number | boolean>(false);
+  // Lote do relatório aberto (null = leilão inteiro)
+  const [loteRelatorio, setLoteRelatorio] = useState<{ lotexx: string; deslot: string } | null>(null);
 
   const { rz: rzR } = useColumnWidths('lances_resumo', { lotexx: 80, deslot: 200, qtdLances: 110, maiorLance: 130, menorLance: 130 });
   const { rz: rzL } = useColumnWidths('lances_detalhes', { data: 150, lotexx: 80, deslot: 180, nomeCliente: 200, celu1: 130, valor: 130, origemLance: 100 });
@@ -76,12 +78,16 @@ export default function Lances() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const gerarRelatorio = async () => {
+  // Relatório do leilão inteiro, ou só de um lote (todos os lances daquele lote)
+  const gerarRelatorio = async (idLote?: number) => {
     if (!leilaoSel) return;
-    setLoadingRelatorio(true);
+    setLoadingRelatorio(idLote ?? true);
     try {
-      const r = await api.get('/lances', { params: { idLeilao: leilaoSel } });
-      setLancesRelatorio(r.data as LancePDF[]);
+      const r = await api.get('/lances', { params: { idLeilao: leilaoSel, idLote } });
+      const lancesLote = r.data as LancePDF[];
+      const info = idLote ? resumo.find(x => x.idLote === idLote) : null;
+      setLoteRelatorio(idLote ? { lotexx: info?.lotexx ?? lancesLote[0]?.lotexx ?? '', deslot: info?.deslot ?? lancesLote[0]?.deslot ?? '' } : null);
+      setLancesRelatorio(lancesLote);
       setRelatorioModal(true);
     } finally { setLoadingRelatorio(false); }
   };
@@ -95,6 +101,12 @@ export default function Lances() {
       render: (v: number) => v ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—' },
     { title: 'Menor Lance', dataIndex: 'menorLance', ...rzR('menorLance'), align: 'right' as const,
       render: (v: number) => v ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—' },
+    { title: '', key: 'imprimir', width: 60, align: 'center' as const,
+      render: (_: any, r: any) => r.qtdLances > 0 ? (
+        <Button size="small" icon={<PrinterOutlined />} title={`Imprimir os lances do lote ${r.lotexx}`}
+          loading={loadingRelatorio === r.idLote}
+          onClick={e => { e.stopPropagation(); gerarRelatorio(r.idLote); }} />
+      ) : null },
   ];
 
   const colsLances = [
@@ -104,6 +116,8 @@ export default function Lances() {
     { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzL('deslot') },
     { title: 'Cliente', dataIndex: 'nomeCliente', ellipsis: true, ...rzL('nomeCliente') },
     { title: 'Telefone', dataIndex: 'celu1', ...rzL('celu1') },
+    { title: 'Cidade', key: 'cidade', width: 150, ellipsis: true,
+      render: (_: any, r: any) => [r.cidade, r.estado].filter(Boolean).join(' / ') || '—' },
     { title: 'Valor', dataIndex: 'valor', ...rzL('valor'), align: 'right' as const,
       render: (v: number) => <strong style={{ color: '#52c41a' }}>R$ {Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> },
     { title: 'Origem', dataIndex: 'origemLance', ...rzL('origemLance') },
@@ -150,9 +164,9 @@ export default function Lances() {
           <Button
             icon={<FileDoneOutlined />}
             disabled={!leilaoSel || resumo.length === 0}
-            loading={loadingRelatorio}
-            onClick={gerarRelatorio}
-            title="Gerar Relatório de Lances"
+            loading={loadingRelatorio === true}
+            onClick={() => gerarRelatorio(loteSel)}
+            title={loteSel ? 'Relatório com todos os lances do lote selecionado' : 'Relatório de lances do leilão (todos os lotes)'}
           >
             PDF
           </Button>
@@ -186,6 +200,12 @@ export default function Lances() {
         <>
           <Space style={{ marginBottom: 8 }}>
             <button onClick={() => setTab('resumo')} style={{ fontSize: 13, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>← Voltar ao resumo</button>
+            {loteSel && dados.length > 0 && (
+              <Button size="small" icon={<PrinterOutlined />} loading={loadingRelatorio === loteSel}
+                onClick={() => gerarRelatorio(loteSel)}>
+                Imprimir lances deste lote
+              </Button>
+            )}
           </Space>
           <Table
             rowKey="id"
@@ -207,7 +227,7 @@ export default function Lances() {
         title={
           <Space>
             <FileDoneOutlined />
-            <span>Relatório de Lances — {leilaoLabel}</span>
+            <span>Relatório de Lances — {loteRelatorio ? `Lote ${loteRelatorio.lotexx}` : leilaoLabel}</span>
           </Space>
         }
         width={420}
@@ -221,7 +241,7 @@ export default function Lances() {
           </div>
           <BotaoBaixarLancesPDF
             lances={lancesRelatorio}
-            leilao={leilaoLabel}
+            leilao={loteRelatorio ? `${leilaoLabel} — Lote ${loteRelatorio.lotexx}` : leilaoLabel}
             empresa={config.empresa}
             logoBase64={config.logoBase64}
           />
