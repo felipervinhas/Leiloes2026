@@ -58,11 +58,20 @@ export default function Lotes() {
       .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
   }, [racas]);
 
+  // Ordenação pelo título da coluna — feita no servidor, porque a lista é paginada
+  const [ordenacao, setOrdenacao] = useState<{ campo: string; direcao: 'asc' | 'desc' } | null>(null);
+  const ordenacaoRef = React.useRef(ordenacao);
+  ordenacaoRef.current = ordenacao;
+
   const carregar = async (b = '', pag = 1) => {
     setLoading(true);
     try {
       salvarFiltroPersistido(banco, 'lotes', { busca: b, leilaoFiltro });
-      const r = await api.get('/lotes', { params: { busca: b, idLeilao: leilaoFiltro, page: pag, pageSize: PAGE_SIZE } });
+      const ord = ordenacaoRef.current;
+      const r = await api.get('/lotes', { params: {
+        busca: b, idLeilao: leilaoFiltro, page: pag, pageSize: PAGE_SIZE,
+        ...(ord ? { ordenarPor: ord.campo, ordem: ord.direcao } : {}),
+      } });
       setDados(r.data.items);
       setTotalLotes(r.data.total);
       setPagina(pag);
@@ -170,6 +179,12 @@ export default function Lotes() {
     } catch { message.error('Erro ao duplicar lote'); }
   };
 
+  const ordenavel = (campo: string) => ({
+    sorter: true,
+    sortDirections: ['ascend', 'descend'] as ('ascend' | 'descend')[],
+    sortOrder: ordenacao?.campo === campo ? (ordenacao.direcao === 'asc' ? 'ascend' as const : 'descend' as const) : null,
+  });
+
   const colunas = [
     {
       title: '', dataIndex: 'imgLote1', width: 180, key: 'img',
@@ -184,9 +199,9 @@ export default function Lotes() {
         />
       ),
     },
-    { title: 'Lote', dataIndex: 'lotexx', ...rzLot('lotexx') },
-    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzLot('deslot') },
-    { title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, ...rzLot('nomeVendedor') },
+    { title: 'Lote', dataIndex: 'lotexx', ...rzLot('lotexx'), ...ordenavel('lotexx') },
+    { title: 'Descrição', dataIndex: 'deslot', ellipsis: true, ...rzLot('deslot'), ...ordenavel('deslot') },
+    { title: 'Vendedor', dataIndex: 'nomeVendedor', ellipsis: true, ...rzLot('nomeVendedor'), ...ordenavel('nomeVendedor') },
     ...(usaSecao ? [{
       title: 'Tipo', dataIndex: 'tipoSecao', width: 80,
       render: (v: string) => v === 'W' ? <Tag color="blue">Web</Tag> : v === 'I' ? <Tag>Interno</Tag> : '—',
@@ -355,7 +370,18 @@ export default function Lotes() {
         pagination={{
           current: pagina, pageSize: PAGE_SIZE, total: totalLotes,
           showTotal: t => `${t} registros`, simple: isMobile,
-          onChange: novaPagina => carregar(busca, novaPagina),
+        }}
+        onChange={(pag, _f, sorter, extra) => {
+          if (extra.action === 'sort') {
+            const s = Array.isArray(sorter) ? sorter[0] : sorter;
+            ordenacaoRef.current = s?.order
+              ? { campo: String(s.field), direcao: s.order === 'descend' ? 'desc' : 'asc' }
+              : null;
+            setOrdenacao(ordenacaoRef.current);
+            carregar(busca, 1);
+          } else {
+            carregar(busca, pag.current ?? 1);
+          }
         }}
         size="small" scroll={{ x: 'max-content' }} />
 

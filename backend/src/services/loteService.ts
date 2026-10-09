@@ -95,8 +95,24 @@ export async function listarLotes(idLeilao?: number, busca?: string, somenteWebN
  * a base toda); as demais telas (Lances, Ordem de Entrada, Editor de
  * Relatórios) sempre filtram por idLeilao e continuam usando listarLotes().
  */
+/** Ordenação da tela de Lotes (clique no título da coluna). Lista fechada: vira SQL direto. */
+export type OrdenacaoLotes = { campo: 'lotexx' | 'deslot' | 'nomeVendedor'; direcao: 'asc' | 'desc' };
+
+// Parte numérica do início do lote ("101a" → 101), pra lote com letra não ir pro topo
+const NUM_LOTE = `TRY_CAST(LEFT(L.LOTEXX, PATINDEX('%[^0-9]%', L.LOTEXX + 'x') - 1) AS INT)`;
+
+function orderByLotes(ord?: OrdenacaoLotes): string {
+  if (!ord) return `L.IDLEILAO, ${NUM_LOTE}, L.LOTEXX`;
+  const d = ord.direcao === 'desc' ? 'DESC' : 'ASC';
+  switch (ord.campo) {
+    case 'lotexx':       return `${NUM_LOTE} ${d}, L.LOTEXX ${d}, L.ID`;
+    case 'deslot':       return `LTRIM(L.DESLOT) ${d}, ${NUM_LOTE}, L.ID`;
+    case 'nomeVendedor': return `LTRIM(C.NOMEXX) ${d}, ${NUM_LOTE}, L.ID`;
+  }
+}
+
 export async function listarLotesPaginado(
-  idLeilao?: number, busca?: string, page = 1, pageSize = 15
+  idLeilao?: number, busca?: string, page = 1, pageSize = 15, ordenacao?: OrdenacaoLotes
 ): Promise<{ items: Lote[]; total: number }> {
   await garantirColunaQtdAnimais();
   const pool = await getPool();
@@ -121,7 +137,7 @@ export async function listarLotesPaginado(
       .input('pageSize', sql.Int, pageSize)
       .query(`
         ${SELECT_LOTE} ${where}
-        ORDER BY L.IDLEILAO, TRY_CAST(L.LOTEXX AS INT), L.LOTEXX
+        ORDER BY ${orderByLotes(ordenacao)}
         OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY
       `),
     resolveBucket(),

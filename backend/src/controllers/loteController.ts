@@ -12,7 +12,11 @@ export const listar = async (req: Request, res: Response) => {
   if (req.query.page) {
     const page = Number(req.query.page) || 1;
     const pageSize = Number(req.query.pageSize) || 15;
-    res.json(await svc.listarLotesPaginado(idLeilao, busca, page, pageSize));
+    const campo = req.query.ordenarPor as string;
+    const ordenacao = (['lotexx', 'deslot', 'nomeVendedor'] as const).find(c => c === campo)
+      ? { campo: campo as svc.OrdenacaoLotes['campo'], direcao: (req.query.ordem === 'desc' ? 'desc' : 'asc') as 'asc' | 'desc' }
+      : undefined;
+    res.json(await svc.listarLotesPaginado(idLeilao, busca, page, pageSize, ordenacao));
   } else {
     // ordemEntrada=1: na Macedo, a Ordem de Entrada lista só os lotes Web não vendidos, como no Delphi
     const somenteWeb = req.query.ordemEntrada === '1' && usaSecaoInternaWeb();
