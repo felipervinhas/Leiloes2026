@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Layout, Menu, Button, Result, Spin, Typography, Space } from 'antd';
 import {
   DashboardOutlined, UploadOutlined, UnorderedListOutlined, BankOutlined, LogoutOutlined,
-  WarningOutlined, SwapOutlined, BarChartOutlined,
+  WarningOutlined, SwapOutlined, BarChartOutlined, SettingOutlined,
 } from '@ant-design/icons';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -21,6 +21,7 @@ const MENU = [
   { key: 'repasses',    icon: <SwapOutlined />,          label: 'Repasses' },
   { key: 'recebimentos', icon: <BarChartOutlined />,     label: 'Recebimentos' },
   { key: 'contas',      icon: <BankOutlined />,          label: 'Contas bancárias' },
+  { key: 'configuracoes', icon: <SettingOutlined />,     label: 'Configurações' },
 ];
 
 type Status = { ativa: boolean; plano: string | null; acesso: boolean };

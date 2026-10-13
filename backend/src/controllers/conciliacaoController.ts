@@ -6,6 +6,7 @@ import * as imp from '../services/conciliacao/importacaoService';
 import * as motor from '../services/conciliacao/motorService';
 import * as manual from '../services/conciliacao/manualService';
 import * as rel from '../services/conciliacao/relatorioService';
+import * as cfg from '../services/conciliacao/configService';
 
 const usuarioDe = (req: Request) => (req as any).usuario;
 
@@ -121,3 +122,33 @@ const leilaoObrigatorio = (req: Request) => {
 export const recebimentos = tratar(async (req, res) => { res.json(await rel.recebimentosPorLeilao(leilaoObrigatorio(req))); });
 export const repasses = tratar(async (req, res) => { res.json(await rel.repassesPorLeilao(leilaoObrigatorio(req))); });
 export const pendencias = tratar(async (_req, res) => { res.json(await rel.pendencias()); });
+
+// Configurações: qualquer usuário com acesso consulta; só administrador altera
+const soAdm = (req: Request) => {
+  if (usuarioDe(req)?.adm !== 'S') throw new ConciliacaoError(403, 'Só administrador altera as configurações da conciliação');
+};
+export const listarCondicoes = tratar(async (_req, res) => { res.json(await cfg.listarCondicoes()); });
+export const salvarGruposCondicao = tratar(async (req, res) => {
+  soAdm(req);
+  const id = Number(req.params.id);
+  const g = req.body?.grupos;
+  await cfg.salvarGruposCondicao(id, g === null || g === undefined || g === '' ? null : Number(g));
+  await registrarLog(usuarioDe(req), 'Alterar', 'Conciliação - Grupos da condição', id);
+  res.json({ ok: true });
+});
+export const listarRegras = tratar(async (_req, res) => { res.json(await cfg.listarRegrasNaoVenda()); });
+export const excluirRegra = tratar(async (req, res) => {
+  soAdm(req);
+  const id = Number(req.params.id);
+  await cfg.excluirRegraNaoVenda(id);
+  await registrarLog(usuarioDe(req), 'Deletar', 'Conciliação - Regra não é venda', id);
+  res.json({ ok: true });
+});
+export const listarPagadores = tratar(async (_req, res) => { res.json(await cfg.listarPagadores()); });
+export const excluirPagador = tratar(async (req, res) => {
+  soAdm(req);
+  const id = Number(req.params.id);
+  await cfg.excluirPagador(id);
+  await registrarLog(usuarioDe(req), 'Deletar', 'Conciliação - Pagador conhecido', id);
+  res.json({ ok: true });
+});

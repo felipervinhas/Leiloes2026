@@ -99,4 +99,12 @@ test('Financeiro: importa extrato de conta nova e lista os lançamentos', async 
   await expect(page.getByText(/Saldo a repassar = recebido/)).toBeVisible();
   await page.getByRole('menuitem', { name: /Recebimentos/ }).click();
   await expect(page.getByText('Escolha o leilão')).toBeVisible();
+
+  // configurações: a prévia mostra quais parcelas passam pela leiloeira em cada condição
+  await page.getByRole('menuitem', { name: /Configurações/ }).click();
+  await expect(page.getByRole('tab', { name: 'Parcelas por condição' })).toBeVisible();
+  // uma linha da tabela (o texto de ajuda do topo também cita "parcelas até a 04")
+  await expect(page.locator('.ant-table-row').filter({ hasText: /parcelas até a \d{2}|Só a 1ª parcela/ }).first()).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('tab', { name: 'Não é venda' }).click();
+  await page.getByRole('tab', { name: 'Pagadores conhecidos' }).click();
 });

@@ -36,5 +36,11 @@ router.post('/lancamentos/:id/nao-venda', conc.naoVenda);
 router.get('/pendencias', conc.pendencias);
 router.get('/repasses', conc.repasses);
 router.get('/relatorios/recebimentos', conc.recebimentos);
+router.get('/config/condicoes', conc.listarCondicoes);
+router.put('/config/condicoes/:id', conc.salvarGruposCondicao);
+router.get('/config/regras', conc.listarRegras);
+router.delete('/config/regras/:id', conc.excluirRegra);
+router.get('/config/pagadores', conc.listarPagadores);
+router.delete('/config/pagadores/:id', conc.excluirPagador);
 
 export default router;
