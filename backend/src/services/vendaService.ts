@@ -1,4 +1,5 @@
 import { getPool, sql } from '../config/database';
+import { getBanco } from '../config/bancoContext';
 import { garantirColunaAvalistaObrigatorio } from './leilaoService';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -424,9 +425,13 @@ export async function buscarLoteMovimento(idMov: number) {
 
 // ─── compradores ─────────────────────────────────────────────────────────────
 
-let colunaPisteiroMovComp = false;
+// Por banco: com uma marcação só para todos, a coluna era criada no primeiro banco
+// que usasse a tela (ex.: Macedo) e os outros (LoteRural/AgendaRemates) ficavam sem
+// ela — e todo "Adicionar comprador" falhava no INSERT com ID_PISTEIRO.
+const colunaPisteiroPorBanco = new Set<string>();
 export async function garantirColunaMovCompPisteiro() {
-  if (colunaPisteiroMovComp) return;
+  const banco = getBanco();
+  if (colunaPisteiroPorBanco.has(banco)) return;
   const pool = await getPool();
   await pool.request().query(`
     IF NOT EXISTS (
@@ -435,7 +440,7 @@ export async function garantirColunaMovCompPisteiro() {
     )
     ALTER TABLE MOVIMENTO_COMPRADOR ADD ID_PISTEIRO INT NULL
   `);
-  colunaPisteiroMovComp = true;
+  colunaPisteiroPorBanco.add(banco);
 }
 
 export async function listarCompradores(idMov: number) {
