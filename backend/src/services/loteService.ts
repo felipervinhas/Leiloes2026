@@ -1,7 +1,7 @@
 import { getPool, sql } from '../config/database';
 import { getBanco } from '../config/bancoContext';
 import { Lote } from '../models/lote';
-import { resolveBucket, s3PublicUrl, s3Keys } from './s3Service';
+import { resolveBucket, s3PublicUrl, s3Keys, deletarS3 } from './s3Service';
 
 const colunaQtdAnimaisCriadaPorBanco = new Set<string>();
 async function garantirColunaQtdAnimais() {
@@ -10,7 +10,11 @@ async function garantirColunaQtdAnimais() {
   const pool = await getPool();
   await pool.request().query(`
     IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Lotes' AND COLUMN_NAME='QTDANIMAIS')
-      ALTER TABLE Lotes ADD QTDANIMAIS INT NULL
+      ALTER TABLE Lotes ADD QTDANIMAIS INT NULL;
+    -- Rascunho: lote criado ao clicar em "Novo Lote", para já ter ID e poder receber fotos.
+    -- Fica preenchido até o primeiro Salvar; rascunho abandonado é apagado depois de 1 dia.
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Lotes' AND COLUMN_NAME='RASCUNHO_EM')
+      ALTER TABLE Lotes ADD RASCUNHO_EM DATETIME NULL;
   `);
   colunaQtdAnimaisCriadaPorBanco.add(banco);
 }
@@ -71,11 +75,19 @@ const SELECT_LOTE = `
     LEFT JOIN CondicaoPagtos LEICP ON LEICP.ID = LEI.CONDIC`;
 
 /** somenteWebNaoVendidos: filtro da Ordem de Entrada do Delphi (TIPO_SECAO = 'W' e não vendido) — só aplicado pelo controller na Macedo. */
+/** 0 é um valor válido (ex.: lance máximo zero) — `v || null` o transformava em vazio. */
+function numeroOuNulo(v: any): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function listarLotes(idLeilao?: number, busca?: string, somenteWebNaoVendidos = false): Promise<Lote[]> {
   await garantirColunaQtdAnimais();
   const pool = await getPool();
   const req = pool.request();
   const filtros: string[] = [];
+  filtros.push('L.RASCUNHO_EM IS NULL');
   if (somenteWebNaoVendidos) filtros.push(`L.TIPO_SECAO = 'W' AND ISNULL(L.VENDIDO, 'N') <> 'S'`);
   if (idLeilao) { req.input('idLeilao', sql.Int, idLeilao); filtros.push(`L.IDLEILAO = @idLeilao`); }
   if (busca) { req.input('busca', sql.VarChar, `%${busca}%`); filtros.push(`(L.DESLOT LIKE @busca OR L.LOTEXX LIKE @busca OR L.RPXXX LIKE @busca OR L.SBBXXX LIKE @busca OR C.NOMEXX LIKE @busca)`); }
@@ -116,7 +128,7 @@ export async function listarLotesPaginado(
 ): Promise<{ items: Lote[]; total: number }> {
   await garantirColunaQtdAnimais();
   const pool = await getPool();
-  const filtros: string[] = [];
+  const filtros: string[] = ['L.RASCUNHO_EM IS NULL'];
   if (idLeilao) filtros.push(`L.IDLEILAO = @idLeilao`);
   if (busca)    filtros.push(`(L.DESLOT LIKE @busca OR L.LOTEXX LIKE @busca OR L.RPXXX LIKE @busca OR L.SBBXXX LIKE @busca OR C.NOMEXX LIKE @busca)`);
   const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
@@ -172,7 +184,7 @@ export async function criarLote(d: Lote): Promise<number> {
     .input('catego', sql.VarChar, d.catego).input('vlrins', sql.Float, d.vlrins||null)
     .input('pelage', sql.VarChar, d.pelage||null).input('datnas', sql.Date, d.datnas||null)
     .input('obslot', sql.VarChar, d.obslot||null).input('filiacao', sql.VarChar, d.filiacao||null)
-    .input('lanmax', sql.Float, d.lanmax||null).input('urlvideo', sql.VarChar, d.urlvideo||null)
+    .input('lanmax', sql.Float, numeroOuNulo(d.lanmax)).input('urlvideo', sql.VarChar, d.urlvideo||null)
     .input('comentario', sql.VarChar, d.comentario||null).input('multiplo', sql.Int, d.multiplo||null)
     .input('vendido', sql.Char, d.vendido||'N').input('publica', sql.Char, d.publica||'N')
     .input('condic', sql.Int, d.condic||null).input('qtdAnimais', sql.Int, d.qtdAnimais||null)
@@ -182,6 +194,51 @@ export async function criarLote(d: Lote): Promise<number> {
       OUTPUT INSERTED.ID
       VALUES ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@racaxx,@idleilao,@codven,@ordem,@catego,@vlrins,@pelage,@datnas,@obslot,@filiacao,@lanmax,@urlvideo,@comentario,@multiplo,@vendido,@publica,@condic,@qtdAnimais,@comcom,@comven,@tipoSecao)`);
   return r.recordset[0].ID;
+}
+
+/** Fotos do lote no S3 (lote_1..4_img_<id>.jpg). */
+async function apagarFotosLote(id: number) {
+  for (const n of [1, 2, 3, 4] as const) {
+    try { await deletarS3(s3Keys.loteImagem(id, n)); } catch { /* foto que não existe */ }
+  }
+}
+
+/**
+ * "Novo Lote" já cria o registro como rascunho (sem leilão, número em branco) para ele
+ * ter ID e poder receber fotos antes do primeiro Salvar. Aproveita para apagar
+ * rascunhos abandonados há mais de 1 dia (janela fechada sem salvar nem cancelar).
+ */
+export async function criarRascunhoLote(tipoSecao?: string | null): Promise<number> {
+  await garantirColunaQtdAnimais();
+  const pool = await getPool();
+  const velhos = (await pool.request().query(
+    `SELECT ID FROM Lotes WHERE RASCUNHO_EM IS NOT NULL AND RASCUNHO_EM < DATEADD(DAY, -1, GETDATE())`)).recordset;
+  for (const v of velhos) await descartarRascunhoLote(v.ID);
+  const r = await pool.request().input('tipoSecao', sql.VarChar, tipoSecao || null).query(`
+    INSERT INTO Lotes (ID, LOTEXX, CATEGO, VENDIDO, PUBLICA, LANMAX, TIPO_SECAO, RASCUNHO_EM)
+    OUTPUT INSERTED.ID
+    VALUES ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), '', 'M', 'N', 'N', 0, @tipoSecao, GETDATE())`);
+  return r.recordset[0].ID;
+}
+
+/** Cancelar o "Novo Lote": apaga o rascunho e as fotos enviadas para ele. Lote já salvo nunca é apagado aqui. */
+export async function descartarRascunhoLote(id: number): Promise<boolean> {
+  await garantirColunaQtdAnimais();
+  const pool = await getPool();
+  const r = await pool.request().input('id', sql.Int, id).query(`
+    DECLARE @apagados TABLE (ID INT);
+    DELETE FROM Lotes OUTPUT DELETED.ID INTO @apagados WHERE ID = @id AND RASCUNHO_EM IS NOT NULL;
+    SELECT COUNT(*) AS N FROM @apagados;`);
+  const apagou = (r.recordset[0]?.N ?? 0) > 0;
+  if (apagou) await apagarFotosLote(id);
+  return apagou;
+}
+
+export async function ehRascunhoLote(id: number): Promise<boolean> {
+  await garantirColunaQtdAnimais();
+  const pool = await getPool();
+  const r = await pool.request().input('id', sql.Int, id).query(`SELECT RASCUNHO_EM FROM Lotes WHERE ID = @id`);
+  return r.recordset[0]?.RASCUNHO_EM != null;
 }
 
 export async function atualizarLote(id: number, d: Lote): Promise<void> {
@@ -196,7 +253,7 @@ export async function atualizarLote(id: number, d: Lote): Promise<void> {
     .input('ordem', sql.VarChar, d.ordem||null).input('catego', sql.VarChar, d.catego)
     .input('vlrins', sql.Float, d.vlrins||null).input('pelage', sql.VarChar, d.pelage||null)
     .input('datnas', sql.Date, d.datnas||null).input('obslot', sql.VarChar, d.obslot||null)
-    .input('filiacao', sql.VarChar, d.filiacao||null).input('lanmax', sql.Float, d.lanmax||null)
+    .input('filiacao', sql.VarChar, d.filiacao||null).input('lanmax', sql.Float, numeroOuNulo(d.lanmax))
     .input('urlvideo', sql.VarChar, d.urlvideo||null).input('comentario', sql.VarChar, d.comentario||null)
     .input('multiplo', sql.Int, d.multiplo||null).input('vendido', sql.Char, d.vendido||'N')
     .input('publica', sql.Char, d.publica||'N').input('condic', sql.Int, d.condic||null)
@@ -206,7 +263,7 @@ export async function atualizarLote(id: number, d: Lote): Promise<void> {
       TATXXX=@tatxxx,RACAXX=@racaxx,IDLEILAO=@idleilao,CODVEN=@codven,ORDEM=@ordem,CATEGO=@catego,
       VLRINS=@vlrins,PELAGE=@pelage,DATNAS=@datnas,OBSLOT=@obslot,FILIACAO=@filiacao,LANMAX=@lanmax,
       URLVideo=@urlvideo,Comentario=@comentario,MULTIPLO=@multiplo,VENDIDO=@vendido,PUBLICA=@publica,
-      CONDIC=@condic,QTDANIMAIS=@qtdAnimais,COMCOM=@comcom,COMVEN=@comven WHERE ID=@id`);
+      CONDIC=@condic,QTDANIMAIS=@qtdAnimais,COMCOM=@comcom,COMVEN=@comven,RASCUNHO_EM=NULL WHERE ID=@id`);
 }
 
 /**
@@ -270,7 +327,7 @@ export async function duplicarLote(id: number, tipoSecao?: string | null): Promi
     .input('codven',   sql.Int,     o.CODVEN   || null)
     .input('ordem',    sql.VarChar, o.ORDEM    || null)
     .input('vlrins',   sql.Float,   o.VLRINS   || null)
-    .input('lanmax',   sql.Float,   o.LANMAX   || null)
+    .input('lanmax',   sql.Float,   numeroOuNulo(o.LANMAX))
     .input('obslot',   sql.VarChar, o.OBSLOT   || null)
     .input('pelage',   sql.VarChar, o.PELAGE   || null)
     .input('urlvideo', sql.VarChar, o.URLVideo || null)

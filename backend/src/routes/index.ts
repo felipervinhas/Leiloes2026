@@ -157,6 +157,8 @@ bancoRouter.get('/lotes', lote.listar);
 bancoRouter.post('/lotes/salvar-ordens', lote.salvarOrdens);
 bancoRouter.get('/lotes/:id', lote.buscar);
 bancoRouter.post('/lotes', lote.criar);
+bancoRouter.post('/lotes/rascunho', lote.criarRascunho);
+bancoRouter.delete('/lotes/:id/rascunho', lote.descartarRascunho);
 bancoRouter.put('/lotes/:id', lote.atualizar);
 bancoRouter.patch('/lotes/:id/status', lote.atualizarStatus);
 bancoRouter.delete('/lotes/:id', lote.deletar);
