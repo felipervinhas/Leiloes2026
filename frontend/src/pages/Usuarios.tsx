@@ -21,6 +21,8 @@ const CONTROLES_GRUPOS = [
   { label: 'Clientes',  itens: ['Clientes', 'Notificações'] },
   { label: 'Cadastros', itens: ['Cidades', 'Raças', 'Condições de Pagamento', 'Classificações'] },
   { label: 'Sistema',   itens: ['Perfis', 'Usuários', 'Editor de Relatórios', 'Configurações'] },
+  // Área Financeiro (/:banco/financeiro): só abre com este controle marcado ou para administrador
+  { label: 'Financeiro', itens: ['Conciliação Bancária'] },
 ];
 
 const TODOS_CONTROLES = CONTROLES_GRUPOS.flatMap(g => g.itens);
