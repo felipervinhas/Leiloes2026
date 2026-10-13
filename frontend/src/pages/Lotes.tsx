@@ -11,6 +11,7 @@ import dayjs from 'dayjs';
 import { dataUTC } from '../utils/data';
 import api from '../services/api';
 import ImageUpload from '../components/ImageUpload';
+import QuintaGeracaoUpload from '../components/QuintaGeracaoUpload';
 import { labelRP, labelSBB } from '../utils/lote';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { useBanco } from '../context/BancoContext';
@@ -154,6 +155,11 @@ export default function Lotes() {
       if (editando) await api.put(`/lotes/${editando.id}`, payload);
       else await api.post('/lotes', payload);
       message.success('Salvo com sucesso');
+      // a quinta geração é guardada pelo SBB: trocar o SBB deixa o PDF no nome antigo
+      const sbbAntes = String(editando?.sbbxxx ?? '').trim();
+      if (editando && sbbAntes && sbbAntes !== String(values.sbbxxx ?? '').trim()) {
+        message.warning(`O SBB mudou. Se havia quinta geração, ela continua em ${sbbAntes}.pdf — envie de novo na aba Fotos do Animal.`, 8);
+      }
       setModalOpen(false);
       carregar(busca, pagina);
     } catch (err: any) { message.error(err?.response?.data?.error || 'Erro ao salvar'); }
@@ -323,6 +329,8 @@ export default function Lotes() {
               </Col>
             ))}
           </Row>
+          <Divider plain>Quinta geração (PDF)</Divider>
+          <QuintaGeracaoUpload idLote={editando.id} />
         </div>
       ),
     }] : []),
@@ -361,7 +369,7 @@ export default function Lotes() {
             notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'} />
         </Col>
         <Col xs={24} sm={{ flex: 'auto' }}>
-          <Input.Search placeholder="Buscar lote..." value={busca} onChange={e => setBusca(e.target.value)}
+          <Input.Search placeholder="Buscar por descrição, lote, RP/Tat., SBB ou vendedor..." value={busca} onChange={e => setBusca(e.target.value)}
             onSearch={() => carregar(busca)} enterButton={<SearchOutlined />} allowClear onClear={() => carregar('')} />
         </Col>
       </Row>

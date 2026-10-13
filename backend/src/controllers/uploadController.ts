@@ -32,7 +32,54 @@ export async function uploadLoteImagem(req: Request, res: Response) {
   if (![1, 2, 3, 4].includes(num)) return res.status(400).json({ error: 'Número de imagem inválido (1-4)' });
   const key = s3Keys.loteImagem(id, num);
   const url = await uploadS3(key, req.file.buffer, req.file.mimetype);
+  await marcarImagemLote(id, num, 'S');
   res.json({ url, key });
+}
+
+/**
+ * LOTES.IMAGEM1..4 = 'S'/'N', como o Delphi faz ao enviar/remover a foto: a API do site
+ * e do app (APILeiloesNode) usa essas marcações para mostrar as fotos dos anúncios.
+ */
+async function marcarImagemLote(id: number, num: 1 | 2 | 3 | 4, valor: 'S' | 'N') {
+  if (![1, 2, 3, 4].includes(num)) return; // vira nome de coluna: só 1 a 4
+  const { getPool, sql } = await import('../config/database');
+  const pool = await getPool();
+  await pool.request().input('id', sql.Int, id).input('v', sql.Char, valor)
+    .query(`UPDATE LOTES SET IMAGEM${num} = @v WHERE ID = @id`);
+}
+
+/** SBB do lote (sem espaços) — a 5ª geração é guardada pelo SBB, não pelo ID do lote. */
+async function sbbDoLote(id: number): Promise<string | null> {
+  const { getPool, sql } = await import('../config/database');
+  const pool = await getPool();
+  const r = await pool.request().input('id', sql.Int, id).query(`SELECT SBBXXX FROM LOTES WHERE ID = @id`);
+  const sbb = String(r.recordset[0]?.SBBXXX ?? '').trim();
+  return sbb || null;
+}
+
+export async function getQuintaGeracao(req: Request, res: Response) {
+  const sbb = await sbbDoLote(Number(req.params.id));
+  if (!sbb) return res.json({ sbb: null, existe: false, url: null });
+  const key = s3Keys.quintaGeracao(sbb);
+  const existe = await existeS3(key);
+  const bucket = await resolveBucket();
+  res.json({ sbb, existe, url: existe ? s3PublicUrl(bucket, key) : null });
+}
+
+export async function uploadQuintaGeracao(req: Request, res: Response) {
+  if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+  if (req.file.mimetype !== 'application/pdf') return res.status(400).json({ error: 'A quinta geração precisa ser um arquivo PDF' });
+  const sbb = await sbbDoLote(Number(req.params.id));
+  if (!sbb) return res.status(400).json({ error: 'Preencha e salve o SBB do lote antes de enviar a quinta geração' });
+  const url = await uploadS3(s3Keys.quintaGeracao(sbb), req.file.buffer, 'application/pdf');
+  res.json({ sbb, existe: true, url });
+}
+
+export async function deletarQuintaGeracao(req: Request, res: Response) {
+  const sbb = await sbbDoLote(Number(req.params.id));
+  if (!sbb) return res.status(400).json({ error: 'Lote sem SBB' });
+  await deletarS3(s3Keys.quintaGeracao(sbb));
+  res.json({ ok: true });
 }
 
 const TIPOS_DOCUMENTO_CLIENTE = ['documento', 'residencia', 'renda', 'analise'] as const;
@@ -70,6 +117,7 @@ export async function deletarLoteImagem(req: Request, res: Response) {
   const id = Number(req.params.id);
   const num = Number(req.params.num) as 1 | 2 | 3 | 4;
   await deletarS3(s3Keys.loteImagem(id, num));
+  await marcarImagemLote(id, num, 'N');
   res.json({ ok: true });
 }
 

@@ -78,7 +78,7 @@ export async function listarLotes(idLeilao?: number, busca?: string, somenteWebN
   const filtros: string[] = [];
   if (somenteWebNaoVendidos) filtros.push(`L.TIPO_SECAO = 'W' AND ISNULL(L.VENDIDO, 'N') <> 'S'`);
   if (idLeilao) { req.input('idLeilao', sql.Int, idLeilao); filtros.push(`L.IDLEILAO = @idLeilao`); }
-  if (busca) { req.input('busca', sql.VarChar, `%${busca}%`); filtros.push(`(L.DESLOT LIKE @busca OR L.LOTEXX LIKE @busca)`); }
+  if (busca) { req.input('busca', sql.VarChar, `%${busca}%`); filtros.push(`(L.DESLOT LIKE @busca OR L.LOTEXX LIKE @busca OR L.RPXXX LIKE @busca OR L.SBBXXX LIKE @busca OR C.NOMEXX LIKE @busca)`); }
   const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
   const [r, bucket] = await Promise.all([
     req.query(`${SELECT_LOTE} ${where} ORDER BY L.IDLEILAO, TRY_CAST(L.LOTEXX AS INT), L.LOTEXX`),
@@ -118,7 +118,7 @@ export async function listarLotesPaginado(
   const pool = await getPool();
   const filtros: string[] = [];
   if (idLeilao) filtros.push(`L.IDLEILAO = @idLeilao`);
-  if (busca)    filtros.push(`(L.DESLOT LIKE @busca OR L.LOTEXX LIKE @busca)`);
+  if (busca)    filtros.push(`(L.DESLOT LIKE @busca OR L.LOTEXX LIKE @busca OR L.RPXXX LIKE @busca OR L.SBBXXX LIKE @busca OR C.NOMEXX LIKE @busca)`);
   const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
 
   const bindFiltros = (r: sql.Request) => {
@@ -127,7 +127,7 @@ export async function listarLotesPaginado(
     return r;
   };
 
-  const totalResult = await bindFiltros(pool.request()).query(`SELECT COUNT(*) as total FROM Lotes L ${where}`);
+  const totalResult = await bindFiltros(pool.request()).query(`SELECT COUNT(*) as total FROM Lotes L LEFT JOIN Clientes C ON C.ID = L.CODVEN ${where}`);
   const total = totalResult.recordset[0].total;
 
   const offset = Math.max(0, (page - 1) * pageSize);

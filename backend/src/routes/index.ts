@@ -164,6 +164,9 @@ bancoRouter.post('/lotes/:id/duplicar', lote.duplicar);
 bancoRouter.get('/lotes/:id/imagens', upload.getImagensLote);
 bancoRouter.post('/lotes/:id/imagens/:num', memStorage.single('file'), reafirmarBanco, upload.uploadLoteImagem);
 bancoRouter.delete('/lotes/:id/imagens/:num', upload.deletarLoteImagem);
+bancoRouter.get('/lotes/:id/quinta-geracao', upload.getQuintaGeracao);
+bancoRouter.post('/lotes/:id/quinta-geracao', memStorage.single('file'), reafirmarBanco, upload.uploadQuintaGeracao);
+bancoRouter.delete('/lotes/:id/quinta-geracao', upload.deletarQuintaGeracao);
 
 bancoRouter.get('/consulta-vendas', consultaVendas.consultar);
 bancoRouter.get('/consulta-vendas/racas', consultaVendas.racasDasVendas);
