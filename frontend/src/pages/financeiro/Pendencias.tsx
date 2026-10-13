@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Typography, Row, Col, Card, Statistic, Alert, Button, Space, Spin, message } from 'antd';
-import { FileExcelOutlined } from '@ant-design/icons';
+import { FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
+import { baixarRelatorioFinanceiro } from '../../relatorios/RelatorioFinanceiro';
+import { useConfig } from '../../context/ConfigContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useBanco } from '../../context/BancoContext';
@@ -19,6 +21,8 @@ export default function Pendencias() {
   const { banco } = useBanco();
   const navigate = useNavigate();
   const [dados, setDados] = useState<any | null>(null);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
+  const config = useConfig();
 
   useEffect(() => {
     api.get('/conciliacao/pendencias').then(r => setDados(r.data))
@@ -32,6 +36,32 @@ export default function Pendencias() {
   const sugeridos = soma((x: any) => x.situacao === 'SUGERIDO', 'qtd');
   const parciais = soma((x: any) => x.situacao === 'PARCIAL', 'qtd');
   const totalCobrar = dados.compradores.reduce((a: number, c: any) => a + c.total, 0);
+
+  // lista de cobrança: uma linha por comprador (com o total) e os itens dele logo abaixo
+  const imprimir = async () => {
+    setGerandoPdf(true);
+    try {
+      await baixarRelatorioFinanceiro({
+        titulo: 'Vencido e não recebido', empresa: config.empresa, logoBase64: config.logoBase64,
+        subtitulo: `Vencimentos de ${fmtDataUTC(dados.periodo.inicio)} a ${fmtDataUTC(dados.periodo.fim)}, período com extrato importado`,
+        resumo: [
+          { label: 'Compradores', valor: String(dados.compradores.length) },
+          { label: 'Total em aberto', valor: fmtValor(totalCobrar) },
+        ],
+        colunas: [
+          { titulo: 'Comprador / item', flex: 2.6 }, { titulo: 'Telefone / leilão', flex: 2.2 }, { titulo: 'Lote', flex: 0.5 },
+          { titulo: 'Vencimento', flex: 0.8 }, { titulo: 'Em aberto', direita: true },
+        ],
+        linhas: dados.compradores.flatMap((c: any) => [
+          { destaque: true, celulas: [c.nome, c.telefone || '', '', `desde ${fmtDataUTC(c.maisAntigo)}`, fmtValor(c.total)] },
+          ...c.itens.map((i: any) => ({ recuo: true, celulas: [i.descricao, i.leilao || '', i.lote || '', fmtDataUTC(i.vencimento), fmtValor(i.emAberto)] })),
+        ]),
+        total: ['Total', '', '', '', fmtValor(totalCobrar)],
+        rodapeNota: 'Parcelas iniciais e comissões de compra sem pagamento conciliado',
+      }, 'cobranca');
+    } catch { message.error('Erro ao gerar o PDF'); }
+    finally { setGerandoPdf(false); }
+  };
 
   const exportar = () => exportarPlanilha(dados.compradores.flatMap((c: any) => c.itens.map((i: any) => ({
     Comprador: c.nome, Telefone: c.telefone, Leilão: i.leilao, Lote: i.lote, Item: i.descricao,
@@ -52,7 +82,10 @@ export default function Pendencias() {
 
       <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
         <Title level={5} style={{ margin: 0 }}>Vencido e não recebido</Title>
-        <Button icon={<FileExcelOutlined />} disabled={!dados.compradores.length} onClick={exportar}>Excel para cobrança</Button>
+        <Space>
+          <Button icon={<FilePdfOutlined />} disabled={!dados.compradores.length} loading={gerandoPdf} onClick={imprimir}>PDF</Button>
+          <Button icon={<FileExcelOutlined />} disabled={!dados.compradores.length} onClick={exportar}>Excel para cobrança</Button>
+        </Space>
       </Space>
       {!dados.periodo ? (
         <Alert type="info" showIcon message="Importe um extrato para ver o que venceu e não entrou." />

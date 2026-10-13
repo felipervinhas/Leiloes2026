@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Table, Typography, Space, Button, Empty, Alert, message } from 'antd';
-import { FileExcelOutlined } from '@ant-design/icons';
+import { FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
+import { baixarRelatorioFinanceiro } from '../../relatorios/RelatorioFinanceiro';
+import { useConfig } from '../../context/ConfigContext';
 import api from '../../services/api';
 import { fmtValor } from './Lancamentos';
 import { exportarPlanilha, SeletorLeilao } from './comum';
@@ -17,6 +19,8 @@ export default function Repasses() {
   const [nomeLeilao, setNomeLeilao] = useState('');
   const [dados, setDados] = useState<any | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
+  const config = useConfig();
 
   const carregar = async (id?: number) => {
     setDados(null);
@@ -25,6 +29,29 @@ export default function Repasses() {
     try { setDados((await api.get('/conciliacao/repasses', { params: { idLeilao: id } })).data); }
     catch (e: any) { message.error(e.response?.data?.error || 'Erro ao carregar'); }
     finally { setCarregando(false); }
+  };
+
+  const imprimir = async () => {
+    setGerandoPdf(true);
+    try {
+      const t = dados.totais;
+      await baixarRelatorioFinanceiro({
+        titulo: 'Repasses aos vendedores', subtitulo: nomeLeilao, empresa: config.empresa, logoBase64: config.logoBase64,
+        resumo: [
+          { label: 'Recebido', valor: fmtValor(t.recebido) }, { label: 'Comissão de venda', valor: fmtValor(t.comissao) },
+          { label: 'Repassado', valor: fmtValor(t.repassado) }, { label: 'Saldo a repassar', valor: fmtValor(t.saldo) },
+        ],
+        colunas: [
+          { titulo: 'Vendedor', flex: 2.4 }, { titulo: 'Previsto', direita: true }, { titulo: 'Recebido', direita: true },
+          { titulo: 'Comissão', direita: true }, { titulo: 'Despesas', direita: true }, { titulo: 'Créditos', direita: true },
+          { titulo: 'Repassado', direita: true }, { titulo: 'Conferido', direita: true }, { titulo: 'Saldo a repassar', direita: true },
+        ],
+        linhas: dados.linhas.map((l: any) => ({ celulas: [l.vendedor, ...[l.previsto, l.recebido, l.comissao, l.despesas, l.creditos, l.repassado, l.conferido, l.saldo].map(fmtValor)] })),
+        total: ['Total', ...[t.previsto, t.recebido, t.comissao, t.despesas, t.creditos, t.repassado, t.conferido, t.saldo].map(fmtValor)],
+        rodapeNota: 'Saldo = recebido + créditos − comissão de venda − despesas − repassado. Recebido = conciliado no extrato',
+      }, `repasses-${nomeLeilao.replace(/[^\w-]+/g, '_').slice(0, 50)}`);
+    } catch { message.error('Erro ao gerar o PDF'); }
+    finally { setGerandoPdf(false); }
   };
 
   const exportar = () => exportarPlanilha(dados.linhas.map((l: any) => ({
@@ -39,6 +66,7 @@ export default function Repasses() {
       <Title level={4}>Repasses aos vendedores</Title>
       <Space style={{ marginBottom: 12 }}>
         <SeletorLeilao value={idLeilao} onChange={(id, nome) => { setIdLeilao(id); setNomeLeilao(nome || ''); carregar(id); }} />
+        <Button icon={<FilePdfOutlined />} disabled={!dados?.linhas?.length} loading={gerandoPdf} onClick={imprimir}>PDF</Button>
         <Button icon={<FileExcelOutlined />} disabled={!dados?.linhas?.length} onClick={exportar}>Excel</Button>
       </Space>
       <Alert type="info" showIcon style={{ marginBottom: 12 }}
