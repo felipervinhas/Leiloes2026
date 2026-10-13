@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Table, Select, DatePicker, Input, Space, Tag, Typography, Row, Col, Card, Statistic, message } from 'antd';
+import { Table, Select, DatePicker, Input, Space, Tag, Typography, Row, Col, Card, Statistic, message, Button } from 'antd';
+import { ThunderboltOutlined } from '@ant-design/icons';
+import ConciliarDrawer from './ConciliarDrawer';
 import dayjs, { Dayjs } from 'dayjs';
 import api from '../../services/api';
 import { fmtDataUTC } from '../../utils/data';
@@ -35,6 +37,8 @@ export default function Lancamentos() {
   const [busca, setBusca] = useState('');
   const [dados, setDados] = useState<any[]>([]);
   const [carregando, setCarregando] = useState(false);
+  const [aberto, setAberto] = useState<number | null>(null);
+  const [rodando, setRodando] = useState(false);
 
   useEffect(() => {
     api.get('/conciliacao/contas').then(r =>
@@ -59,13 +63,29 @@ export default function Lancamentos() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { carregar(); }, [idConta, periodo, sentido, situacao]);
 
+  const rodarAutomatico = async () => {
+    setRodando(true);
+    try {
+      const r = await api.post('/conciliacao/conciliar-automatico');
+      message.success(`${r.data.automaticos} conciliados sozinhos, ${r.data.sugeridos} com sugestão, ${r.data.naoVenda} não são venda`);
+      carregar();
+    } catch (e: any) { message.error(e.response?.data?.error || 'Erro no casamento automático'); }
+    finally { setRodando(false); }
+  };
+
   const creditos = dados.filter(d => d.sentido === 'C');
   const debitos = dados.filter(d => d.sentido === 'D');
   const pendentes = dados.filter(d => d.situacao === 'PENDENTE').length;
 
   return (
     <>
-      <Title level={4}>Lançamentos</Title>
+      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+        <Title level={4}>Lançamentos</Title>
+        <Button icon={<ThunderboltOutlined />} loading={rodando} onClick={rodarAutomatico}
+          title="Tenta casar de novo os pendentes — útil depois de lançar vendas ou repasses">
+          Rodar casamento automático
+        </Button>
+      </Space>
       <Space wrap style={{ marginBottom: 12 }}>
         <Select allowClear placeholder="Todas as contas" style={{ width: 220 }} options={contas} value={idConta} onChange={setIdConta} />
         <RangePicker format="DD/MM/YYYY" value={periodo as any} onChange={v => setPeriodo(v as any)} />
@@ -85,6 +105,7 @@ export default function Lancamentos() {
       </Row>
 
       <Table rowKey="id" size="small" loading={carregando} dataSource={dados}
+        onRow={r => ({ onClick: () => setAberto(r.id), style: { cursor: 'pointer' } })}
         pagination={{ pageSize: 50, showTotal: t => `${t} lançamentos` }}
         columns={[
           { title: 'Data', dataIndex: 'data', width: 100, render: (v: string) => fmtDataUTC(v),
@@ -103,6 +124,7 @@ export default function Lancamentos() {
             render: (v: string) => <Tag color={SITUACOES[v]?.cor}>{SITUACOES[v]?.label || v}</Tag> },
           { title: 'Conta', dataIndex: 'descricaoConta', width: 180, ellipsis: true },
         ]} />
+      <ConciliarDrawer idLancamento={aberto} onFechar={() => setAberto(null)} onAlterado={carregar} />
     </>
   );
 }

@@ -3,6 +3,8 @@ import { registrarLog } from '../services/logService';
 import { ConciliacaoError, statusPlano, temAcessoConciliacao } from '../services/conciliacao/acessoService';
 import * as contas from '../services/conciliacao/contasService';
 import * as imp from '../services/conciliacao/importacaoService';
+import * as motor from '../services/conciliacao/motorService';
+import * as manual from '../services/conciliacao/manualService';
 
 const usuarioDe = (req: Request) => (req as any).usuario;
 
@@ -50,7 +52,9 @@ export const importar = tratar(async (req, res) => {
   if (!file?.buffer?.length) throw new ConciliacaoError(400, 'Envie o arquivo OFX');
   const resumo = await imp.importarExtrato(file.buffer, file.originalname, usuarioDe(req));
   await registrarLog(usuarioDe(req), 'Inserir', 'Conciliação - Importação', resumo.idImportacao);
-  res.status(201).json(resumo);
+  // casamento automático dos lançamentos que acabaram de entrar
+  const casamento = await motor.conciliarAutomatico({ idImportacao: resumo.idImportacao, usuario: usuarioDe(req) });
+  res.status(201).json({ ...resumo, casamento });
 });
 
 export const listarImportacoes = tratar(async (req, res) => {
@@ -68,3 +72,42 @@ export const listarLancamentos = tratar(async (req, res) => {
 });
 
 export const resumo = tratar(async (_req, res) => { res.json(await imp.resumoPainel()); });
+
+export const conciliarAutomatico = tratar(async (req, res) => {
+  const r = await motor.conciliarAutomatico({ usuario: usuarioDe(req) });
+  await registrarLog(usuarioDe(req), 'Alterar', 'Conciliação - Casamento automático', `${r.automaticos} baixas`);
+  res.json(r);
+});
+
+export const candidatos = tratar(async (req, res) => {
+  const q = req.query as Record<string, string | undefined>;
+  res.json(await manual.candidatos(Number(req.params.id), {
+    idCliente: q.idCliente ? Number(q.idCliente) : undefined,
+    idLeilao: q.idLeilao ? Number(q.idLeilao) : undefined,
+    papel: q.papel === 'vendedor' ? 'vendedor' : q.papel === 'comprador' ? 'comprador' : undefined,
+  }));
+});
+
+export const confirmarBaixa = tratar(async (req, res) => {
+  const id = Number(req.params.id);
+  const { itens, idCliente, lembrarPagador, regra } = req.body || {};
+  const r = await manual.confirmarBaixa(id, (itens || []).map((i: any) => ({ chave: String(i.chave), valor: Number(i.valor) })),
+    usuarioDe(req), { idCliente: idCliente ? Number(idCliente) : undefined, lembrarPagador: !!lembrarPagador, regra: regra === 'SUGESTAO' ? 'SUGESTAO' : 'MANUAL' });
+  await registrarLog(usuarioDe(req), 'Inserir', 'Conciliação - Baixa', id);
+  res.json(r);
+});
+
+export const desfazer = tratar(async (req, res) => {
+  const id = Number(req.params.id);
+  await manual.desfazer(id, usuarioDe(req), req.body?.idBaixa ? Number(req.body.idBaixa) : undefined);
+  await registrarLog(usuarioDe(req), 'Deletar', 'Conciliação - Baixa', id);
+  res.json({ ok: true });
+});
+
+export const naoVenda = tratar(async (req, res) => {
+  const id = Number(req.params.id);
+  const lembrar = req.body?.lembrar === 'documento' || req.body?.lembrar === 'historico' ? req.body.lembrar : null;
+  await manual.marcarNaoVenda(id, String(req.body?.categoria || ''), usuarioDe(req), lembrar);
+  await registrarLog(usuarioDe(req), 'Alterar', 'Conciliação - Não é venda', id);
+  res.json({ ok: true });
+});

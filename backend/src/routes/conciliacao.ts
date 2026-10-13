@@ -28,5 +28,10 @@ router.put('/contas/:id', conc.atualizarConta);
 router.post('/importar', upload.single('file'), reafirmarBanco, conc.importar);
 router.get('/importacoes', conc.listarImportacoes);
 router.get('/lancamentos', conc.listarLancamentos);
+router.post('/conciliar-automatico', conc.conciliarAutomatico);
+router.get('/lancamentos/:id/candidatos', conc.candidatos);
+router.post('/lancamentos/:id/baixas', conc.confirmarBaixa);
+router.post('/lancamentos/:id/desfazer', conc.desfazer);
+router.post('/lancamentos/:id/nao-venda', conc.naoVenda);
 
 export default router;

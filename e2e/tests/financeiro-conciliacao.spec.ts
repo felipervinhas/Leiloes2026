@@ -76,4 +76,17 @@ test('Financeiro: importa extrato de conta nova e lista os lançamentos', async 
   await expect(page.getByText(`VENDEDOR TESTE ${execucao} LTDA`)).toBeVisible();
   await expect(page.locator('.ant-table-row')).toHaveCount(2);
   await expect(page.getByText('529.982.247-25')).toBeVisible();
+
+  // conciliação manual: o débito sem cliente vira "não é venda" e depois é desfeito
+  await page.getByText(`VENDEDOR TESTE ${execucao} LTDA`).click();
+  const drawer = page.locator('.ant-drawer');
+  await expect(drawer.getByText('Conciliar lançamento')).toBeVisible();
+  await expect(drawer.getByText('Escolha o cliente para ver o que está em aberto')).toBeVisible();
+  await drawer.getByRole('button', { name: /Não é venda/ }).click();
+  const modalNv = page.locator('.ant-modal').filter({ hasText: 'Nas próximas importações' });
+  await modalNv.getByText('Só este lançamento').click();
+  await modalNv.getByRole('button', { name: 'Marcar' }).click();
+  await expect(drawer.getByText('Marcado como não é venda')).toBeVisible();
+  await drawer.getByRole('button', { name: 'Desfazer' }).click();
+  await expect(drawer.getByText('Escolha o cliente para ver o que está em aberto')).toBeVisible();
 });

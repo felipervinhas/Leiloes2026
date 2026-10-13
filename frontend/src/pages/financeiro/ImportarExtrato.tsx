@@ -14,6 +14,7 @@ interface Resumo {
   idImportacao: number; descricaoConta: string | null; dtInicio: string | null; dtFim: string | null;
   saldoFinal: number | null; total: number; novos: number; jaImportados: number;
   comDocumento: number; clientesIdentificados: number;
+  casamento?: { analisados: number; automaticos: number; sugeridos: number; naoVenda: number };
 }
 
 export default function ImportarExtrato() {
@@ -78,6 +79,10 @@ export default function ImportarExtrato() {
             <Descriptions.Item label="Já importados antes">{resumo.jaImportados}</Descriptions.Item>
             <Descriptions.Item label="Com CPF/CNPJ">{resumo.comDocumento} de {resumo.novos}</Descriptions.Item>
             <Descriptions.Item label="Cliente identificado">{resumo.clientesIdentificados} de {resumo.novos}</Descriptions.Item>
+            {resumo.casamento && <>
+              <Descriptions.Item label="Conciliados sozinhos">{resumo.casamento.automaticos}</Descriptions.Item>
+              <Descriptions.Item label="Com sugestão para conferir">{resumo.casamento.sugeridos}</Descriptions.Item>
+            </>}
           </Descriptions>
         </Result>
       )}
