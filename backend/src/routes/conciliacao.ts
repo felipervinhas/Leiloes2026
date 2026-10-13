@@ -33,5 +33,8 @@ router.get('/lancamentos/:id/candidatos', conc.candidatos);
 router.post('/lancamentos/:id/baixas', conc.confirmarBaixa);
 router.post('/lancamentos/:id/desfazer', conc.desfazer);
 router.post('/lancamentos/:id/nao-venda', conc.naoVenda);
+router.get('/pendencias', conc.pendencias);
+router.get('/repasses', conc.repasses);
+router.get('/relatorios/recebimentos', conc.recebimentos);
 
 export default router;

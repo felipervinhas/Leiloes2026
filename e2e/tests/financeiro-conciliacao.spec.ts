@@ -89,4 +89,14 @@ test('Financeiro: importa extrato de conta nova e lista os lançamentos', async 
   await expect(drawer.getByText('Marcado como não é venda')).toBeVisible();
   await drawer.getByRole('button', { name: 'Desfazer' }).click();
   await expect(drawer.getByText('Escolha o cliente para ver o que está em aberto')).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // relatórios abrem (sem depender de vendas do banco de teste)
+  await page.getByRole('menuitem', { name: /Pendências/ }).click();
+  await expect(page.getByText('Vencido e não recebido')).toBeVisible();
+  await expect(page.getByText('Sem cliente identificado')).toBeVisible();
+  await page.getByRole('menuitem', { name: /Repasses/ }).click();
+  await expect(page.getByText(/Saldo a repassar = recebido/)).toBeVisible();
+  await page.getByRole('menuitem', { name: /Recebimentos/ }).click();
+  await expect(page.getByText('Escolha o leilão')).toBeVisible();
 });

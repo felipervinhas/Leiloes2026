@@ -30,10 +30,30 @@ export const GRUPOS_PADRAO = 2;
 const MESES_VENDAS = 24;
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
+
+/** Colunas da condição de pagamento que a regra precisa (PARC01..06 e os grupos da leiloeira). */
+export const SQL_COLUNAS_GRUPOS = (comGrupos: boolean) => `
+  ${comGrupos ? `ISNULL(G.GRUPOS_LEILOEIRA, ${GRUPOS_PADRAO})` : GRUPOS_PADRAO} AS GRUPOS,
+  TRY_CAST(CP.PARC01 AS INT) P1, TRY_CAST(CP.PARC02 AS INT) P2, TRY_CAST(CP.PARC03 AS INT) P3,
+  TRY_CAST(CP.PARC04 AS INT) P4, TRY_CAST(CP.PARC05 AS INT) P5, TRY_CAST(CP.PARC06 AS INT) P6`;
+
+/**
+ * A parcela passa pela leiloeira? "04/50" é a contagem acumulada de unidades; passam os
+ * N primeiros grupos da condição (PARC01, PARC02...). Condição sem grupos iniciais
+ * (só saldo, ex.: "25 PARCELAS", "1 PARCELA", ou venda sem condição): só a 1ª parcela.
+ * A marcação PRIPAR sozinha não serve: vendas antigas têm várias parcelas marcadas.
+ */
+export function ehParcelaDaLeiloeira(x: { ORDXXX?: string; GRUPOS?: number; P1?: number; P2?: number; P3?: number; P4?: number; P5?: number; P6?: number }): boolean {
+  const numero = parseInt(String(x.ORDXXX || '').split('/')[0], 10);
+  if (!Number.isFinite(numero)) return false;
+  const grupos = [x.P1, x.P2, x.P3, x.P4, x.P5, x.P6].map(v => Number(v) || 0);
+  const limite = grupos.slice(0, Math.max(1, Number(x.GRUPOS) || GRUPOS_PADRAO)).reduce((a, b) => a + b, 0);
+  return limite > 0 ? numero <= limite : numero === 1;
+}
 const iso = (d: Date | string | null) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 
 /** Valor já baixado por item (chave), só baixas não desfeitas. */
-async function pagosPorItem(): Promise<Map<string, number>> {
+export async function pagosPorItem(): Promise<Map<string, number>> {
   const pool = await getPool();
   const m = new Map<string, number>();
   // o cálculo também serve para simular sem gravar (empresa ainda sem as tabelas CONC_)
@@ -49,7 +69,7 @@ async function pagosPorItem(): Promise<Map<string, number>> {
   return m;
 }
 
-async function existeTabela(nome: string): Promise<boolean> {
+export async function existeTabela(nome: string): Promise<boolean> {
   const pool = await getPool();
   const r = await pool.request().input('n', sql.VarChar, nome).query(`SELECT OBJECT_ID(@n) AS X`);
   return r.recordset[0].X != null;
@@ -81,9 +101,7 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
     if (opcoes.idLeilao) rp.input('leilao', sql.Int, opcoes.idLeilao);
     const parcelas = await rp.query(`
       SELECT P.ID, P.IDCLI, P.LOTEXX, P.ORDXXX, P.VLRPAR, P.DATVEN, MC.ID AS ID_MC, M.IDLEILAO, L.LEILAO,
-             ${comGrupos ? `ISNULL(G.GRUPOS_LEILOEIRA, ${GRUPOS_PADRAO})` : GRUPOS_PADRAO} AS GRUPOS,
-             TRY_CAST(CP.PARC01 AS INT) P1, TRY_CAST(CP.PARC02 AS INT) P2, TRY_CAST(CP.PARC03 AS INT) P3,
-             TRY_CAST(CP.PARC04 AS INT) P4, TRY_CAST(CP.PARC05 AS INT) P5, TRY_CAST(CP.PARC06 AS INT) P6
+             ${SQL_COLUNAS_GRUPOS(comGrupos)}
       FROM MOVIMENTO_PARCELAMENTO P
       JOIN MOVIMENTO M              ON M.ID = P.IDMOV
       LEFT JOIN LEILOES L           ON L.ID = M.IDLEILAO
@@ -93,10 +111,6 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
       WHERE P.IDCLI IN (${psP}) AND M.DATLAN >= DATEADD(MONTH, -${MESES_VENDAS}, GETDATE())
         ${opcoes.idLeilao ? 'AND M.IDLEILAO = @leilao' : ''}`);
     for (const x of parcelas.recordset) {
-      // "04/50" = contagem acumulada de unidades; os N primeiros grupos da condição passam pela leiloeira
-      const numero = parseInt(String(x.ORDXXX || '').split('/')[0], 10);
-      const grupos = [x.P1, x.P2, x.P3, x.P4, x.P5, x.P6].map(v => Number(v) || 0);
-      const limite = grupos.slice(0, Math.max(1, Number(x.GRUPOS) || GRUPOS_PADRAO)).reduce((a, b) => a + b, 0);
       const chave = `PARCELA:${x.ID}`;
       const valor = r2(Number(x.VLRPAR) || 0);
       const pago = r2(pagos.get(chave) || 0);
@@ -105,9 +119,7 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
         idLeilao: x.IDLEILAO, leilao: x.LEILAO, lote: x.LOTEXX?.trim() || null,
         descricao: `Parcela ${x.ORDXXX || ''}`.trim(), vencimento: iso(x.DATVEN),
         valor, pago, saldo: r2(valor - pago),
-        // condição sem grupos iniciais (só saldo, ex.: "25 PARCELAS", "1 PARCELA", ou venda sem condição):
-        // vale só a 1ª parcela. A marcação PRIPAR sozinha não serve: vendas antigas têm várias parcelas marcadas.
-        daLeiloeira: Number.isFinite(numero) && (limite > 0 ? numero <= limite : numero === 1),
+        daLeiloeira: ehParcelaDaLeiloeira(x),
       });
     }
 

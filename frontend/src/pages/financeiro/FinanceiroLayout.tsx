@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Layout, Menu, Button, Result, Spin, Typography, Space } from 'antd';
 import {
   DashboardOutlined, UploadOutlined, UnorderedListOutlined, BankOutlined, LogoutOutlined,
+  WarningOutlined, SwapOutlined, BarChartOutlined,
 } from '@ant-design/icons';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -16,6 +17,9 @@ const MENU = [
   { key: 'painel',      icon: <DashboardOutlined />,     label: 'Painel' },
   { key: 'importar',    icon: <UploadOutlined />,        label: 'Importar extrato' },
   { key: 'lancamentos', icon: <UnorderedListOutlined />, label: 'Lançamentos' },
+  { key: 'pendencias',  icon: <WarningOutlined />,       label: 'Pendências' },
+  { key: 'repasses',    icon: <SwapOutlined />,          label: 'Repasses' },
+  { key: 'recebimentos', icon: <BarChartOutlined />,     label: 'Recebimentos' },
   { key: 'contas',      icon: <BankOutlined />,          label: 'Contas bancárias' },
 ];
 

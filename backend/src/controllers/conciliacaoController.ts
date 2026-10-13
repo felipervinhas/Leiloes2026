@@ -5,6 +5,7 @@ import * as contas from '../services/conciliacao/contasService';
 import * as imp from '../services/conciliacao/importacaoService';
 import * as motor from '../services/conciliacao/motorService';
 import * as manual from '../services/conciliacao/manualService';
+import * as rel from '../services/conciliacao/relatorioService';
 
 const usuarioDe = (req: Request) => (req as any).usuario;
 
@@ -111,3 +112,12 @@ export const naoVenda = tratar(async (req, res) => {
   await registrarLog(usuarioDe(req), 'Alterar', 'Conciliação - Não é venda', id);
   res.json({ ok: true });
 });
+
+const leilaoObrigatorio = (req: Request) => {
+  const id = Number(req.query.idLeilao);
+  if (!id) throw new ConciliacaoError(400, 'Escolha o leilão');
+  return id;
+};
+export const recebimentos = tratar(async (req, res) => { res.json(await rel.recebimentosPorLeilao(leilaoObrigatorio(req))); });
+export const repasses = tratar(async (req, res) => { res.json(await rel.repassesPorLeilao(leilaoObrigatorio(req))); });
+export const pendencias = tratar(async (_req, res) => { res.json(await rel.pendencias()); });

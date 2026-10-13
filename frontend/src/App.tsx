@@ -38,6 +38,9 @@ import FinanceiroPainel from './pages/financeiro/FinanceiroPainel';
 import ContasBancarias from './pages/financeiro/ContasBancarias';
 import ImportarExtrato from './pages/financeiro/ImportarExtrato';
 import Lancamentos from './pages/financeiro/Lancamentos';
+import Pendencias from './pages/financeiro/Pendencias';
+import Repasses from './pages/financeiro/Repasses';
+import Recebimentos from './pages/financeiro/Recebimentos';
 
 function UrlInvalida() {
   return (
@@ -99,6 +102,9 @@ function App() {
                 <Route path="importar" element={<ImportarExtrato />} />
                 <Route path="lancamentos" element={<Lancamentos />} />
                 <Route path="contas" element={<ContasBancarias />} />
+                <Route path="pendencias" element={<Pendencias />} />
+                <Route path="repasses" element={<Repasses />} />
+                <Route path="recebimentos" element={<Recebimentos />} />
               </Route>
             </Route>
             <Route element={<PrivateRoute />}>
