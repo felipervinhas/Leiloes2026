@@ -16,6 +16,7 @@ import CondicoesPagamento from './pages/CondicoesPagamento';
 import Perfis from './pages/Perfis';
 import Usuarios from './pages/Usuarios';
 import Clientes from './pages/Clientes';
+import ClientesDuplicados from './pages/ClientesDuplicados';
 import Lotes from './pages/Lotes';
 import Leiloes from './pages/Leiloes';
 import Lances from './pages/Lances';
@@ -95,6 +96,7 @@ function App() {
                 <Route path="leiloes" element={<Leiloes />} />
                 <Route path="lotes" element={<Lotes />} />
                 <Route path="clientes" element={<Clientes />} />
+                <Route path="clientes/duplicados" element={<ClientesDuplicados />} />
                 <Route path="cidades" element={<Cidades />} />
                 <Route path="racas" element={<Racas />} />
                 <Route path="classificacoes" element={<Classificacoes />} />

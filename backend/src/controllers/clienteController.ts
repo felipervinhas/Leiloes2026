@@ -4,6 +4,7 @@ import { DuplicidadeError } from '../services/clienteService';
 import { consultarVendas } from '../services/consultaVendasService';
 import { buscarHistoricoLegado } from '../services/clienteLegadoService';
 import { registrarLog } from '../services/logService';
+import * as dup from '../services/clienteDuplicadoService';
 import { tipoSecaoDoUsuario, definirSessaoCliente } from '../services/secaoAcessoService';
 
 const filtrosDaQuery = (req: Request): svc.FiltrosCliente => ({
@@ -132,5 +133,22 @@ export const historicoLegado = async (req: Request, res: Response) => {
   } catch (err) {
     console.error('[historicoLegado] erro:', err);
     res.status(500).json({ error: String(err) });
+  }
+};
+
+// ─── clientes duplicados (mesmo CPF/CNPJ) ───────────────────────────────────
+export const listarDuplicados = async (_req: Request, res: Response) => {
+  res.json(await dup.listarDuplicados());
+};
+export const unificarDuplicados = async (req: Request, res: Response) => {
+  const { idPrincipal, idsCopias, completar } = req.body || {};
+  try {
+    const r = await dup.unificar(Number(idPrincipal), Array.isArray(idsCopias) ? idsCopias : [], completar !== false);
+    await registrarLog((req as any).usuario, 'Alterar', 'Clientes', r.idPrincipal);
+    for (const id of r.apagados) await registrarLog((req as any).usuario, 'Deletar', 'Clientes', id);
+    res.json(r);
+  } catch (err) {
+    if (err instanceof dup.UnificacaoError) return res.status(err.status).json({ error: err.message });
+    throw err;
   }
 };
