@@ -40,15 +40,24 @@ export const criar = async (req: Request, res: Response) => {
   await registrarLog((req as any).usuario, 'Inserir', 'Lotes', id);
   res.status(201).json({ id });
 };
+export const criarRascunho = async (req: Request, res: Response) => {
+  const id = await svc.criarRascunhoLote(await tipoSecaoDoUsuario((req as any).usuario?.id));
+  res.status(201).json({ id });
+};
+export const descartarRascunho = async (req: Request, res: Response) => {
+  res.json({ apagado: await svc.descartarRascunhoLote(Number(req.params.id)) });
+};
 export const atualizar = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   const dados = { ...req.body };
+  // o primeiro Salvar de um "Novo Lote" (rascunho) é a inclusão do lote para o log
+  const eraRascunho = await svc.ehRascunhoLote(id);
   if (await tipoSecaoDoUsuario((req as any).usuario?.id) === 'I') {
     const atual = await svc.buscarLotePorId(id);
     dados.publica = atual?.publica || 'N';
   }
   await svc.atualizarLote(id, dados);
-  await registrarLog((req as any).usuario, 'Alterar', 'Lotes', id);
+  await registrarLog((req as any).usuario, eraRascunho ? 'Inserir' : 'Alterar', 'Lotes', id);
   res.json({ ok: true });
 };
 export const atualizarStatus = async (req: Request, res: Response) => {

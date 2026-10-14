@@ -11,6 +11,7 @@ import dayjs from 'dayjs';
 import { dataUTC } from '../utils/data';
 import api from '../services/api';
 import ImageUpload from '../components/ImageUpload';
+import QuintaGeracaoUpload from '../components/QuintaGeracaoUpload';
 import { labelRP, labelSBB } from '../utils/lote';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { useBanco } from '../context/BancoContext';
@@ -136,11 +137,22 @@ export default function Lotes() {
       }
       garantirOpcaoLeilao(d.idleilao, d.nomeLeilao);
     } else {
+      // "Novo Lote" já cria o lote como rascunho: ele ganha ID na hora e as fotos
+      // podem ser enviadas antes do primeiro Salvar (antes era preciso salvar, sair e entrar de novo)
+      let id: number;
+      try { id = (await api.post('/lotes/rascunho')).data.id; }
+      catch { message.error('Não foi possível iniciar o novo lote'); return; }
       form.resetFields();
-      form.setFieldsValue({ catego: 'M', publica: false, vendido: false });
-      setEditando(null);
+      form.setFieldsValue({ catego: 'M', publica: false, vendido: false, lanmax: 0, idleilao: leilaoFiltro });
+      setEditando({ id, lotexx: '', rascunho: true });
     }
     setModalOpen(true);
+  };
+
+  // Fechar sem salvar um "Novo Lote" apaga o rascunho (e as fotos enviadas para ele)
+  const fecharModal = () => {
+    if (editando?.rascunho) api.delete(`/lotes/${editando.id}/rascunho`).catch(() => {});
+    setModalOpen(false);
   };
 
   const salvar = async (values: any) => {
@@ -153,7 +165,14 @@ export default function Lotes() {
     try {
       if (editando) await api.put(`/lotes/${editando.id}`, payload);
       else await api.post('/lotes', payload);
+      // salvo: deixa de ser rascunho (fechar a janela não pode mais apagá-lo)
+      if (editando?.rascunho) setEditando({ ...editando, rascunho: false });
       message.success('Salvo com sucesso');
+      // a quinta geração é guardada pelo SBB: trocar o SBB deixa o PDF no nome antigo
+      const sbbAntes = String(editando?.sbbxxx ?? '').trim();
+      if (editando && sbbAntes && sbbAntes !== String(values.sbbxxx ?? '').trim()) {
+        message.warning(`O SBB mudou. Se havia quinta geração, ela continua em ${sbbAntes}.pdf — envie de novo na aba Fotos do Animal.`, 8);
+      }
       setModalOpen(false);
       carregar(busca, pagina);
     } catch (err: any) { message.error(err?.response?.data?.error || 'Erro ao salvar'); }
@@ -323,6 +342,8 @@ export default function Lotes() {
               </Col>
             ))}
           </Row>
+          <Divider plain>Quinta geração (PDF)</Divider>
+          <QuintaGeracaoUpload idLote={editando.id} />
         </div>
       ),
     }] : []),
@@ -361,7 +382,7 @@ export default function Lotes() {
             notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'} />
         </Col>
         <Col xs={24} sm={{ flex: 'auto' }}>
-          <Input.Search placeholder="Buscar lote..." value={busca} onChange={e => setBusca(e.target.value)}
+          <Input.Search placeholder="Buscar por descrição, lote, RP/Tat., SBB ou vendedor..." value={busca} onChange={e => setBusca(e.target.value)}
             onSearch={() => carregar(busca)} enterButton={<SearchOutlined />} allowClear onClear={() => carregar('')} />
         </Col>
       </Row>
@@ -385,8 +406,8 @@ export default function Lotes() {
         }}
         size="small" scroll={{ x: 'max-content' }} />
 
-      <Modal title={editando ? `Editar Lote ${editando.lotexx}` : 'Novo Lote'}
-        open={modalOpen} onOk={form.submit} onCancel={() => setModalOpen(false)}
+      <Modal title={!editando || editando.rascunho ? 'Novo Lote' : `Editar Lote ${editando.lotexx}`}
+        open={modalOpen} onOk={form.submit} onCancel={fecharModal}
         width={isMobile ? '95vw' : 860} styles={{ body: { paddingTop: 0 } }}>
         <Tabs items={tabItens} size="small" />
       </Modal>
