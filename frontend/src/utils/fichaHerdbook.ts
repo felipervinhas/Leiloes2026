@@ -25,6 +25,8 @@ export interface FichaHerdbook extends FichaAbccc {
 export function lerFichaHerdbook(texto: string): FichaHerdbook | null {
   if (!texto?.trim()) return null;
   const linhas = texto.split(/\r?\n|\t/).map(l => l.trim()).filter(Boolean);
+  // a ficha da ARCO (ovinos) também tem "Registro:" e "Tatuagem:" — fica com o leitor dela
+  if (linhas.some(l => /ARVORE DE 5/.test(norm(l)) || norm(l) === 'DADOS DO PRODUTO')) return null;
   const v: Record<string, string | null> = {};
   let iPrimeiroRotulo = -1;
 

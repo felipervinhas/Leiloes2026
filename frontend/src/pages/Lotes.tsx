@@ -13,7 +13,7 @@ import api from '../services/api';
 import ImageUpload from '../components/ImageUpload';
 import QuintaGeracaoUpload from '../components/QuintaGeracaoUpload';
 import FichaRegistroModal, { abrirPesquisaRegistro, ASSOCIACOES, Associacao } from '../components/FichaRegistroModal';
-import { labelRP, labelSBB, isEquino, isBovino } from '../utils/lote';
+import { labelRP, labelSBB, isEquino, isBovino, isOvino } from '../utils/lote';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { useBanco } from '../context/BancoContext';
 import { useAuth } from '../context/AuthContext';
@@ -54,8 +54,9 @@ export default function Lotes() {
   const [fichaAberta, setFichaAberta] = useState(false);
   const racaxxSelecionada = Form.useWatch('racaxx', form);
   const especiesLote = racas.find(r => r.value === racaxxSelecionada)?.especies;
-  // associação de registro da raça: ABCCC (crioulo) para equino, Herd Book para bovino
-  const associacaoLote: Associacao | null = isEquino(especiesLote) ? 'ABCCC' : isBovino(especiesLote) ? 'HERDBOOK' : null;
+  // associação de registro da raça: ABCCC (crioulo) para equino, Herd Book para bovino, ARCO para ovino
+  const associacaoLote: Associacao | null = isEquino(especiesLote) ? 'ABCCC' : isBovino(especiesLote) ? 'HERDBOOK'
+    : isOvino(especiesLote) ? 'ARCO' : null;
 
   const opcoesRaca = React.useMemo(() => {
     return racas

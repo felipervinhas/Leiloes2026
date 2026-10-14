@@ -4,11 +4,12 @@ import { ExportOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { lerFichaAbccc, filiacaoDaFicha, observacaoDaFicha, FichaAbccc } from '../utils/fichaAbccc';
 import { lerFichaHerdbook, observacaoHerdbook, FichaHerdbook } from '../utils/fichaHerdbook';
+import { lerFichaArco, observacaoArco, FichaArco } from '../utils/fichaArco';
 
 const { Text } = Typography;
 
 /** Associação de registro genealógico da raça do lote. */
-export type Associacao = 'ABCCC' | 'HERDBOOK';
+export type Associacao = 'ABCCC' | 'HERDBOOK' | 'ARCO';
 
 export const ASSOCIACOES: Record<Associacao, {
   nome: string; url: string; rotuloSbb: string; rotuloRp: string;
@@ -21,6 +22,10 @@ export const ASSOCIACOES: Record<Associacao, {
   HERDBOOK: {
     nome: 'Herd Book', url: 'https://sistema.herdbook.org.br/publico/consulta-animal/', rotuloSbb: 'Registro', rotuloRp: 'Tatuagem',
     ler: lerFichaHerdbook, observacao: (f: FichaHerdbook) => observacaoHerdbook(f),
+  },
+  ARCO: {
+    nome: 'ARCO', url: 'https://sistema.arcoovinos.com.br/genealogia/criador/consulta_rebanho.aspx', rotuloSbb: 'Registro', rotuloRp: 'Tatuagem',
+    ler: lerFichaArco, observacao: (f: FichaArco) => observacaoArco(f),
   },
 };
 
@@ -41,7 +46,7 @@ const CATEGORIA: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro'
 
 /**
  * Colar a ficha do animal copiada do site da associação (ABCCC para crioulo, Herd Book para
- * bovinos) e escolher o que vai para o lote. Só preenche o formulário — o usuário confere e
+ * bovinos, ARCO para ovinos) e escolher o que vai para o lote. Só preenche o formulário — o usuário confere e
  * salva o lote normalmente.
  */
 export default function FichaRegistroModal({ open, associacao, valoresAtuais, onAplicar, onFechar }: {
