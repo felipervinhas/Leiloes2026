@@ -5,14 +5,15 @@ import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
 import { useBuscaClientes } from '../hooks/useBuscaClientes';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CopyOutlined, AppstoreOutlined, FileExcelOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CopyOutlined, AppstoreOutlined, FileExcelOutlined, ImportOutlined, ExportOutlined } from '@ant-design/icons';
 import { exportarLotesExcel } from '../relatorios/exportarExcel';
 import dayjs from 'dayjs';
 import { dataUTC } from '../utils/data';
 import api from '../services/api';
 import ImageUpload from '../components/ImageUpload';
 import QuintaGeracaoUpload from '../components/QuintaGeracaoUpload';
-import { labelRP, labelSBB } from '../utils/lote';
+import FichaRegistroModal, { abrirPesquisaRegistro, ASSOCIACOES, Associacao } from '../components/FichaRegistroModal';
+import { labelRP, labelSBB, isEquino, isBovino } from '../utils/lote';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { useBanco } from '../context/BancoContext';
 import { useAuth } from '../context/AuthContext';
@@ -50,8 +51,11 @@ export default function Lotes() {
   const [condicoes, setCondicoes] = useState<{ value: number; label: string }[]>([]);
   const [imagens, setImagens] = useState<LoteImagem[]>([]);
   const [form] = Form.useForm();
+  const [fichaAberta, setFichaAberta] = useState(false);
   const racaxxSelecionada = Form.useWatch('racaxx', form);
   const especiesLote = racas.find(r => r.value === racaxxSelecionada)?.especies;
+  // associação de registro da raça: ABCCC (crioulo) para equino, Herd Book para bovino
+  const associacaoLote: Associacao | null = isEquino(especiesLote) ? 'ABCCC' : isBovino(especiesLote) ? 'HERDBOOK' : null;
 
   const opcoesRaca = React.useMemo(() => {
     return racas
@@ -250,6 +254,20 @@ export default function Lotes() {
       children: (
         <Form form={form} layout="vertical" onFinish={salvar}>
           <Row gutter={12}>
+            {/* a raça vem primeiro: define os rótulos (SBB/RP ou Registro/Tatuagem) e a associação da ficha */}
+            <Col xs={24} sm={12}>
+              <Form.Item name="racaxx" label="Raça">
+                <Select showSearch options={opcoesRaca} placeholder="Escolha a raça" autoFocus={!!editando?.rascunho}
+                  filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>{associacaoLote && <div style={{ paddingTop: 30 }}><Space wrap>
+              <Button icon={<ImportOutlined />} onClick={() => setFichaAberta(true)}>Importar ficha do {ASSOCIACOES[associacaoLote].nome}</Button>
+              <Button type="link" icon={<ExportOutlined />}
+                onClick={() => abrirPesquisaRegistro(associacaoLote, form.getFieldValue('sbbxxx') || form.getFieldValue('rpxxx'))}>
+                Abrir pesquisa {ASSOCIACOES[associacaoLote].nome}
+              </Button>
+            </Space></div>}</Col>
             <Col xs={12} md={6}><Form.Item name="lotexx" label="Nº Lote" rules={[{ required: true }]}><Input /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="catego" label="Categoria"><Select options={CATEGO} /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="ordem" label="Ordem"><Input /></Form.Item></Col>
@@ -260,11 +278,6 @@ export default function Lotes() {
                 <Select showSearch options={leiloes} onSearch={buscarLeiloes} filterOption={false}
                   loading={carregandoLeiloes} placeholder="Digite para buscar..."
                   notFoundContent={carregandoLeiloes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="racaxx" label="Raça">
-                <Select showSearch options={opcoesRaca} filterOption={(i, o) => (o?.label as string)?.toLowerCase().includes(i.toLowerCase())} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -406,6 +419,12 @@ export default function Lotes() {
         }}
         size="small" scroll={{ x: 'max-content' }} />
 
+      {associacaoLote && <FichaRegistroModal open={fichaAberta} associacao={associacaoLote} valoresAtuais={fichaAberta ? form.getFieldsValue(true) : {}} onFechar={() => setFichaAberta(false)}
+        onAplicar={valores => {
+          form.setFieldsValue(valores);
+          setFichaAberta(false);
+          message.success(`${Object.keys(valores).length} campo(s) preenchido(s) da ficha — confira e salve o lote`);
+        }} />}
       <Modal title={!editando || editando.rascunho ? 'Novo Lote' : `Editar Lote ${editando.lotexx}`}
         open={modalOpen} onOk={form.submit} onCancel={fecharModal}
         width={isMobile ? '95vw' : 860} styles={{ body: { paddingTop: 0 } }}>

@@ -10,6 +10,12 @@ export function isEquino(especies?: string | null): boolean {
   return e.startsWith('EQUIN');
 }
 
+export function isBovino(especies?: string | null): boolean {
+  // BOVINOS, BOVINO, Bovina
+  const e = (especies || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+  return e.startsWith('BOVIN');
+}
+
 export function labelRP(especies?: string | null): string {
   return isEquino(especies) ? 'RP' : 'Tatuagem';
 }
