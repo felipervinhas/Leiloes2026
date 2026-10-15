@@ -352,6 +352,7 @@ export default function Lotes() {
                   deleteUrl={`/lotes/${editando.id}/imagens/${num}`}
                   initialUrl={imgUrl(num)}
                   accept=".jpg,.jpeg,.png"
+                  comprimir
                 />
               </Col>
             ))}
