@@ -13,14 +13,14 @@ import api from '../services/api';
 import ImageUpload from '../components/ImageUpload';
 import QuintaGeracaoUpload from '../components/QuintaGeracaoUpload';
 import FichaRegistroModal, { abrirPesquisaRegistro, ASSOCIACOES, Associacao } from '../components/FichaRegistroModal';
-import { labelRP, labelSBB, isEquino, isBovino, isOvino } from '../utils/lote';
+import { labelRP, labelSBB, isEquino, isBovino, isOvino, CATEGORIAS_LOTE } from '../utils/lote';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { useBanco } from '../context/BancoContext';
 import { useAuth } from '../context/AuthContext';
 
 const { Title } = Typography;
 const { TextArea } = Input;
-const CATEGO = ['M', 'F', 'N'].map(v => ({ value: v, label: v === 'M' ? 'Macho' : v === 'F' ? 'Fêmea' : 'Neutro' }));
+const CATEGO = Object.entries(CATEGORIAS_LOTE).map(([value, label]) => ({ value, label }));
 
 interface LoteImagem { num: number; url: string; key: string; }
 
@@ -54,6 +54,9 @@ export default function Lotes() {
   const [fichaAberta, setFichaAberta] = useState(false);
   const racaxxSelecionada = Form.useWatch('racaxx', form);
   const especiesLote = racas.find(r => r.value === racaxxSelecionada)?.especies;
+  // lote antigo com outra letra (E, B...) continua mostrando a dele em vez de apagar
+  const categoAtual = Form.useWatch('catego', form);
+  const opcoesCategoria = categoAtual && !CATEGORIAS_LOTE[categoAtual] ? [...CATEGO, { value: categoAtual, label: categoAtual }] : CATEGO;
   // associação de registro da raça: ABCCC (crioulo) para equino, Herd Book para bovino, ARCO para ovino
   const associacaoLote: Associacao | null = isEquino(especiesLote) ? 'ABCCC' : isBovino(especiesLote) ? 'HERDBOOK'
     : isOvino(especiesLote) ? 'ARCO' : null;
@@ -270,7 +273,7 @@ export default function Lotes() {
               </Button>
             </Space></div>}</Col>
             <Col xs={12} md={6}><Form.Item name="lotexx" label="Nº Lote" rules={[{ required: true }]}><Input /></Form.Item></Col>
-            <Col xs={12} md={6}><Form.Item name="catego" label="Categoria"><Select options={CATEGO} /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="catego" label="Categoria"><Select options={opcoesCategoria} /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="ordem" label="Ordem"><Input /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="datnas" label="Data Nasc."><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
             <Col span={24}><Form.Item name="deslot" label="Descrição"><Input /></Form.Item></Col>

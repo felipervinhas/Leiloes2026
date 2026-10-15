@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import { lerFichaAbccc, filiacaoDaFicha, observacaoDaFicha, FichaAbccc } from '../utils/fichaAbccc';
 import { lerFichaHerdbook, observacaoHerdbook, FichaHerdbook } from '../utils/fichaHerdbook';
 import { lerFichaArco, observacaoArco, FichaArco } from '../utils/fichaArco';
+import { CATEGORIAS_LOTE } from '../utils/lote';
 
 const { Text } = Typography;
 
@@ -42,7 +43,7 @@ export async function abrirPesquisaRegistro(associacao: Associacao, codigo?: str
 interface Campo { campo: string; rotulo: string; atual: string; novo: string; valor: any; }
 
 const txt = (v: any) => v == null || v === '' ? '' : dayjs.isDayjs(v) ? v.format('DD/MM/YYYY') : String(v).trim();
-const CATEGORIA: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro' };
+const CATEGORIA = CATEGORIAS_LOTE;
 
 /**
  * Colar a ficha do animal copiada do site da associação (ABCCC para crioulo, Herd Book para

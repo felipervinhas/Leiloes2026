@@ -8,11 +8,11 @@ import api from '../services/api';
 import { fmtDataUTC } from '../utils/data';
 import { useBanco } from '../context/BancoContext';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
-import { labelRP, labelSBB, ordenarPorEntrada } from '../utils/lote';
+import { labelRP, labelSBB, ordenarPorEntrada, CATEGORIAS_LOTE } from '../utils/lote';
 
 const { Title, Text, Paragraph } = Typography;
 
-const CATEGO_LABEL: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C: 'Castrado' };
+const CATEGO_LABEL = CATEGORIAS_LOTE;
 
 interface LoteImagem { num: number; url: string; key: string; }
 

@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { ClienteCompleto } from './RelatorioClientes';
 import { fmtDataUTC } from '../utils/data';
+import { nomeCategoria } from '../utils/lote';
 
 export function exportarClientesExcel(clientes: ClienteCompleto[], nomeArquivo = 'clientes') {
   const linhas = clientes.map(c => ({
@@ -98,7 +99,7 @@ export function exportarVendasExcel(vendas: any[], nomeArquivo = 'vendas') {
 
 /** Lotes cadastrados num leilão (tela de Lotes) — conferência antes do lançamento das vendas. */
 export function exportarLotesExcel(lotes: any[], condicoes: Record<number, string>, nomeArquivo = 'lotes') {
-  const sexo = (c?: string) => (c === 'M' ? 'Macho' : c === 'F' ? 'Fêmea' : c === 'N' ? 'Neutro' : '');
+  const sexo = (c?: string) => nomeCategoria(c);
   const linhas = lotes.map(l => ({
     'Lote': l.lotexx ?? '',
     'Ordem': l.ordem ?? '',

@@ -1,3 +1,4 @@
+import { CATEGORIAS_LOTE } from '../utils/lote';
 // ─── Valor por extenso ────────────────────────────────────────────────────────
 
 const UNIDADES = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove',
@@ -75,4 +76,4 @@ export const fmtDataExtenso = (iso?: string | null) => {
   return `${String(d.getDate()).padStart(2, '0')} de ${MESES_EXT[d.getMonth()]} de ${d.getFullYear()}`;
 };
 
-export const CATEGO: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C: 'Castrado' };
+export const CATEGO = CATEGORIAS_LOTE;
