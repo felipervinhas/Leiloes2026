@@ -18,7 +18,11 @@ interface Item {
 }
 type Papel = 'comprador' | 'vendedor' | 'despesa';
 
-const NOMES_TIPO: Record<string, string> = { PARCELA: 'Parcela', COMISSAO_COMPRA: 'Comissão de compra', REPASSE: 'Repasse ao vendedor', DESPESA: 'Despesa de cliente' };
+const NOMES_TIPO: Record<string, string> = {
+  PARCELA: 'Parcela', COMISSAO_COMPRA: 'Comissão de compra', REPASSE: 'Repasse ao vendedor', DESPESA: 'Despesa de cliente',
+  AJUSTE: 'Ajuste de arredondamento',
+};
+const TOLERANCIA_ARREDONDAMENTO = 1;
 
 /** O que a baixa pagou: leilão, lote e animal, comprador e vendedor, e o dado do item. */
 function DetalheBaixa({ b }: { b: any }) {
@@ -107,6 +111,17 @@ export default function ConciliarDrawer({ idLancamento, onFechar, onAlterado }: 
   // crédito baixa parcela ou comissão; débito baixa repasse ou despesa (o backend recusa o resto)
   const ladoCerto = (it: Item) => (l?.sentido === 'C') !== (it.tipo === 'REPASSE' || it.tipo === 'DESPESA');
   const ladoTrocado = !!consulta?.itens.length && !consulta.itens.some(ladoCerto);
+  // a sugestão fecha o lançamento com os próprios valores (parte de um pagamento dividido, ou com
+  // ajuste de arredondamento) — aí confirma o que o motor propôs, não a soma dos saldos marcados
+  const sugestaoFecha = useMemo(() => {
+    const sg = l?.sugestao;
+    if (!sg?.itens?.length) return false;
+    const cabem = sg.itens.every((i: any) => (itensPorChave.get(i.chave)?.saldo ?? 0) >= i.valor - 0.01);
+    const soma = sg.itens.reduce((a: number, i: any) => a + i.valor, 0) + (sg.ajuste || 0);
+    return cabem && Math.abs(soma - restante) < 0.011;
+  }, [l, itensPorChave, restante]);
+  // marcado bate com o que falta a menos de R$ 1,00: dá para fechar com ajuste de arredondamento
+  const arredondavel = marcados.length > 0 && Math.abs(diferenca) >= 0.011 && Math.abs(diferenca) <= TOLERANCIA_ARREDONDAMENTO + 0.001;
 
   /** Distribui o que falta do lançamento pelos itens marcados, na ordem; o último pode ficar parcial. */
   const alocar = () => {
@@ -122,13 +137,13 @@ export default function ConciliarDrawer({ idLancamento, onFechar, onAlterado }: 
     return out;
   };
 
-  const confirmar = async (regra: 'MANUAL' | 'SUGESTAO' = 'MANUAL') => {
-    const itens = alocar();
+  const confirmar = async (regra: 'MANUAL' | 'SUGESTAO' = 'MANUAL', envio?: { itens: { chave: string; valor: number }[]; ajuste?: number }) => {
+    const itens = envio?.itens || alocar();
     if (!itens.length) return;
     setSalvando(true);
     try {
       const r = await api.post(`/conciliacao/lancamentos/${idLancamento}/baixas`, {
-        itens, idCliente, lembrarPagador: outroCliente && lembrarPagador, regra,
+        itens, idCliente, lembrarPagador: outroCliente && lembrarPagador, regra, ajuste: envio?.ajuste,
       });
       setConsulta(r.data);
       setMarcados([]);
@@ -200,9 +215,23 @@ export default function ConciliarDrawer({ idLancamento, onFechar, onAlterado }: 
           {l.sugestao && consulta.baixas.length === 0 && (
             <Alert style={{ marginTop: 12 }} type="info" showIcon
               message={`Sugestão: ${l.sugestao.descricao}`}
-              description="Os itens sugeridos já estão marcados abaixo. Confira e confirme, ou marque outros itens."
+              description={<>
+                Os itens sugeridos já estão marcados abaixo. Confira e confirme, ou marque outros itens.
+                {sugestaoFecha && l.sugestao.itens.some((i: any) => i.valor < (itensPorChave.get(i.chave)?.saldo ?? 0) - 0.01) && (
+                  <div style={{ marginTop: 4 }}>Este pagamento leva {l.sugestao.itens.map((i: any) => {
+                    const it = itensPorChave.get(i.chave);
+                    return `${fmtValor(i.valor)} de "${it?.descricao}${it?.lote ? ` lote ${it.lote}` : ''}"`;
+                  }).join(', ')}; o resto fica para a outra transferência.</div>
+                )}
+                {sugestaoFecha && l.sugestao.ajuste ? (
+                  <div style={{ marginTop: 4 }}>A diferença de {fmtValor(Math.abs(l.sugestao.ajuste))} fica como ajuste de arredondamento.</div>
+                ) : null}
+              </>}
               action={<Button type="primary" size="small" icon={<CheckOutlined />} loading={salvando}
-                disabled={Math.abs(diferenca) >= 0.011} onClick={() => confirmar('SUGESTAO')}>Confirmar sugestão</Button>} />
+                disabled={!sugestaoFecha && Math.abs(diferenca) >= 0.011}
+                onClick={() => sugestaoFecha
+                  ? confirmar('SUGESTAO', { itens: l.sugestao.itens, ajuste: l.sugestao.ajuste })
+                  : confirmar('SUGESTAO')}>Confirmar sugestão</Button>} />
           )}
 
           {consulta.baixas.length > 0 && (
@@ -215,7 +244,7 @@ export default function ConciliarDrawer({ idLancamento, onFechar, onAlterado }: 
                   { title: 'Como', dataIndex: 'regra', render: (r: string) => r === 'MANUAL' ? 'Manual' : r === 'SUGESTAO' ? 'Sugestão confirmada' : `Automático (${r})` },
                   { title: 'Por', dataIndex: 'usuario', render: (u: string) => u || '—' },
                   { title: '', width: 90, render: (_: any, b: any) =>
-                    <Button size="small" icon={<UndoOutlined />} loading={salvando} onClick={() => desfazer(b.id)}>Desfazer</Button> },
+                    b.tipo === 'AJUSTE' ? null : <Button size="small" icon={<UndoOutlined />} loading={salvando} onClick={() => desfazer(b.id)}>Desfazer</Button> },
                 ]} />
             </>
           )}
@@ -303,7 +332,16 @@ export default function ConciliarDrawer({ idLancamento, onFechar, onAlterado }: 
                     <Button icon={<ShopOutlined />} onClick={() => setDespesaEmpresaAberto(true)} disabled={consulta.baixas.length > 0}>Despesa da empresa</Button>
                   )}
                   <Button icon={<StopOutlined />} onClick={() => setNaoVendaAberto(true)} disabled={consulta.baixas.length > 0}>Não é venda</Button>
-                  <Button type="primary" icon={<CheckOutlined />} loading={salvando} disabled={!marcados.length || Math.abs(diferenca) < 0.011}
+                  {arredondavel && (
+                    <Button type="primary" icon={<CheckOutlined />} loading={salvando}
+                      title="Baixa os itens marcados inteiros e lança a diferença como ajuste de arredondamento"
+                      onClick={() => confirmar('MANUAL', {
+                        itens: marcados.map(k => ({ chave: k, valor: itensPorChave.get(k)?.saldo || 0 })), ajuste: diferenca,
+                      })}>
+                      Conciliar com arredondamento ({diferenca > 0 ? '+' : '−'}{fmtValor(Math.abs(diferenca))})
+                    </Button>
+                  )}
+                  <Button type={arredondavel ? 'default' : 'primary'} icon={<CheckOutlined />} loading={salvando} disabled={!marcados.length || Math.abs(diferenca) < 0.011}
                     onClick={() => confirmar()}>
                     {diferenca > 0 ? 'Conciliar parcial' : 'Conciliar (último item parcial)'}
                   </Button>

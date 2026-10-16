@@ -4,7 +4,7 @@ import { ConciliacaoError } from './acessoService';
 import { itensDosClientes, ItemAberto, despesasDoLeilao } from './devidoService';
 import { desfazerDespesaEmpresa } from './despesaEmpresaService';
 import { criarDespesa } from '../despesaService';
-import { atualizarSituacao, gravarBaixas, ItemSugerido, Sugestao } from './motorService';
+import { atualizarSituacao, gravarBaixas, ItemSugerido, Sugestao, TOLERANCIA_ARREDONDAMENTO } from './motorService';
 
 type Usuario = { id?: number; nome?: string } | undefined;
 
@@ -125,7 +125,7 @@ async function baixasDetalhadas(idLancamento: number) {
  */
 export async function confirmarBaixa(
   idLancamento: number, alvos: ItemSugerido[], usuario: Usuario,
-  opcoes: { idCliente?: number; lembrarPagador?: boolean; regra?: string } = {},
+  opcoes: { idCliente?: number; lembrarPagador?: boolean; regra?: string; ajuste?: number } = {},
 ) {
   if (!alvos?.length) throw new ConciliacaoError(400, 'Marque ao menos um item');
   const l = await buscarLancamento(idLancamento);
@@ -151,9 +151,14 @@ export async function confirmarBaixa(
     if ((l.SENTIDO === 'C') === deDebito) throw new ConciliacaoError(400, 'Crédito baixa parcela ou comissão; débito baixa repasse ou despesa');
     soma += a.valor;
   }
-  if (jaBaixado + soma > valorAbs + 0.01) throw new ConciliacaoError(400, 'A soma passa do valor do lançamento');
+  // ajuste de arredondamento: só fecha o lançamento, até R$ 1,00 (positivo: pagou a mais; negativo: a menos)
+  const ajuste = Math.round((Number(opcoes.ajuste) || 0) * 100) / 100;
+  if (ajuste) {
+    if (Math.abs(ajuste) > TOLERANCIA_ARREDONDAMENTO + 0.001) throw new ConciliacaoError(400, 'Ajuste de arredondamento acima de R$ 1,00');
+    if (Math.abs(jaBaixado + soma + ajuste - valorAbs) > 0.011) throw new ConciliacaoError(400, 'Itens e ajuste não fecham o valor do lançamento');
+  } else if (jaBaixado + soma > valorAbs + 0.01) throw new ConciliacaoError(400, 'A soma passa do valor do lançamento');
 
-  await gravarBaixas(idLancamento, alvos, opcoes.regra || 'MANUAL', usuario, itens);
+  await gravarBaixas(idLancamento, alvos, opcoes.regra || 'MANUAL', usuario, itens, ajuste);
   if (ehDespesa) return candidatos(idLancamento, { papel: 'despesa', idLeilao: itens[0]?.idLeilao ?? undefined });
 
   if (idCliente !== l.ID_CLIENTE) {
@@ -182,7 +187,7 @@ export async function desfazer(idLancamento: number, usuario: Usuario, idBaixa?:
   const req = pool.request().input('id', sql.Int, idLancamento).input('u', sql.Int, usuario?.id ?? null);
   if (idBaixa) req.input('b', sql.Int, idBaixa);
   await req.query(`UPDATE CONC_BAIXAS SET DESFEITA = 'S', ID_USUARIO_DESFEZ = @u, DATA_DESFEITA = GETDATE()
-                   WHERE ID_LANCAMENTO = @id AND DESFEITA = 'N' ${idBaixa ? 'AND ID = @b' : ''}`);
+                   WHERE ID_LANCAMENTO = @id AND DESFEITA = 'N' ${idBaixa ? `AND (ID = @b OR TIPO_ALVO = 'AJUSTE')` : ''}`);
   if (l.SITUACAO === 'NAO_VENDA') {
     await pool.request().input('id', sql.Int, idLancamento)
       .query(`UPDATE CONC_LANCAMENTOS SET SITUACAO = 'PENDENTE', CATEGORIA = NULL WHERE ID = @id`);

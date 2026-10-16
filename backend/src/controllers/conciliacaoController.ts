@@ -93,9 +93,10 @@ export const candidatos = tratar(async (req, res) => {
 
 export const confirmarBaixa = tratar(async (req, res) => {
   const id = Number(req.params.id);
-  const { itens, idCliente, lembrarPagador, regra } = req.body || {};
+  const { itens, idCliente, lembrarPagador, regra, ajuste } = req.body || {};
   const r = await manual.confirmarBaixa(id, (itens || []).map((i: any) => ({ chave: String(i.chave), valor: Number(i.valor) })),
-    usuarioDe(req), { idCliente: idCliente ? Number(idCliente) : undefined, lembrarPagador: !!lembrarPagador, regra: regra === 'SUGESTAO' ? 'SUGESTAO' : 'MANUAL' });
+    usuarioDe(req), { idCliente: idCliente ? Number(idCliente) : undefined, lembrarPagador: !!lembrarPagador, regra: regra === 'SUGESTAO' ? 'SUGESTAO' : 'MANUAL',
+      ajuste: ajuste ? Number(ajuste) : undefined });
   await registrarLog(usuarioDe(req), 'Inserir', 'Conciliação - Baixa', id);
   res.json(r);
 });
