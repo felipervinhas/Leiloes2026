@@ -59,7 +59,13 @@ const SITUACOES = [
 
 const PAGE_SIZE = 20;
 
-export default function Clientes() {
+/**
+ * `somenteCadastro`: abre só o cadastro de um cliente (o mesmo Drawer, com todas as abas e o
+ * Salvar), sem a lista — usado pelo Dashboard para analisar um cadastro sem sair dali.
+ */
+export interface SomenteCadastro { id: number; onFechar: () => void; onSalvo?: () => void }
+
+export default function Clientes({ somenteCadastro }: { somenteCadastro?: SomenteCadastro } = {}) {
   const config = useConfig();
   // Macedo: só pisteiro (acesso web) mexe em Bloqueado/Acesso App, como no Delphi
   const usuarioInterno = useAuth().usuario?.tipoSecao === 'I';
@@ -422,7 +428,8 @@ export default function Clientes() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (filtroSalvo.rankingMode) carregarRanking(); else carregar();
+    if (somenteCadastro) abrirDrawer({ id: somenteCadastro.id } as any);
+    else if (filtroSalvo.rankingMode) carregarRanking(); else carregar();
     carregarCidades();
     carregarClassificacoes();
     api.get('/usuarios').then(r =>
@@ -434,6 +441,7 @@ export default function Clientes() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
+    if (somenteCadastro) return;
     if (rankingMode) carregarRanking();
     else carregar();
   }, [filtroValor, filtroClassificacoes, filtroCidade, filtroEstado, filtroSituacao]);
@@ -503,7 +511,8 @@ export default function Clientes() {
       else id = (await api.post('/clientes', payload)).data.id;
       message.success('Salvo com sucesso');
       await preencherFormCliente(id);
-      carregar(pagina);
+      if (somenteCadastro) somenteCadastro.onSalvo?.();
+      else carregar(pagina);
     } catch (err: any) {
       const msg = err?.response?.data?.error;
       message.error(msg || 'Erro ao salvar', msg ? 6 : 3);
@@ -1119,8 +1128,11 @@ export default function Clientes() {
     ]} />
   );
 
+  const fecharCadastro = () => { setDrawerOpen(false); somenteCadastro?.onFechar(); };
+
   return (
     <>
+      {!somenteCadastro && <>
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #ecfeff' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -1295,6 +1307,8 @@ export default function Clientes() {
         </div>
       )}
 
+      </>}
+
       {/* Modal de relatório */}
       <Modal
         title={
@@ -1450,7 +1464,7 @@ export default function Clientes() {
       <Drawer
         title={editando ? `Editar — ${editando.nomexx}` : 'Novo Cliente'}
         open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+        onClose={fecharCadastro}
         styles={{ wrapper: { width: 'min(860px, 100vw)' } }}
         extra={
           <Space wrap>
@@ -1472,7 +1486,7 @@ export default function Clientes() {
                 )}
               </BlobProvider>
             )}
-            <Button onClick={() => setDrawerOpen(false)}>Cancelar</Button>
+            <Button onClick={fecharCadastro}>Cancelar</Button>
             <Button type="primary" onClick={() => form.submit()}>Salvar</Button>
           </Space>
         }

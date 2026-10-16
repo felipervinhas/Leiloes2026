@@ -4,7 +4,7 @@ import {
   DollarOutlined, TrophyOutlined, TeamOutlined, CalendarOutlined,
   RiseOutlined, BarChartOutlined, FieldTimeOutlined, TagsOutlined,
   UserAddOutlined, CheckOutlined, CloseOutlined, EditOutlined,
-  WarningOutlined, DeleteOutlined, ShoppingCartOutlined, TagOutlined,
+  WarningOutlined, DeleteOutlined, ShoppingCartOutlined, TagOutlined, IdcardOutlined,
 } from '@ant-design/icons';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBanco } from '../context/BancoContext';
 import api from '../services/api';
 import { fmtDataUTC } from '../utils/data';
+import Clientes from './Clientes';
 
 const { Title, Text } = Typography;
 
@@ -188,6 +189,8 @@ export default function Dashboard() {
   const [pendentes, setPendentes]           = useState<any[]>([]);
   const [drawerOpen, setDrawerOpen]         = useState(false);
   const [drawerLoading, setDrawerLoading]   = useState(false);
+  // cadastro aberto por cima da análise (o mesmo da tela de Clientes)
+  const [clienteAberto, setClienteAberto]   = useState<number | null>(null);
   const [actionId, setActionId]             = useState<number | null>(null);
 
   useEffect(() => {
@@ -277,6 +280,15 @@ export default function Dashboard() {
     } finally {
       setDrawerLoading(false);
     }
+  };
+
+  // depois de salvar o cadastro: o cliente pode ter saído da análise (Acesso App mudou)
+  const recarregarPendentes = async () => {
+    try {
+      const r = await api.get(`/${banco}/clientes/pendentes`, { params: { grupo: grupoDrawer } });
+      setPendentes(r.data);
+      poll();
+    } catch {}
   };
 
   const aprovar = async (id: number) => {
@@ -915,6 +927,9 @@ export default function Dashboard() {
               <List.Item
                 style={{ padding: '14px 20px', alignItems: 'flex-start' }}
                 actions={[
+                  <Button key="cadastro" size="small" icon={<IdcardOutlined />} onClick={() => setClienteAberto(c.id)}>
+                    Ver cadastro
+                  </Button>,
                   <Popconfirm
                     key="aprovar"
                     title="Aprovar cadastro?"
@@ -984,7 +999,7 @@ export default function Dashboard() {
                   }
                   title={
                     <span style={{ fontWeight: 600, fontSize: 13 }}>
-                      {c.nomexx}
+                      <a onClick={() => setClienteAberto(c.id)} title="Abrir o cadastro completo">{c.nomexx}</a>
                       {c.cpfxxx && (
                         <Text style={{ fontSize: 11, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
                           CPF: {c.cpfxxx}
@@ -1012,6 +1027,12 @@ export default function Dashboard() {
           />
         )}
       </Drawer>
+
+      {clienteAberto != null && (
+        <Clientes key={clienteAberto} somenteCadastro={{
+          id: clienteAberto, onFechar: () => setClienteAberto(null), onSalvo: recarregarPendentes,
+        }} />
+      )}
     </div>
   );
 }
