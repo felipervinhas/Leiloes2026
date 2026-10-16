@@ -6,7 +6,7 @@ import {
   CreditCardOutlined, SafetyOutlined, SettingOutlined, MenuFoldOutlined,
   MenuUnfoldOutlined, TrophyOutlined, BellOutlined, LineChartOutlined,
   DollarOutlined, WalletOutlined, FileSearchOutlined, OrderedListOutlined,
-  FileTextOutlined, MenuOutlined, TagsOutlined, SoundOutlined, BugOutlined,
+  FileTextOutlined, MenuOutlined, TagsOutlined, SoundOutlined, BugOutlined, MergeCellsOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import axios from 'axios';
@@ -47,6 +47,7 @@ const ALL_MENU_ITEMS = [
     key: 'clientes-group', icon: <TeamOutlined />, label: 'Clientes', controle: 'Clientes',
     children: [
       { key: '/clientes', icon: <TeamOutlined />, label: 'Clientes', controle: 'Clientes' },
+      { key: '/clientes/duplicados', icon: <MergeCellsOutlined />, label: 'Clientes duplicados', controle: 'Clientes' },
       { key: '/notificacoes', icon: <BellOutlined />, label: 'Notificações', controle: 'Notificações' },
     ],
   },
@@ -85,6 +86,7 @@ const ROUTE_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
   '/acerto-vendedor': { label: 'Acerto de Vendedor', icon: <FileTextOutlined /> },
   '/acerto-comprador': { label: 'Acerto de Comprador', icon: <FileTextOutlined /> },
   '/clientes': { label: 'Clientes', icon: <TeamOutlined /> },
+  '/clientes/duplicados': { label: 'Clientes duplicados', icon: <MergeCellsOutlined /> },
   '/notificacoes': { label: 'Notificações', icon: <BellOutlined /> },
   '/cidades': { label: 'Cidades', icon: <EnvironmentOutlined /> },
   '/racas': { label: 'Raças', icon: <BranchesOutlined /> },

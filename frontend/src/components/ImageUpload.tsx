@@ -3,6 +3,7 @@ import { Upload, Button, Image, Popconfirm, Spin, message, Typography } from 'an
 import { UploadOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import api from '../services/api';
+import { comprimirImagem, fmtTamanho } from '../utils/comprimirImagem';
 
 const { Text } = Typography;
 
@@ -12,9 +13,11 @@ interface Props {
   deleteUrl: string;
   initialUrl?: string;
   accept?: string;
+  /** Regrava a foto em JPEG mais leve antes de enviar (fotos de lote). */
+  comprimir?: boolean;
 }
 
-export default function ImageUpload({ label, uploadUrl, deleteUrl, initialUrl, accept = 'image/*' }: Props) {
+export default function ImageUpload({ label, uploadUrl, deleteUrl, initialUrl, accept = 'image/*', comprimir = false }: Props) {
   const [url, setUrl] = useState<string | undefined>(initialUrl);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -30,11 +33,14 @@ export default function ImageUpload({ label, uploadUrl, deleteUrl, initialUrl, a
     beforeUpload: async (file) => {
       setLoading(true);
       try {
+        const arquivo = comprimir ? await comprimirImagem(file) : file;
         const form = new FormData();
-        form.append('file', file);
+        form.append('file', arquivo);
         const r = await api.post(uploadUrl, form, { headers: { 'Content-Type': 'multipart/form-data' } });
         setUrl(r.data.url);
-        message.success('Imagem enviada com sucesso');
+        message.success(arquivo !== file
+          ? `Imagem enviada (${fmtTamanho(file.size)} → ${fmtTamanho(arquivo.size)})`
+          : 'Imagem enviada com sucesso');
       } catch {
         message.error('Erro ao enviar imagem');
       } finally {

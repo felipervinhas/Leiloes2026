@@ -4,7 +4,7 @@ import { Button, Checkbox, Popover, Radio, Space } from 'antd';
 import { PrinterOutlined, SettingOutlined } from '@ant-design/icons';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { fmtDataUTC } from '../utils/data';
-import { labelRP } from '../utils/lote';
+import { labelRP, CATEGORIAS_LOTE } from '../utils/lote';
 
 type Orientacao = 'retrato' | 'paisagem';
 
@@ -64,7 +64,7 @@ const ESCURO = '#222';
 const MEDIO  = '#555';
 const CINZA  = '#bbb';
 
-const SEXO: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C: 'Castrado' };
+const SEXO = CATEGORIAS_LOTE;
 
 const s = StyleSheet.create({
   page: {

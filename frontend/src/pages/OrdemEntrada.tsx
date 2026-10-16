@@ -13,6 +13,7 @@ import { CampoLayout } from '../relatorios/tipoLayout';
 import { useConfig } from '../context/ConfigContext';
 import { useBanco } from '../context/BancoContext';
 import { useBuscaLeiloes } from '../hooks/useBuscaLeiloes';
+import { CATEGORIAS_LOTE } from '../utils/lote';
 
 interface LoteOrdem {
   id: number;
@@ -49,8 +50,8 @@ interface LoteOrdem {
   observacoesLeilao?: string;
 }
 
-const CATEGO_COR: Record<string, string> = { M: 'blue', F: 'magenta', N: 'default', C: 'orange' };
-const CATEGO_LABEL: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C: 'Castrado' };
+const CATEGO_COR: Record<string, string> = { M: 'blue', F: 'magenta', C: 'orange', S: 'green' };
+const CATEGO_LABEL = CATEGORIAS_LOTE;
 
 type CampoOrdenavel = 'lotexx' | 'deslot' | 'nomeVendedor' | 'nomeRaca' | 'catego';
 const ROTULO_ORDENAVEL: Record<CampoOrdenavel, string> = {

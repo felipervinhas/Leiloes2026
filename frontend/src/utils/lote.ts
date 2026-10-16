@@ -10,6 +10,18 @@ export function isEquino(especies?: string | null): boolean {
   return e.startsWith('EQUIN');
 }
 
+export function isBovino(especies?: string | null): boolean {
+  // BOVINOS, BOVINO, Bovina
+  const e = (especies || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+  return e.startsWith('BOVIN');
+}
+
+export function isOvino(especies?: string | null): boolean {
+  // OVINOS, ovinos, OVINA
+  const e = (especies || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+  return e.startsWith('OVIN');
+}
+
 export function labelRP(especies?: string | null): string {
   return isEquino(especies) ? 'RP' : 'Tatuagem';
 }
@@ -34,4 +46,16 @@ export function ordenarPorEntrada<T extends { id: number; lotexx: string; ordem?
     const nb = parseInt(ob) || 0;
     return na !== nb ? na - nb : a.lotexx.localeCompare(b.lotexx);
   });
+}
+
+/**
+ * Categoria do lote (LOTES.CATEGO, uma letra). Os códigos são os do Delphi e do site da
+ * Macedo: M Macho, F Fêmea, C Castrado, S Cobertura. Não existe "Neutro" — os poucos
+ * lotes com outra letra (E, B, N...) mostram a própria letra.
+ */
+export const CATEGORIAS_LOTE: Record<string, string> = { M: 'Macho', F: 'Fêmea', C: 'Castrado', S: 'Cobertura' };
+
+export function nomeCategoria(c?: string | null): string {
+  if (!c) return '';
+  return CATEGORIAS_LOTE[c.trim().toUpperCase()] || c;
 }

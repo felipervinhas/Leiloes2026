@@ -243,6 +243,8 @@ bancoRouter.get('/clientes', cliente.listar);
 bancoRouter.get('/clientes/faturamento', cliente.listarFaturamento);
 bancoRouter.get('/clientes/pendentes', cliente.listarPendentes);
 bancoRouter.get('/clientes/pendentes/count', cliente.contarPendentes);
+bancoRouter.get('/clientes/duplicados', cliente.listarDuplicados);
+bancoRouter.post('/clientes/duplicados/unificar', cliente.unificarDuplicados);
 bancoRouter.get('/clientes/:id/historico', cliente.historico);
 bancoRouter.get('/clientes/:id/historico-legado', cliente.historicoLegado);
 bancoRouter.get('/clientes/:id', cliente.buscar);

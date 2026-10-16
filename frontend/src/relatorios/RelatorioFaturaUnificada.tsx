@@ -1,7 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { valorExtenso } from './promissoriaUtils';
-import { labelRP, labelSBB } from '../utils/lote';
+import { labelRP, labelSBB, CATEGORIAS_LOTE } from '../utils/lote';
 
 export type ModoFaturaUnificada = 'par' | 'vendedor' | 'comprador';
 
@@ -94,7 +94,7 @@ const ESCURO = '#222';
 const MEDIO  = '#555';
 const CINZA  = '#bbb';
 const CLARO  = '#f0f0f0';
-const CATEGO: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C: 'Castrado' };
+const CATEGO = CATEGORIAS_LOTE;
 
 const fmtR = (v?: number | null) =>
   v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—';

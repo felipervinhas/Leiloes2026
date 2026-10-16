@@ -3,7 +3,7 @@ import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { FaturaData, fmtFidelidade } from './RelatorioFaturaCompra';
 import { valorExtenso } from './RelatorioPromissoria';
 import { documentoCliente } from '../utils/documento';
-import { labelRP, labelSBB } from '../utils/lote';
+import { labelRP, labelSBB, CATEGORIAS_LOTE } from '../utils/lote';
 
 interface Props {
   dados: FaturaData;
@@ -16,7 +16,7 @@ const ESCURO = '#222';
 const MEDIO  = '#555';
 const CINZA  = '#bbb';
 const CLARO  = '#f0f0f0';
-const CATEGO: Record<string, string> = { M: 'Macho', F: 'Fêmea', N: 'Neutro', C: 'Castrado' };
+const CATEGO = CATEGORIAS_LOTE;
 
 const fmtR = (v?: number | null) =>
   v != null && v !== 0
