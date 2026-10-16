@@ -318,10 +318,14 @@ export async function salvarLote(idMov: number, d: DadosLote, datlan: string): P
       .input('comissVendedor', sql.Decimal(18, 2), d.comissVendedor || 0)
       .input('datlan',         sql.Date,    datlan)
       .query(`
+        -- trocar o lote da venda leva junto o número e o vendedor do lote escolhido
+        -- (sem lote encontrado, mantém os que já estavam gravados)
         UPDATE MOVIMENTO_LOTE
         SET IDLOTE=@idLote, QTDXXX=@qtdxxx, QTDPAR=@qtdpar, VLRPAR=@vlrpar, VLRTOT=@vlrtot,
             VLRDES=@vlrdes, COMISS=@comiss,
-            COMISS_VENDEDOR=@comissVendedor, DATLAN=@datlan
+            COMISS_VENDEDOR=@comissVendedor, DATLAN=@datlan,
+            LOTEXX = ISNULL((SELECT LOTEXX FROM LOTES WHERE ID=@idLote), LOTEXX),
+            CODVEN = ISNULL((SELECT CAST(CODVEN AS VARCHAR(20)) FROM LOTES WHERE ID=@idLote), CODVEN)
         WHERE ID=@id
       `);
     return idLoteRow;
@@ -421,6 +425,39 @@ export async function buscarLoteMovimento(idMov: number) {
     qtdAnimais:    row.QTDANIMAIS,
     qtdRestante,
   };
+}
+
+// ─── parcelas por IDMOVLOTE ──────────────────────────────────────────────────
+
+/**
+ * Parcelas (MOVIMENTO_PARCELAMENTO) dos IDMOVLOTE informados, agrupadas pela
+ * chave composta `${IDMOVLOTE}_${IDCLI}` (lote rateado entre compradores
+ * compartilha o IDMOVLOTE — chamados #61/#62).
+ *
+ * A lista vai num parâmetro só (STRING_SPLIT) com HASH JOIN forçado: com
+ * `IN (@ml0..@mlN)` o otimizador fazia nested loops e varria a tabela inteira
+ * (sem índice em IDMOVLOTE, 131 mil linhas na Macedo) uma vez por ID — a
+ * consulta por comprador, com ~600 vendas, estourava o timeout de 60s. Com o
+ * hash join é uma varredura só (~1s), com ou sem índice.
+ */
+export async function buscarParcelasPorMovLote(idMovLotes: number[]) {
+  const porChave: Record<string, { ordxxx: any; datven: string; vlrpar: number; pripar: string }[]> = {};
+  if (!idMovLotes.length) return porChave;
+  const pool = await getPool();
+  const r = await pool.request()
+    .input('ids', sql.VarChar(sql.MAX), idMovLotes.join(','))
+    .query(`
+      SELECT IDMOVLOTE, IDCLI, ORDXXX, FORMAT(DATVEN,'dd/MM/yyyy') AS DATVEN_F, VLRPAR, PRIPAR
+      FROM MOVIMENTO_PARCELAMENTO
+      WHERE IDMOVLOTE IN (SELECT TRY_CAST(value AS INT) FROM STRING_SPLIT(@ids, ','))
+      ORDER BY IDMOVLOTE, DATVEN, ORDXXX
+      OPTION (HASH JOIN)
+    `);
+  for (const p of r.recordset) {
+    const key = `${p.IDMOVLOTE}_${p.IDCLI}`;
+    (porChave[key] ||= []).push({ ordxxx: p.ORDXXX, datven: p.DATVEN_F, vlrpar: p.VLRPAR, pripar: p.PRIPAR });
+  }
+  return porChave;
 }
 
 // ─── compradores ─────────────────────────────────────────────────────────────
@@ -1383,22 +1420,7 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
   // compradores, todos compartilham o mesmo IDMOVLOTE — agrupar só por
   // IDMOVLOTE misturava as parcelas de todos os compradores no PDF de cada
   // um (chamado #62, mesma causa do #61 na Consulta de Vendas).
-  const parcelasPorMovLote: Record<string, any[]> = {};
-  if (idMovLotes.length) {
-    const req2 = pool.request();
-    const ph2 = idMovLotes.map((id, i) => { req2.input(`ml${i}`, sql.Int, id as number); return `@ml${i}`; });
-    const rParc = await req2.query(`
-      SELECT IDMOVLOTE, IDCLI, ORDXXX, FORMAT(DATVEN,'dd/MM/yyyy') AS DATVEN_F, VLRPAR, PRIPAR
-      FROM MOVIMENTO_PARCELAMENTO
-      WHERE IDMOVLOTE IN (${ph2.join(',')})
-      ORDER BY IDMOVLOTE, DATVEN, ORDXXX
-    `);
-    for (const p of rParc.recordset) {
-      const key = `${p.IDMOVLOTE}_${p.IDCLI}`;
-      if (!parcelasPorMovLote[key]) parcelasPorMovLote[key] = [];
-      parcelasPorMovLote[key].push({ ordxxx: p.ORDXXX, datven: p.DATVEN_F, vlrpar: p.VLRPAR, pripar: p.PRIPAR });
-    }
-  }
+  const parcelasPorMovLote: Record<string, any[]> = await buscarParcelasPorMovLote(idMovLotes as number[]);
 
   const grupos = new Map<string, FaturaUnificadaGrupo>();
   const contrapartesPorGrupo = new Map<string, Map<number, FaturaUnificadaParte>>();
@@ -1555,11 +1577,13 @@ export async function atualizarFormaPagamentoMovimento(idMov: number, forma: str
 
 export async function atualizarInfoLote(idMov: number): Promise<void> {
   const pool = await getPool();
+  // só copia quando o lote existe e tem vendedor: com o lote excluído, o subselect voltava
+  // NULL e apagava o vendedor da venda (e com ele a comissão do vendedor no Acerto)
   await pool.request()
     .input('idMov', sql.Int, idMov)
     .query(`
-      UPDATE MOVIMENTO_LOTE
-      SET CODVEN = (SELECT CODVEN FROM LOTES WHERE ID = MOVIMENTO_LOTE.IDLOTE)
-      WHERE IDMOV = @idMov
+      UPDATE ML SET CODVEN = CAST(L.CODVEN AS VARCHAR(20))
+      FROM MOVIMENTO_LOTE ML JOIN LOTES L ON L.ID = ML.IDLOTE
+      WHERE ML.IDMOV = @idMov AND L.CODVEN IS NOT NULL
     `);
 }

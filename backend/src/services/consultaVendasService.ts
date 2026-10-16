@@ -1,5 +1,5 @@
 import { getPool, sql } from '../config/database';
-import { garantirColunaMovCompPisteiro } from './vendaService';
+import { garantirColunaMovCompPisteiro, buscarParcelasPorMovLote } from './vendaService';
 
 export interface FiltrosConsulta {
   idLeilao?: number;
@@ -133,34 +133,20 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
   if (condAno) conds.push(condAno);
 
   const where = conds.length ? ' AND ' + conds.join(' AND ') : '';
-  const sql_text = BASE_SQL + where + ' ORDER BY L.DATLEI DESC, TRY_CAST(LO.LOTEXX AS INT), LO.LOTEXX';
+  // MAX_GRANT_PERCENT: o join COM.ID (int) = V.IDCLI (varchar) faz o otimizador
+  // estimar centenas de milhares de linhas mesmo em banco pequeno, e o Sort pede
+  // ~64 MB de memória para usar ~3 MB. No SQL Express (memória curta, dividida
+  // entre todos os bancos) a consulta ficava 30s+ na fila esperando essa reserva
+  // (GrantWaitTime) e estourava o timeout — ex.: G2 por comprador, 13 linhas.
+  const sql_text = BASE_SQL + where + ' ORDER BY L.DATLEI DESC, TRY_CAST(LO.LOTEXX AS INT), LO.LOTEXX OPTION (MAX_GRANT_PERCENT = 5)';
   const r = await req.query(sql_text);
 
-  const idMovLotes = [...new Set(r.recordset.map((row: any) => row.ID_MOVLOTE).filter((v: any) => v != null))];
+  const idMovLotes = [...new Set(r.recordset.map((row: any) => row.ID_MOVLOTE).filter((v: any) => v != null))] as number[];
   // Chave composta IDMOVLOTE+IDCLI: quando o lote é rateado entre vários
   // compradores, todos compartilham o mesmo IDMOVLOTE — agrupar só por
   // IDMOVLOTE juntava as parcelas de todos os compradores numa lista só,
   // duplicando vencimentos no relatório (chamado #61).
-  const parcelasPorMovLote: Record<string, any[]> = {};
-  // Em blocos: o SQL Server aceita no máximo 2100 parâmetros por request, e uma
-  // consulta sem leilão (ex.: só por raça) passa fácil de 2 mil vendas.
-  const TAMANHO_BLOCO = 1000;
-  for (let ini = 0; ini < idMovLotes.length; ini += TAMANHO_BLOCO) {
-    const bloco = idMovLotes.slice(ini, ini + TAMANHO_BLOCO);
-    const reqParc = pool.request();
-    const ph = bloco.map((id, i) => { reqParc.input(`ml${i}`, sql.Int, id as number); return `@ml${i}`; });
-    const rParc = await reqParc.query(`
-      SELECT IDMOVLOTE, IDCLI, ORDXXX, FORMAT(DATVEN,'dd/MM/yyyy') AS DATVEN_F, VLRPAR, PRIPAR
-      FROM MOVIMENTO_PARCELAMENTO
-      WHERE IDMOVLOTE IN (${ph.join(',')})
-      ORDER BY IDMOVLOTE, DATVEN, ORDXXX
-    `);
-    for (const p of rParc.recordset) {
-      const key = `${p.IDMOVLOTE}_${p.IDCLI}`;
-      if (!parcelasPorMovLote[key]) parcelasPorMovLote[key] = [];
-      parcelasPorMovLote[key].push({ ordxxx: p.ORDXXX, datven: p.DATVEN_F, vlrpar: p.VLRPAR, pripar: p.PRIPAR });
-    }
-  }
+  const parcelasPorMovLote = await buscarParcelasPorMovLote(idMovLotes);
 
   return r.recordset.map((row: any) => {
     const parcelas = parcelasPorMovLote[`${row.ID_MOVLOTE}_${row.IDCLI}`] || [];
