@@ -7,6 +7,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useBanco } from '../context/BancoContext';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
+import { CONTROLES_FINANCEIRO, controlesDoSistema } from '../config/controles';
 
 const { Title, Text } = Typography;
 const SN          = [{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }];
@@ -21,11 +22,13 @@ const CONTROLES_GRUPOS = [
   { label: 'Clientes',  itens: ['Clientes', 'Notificações'] },
   { label: 'Cadastros', itens: ['Cidades', 'Raças', 'Condições de Pagamento', 'Classificações'] },
   { label: 'Sistema',   itens: ['Perfis', 'Usuários', 'Editor de Relatórios', 'Configurações'] },
-  // Área Financeiro (/:banco/financeiro): só abre com este controle marcado ou para administrador
-  { label: 'Financeiro', itens: ['Conciliação Bancária'] },
+  // Área Financeiro (/:banco/financeiro): só abre com este controle marcado ou para administrador.
+  // Não restringe o sistema: marcar só ele mantém o acesso total às páginas acima.
+  { label: 'Financeiro', itens: CONTROLES_FINANCEIRO },
 ];
 
 const TODOS_CONTROLES = CONTROLES_GRUPOS.flatMap(g => g.itens);
+const CONTROLES_SISTEMA = TODOS_CONTROLES.filter(c => !CONTROLES_FINANCEIRO.includes(c));
 
 const ITENS_DASHBOARD: { key: string; label: string }[] = [
   { key: 'verComissoes',       label: 'Ver Comissões' },
@@ -218,14 +221,15 @@ export default function Usuarios() {
       <Alert
         type="info"
         showIcon
-        message="Sem nenhuma permissão selecionada, o usuário terá acesso total a todas as páginas."
+        message="Sem nenhuma página do sistema selecionada, o usuário terá acesso total a todas as páginas. O Financeiro é à parte: só abre com Conciliação Bancária marcada (ou para administrador)."
         style={{ marginBottom: 16 }}
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <Text type="secondary" style={{ fontSize: 12 }}>
-          {controlesSelecionados.length === 0
+          {controlesDoSistema(controlesSelecionados).length === 0
             ? 'Nenhuma restrição — acesso total'
-            : `${controlesSelecionados.length} de ${TODOS_CONTROLES.length} páginas permitidas`}
+            : `${controlesDoSistema(controlesSelecionados).length} de ${CONTROLES_SISTEMA.length} páginas permitidas`}
+          {controlesSelecionados.some(c => CONTROLES_FINANCEIRO.includes(c)) ? ' · Financeiro liberado' : ''}
         </Text>
         <Space size={8}>
           <Button size="small" onClick={() => setControlesSelecionados(TODOS_CONTROLES)}>Selecionar todas</Button>

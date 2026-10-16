@@ -13,6 +13,7 @@ import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { useBanco } from '../../context/BancoContext';
 import { useConfig } from '../../context/ConfigContext';
+import { controlesDoSistema } from '../../config/controles';
 import { VERSAO_FRONTEND } from '../../version';
 import AIChat from '../AIChat';
 
@@ -135,7 +136,8 @@ export default function MainLayout() {
   const { banco } = useBanco();
   const config = useConfig();
 
-  const controles: string[] = usuario?.controles ?? [];
+  // o controle do Financeiro não restringe o menu daqui (ver config/controles)
+  const controles: string[] = controlesDoSistema(usuario?.controles);
   const menuItems = filtrarMenu(ALL_MENU_ITEMS, controles, usuario?.adm === 'S');
 
   // Versão do backend efetivamente no ar (do último git pull + restart do PM2) —
