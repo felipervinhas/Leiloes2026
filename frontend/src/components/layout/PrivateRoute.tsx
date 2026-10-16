@@ -4,7 +4,8 @@ import { Spin } from 'antd';
 import { useAuth } from '../../context/AuthContext';
 import { useBanco } from '../../context/BancoContext';
 
-export default function PrivateRoute() {
+/** loginPath: tela de login para onde volta sem sessão, relativa ao banco (o Financeiro tem a sua). */
+export default function PrivateRoute({ loginPath = 'login' }: { loginPath?: string }) {
   const { isAuthenticated, carregando } = useAuth();
   const { banco } = useBanco();
 
@@ -16,5 +17,5 @@ export default function PrivateRoute() {
     );
   }
 
-  return isAuthenticated ? <Outlet /> : <Navigate to={`/${banco}/login`} replace />;
+  return isAuthenticated ? <Outlet /> : <Navigate to={`/${banco}/${loginPath}`} replace />;
 }

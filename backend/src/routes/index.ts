@@ -33,6 +33,7 @@ import * as relatorioLayout from '../controllers/relatorioLayoutController';
 import * as preferencia from '../controllers/preferenciaController';
 import * as chamado from '../controllers/chamadoController';
 import { chatAI } from '../controllers/aiController';
+import conciliacaoRoutes from './conciliacao';
 import { VERSAO } from '../config/versao';
 import multer from 'multer';
 
@@ -68,6 +69,9 @@ bancoRouter.get('/configuracoes/logo-imagem', getLogoImagem);
 
 // Rotas protegidas
 bancoRouter.use(authMiddleware);
+
+// Financeiro — Conciliação Bancária (bloqueio por plano e controle dentro do próprio router)
+bancoRouter.use('/conciliacao', conciliacaoRoutes);
 
 // Troca do logotipo do tenant (S3) — protegida; a leitura (GET acima) é pública pro Login
 bancoRouter.post('/configuracoes/logo', memStorage.single('file'), reafirmarBanco, uploadLogo);

@@ -9,7 +9,13 @@ import { loginApi } from '../services/authService';
 
 const { Title, Text } = Typography;
 
-export default function Login() {
+interface LoginProps {
+  /** Para onde ir depois de entrar, relativo ao banco (padrão: dashboard). O Financeiro usa 'financeiro'. */
+  destino?: string;
+  subtitulo?: string;
+}
+
+export default function Login({ destino = 'dashboard', subtitulo = 'Sistema Administrativo' }: LoginProps) {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const { banco } = useBanco();
@@ -21,7 +27,7 @@ export default function Login() {
     try {
       const { token, usuario } = await loginApi(values.cpf, values.senha);
       login(token, usuario);
-      navigate(`/${banco}/dashboard`);
+      navigate(`/${banco}/${destino}`);
     } catch (err: any) {
       message.error(err.response?.data?.error || 'Usuário ou senha inválidos');
     } finally {
@@ -45,7 +51,7 @@ export default function Login() {
           ) : (
             <Title level={3} style={{ marginBottom: 4, textAlign: 'center' }}>{config.empresa || 'Leilões 2026'}</Title>
           )}
-          <Text type="secondary">Sistema Administrativo</Text>
+          <Text type="secondary">{subtitulo}</Text>
         </div>
 
         <Form layout="vertical" onFinish={handleLogin} autoComplete="off">

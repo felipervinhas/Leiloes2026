@@ -30,7 +30,9 @@ api.interceptors.response.use(
       localStorage.removeItem('@leiloes:token');
       localStorage.removeItem('@leiloes:usuario');
       const banco = localStorage.getItem('@leiloes:banco');
-      window.location.href = banco ? `/${banco}/login` : '/login';
+      // quem estava no Financeiro volta para o login do Financeiro
+      const login = window.location.pathname.includes('/financeiro') ? 'financeiro/login' : 'login';
+      window.location.href = banco ? `/${banco}/${login}` : '/login';
     }
     return Promise.reject(error);
   }

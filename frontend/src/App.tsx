@@ -34,6 +34,16 @@ import Configuracoes from './pages/Configuracoes';
 import PainelLeiloeiro from './pages/PainelLeiloeiro';
 import Chamados from './pages/Chamados';
 import { BANCOS_PERMITIDOS } from './config/bancos';
+import FinanceiroLayout from './pages/financeiro/FinanceiroLayout';
+import FinanceiroPainel from './pages/financeiro/FinanceiroPainel';
+import ContasBancarias from './pages/financeiro/ContasBancarias';
+import ImportarExtrato from './pages/financeiro/ImportarExtrato';
+import Lancamentos from './pages/financeiro/Lancamentos';
+import Pendencias from './pages/financeiro/Pendencias';
+import Repasses from './pages/financeiro/Repasses';
+import Recebimentos from './pages/financeiro/Recebimentos';
+import ConfiguracoesFinanceiro from './pages/financeiro/ConfiguracoesFinanceiro';
+import DespesasEmpresa from './pages/financeiro/DespesasEmpresa';
 
 function UrlInvalida() {
   return (
@@ -86,6 +96,22 @@ function App() {
           <Route path="/:banco" element={<BancoShell />}>
             <Route index element={<Navigate to="login" replace />} />
             <Route path="login" element={<Login />} />
+            {/* Financeiro — conciliação bancária, contratada à parte: login, layout e menu próprios */}
+            <Route path="financeiro/login" element={<Login destino="financeiro" subtitulo="Financeiro · Conciliação bancária" />} />
+            <Route path="financeiro" element={<PrivateRoute loginPath="financeiro/login" />}>
+              <Route element={<FinanceiroLayout />}>
+                <Route index element={<Navigate to="painel" replace />} />
+                <Route path="painel" element={<FinanceiroPainel />} />
+                <Route path="importar" element={<ImportarExtrato />} />
+                <Route path="lancamentos" element={<Lancamentos />} />
+                <Route path="contas" element={<ContasBancarias />} />
+                <Route path="pendencias" element={<Pendencias />} />
+                <Route path="repasses" element={<Repasses />} />
+                <Route path="recebimentos" element={<Recebimentos />} />
+                <Route path="configuracoes" element={<ConfiguracoesFinanceiro />} />
+                <Route path="despesas" element={<DespesasEmpresa />} />
+              </Route>
+            </Route>
             <Route element={<PrivateRoute />}>
               {/* Tela cheia, sem o menu/abas do MainLayout — feita pra ficar
                   aberta durante o leilão ao vivo. */}
