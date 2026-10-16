@@ -1,6 +1,7 @@
 import { getPool, sql } from '../../config/database';
 import { garantirTabelasConciliacao } from './schema';
 import { ItemAberto, itensDosClientes } from './devidoService';
+import { gravarDespesaEmpresaComNome } from './despesaEmpresaService';
 
 // Motor de casamento: compara os lançamentos pendentes com os itens em aberto
 // do cliente identificado pelo CPF/CNPJ. Só baixa sozinho quando há exatamente
@@ -130,13 +131,18 @@ export async function conciliarAutomatico(opcoes: { idImportacao?: number; usuar
     ${opcoes.idImportacao ? 'AND ID_IMPORTACAO = @imp' : ''}`)).recordset as Lanc[];
 
   // A0: regras aprendidas de "não é venda"
-  const ignorar = (await pool.request().query(`SELECT DOC, PADRAO_MEMO, CATEGORIA FROM CONC_IGNORAR`)).recordset;
-  let naoVenda = 0;
+  const ignorar = (await pool.request().query(`SELECT DOC, PADRAO_MEMO, CATEGORIA, ID_CATEGORIA FROM CONC_IGNORAR`)).recordset;
+  let naoVenda = 0, despesas = 0;
   const restantes: Lanc[] = [];
   for (const l of pend) {
     const regra = ignorar.find((g: any) =>
       (g.DOC && g.DOC === l.DOC_CONTRAPARTE) || (g.PADRAO_MEMO && DIGITOS_MEMO(l.MEMO).includes(String(g.PADRAO_MEMO).toUpperCase())));
-    if (regra) {
+    if (regra && regra.ID_CATEGORIA && l.SENTIDO === 'D') {
+      // regra aprendida de despesa da empresa (ex.: Localiza → Aluguel de veículos)
+      const completo = (await pool.request().input('id', sql.Int, l.ID).query(`SELECT * FROM CONC_LANCAMENTOS WHERE ID = @id`)).recordset[0];
+      await gravarDespesaEmpresaComNome(pool, completo, regra.ID_CATEGORIA, {}, opcoes.usuario);
+      despesas++;
+    } else if (regra) {
       await pool.request().input('id', sql.Int, l.ID).input('cat', sql.VarChar, regra.CATEGORIA)
         .query(`UPDATE CONC_LANCAMENTOS SET SITUACAO = 'NAO_VENDA', CATEGORIA = @cat, SUGESTAO = NULL WHERE ID = @id`);
       naoVenda++;
@@ -167,7 +173,7 @@ export async function conciliarAutomatico(opcoes: { idImportacao?: number; usuar
       sugeridos++;
     }
   }
-  return { analisados: pend.length, automaticos, sugeridos, naoVenda };
+  return { analisados: pend.length, automaticos, sugeridos, naoVenda, despesas };
 }
 
 /** Grava as baixas de um lançamento e atualiza a situação (CONCILIADO ou PARCIAL). */
@@ -191,7 +197,7 @@ export async function gravarBaixas(
         .input('tipo', sql.VarChar, tipo)
         .input('parcela', sql.Int, tipo === 'PARCELA' ? id : null)
         .input('mc', sql.Int, tipo === 'COMISSAO_COMPRA' ? id : it?.idMovComprador ?? null)
-        .input('despesa', sql.Int, tipo === 'REPASSE' ? id : null)
+        .input('despesa', sql.Int, tipo === 'REPASSE' || tipo === 'DESPESA' ? id : null)
         .input('vendedor', sql.Int, tipo === 'REPASSE' ? it?.idCliente ?? null : null)
         .input('leilao', sql.Int, it?.idLeilao ?? null)
         .input('valor', sql.Decimal(18, 2), a.valor)

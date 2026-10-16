@@ -35,7 +35,8 @@ export default function ImportarExtrato() {
     try {
       const fd = new FormData();
       fd.append('file', arquivo);
-      const r = await api.post('/conciliacao/importar', fd);
+      // a importação já roda o casamento automático, que num extrato grande passa do minuto padrão
+      const r = await api.post('/conciliacao/importar', fd, { timeout: 300000 });
       setResumo(r.data);
       carregarHistorico();
     } catch (e: any) {

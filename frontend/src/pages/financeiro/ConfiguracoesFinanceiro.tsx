@@ -154,6 +154,46 @@ function Pagadores({ adm }: { adm: boolean }) {
   );
 }
 
+function CategoriasDespesa({ adm }: { adm: boolean }) {
+  const [lista, setLista] = useState<any[]>([]);
+  const [nova, setNova] = useState('');
+  const carregar = () => api.get('/conciliacao/config/categorias', { params: { todas: '1' } })
+    .then(r => setLista(r.data)).catch(() => message.error('Erro ao carregar'));
+  useEffect(() => { carregar(); }, []);
+  const salvar = async (c: any, mudancas: { nome?: string; ativa?: boolean }) => {
+    try { await api.put(`/conciliacao/config/categorias/${c.id}`, { nome: mudancas.nome ?? c.nome, ativa: mudancas.ativa ?? c.ativa }); carregar(); }
+    catch (e: any) { message.error(e.response?.data?.error || 'Erro ao salvar'); }
+  };
+  const criar = async () => {
+    if (!nova.trim()) return;
+    try { await api.post('/conciliacao/config/categorias', { nome: nova }); setNova(''); carregar(); }
+    catch (e: any) { message.error(e.response?.data?.error || 'Erro ao criar'); }
+  };
+  return (
+    <>
+      <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+        Categorias usadas ao registrar um débito como despesa da empresa. Desativar esconde a categoria das novas
+        despesas sem mexer nas já registradas.
+      </Text>
+      {adm && (
+        <Space style={{ marginBottom: 12 }}>
+          <Input placeholder="Nova categoria" value={nova} onChange={e => setNova(e.target.value)} onPressEnter={criar} maxLength={60} style={{ width: 280 }} />
+          <Button type="primary" onClick={criar} disabled={!nova.trim()}>Adicionar</Button>
+        </Space>
+      )}
+      <Table rowKey="id" size="small" dataSource={lista} pagination={false}
+        columns={[
+          { title: 'Categoria', dataIndex: 'nome', render: (v: string, c: any) => adm
+              ? <Typography.Text editable={{ onChange: (t: string) => t.trim() && t !== v && salvar(c, { nome: t }) }}>{v}</Typography.Text>
+              : v },
+          { title: 'Despesas registradas', dataIndex: 'uso', width: 180, align: 'right' as const },
+          { title: 'Ativa', dataIndex: 'ativa', width: 90, render: (v: boolean, c: any) =>
+              <Switch size="small" checked={v} disabled={!adm} onChange={a => salvar(c, { ativa: a })} /> },
+        ]} />
+    </>
+  );
+}
+
 export default function ConfiguracoesFinanceiro() {
   const { usuario } = useAuth();
   const adm = usuario?.adm === 'S';
@@ -165,6 +205,7 @@ export default function ConfiguracoesFinanceiro() {
         { key: 'condicoes', label: 'Parcelas por condição', children: <Condicoes adm={adm} /> },
         { key: 'regras', label: 'Não é venda', children: <Regras adm={adm} /> },
         { key: 'pagadores', label: 'Pagadores conhecidos', children: <Pagadores adm={adm} /> },
+        { key: 'categorias', label: 'Categorias de despesa', children: <CategoriasDespesa adm={adm} /> },
       ]} />
     </>
   );

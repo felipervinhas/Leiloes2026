@@ -4,7 +4,7 @@ import { getPool, sql } from '../../config/database';
 // sistema de leilões (nada é copiado): parcelas e comissão de compra do lado
 // do comprador, e repasses lançados no Acerto do Vendedor do lado do vendedor.
 
-export type TipoItem = 'PARCELA' | 'COMISSAO_COMPRA' | 'REPASSE';
+export type TipoItem = 'PARCELA' | 'COMISSAO_COMPRA' | 'REPASSE' | 'DESPESA';
 
 export interface ItemAberto {
   chave: string;              // `${tipo}:${id}` — identifica o item nas baixas e nas sugestões
@@ -60,10 +60,11 @@ export async function pagosPorItem(): Promise<Map<string, number>> {
   if (!(await existeTabela('CONC_BAIXAS'))) return m;
   const r = await pool.request().query(`
     SELECT TIPO_ALVO, ID_PARCELA, ID_MOV_COMPRADOR, ID_DESPESA, SUM(VALOR) AS VALOR
-    FROM CONC_BAIXAS WHERE DESFEITA = 'N' AND TIPO_ALVO IN ('PARCELA','COMISSAO_COMPRA','REPASSE')
+    FROM CONC_BAIXAS WHERE DESFEITA = 'N' AND TIPO_ALVO IN ('PARCELA','COMISSAO_COMPRA','REPASSE','DESPESA')
     GROUP BY TIPO_ALVO, ID_PARCELA, ID_MOV_COMPRADOR, ID_DESPESA`);
   for (const x of r.recordset) {
-    const id = x.TIPO_ALVO === 'PARCELA' ? x.ID_PARCELA : x.TIPO_ALVO === 'REPASSE' ? x.ID_DESPESA : x.ID_MOV_COMPRADOR;
+    const id = x.TIPO_ALVO === 'PARCELA' ? x.ID_PARCELA
+      : x.TIPO_ALVO === 'REPASSE' || x.TIPO_ALVO === 'DESPESA' ? x.ID_DESPESA : x.ID_MOV_COMPRADOR;
     m.set(`${x.TIPO_ALVO}:${id}`, Number(x.VALOR));
   }
   return m;
@@ -171,4 +172,37 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
   }
 
   return opcoes.incluirQuitados ? itens : itens.filter(it => it.saldo > 0.009);
+}
+
+/**
+ * Despesas lançadas nas Despesas do leilão (débito D/S, sem as comissões automáticas)
+ * para um débito do extrato pagar: frete, catálogo, sindicato... pagos pela leiloeira a
+ * terceiros por conta de um vendedor ou comprador. Filtra por leilão e/ou cliente, ou
+ * busca pelos códigos (para conferir uma baixa).
+ */
+export async function despesasDoLeilao(f: { idLeilao?: number; idCliente?: number; ids?: number[]; incluirQuitadas?: boolean }): Promise<ItemAberto[]> {
+  if (!f.idLeilao && !f.idCliente && !f.ids?.length) return [];
+  const pool = await getPool();
+  const pagos = await pagosPorItem();
+  const req = pool.request();
+  const conds = ["D.D_C IN ('D','S')", "ISNULL(D.TIPO_ORIGEM, '') NOT IN ('COMISSAO_VENDEDOR','COMISSAO_COMPRADOR')"];
+  if (f.idLeilao) { req.input('l', sql.Int, f.idLeilao); conds.push('D.CODLEI = @l'); }
+  if (f.idCliente) { req.input('c', sql.Int, f.idCliente); conds.push('D.CODIGO_CLIENTE = @c'); }
+  if (f.ids?.length) conds.push(`D.CODIGO IN (${f.ids.map((id, i) => { req.input(`d${i}`, sql.Int, id); return `@d${i}`; }).join(',')})`);
+  const r = await req.query(`
+    SELECT TOP 500 D.CODIGO, D.CODIGO_CLIENTE, D.VALOR, D.OBSERVACOES, D.DATA_INCLUSAO, D.CODLEI, L.LEILAO, C.NOMEXX
+    FROM DESPESAS D LEFT JOIN LEILOES L ON L.ID = D.CODLEI LEFT JOIN CLIENTES C ON C.ID = D.CODIGO_CLIENTE
+    WHERE ${conds.join(' AND ')} ORDER BY D.DATA_INCLUSAO DESC, D.CODIGO DESC`);
+  const itens = r.recordset.map((x: any) => {
+    const chave = `DESPESA:${x.CODIGO}`;
+    const valor = r2(Math.abs(Number(x.VALOR) || 0));
+    const pago = r2(pagos.get(chave) || 0);
+    return {
+      chave, tipo: 'DESPESA' as TipoItem, id: x.CODIGO, idCliente: Number(x.CODIGO_CLIENTE) || 0, idMovComprador: null,
+      idLeilao: x.CODLEI, leilao: x.LEILAO, lote: null,
+      descricao: `${x.NOMEXX ? `${x.NOMEXX}: ` : ''}${String(x.OBSERVACOES || 'Despesa').trim()}`,
+      vencimento: iso(x.DATA_INCLUSAO), valor, pago, saldo: r2(valor - pago), daLeiloeira: false,
+    };
+  });
+  return f.incluirQuitadas ? itens : itens.filter(i => i.saldo > 0.009);
 }

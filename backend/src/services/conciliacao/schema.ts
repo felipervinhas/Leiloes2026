@@ -111,6 +111,44 @@ IF COL_LENGTH('CONC_LANCAMENTOS', 'SUGESTAO') IS NULL
 IF COL_LENGTH('CONC_BAIXAS', 'ID_DESPESA') IS NULL
   ALTER TABLE CONC_BAIXAS ADD ID_DESPESA INT NULL;
 
+-- Despesas da empresa (débito do extrato que não é de venda nem de cliente: aluguel de
+-- veículo, seguro, telefone...). Categorias são da empresa; as iniciais vêm prontas.
+IF OBJECT_ID('CONC_CATEGORIAS') IS NULL
+BEGIN
+  CREATE TABLE CONC_CATEGORIAS (
+    ID    INT IDENTITY(1,1) PRIMARY KEY,
+    NOME  VARCHAR(60) NOT NULL,
+    ATIVA CHAR(1)     NOT NULL DEFAULT 'S'
+  );
+  INSERT INTO CONC_CATEGORIAS (NOME) VALUES
+    ('Aluguel de veículos'), ('Telefone e internet'), ('Seguros'), ('Tarifas bancárias'),
+    ('Gráfica e impressos'), ('Associações e entidades'), ('Impostos e taxas'),
+    ('Combustível e viagens'), ('Outras despesas');
+END
+
+IF OBJECT_ID('CONC_DESPESAS_EMPRESA') IS NULL
+BEGIN
+  CREATE TABLE CONC_DESPESAS_EMPRESA (
+    ID             INT IDENTITY(1,1) PRIMARY KEY,
+    ID_LANCAMENTO  INT          NULL,
+    ID_CATEGORIA   INT          NOT NULL,
+    FORNECEDOR     VARCHAR(120) NULL,
+    DOC_FORNECEDOR VARCHAR(14)  NULL,
+    DATA           DATE         NOT NULL,
+    VALOR          DECIMAL(18,2) NOT NULL,
+    ID_LEILAO      INT          NULL,
+    OBSERVACAO     VARCHAR(255) NULL,
+    ID_USUARIO     INT          NULL,
+    NOME_USUARIO   VARCHAR(100) NULL,
+    DATA_INCLUSAO  DATETIME     NOT NULL DEFAULT GETDATE()
+  );
+  CREATE INDEX IX_CONC_DESP_EMP_DATA ON CONC_DESPESAS_EMPRESA (DATA);
+END
+
+-- regra aprendida que já classifica como despesa da empresa (e não só "não é venda")
+IF COL_LENGTH('CONC_IGNORAR', 'ID_CATEGORIA') IS NULL
+  ALTER TABLE CONC_IGNORAR ADD ID_CATEGORIA INT NULL;
+
 IF OBJECT_ID('CONC_CONDICAO_GRUPOS') IS NULL
 CREATE TABLE CONC_CONDICAO_GRUPOS (
   ID_CONDPAGTO     INT PRIMARY KEY,

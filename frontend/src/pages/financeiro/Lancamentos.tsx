@@ -18,6 +18,7 @@ export const SITUACOES: Record<string, { label: string; cor: string }> = {
   CONCILIADO: { label: 'Conciliado',   cor: 'green' },
   PARCIAL:    { label: 'Parcial',      cor: 'gold' },
   NAO_VENDA:  { label: 'Não é venda',  cor: 'default' },
+  DESPESA:    { label: 'Despesa da empresa', cor: 'purple' },
 };
 
 /** O extrato traz só os dígitos: 529.982.247-25 / 11.222.333/0001-81 */

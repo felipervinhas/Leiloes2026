@@ -42,6 +42,7 @@ import Pendencias from './pages/financeiro/Pendencias';
 import Repasses from './pages/financeiro/Repasses';
 import Recebimentos from './pages/financeiro/Recebimentos';
 import ConfiguracoesFinanceiro from './pages/financeiro/ConfiguracoesFinanceiro';
+import DespesasEmpresa from './pages/financeiro/DespesasEmpresa';
 
 function UrlInvalida() {
   return (
@@ -107,6 +108,7 @@ function App() {
                 <Route path="repasses" element={<Repasses />} />
                 <Route path="recebimentos" element={<Recebimentos />} />
                 <Route path="configuracoes" element={<ConfiguracoesFinanceiro />} />
+                <Route path="despesas" element={<DespesasEmpresa />} />
               </Route>
             </Route>
             <Route element={<PrivateRoute />}>

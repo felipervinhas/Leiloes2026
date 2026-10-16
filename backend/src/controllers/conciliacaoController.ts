@@ -7,6 +7,7 @@ import * as motor from '../services/conciliacao/motorService';
 import * as manual from '../services/conciliacao/manualService';
 import * as rel from '../services/conciliacao/relatorioService';
 import * as cfg from '../services/conciliacao/configService';
+import * as despEmp from '../services/conciliacao/despesaEmpresaService';
 
 const usuarioDe = (req: Request) => (req as any).usuario;
 
@@ -86,7 +87,7 @@ export const candidatos = tratar(async (req, res) => {
   res.json(await manual.candidatos(Number(req.params.id), {
     idCliente: q.idCliente ? Number(q.idCliente) : undefined,
     idLeilao: q.idLeilao ? Number(q.idLeilao) : undefined,
-    papel: q.papel === 'vendedor' ? 'vendedor' : q.papel === 'comprador' ? 'comprador' : undefined,
+    papel: q.papel === 'vendedor' || q.papel === 'comprador' || q.papel === 'despesa' ? q.papel : undefined,
   }));
 });
 
@@ -151,4 +152,44 @@ export const excluirPagador = tratar(async (req, res) => {
   await cfg.excluirPagador(id);
   await registrarLog(usuarioDe(req), 'Deletar', 'Conciliação - Pagador conhecido', id);
   res.json({ ok: true });
+});
+
+// ── despesas: da empresa (cadastro do Financeiro) e de cliente (Despesas do leilão) ──
+export const listarCategorias = tratar(async (req, res) => { res.json(await despEmp.listarCategorias(req.query.todas === '1')); });
+export const criarCategoria = tratar(async (req, res) => {
+  soAdm(req);
+  const id = await despEmp.salvarCategoria(null, String(req.body?.nome || ''), req.body?.ativa !== false);
+  await registrarLog(usuarioDe(req), 'Inserir', 'Conciliação - Categoria de despesa', id);
+  res.status(201).json({ id });
+});
+export const atualizarCategoria = tratar(async (req, res) => {
+  soAdm(req);
+  const id = Number(req.params.id);
+  await despEmp.salvarCategoria(id, String(req.body?.nome || ''), req.body?.ativa !== false);
+  await registrarLog(usuarioDe(req), 'Alterar', 'Conciliação - Categoria de despesa', id);
+  res.json({ ok: true });
+});
+export const despesaEmpresa = tratar(async (req, res) => {
+  const id = Number(req.params.id);
+  const b = req.body || {};
+  if (!b.idCategoria) throw new ConciliacaoError(400, 'Escolha a categoria');
+  await despEmp.registrarDespesaEmpresa(id, {
+    idCategoria: Number(b.idCategoria), fornecedor: b.fornecedor, idLeilao: b.idLeilao ? Number(b.idLeilao) : undefined,
+    observacao: b.observacao, lembrar: !!b.lembrar,
+  }, usuarioDe(req));
+  await registrarLog(usuarioDe(req), 'Inserir', 'Conciliação - Despesa da empresa', id);
+  res.json({ ok: true });
+});
+export const despesaCliente = tratar(async (req, res) => {
+  const id = Number(req.params.id);
+  const b = req.body || {};
+  const r = await manual.criarDespesaClienteEBaixar(id, {
+    idLeilao: Number(b.idLeilao), idCliente: Number(b.idCliente), observacoes: b.observacoes, valor: b.valor ? Number(b.valor) : undefined,
+  }, usuarioDe(req));
+  await registrarLog(usuarioDe(req), 'Inserir', 'Conciliação - Despesa de cliente', id);
+  res.json(r);
+});
+export const relatorioDespesas = tratar(async (req, res) => {
+  const q = req.query as Record<string, string | undefined>;
+  res.json(await despEmp.relatorioDespesas({ de: q.de, ate: q.ate, idCategoria: q.idCategoria ? Number(q.idCategoria) : undefined }));
 });

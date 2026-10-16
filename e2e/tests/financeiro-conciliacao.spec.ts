@@ -89,7 +89,19 @@ test('Financeiro: importa extrato de conta nova e lista os lançamentos', async 
   await expect(drawer.getByText('Marcado como não é venda')).toBeVisible();
   await drawer.getByRole('button', { name: 'Desfazer' }).click();
   await expect(drawer.getByText('Escolha o cliente para ver o que está em aberto')).toBeVisible();
+
+  // o mesmo débito como despesa da empresa, e ele aparece no relatório de despesas
+  await drawer.getByRole('button', { name: /Despesa da empresa/ }).click();
+  const modalDe = page.locator('.ant-modal').filter({ hasText: 'Fornecedor' });
+  await modalDe.locator('.ant-select').first().click();
+  await page.keyboard.type('Outras', { delay: 20 });
+  await page.keyboard.press('Enter');
+  await modalDe.getByText(/Da próxima vez/).click(); // sem regra aprendida para o teste
+  await modalDe.getByRole('button', { name: 'Registrar' }).click();
+  await expect(drawer.getByText('Despesa da empresa: Outras despesas')).toBeVisible();
   await page.keyboard.press('Escape');
+  await page.getByRole('menuitem', { name: /Despesas da empresa/ }).click();
+  await expect(page.locator('.ant-table-row').filter({ hasText: `VENDEDOR TESTE ${execucao} LTDA` }).first()).toBeVisible({ timeout: 15_000 });
 
   // relatórios abrem (sem depender de vendas do banco de teste)
   await page.getByRole('menuitem', { name: /Pendências/ }).click();

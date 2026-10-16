@@ -42,5 +42,11 @@ router.get('/config/regras', conc.listarRegras);
 router.delete('/config/regras/:id', conc.excluirRegra);
 router.get('/config/pagadores', conc.listarPagadores);
 router.delete('/config/pagadores/:id', conc.excluirPagador);
+router.get('/config/categorias', conc.listarCategorias);
+router.post('/config/categorias', conc.criarCategoria);
+router.put('/config/categorias/:id', conc.atualizarCategoria);
+router.post('/lancamentos/:id/despesa-empresa', conc.despesaEmpresa);
+router.post('/lancamentos/:id/despesa-cliente', conc.despesaCliente);
+router.get('/relatorios/despesas', conc.relatorioDespesas);
 
 export default router;
