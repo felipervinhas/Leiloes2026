@@ -175,6 +175,7 @@ bancoRouter.post('/lotes/:id/quinta-geracao', memStorage.single('file'), reafirm
 bancoRouter.delete('/lotes/:id/quinta-geracao', upload.deletarQuintaGeracao);
 
 bancoRouter.get('/consulta-vendas', consultaVendas.consultar);
+bancoRouter.get('/consulta-vendas/medias-categoria', consultaVendas.mediasPorCategoria);
 bancoRouter.get('/consulta-vendas/racas', consultaVendas.racasDasVendas);
 bancoRouter.get('/consulta-vendas/racas/:idLeilao', consultaVendas.racas);
 bancoRouter.get('/consulta-vendas/lotes/:idLeilao', consultaVendas.lotes);

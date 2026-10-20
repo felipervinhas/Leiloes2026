@@ -6,7 +6,7 @@ import {
   CreditCardOutlined, SafetyOutlined, SettingOutlined, MenuFoldOutlined,
   MenuUnfoldOutlined, TrophyOutlined, BellOutlined, LineChartOutlined,
   DollarOutlined, WalletOutlined, FileSearchOutlined, OrderedListOutlined,
-  FileTextOutlined, MenuOutlined, TagsOutlined, SoundOutlined, BugOutlined, MergeCellsOutlined,
+  FileTextOutlined, MenuOutlined, TagsOutlined, SoundOutlined, BugOutlined, MergeCellsOutlined, BarChartOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import axios from 'axios';
@@ -42,6 +42,13 @@ const ALL_MENU_ITEMS = [
       { key: '/despesas', icon: <WalletOutlined />, label: 'Despesas', controle: 'Despesas' },
       { key: '/acerto-vendedor', icon: <FileTextOutlined />, label: 'Acerto de Vendedor', controle: 'Acerto de Vendedor' },
       { key: '/acerto-comprador', icon: <FileTextOutlined />, label: 'Acerto de Comprador', controle: 'Acerto de Comprador' },
+    ],
+  },
+  {
+    // relatórios de consulta (mesmo controle da Consulta de Vendas: são os mesmos dados)
+    key: 'consultas-group', icon: <BarChartOutlined />, label: 'Consultas', controle: undefined,
+    children: [
+      { key: '/medias-categoria', icon: <BarChartOutlined />, label: 'Médias por Categoria', controle: 'Consulta Vendas' },
     ],
   },
   {
@@ -81,6 +88,7 @@ const ROUTE_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
   '/ordem-entrada': { label: 'Ordem de Entrada', icon: <OrderedListOutlined /> },
   '/vendas': { label: 'Vendas', icon: <DollarOutlined /> },
   '/consulta-vendas': { label: 'Consulta Vendas', icon: <FileSearchOutlined /> },
+  '/medias-categoria': { label: 'Médias por Categoria', icon: <BarChartOutlined /> },
   '/contratos': { label: 'Contratos', icon: <FileTextOutlined /> },
   '/cotacoes': { label: 'Cotações', icon: <LineChartOutlined /> },
   '/despesas': { label: 'Despesas', icon: <WalletOutlined /> },

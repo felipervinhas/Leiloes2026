@@ -54,3 +54,13 @@ export const lotes = async (req: Request, res: Response) => {
   if (!idLeilao) return res.status(400).json({ error: 'idLeilao obrigatório' });
   res.json(await svc.lotesPorLeilao(idLeilao));
 };
+
+/** Médias por categoria num período: GET /consulta-vendas/medias-categoria?de=YYYY-MM-DD&ate=YYYY-MM-DD&defesa=S|N */
+export const mediasPorCategoria = async (req: Request, res: Response) => {
+  const data = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+  const de = data(req.query.de), ate = data(req.query.ate);
+  if (!de || !ate) return res.status(400).json({ error: 'Informe o período (de e até)' });
+  if (de > ate) return res.status(400).json({ error: 'A data inicial é maior que a final' });
+  const defesa = req.query.defesa === 'S' || req.query.defesa === 'N' ? req.query.defesa : undefined;
+  res.json(await svc.mediasPorCategoria({ de, ate, defesa }));
+};

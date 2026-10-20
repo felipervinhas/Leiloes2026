@@ -271,3 +271,44 @@ export async function lotesPorLeilao(idLeilao: number) {
     `);
   return r.recordset.map((row: any) => ({ id: row.ID, lotexx: row.LOTEXX, deslot: row.DESLOT, codven: row.CODVEN }));
 }
+
+/**
+ * Médias por categoria num período (data do leilão): soma por categoria (raça do lote) e
+ * leilão — a tela marca/desmarca categorias e refaz os totais sem nova consulta. Mesma conta
+ * do mapa de médias da Consulta de Vendas: quantidade = animais da parte de cada comprador,
+ * valor = valor original, média = valor ÷ quantidade; média por kg só com os lotes que têm
+ * peso (peso do lote = qtd × peso por cabeça, ou só o peso se qtd = 0).
+ */
+export async function mediasPorCategoria(f: { de: string; ate: string; defesa?: 'S' | 'N' }) {
+  const pool = await getPool();
+  const req = pool.request().input('de', sql.Date, f.de).input('ate', sql.Date, f.ate);
+  const conds = ['L.DATLEI >= @de', 'L.DATLEI < DATEADD(DAY, 1, @ate)'];
+  if (f.defesa) { req.input('defesa', sql.Char, f.defesa); conds.push('V.DEFESA = @defesa'); }
+  const r = await req.query(`
+    WITH B AS (
+      SELECT R.ID AS IDR, R.DESCRICAO, R.ESPECIES, V.IDLEILAO, L.LEILAO, L.DATLEI, V.IDLOTE,
+             ISNULL(V.QTDXXX, 0) * (ISNULL(V.PERCEN, 100) / 100.0) AS QTD,
+             ISNULL(V.VALORORIGINAL, 0) AS VALOR,
+             ISNULL(LO.PESOXX, 0) AS PESO
+      FROM VWVendas V
+      LEFT JOIN Leiloes L ON L.ID = V.IDLEILAO
+      LEFT JOIN Lotes LO  ON LO.ID = V.IDLOTE
+      LEFT JOIN Racas R   ON R.ID = LO.RACAXX
+      WHERE V.ID > 0 AND V.VALORPAGAR >= 0 AND ${conds.join(' AND ')}
+    )
+    SELECT IDR, DESCRICAO, ESPECIES, IDLEILAO, LEILAO, DATLEI,
+           SUM(QTD) AS QTD, SUM(VALOR) AS VALOR, COUNT(DISTINCT IDLOTE) AS LOTES,
+           SUM(CASE WHEN PESO > 0 AND VALOR > 0 THEN CASE WHEN QTD > 0 THEN QTD * PESO ELSE PESO END ELSE 0 END) AS PESO_KG,
+           SUM(CASE WHEN PESO > 0 AND VALOR > 0 THEN VALOR ELSE 0 END) AS VALOR_COM_PESO
+    FROM B
+    GROUP BY IDR, DESCRICAO, ESPECIES, IDLEILAO, LEILAO, DATLEI
+    ORDER BY DESCRICAO, DATLEI
+    OPTION (MAX_GRANT_PERCENT = 5)`);
+  return r.recordset.map((x: any) => ({
+    idCategoria: x.IDR ?? 0,
+    categoria: [x.DESCRICAO, x.ESPECIES].map((v: any) => (v ? String(v).trim() : '')).filter(Boolean).join(' / ') || 'Sem categoria',
+    idLeilao: x.IDLEILAO, leilao: x.LEILAO ? String(x.LEILAO).trim() : null, datlei: x.DATLEI,
+    qtd: Number(x.QTD) || 0, valor: Number(x.VALOR) || 0, lotes: x.LOTES,
+    pesoKg: Number(x.PESO_KG) || 0, valorComPeso: Number(x.VALOR_COM_PESO) || 0,
+  }));
+}
