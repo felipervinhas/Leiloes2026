@@ -318,10 +318,14 @@ export async function salvarLote(idMov: number, d: DadosLote, datlan: string): P
       .input('comissVendedor', sql.Decimal(18, 2), d.comissVendedor || 0)
       .input('datlan',         sql.Date,    datlan)
       .query(`
+        -- trocar o lote da venda leva junto o número e o vendedor do lote escolhido
+        -- (sem lote encontrado, mantém os que já estavam gravados)
         UPDATE MOVIMENTO_LOTE
         SET IDLOTE=@idLote, QTDXXX=@qtdxxx, QTDPAR=@qtdpar, VLRPAR=@vlrpar, VLRTOT=@vlrtot,
             VLRDES=@vlrdes, COMISS=@comiss,
-            COMISS_VENDEDOR=@comissVendedor, DATLAN=@datlan
+            COMISS_VENDEDOR=@comissVendedor, DATLAN=@datlan,
+            LOTEXX = ISNULL((SELECT LOTEXX FROM LOTES WHERE ID=@idLote), LOTEXX),
+            CODVEN = ISNULL((SELECT CAST(CODVEN AS VARCHAR(20)) FROM LOTES WHERE ID=@idLote), CODVEN)
         WHERE ID=@id
       `);
     return idLoteRow;
@@ -1573,11 +1577,13 @@ export async function atualizarFormaPagamentoMovimento(idMov: number, forma: str
 
 export async function atualizarInfoLote(idMov: number): Promise<void> {
   const pool = await getPool();
+  // só copia quando o lote existe e tem vendedor: com o lote excluído, o subselect voltava
+  // NULL e apagava o vendedor da venda (e com ele a comissão do vendedor no Acerto)
   await pool.request()
     .input('idMov', sql.Int, idMov)
     .query(`
-      UPDATE MOVIMENTO_LOTE
-      SET CODVEN = (SELECT CODVEN FROM LOTES WHERE ID = MOVIMENTO_LOTE.IDLOTE)
-      WHERE IDMOV = @idMov
+      UPDATE ML SET CODVEN = CAST(L.CODVEN AS VARCHAR(20))
+      FROM MOVIMENTO_LOTE ML JOIN LOTES L ON L.ID = ML.IDLOTE
+      WHERE ML.IDMOV = @idMov AND L.CODVEN IS NOT NULL
     `);
 }

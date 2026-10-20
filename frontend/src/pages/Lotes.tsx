@@ -188,7 +188,7 @@ export default function Lotes() {
 
   const deletar = async (id: number) => {
     try { await api.delete(`/lotes/${id}`); message.success('Excluído'); carregar(busca, pagina); }
-    catch { message.error('Erro ao excluir'); }
+    catch (e: any) { message.error(e.response?.data?.error || 'Erro ao excluir', 8); }
   };
 
   const duplicar = async (id: number) => {

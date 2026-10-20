@@ -301,8 +301,24 @@ export async function salvarOrdensLotes(lotes: Array<{ id: number; ordem: string
   }
 }
 
+export class LoteComVendaError extends Error {
+  constructor(msg: string) { super(msg); this.name = 'LoteComVendaError'; }
+}
+
+/**
+ * Não exclui lote que já tem venda: a venda ficava apontando para um lote que não existe
+ * (Knorr, 14/10/2026: lote 56 vendido foi excluído e recriado — a venda ficou em branco, o
+ * mapa de médias pôs o lote em "sem categoria" e o "Atualizar Informações" apagou o vendedor).
+ */
 export async function deletarLote(id: number): Promise<void> {
   const pool = await getPool();
+  const vendas = (await pool.request().input('id', sql.Int, id).query(`
+    SELECT TOP 3 M.CODNOT FROM MOVIMENTO_LOTE ML JOIN MOVIMENTO M ON M.ID = ML.IDMOV WHERE ML.IDLOTE = @id`)).recordset;
+  if (vendas.length) {
+    const boletos = vendas.map((v: any) => v.CODNOT).filter(Boolean).join(', ');
+    throw new LoteComVendaError(
+      `Este lote já foi vendido${boletos ? ` (boleto ${boletos})` : ''} e não pode ser excluído. Corrija os dados no próprio lote, ou exclua a venda antes.`);
+  }
   await pool.request().input('id', sql.Int, id).query(`DELETE FROM Lotes WHERE ID=@id`);
 }
 

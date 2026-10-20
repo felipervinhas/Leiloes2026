@@ -71,7 +71,12 @@ export const atualizarStatus = async (req: Request, res: Response) => {
 };
 export const deletar = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  await svc.deletarLote(id);
+  try {
+    await svc.deletarLote(id);
+  } catch (err) {
+    if (err instanceof svc.LoteComVendaError) return res.status(409).json({ error: err.message });
+    throw err;
+  }
   await registrarLog((req as any).usuario, 'Deletar', 'Lotes', id);
   res.status(204).send();
 };

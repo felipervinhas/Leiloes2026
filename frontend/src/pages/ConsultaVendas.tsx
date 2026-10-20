@@ -10,7 +10,7 @@ import {
   SearchOutlined, FileExcelOutlined, FileSearchOutlined, ClearOutlined, PrinterOutlined,
   CheckCircleFilled, CloseOutlined, FileTextOutlined, EyeOutlined, SettingOutlined,
 } from '@ant-design/icons';
-import { PDFDownloadLink, BlobProvider } from '@react-pdf/renderer';
+import { BlobProvider, pdf } from '@react-pdf/renderer';
 import api from '../services/api';
 import dayjs from 'dayjs';
 import { fmtDataUTC } from '../utils/data';
@@ -155,10 +155,6 @@ export default function ConsultaVendas() {
   const [dados, setDados]   = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [consultou, setConsultou] = useState(false);
-  // Incrementa a cada nova consulta — força o PDFDownloadLink a remontar (via key)
-  // sempre que o resultado muda, senão o @react-pdf/renderer pode manter o PDF
-  // gerado da consulta anterior (ex.: troca de filtro sem trocar orientação/colunas).
-  const [consultaVersao, setConsultaVersao] = useState(0);
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   // Ordenação atual da grid (coluna + sentido) — replicada em dadosOrdenados
@@ -257,7 +253,6 @@ export default function ConsultaVendas() {
       if (anoSel)       params.ano         = anoSel;
       const r = await api.get('/consulta-vendas', { params });
       setDados(r.data);
-      setConsultaVersao(v => v + 1);
     } catch { message.error('Erro ao consultar vendas'); }
     finally { setLoading(false); }
   };
@@ -365,7 +360,6 @@ export default function ConsultaVendas() {
     setLotes([]); setRacas([]);
     setVendedores([]); setCompradores([]);
     setDados([]); setConsultou(false);
-    setConsultaVersao(v => v + 1);
     salvarFiltroPersistido(banco, 'consulta-vendas', {});
   };
 
@@ -459,6 +453,64 @@ export default function ConsultaVendas() {
   // Impressão respeita a seleção da tabela: nada marcado -> imprime tudo; com seleção -> só os marcados.
   const dadosImpressao = selectedRowKeys.length > 0 ? dadosOrdenados.filter(d => selectedRowKeys.includes(rowKeyOf(d))) : dadosOrdenados;
   const totaisImpressao = calcularTotais(dadosImpressao);
+  // O PDF é gerado só no clique, com os dados daquele momento. O PDFDownloadLink regerava o
+  // documento a cada mudança da tela (consulta chegando, seleção, colunas) e as gerações
+  // sobrepostas do @react-pdf saíam com lotes repetidos ou faltando (Knorr, 16/10/2026).
+  const [gerandoPdf, setGerandoPdf] = useState(false);
+  const imprimirPdf = async () => {
+    setGerandoPdf(true);
+    try {
+      const blob = await pdf(tipoRelatorio === 'vendas'
+                      ? <ConsultaVendasPDF
+                          vendas={dadosImpressao}
+                          totais={totaisImpressao}
+                          titulo={nomeLeilaoSel}
+                          empresa={config.empresa}
+                          filtrosDesc={filtrosDesc}
+                          logoBase64={config.logoBase64}
+                          colunasVisiveis={colunasVisiveis}
+                          orientacao={orientacaoImp}
+                        />
+                      : tipoRelatorio === 'partes'
+                      ? <PartesVendasPDF
+                          vendas={dadosImpressao}
+                          titulo={nomeLeilaoSel}
+                          empresa={config.empresa}
+                          filtrosDesc={filtrosDesc}
+                          logoBase64={config.logoBase64}
+                          orientacao={orientacaoImp}
+                        />
+                      : tipoRelatorio === 'medias'
+                      ? <MediasLeilaoPDF
+                          totais={totaisImpressao}
+                          titulo={nomeLeilaoSel}
+                          dataLeilao={dadosImpressao[0]?.datlei}
+                          empresa={config.empresa}
+                          filtrosDesc={filtrosDesc}
+                          logoBase64={config.logoBase64}
+                        />
+                      : <MapaSeguroPDF
+                          vendas={dadosImpressao}
+                          totais={totaisImpressao}
+                          titulo={nomeLeilaoSel}
+                          empresa={config.empresa}
+                          filtrosDesc={filtrosDesc}
+                          logoBase64={config.logoBase64}
+                          orientacao={orientacaoImp}
+                          pagina={tipoRelatorio === 'seguroCompradores' ? 'compradores' : 'seguradoras'}
+                        />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${{ vendas: 'consulta-vendas', partes: 'partes-vendas', medias: 'medias-leilao', seguro: 'mapa-seguradoras', seguroCompradores: 'mapa-compradores' }[tipoRelatorio as 'vendas' | 'partes' | 'medias' | 'seguro' | 'seguroCompradores']}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch {
+      message.error('Erro ao gerar o PDF');
+    } finally {
+      setGerandoPdf(false);
+    }
+  };
 
   // Espécie predominante da consulta atual — decide se as colunas abaixo mostram
   // RP/SBB (equinos) ou Tatuagem/Registro (demais espécies). Uma tabela não pode
@@ -836,67 +888,19 @@ export default function ConsultaVendas() {
                   {!leilaoSel ? 'Selecione o Leilão' : 'Gerar Relação de Compradores'}
                 </Button>
               ) : (
-                <PDFDownloadLink
-                  key={`${tipoRelatorio}-${orientacaoImp}-${colunasVisiveis.join(',')}-${consultaVersao}-${selectedRowKeys.join(',')}`}
-                  document={
-                    tipoRelatorio === 'vendas'
-                      ? <ConsultaVendasPDF
-                          vendas={dadosImpressao}
-                          totais={totaisImpressao}
-                          titulo={nomeLeilaoSel}
-                          empresa={config.empresa}
-                          filtrosDesc={filtrosDesc}
-                          logoBase64={config.logoBase64}
-                          colunasVisiveis={colunasVisiveis}
-                          orientacao={orientacaoImp}
-                        />
-                      : tipoRelatorio === 'partes'
-                      ? <PartesVendasPDF
-                          vendas={dadosImpressao}
-                          titulo={nomeLeilaoSel}
-                          empresa={config.empresa}
-                          filtrosDesc={filtrosDesc}
-                          logoBase64={config.logoBase64}
-                          orientacao={orientacaoImp}
-                        />
-                      : tipoRelatorio === 'medias'
-                      ? <MediasLeilaoPDF
-                          totais={totaisImpressao}
-                          titulo={nomeLeilaoSel}
-                          dataLeilao={dadosImpressao[0]?.datlei}
-                          empresa={config.empresa}
-                          filtrosDesc={filtrosDesc}
-                          logoBase64={config.logoBase64}
-                        />
-                      : <MapaSeguroPDF
-                          vendas={dadosImpressao}
-                          totais={totaisImpressao}
-                          titulo={nomeLeilaoSel}
-                          empresa={config.empresa}
-                          filtrosDesc={filtrosDesc}
-                          logoBase64={config.logoBase64}
-                          orientacao={orientacaoImp}
-                          pagina={tipoRelatorio === 'seguroCompradores' ? 'compradores' : 'seguradoras'}
-                        />
-                  }
-                  fileName={`${{ vendas: 'consulta-vendas', partes: 'partes-vendas', medias: 'medias-leilao', seguro: 'mapa-seguradoras', seguroCompradores: 'mapa-compradores' }[tipoRelatorio as 'vendas' | 'partes' | 'medias' | 'seguro' | 'seguroCompradores']}-${new Date().toISOString().slice(0, 10)}.pdf`}
-                  style={{ textDecoration: 'none' }}
+                <Button
+                  type="primary"
+                  icon={<PrinterOutlined />}
+                  loading={gerandoPdf}
+                  disabled={!dados.length}
+                  onClick={imprimirPdf}
                 >
-                  {({ loading }) => (
-                    <Button
-                      type="primary"
-                      icon={<PrinterOutlined />}
-                      loading={loading}
-                      disabled={!dados.length}
-                    >
-                      {loading
-                        ? 'Gerando PDF...'
-                        : selectedRowKeys.length > 0
-                          ? `Imprimir PDF (${selectedRowKeys.length} selecionado${selectedRowKeys.length !== 1 ? 's' : ''})`
-                          : 'Imprimir PDF (todos)'}
-                    </Button>
-                  )}
-                </PDFDownloadLink>
+                  {gerandoPdf
+                    ? 'Gerando PDF...'
+                    : selectedRowKeys.length > 0
+                      ? `Imprimir PDF (${selectedRowKeys.length} selecionado${selectedRowKeys.length !== 1 ? 's' : ''})`
+                      : 'Imprimir PDF (todos)'}
+                </Button>
               )}
               <Button
                 icon={<FileExcelOutlined />}
