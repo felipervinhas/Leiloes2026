@@ -11,12 +11,70 @@ interface Mensagem {
   content: string;
 }
 
-const SUGESTOES = [
-  'Quais leilões estão ativos?',
-  'Mostre os totais financeiros gerais',
-  'Busque o cliente João Silva',
-  'Quais parcelas vencem nos próximos 7 dias?',
+/**
+ * Perguntas prontas por assunto. As que dependem de um nome (animal, cliente, leilão) só
+ * preenchem a caixa de texto para a pessoa completar — "preencher" é o texto inicial.
+ */
+const SUGESTOES: { assunto: string; perguntas: { texto: string; preencher?: string }[] }[] = [
+  { assunto: 'Leilões', perguntas: [
+    { texto: 'Quais os próximos leilões?' },
+    { texto: 'Resumo do último leilão' },
+    { texto: 'Quais lotes não foram vendidos no último leilão?' },
+    { texto: 'Maiores vendas do último leilão' },
+    { texto: 'Resumo do leilão…', preencher: 'Resumo do leilão ' },
+  ] },
+  { assunto: 'Lotes e animais', perguntas: [
+    { texto: 'Quantos lotes de um animal foram vendidos, por ano e leilão…', preencher: 'Quantos lotes vendidos, por ano e leilão, do animal ' },
+    { texto: 'Por quanto foi vendido o animal…', preencher: 'Por quanto foi vendido o animal ' },
+    { texto: 'O lote … tem lance?', preencher: 'Tem lance no último leilão o lote número ' },
+    { texto: 'Ficha do lote…', preencher: 'Mostre a ficha (vendedor, filiação, venda) do último leilão, lote número ' },
+  ] },
+  { assunto: 'Vendas e médias', perguntas: [
+    { texto: 'Médias por categoria deste ano' },
+    { texto: 'Vendas mês a mês deste ano' },
+    { texto: 'Totais de vendas deste ano' },
+    { texto: 'Média da categoria…', preencher: 'Média por animal neste ano da categoria ' },
+  ] },
+  { assunto: 'Clientes', perguntas: [
+    { texto: 'Maiores compradores deste ano' },
+    { texto: 'Maiores vendedores deste ano' },
+    { texto: 'Quantos cadastros estão em análise?' },
+    { texto: 'Em quais leilões o cliente comprou…', preencher: 'Em quais leilões comprou, e com quais valores, o cliente ' },
+    { texto: 'O CPF … é cadastrado?', preencher: 'Está cadastrado o CPF ' },
+    { texto: 'Parcelas do cliente…', preencher: 'Parcelas vencidas e a vencer do cliente ' },
+    { texto: 'Acerto do vendedor…', preencher: 'Saldo do acerto no último leilão do vendedor ' },
+  ] },
+  { assunto: 'Financeiro', perguntas: [
+    { texto: 'Quais parcelas vencem nos próximos 7 dias?' },
+    { texto: 'Quais parcelas estão vencidas?' },
+    { texto: 'Despesas do último leilão' },
+  ] },
 ];
+
+/**
+ * O assistente responde com **negrito** e listas "- " (subitens com 2 espaços). O balão
+ * mostra isso formatado em vez dos asteriscos; o resto continua texto puro (sem HTML).
+ */
+function TextoFormatado({ texto }: { texto: string }) {
+  const negrito = (linha: string, chave: string) => linha.split(/(\*\*[^*]+\*\*)/g).map((parte, i) =>
+    parte.startsWith('**') && parte.endsWith('**') && parte.length > 4
+      ? <strong key={`${chave}-${i}`}>{parte.slice(2, -2)}</strong>
+      : <React.Fragment key={`${chave}-${i}`}>{parte}</React.Fragment>);
+  return (
+    <>
+      {texto.split('\n').map((linha, i) => {
+        const item = linha.match(/^(\s*)[-*•]\s+(.*)$/);
+        if (item) {
+          const nivel = Math.min(Math.floor(item[1].length / 2), 3);
+          return <div key={i} style={{ display: 'flex', gap: 6, paddingLeft: nivel * 14 }}><span>•</span><span>{negrito(item[2], String(i))}</span></div>;
+        }
+        const titulo = linha.match(/^#{1,6}\s+(.*)$/);
+        if (titulo) return <div key={i}><strong>{titulo[1]}</strong></div>;
+        return linha.trim() ? <div key={i}>{negrito(linha, String(i))}</div> : <div key={i} style={{ height: 6 }} />;
+      })}
+    </>
+  );
+}
 
 function BolhaAssistente({ texto }: { texto: string }) {
   return (
@@ -32,9 +90,9 @@ function BolhaAssistente({ texto }: { texto: string }) {
         background: '#f0f0f0', borderRadius: '4px 12px 12px 12px',
         padding: '8px 12px', maxWidth: '85%',
         fontSize: 13, lineHeight: 1.6, color: '#222',
-        whiteSpace: 'pre-wrap',
+        overflowWrap: 'anywhere',
       }}>
-        {texto}
+        <TextoFormatado texto={texto} />
       </div>
     </div>
   );
@@ -81,6 +139,7 @@ export default function AIChat() {
   const [aberto, setAberto] = useState(false);
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [input, setInput] = useState('');
+  const caixaRef = useRef<any>(null);
   const [carregando, setCarregando] = useState(false);
   const fimRef = useRef<HTMLDivElement>(null);
 
@@ -217,24 +276,37 @@ export default function AIChat() {
                 <div>
                   <Text style={{ color: '#555', fontSize: 13 }}>
                     Olá! Sou o assistente do sistema de leilões.<br />
-                    Posso consultar clientes, leilões, parcelas, financeiro e mais.
+                    Consulto leilões, lotes, vendas, médias, clientes, acertos, parcelas e despesas.
                   </Text>
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {SUGESTOES.map(s => (
-                  <button
-                    key={s}
-                    onClick={() => enviar(s)}
-                    style={{
-                      background: '#f0f0f0', border: '1px solid #ddd',
-                      borderRadius: 8, padding: '7px 12px',
-                      textAlign: 'left', cursor: 'pointer', fontSize: 12.5,
-                      color: '#333', lineHeight: 1.4,
-                    }}
-                  >
-                    {s}
-                  </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {SUGESTOES.map(g => (
+                  <div key={g.assunto}>
+                    <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>{g.assunto}</Text>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                      {g.perguntas.map(p => (
+                        <button
+                          key={p.texto}
+                          title={p.preencher ? 'Completa a pergunta na caixa de texto' : undefined}
+                          onClick={() => {
+                            if (!p.preencher) return enviar(p.texto);
+                            // completa na caixa: o nome vai no fim da frase, com o cursor já lá
+                            setInput(p.preencher);
+                            setTimeout(() => caixaRef.current?.focus({ cursor: 'end' }), 0);
+                          }}
+                          style={{
+                            background: p.preencher ? '#fff' : '#f0f0f0', border: `1px ${p.preencher ? 'dashed' : 'solid'} #ccc`,
+                            borderRadius: 14, padding: '5px 10px',
+                            textAlign: 'left', cursor: 'pointer', fontSize: 12,
+                            color: '#333', lineHeight: 1.35,
+                          }}
+                        >
+                          {p.texto}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -269,6 +341,7 @@ export default function AIChat() {
           display: 'flex', gap: 8, alignItems: 'flex-end',
         }}>
           <TextArea
+            ref={caixaRef}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}

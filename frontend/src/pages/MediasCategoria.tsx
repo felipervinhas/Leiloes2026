@@ -47,7 +47,8 @@ const especieDe = (categoria: string) => {
 export default function MediasCategoria() {
   const config = useConfig();
   const [periodo, setPeriodo] = useState<[Dayjs, Dayjs]>([dayjs().startOf('year'), dayjs()]);
-  const [defesa, setDefesa] = useState<'' | 'S' | 'N'>('');
+  // padrão: só vendidos — lote em defesa entra com valor zero e puxaria a média para baixo
+  const [defesa, setDefesa] = useState<'' | 'S' | 'N'>('S');
   const [linhas, setLinhas] = useState<Linha[] | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [marcadas, setMarcadas] = useState<number[]>([]);
