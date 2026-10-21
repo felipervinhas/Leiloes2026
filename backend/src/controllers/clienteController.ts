@@ -37,7 +37,12 @@ export const buscar = async (req: Request, res: Response) => {
   if (!data) return res.status(404).json({ error: 'Não encontrado' });
   res.json(data);
 };
+// Senha só com ASCII imprimível (sem acento/cedilha)
+const SENHA_INVALIDA = 'A senha não pode ter acentos nem cedilha.';
+const senhaInvalida = (s: unknown) => typeof s === 'string' && /[^\x20-\x7E]/.test(s);
+
 export const criar = async (req: Request, res: Response) => {
+  if (senhaInvalida(req.body.senhax)) return res.status(400).json({ error: SENHA_INVALIDA });
   try {
     const idUsuario = (req as any).usuario?.id ?? null;
     const dados = { ...req.body, usucad: idUsuario };
@@ -54,6 +59,7 @@ export const criar = async (req: Request, res: Response) => {
   }
 };
 export const atualizar = async (req: Request, res: Response) => {
+  if (senhaInvalida(req.body.senhax)) return res.status(400).json({ error: SENHA_INVALIDA });
   try {
     const idUsuario = (req as any).usuario?.id ?? null;
     const id = Number(req.params.id);
@@ -83,6 +89,7 @@ export const deletar = async (req: Request, res: Response) => {
   res.status(204).send();
 };
 export const alterarSenha = async (req: Request, res: Response) => {
+  if (senhaInvalida(req.body.senhax)) return res.status(400).json({ error: SENHA_INVALIDA });
   const id = Number(req.params.id);
   await svc.alterarSenhaCliente(id, req.body.senhax);
   await registrarLog((req as any).usuario, 'Alterar', 'Clientes', id);

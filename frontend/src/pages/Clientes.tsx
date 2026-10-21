@@ -774,7 +774,14 @@ export default function Clientes({ somenteCadastro }: { somenteCadastro?: Soment
           />
         </Form.Item>
       </Col>
-      <Col xs={24} md={12}><Form.Item name="senhax" label={editando ? 'Senha (deixe em branco para manter)' : 'Senha'}><Input.Password /></Form.Item></Col>
+      <Col xs={24} md={12}>
+        {/* Senha sem acento/cedilha: descarta qualquer caractere fora do ASCII imprimível */}
+        <Form.Item name="senhax" label={editando ? 'Senha (deixe em branco para manter)' : 'Senha'}
+          extra="Não use acentos nem cedilha."
+          getValueFromEvent={(e) => e.target.value.replace(/[^\x20-\x7E]/g, '')}>
+          <Input.Password />
+        </Form.Item>
+      </Col>
       <Col xs={24}><Form.Item name="obsxxx" label="Observações"><Input.TextArea rows={3} /></Form.Item></Col>
     </Row>
   );
