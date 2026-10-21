@@ -248,6 +248,7 @@ export default function PainelLeiloeiro() {
                   <DadoItem label="Vendedor" valor={lote.nomeVendedor} />
                   <DadoItem label="Pelagem" valor={lote.pelage} />
                   <DadoItem label="Peso" valor={lote.pesoxx ? `${lote.pesoxx} kg` : undefined} />
+                  <DadoItem label="Perímetro Escrotal" valor={lote.perimetroEscrotal ? `${String(lote.perimetroEscrotal).replace('.', ',')} cm` : undefined} />
                   <DadoItem label={labelRP(especies)} valor={lote.rpxxx} />
                   <DadoItem label={labelSBB(especies)} valor={lote.sbbxxx} />
                   <DadoItem label="Data Nasc." valor={lote.datnas ? fmtDataUTC(lote.datnas) : undefined} />

@@ -109,6 +109,7 @@ export function exportarLotesExcel(lotes: any[], condicoes: Record<number, strin
     'Sexo': sexo(l.catego),
     'Qtd. Animais': l.qtdAnimais ?? '',
     'Peso': l.pesoxx ?? '',
+    'Perímetro Escrotal (cm)': l.perimetroEscrotal ?? '',
     'RP / Tatuagem': l.rpxxx ?? '',
     'SBB / Registro': l.sbbxxx ?? '',
     'Pelagem': l.pelage ?? '',
@@ -124,7 +125,7 @@ export function exportarLotesExcel(lotes: any[], condicoes: Record<number, strin
   const ws = XLSX.utils.json_to_sheet(linhas);
   ws['!cols'] = [
     { wch: 8 }, { wch: 7 }, { wch: 40 }, { wch: 30 }, { wch: 20 }, { wch: 8 }, { wch: 10 },
-    { wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 11 }, { wch: 30 }, { wch: 22 },
+    { wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 11 }, { wch: 30 }, { wch: 22 },
     { wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 40 },
   ];
 

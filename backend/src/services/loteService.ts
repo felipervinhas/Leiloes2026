@@ -15,6 +15,9 @@ async function garantirColunaQtdAnimais() {
     -- Fica preenchido até o primeiro Salvar; rascunho abandonado é apagado depois de 1 dia.
     IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Lotes' AND COLUMN_NAME='RASCUNHO_EM')
       ALTER TABLE Lotes ADD RASCUNHO_EM DATETIME NULL;
+    -- Perímetro escrotal (cm) dos touros: antes ia no meio do comentário (chamado #20).
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Lotes' AND COLUMN_NAME='PERIMETRO_ESCROTAL')
+      ALTER TABLE Lotes ADD PERIMETRO_ESCROTAL DECIMAL(5,1) NULL;
   `);
   colunaQtdAnimaisCriadaPorBanco.add(banco);
 }
@@ -31,6 +34,7 @@ function mapRow(c: any, bucket: string): Lote {
     pelage: c.PELAGE, datnas: c.DATNAS, obslot: c.OBSLOT, filiacao: c.FILIACAO,
     lanmax: c.LANMAX, urlvideo: c.URLVideo, comentario: c.Comentario,
     multiplo: c.MULTIPLO, vendido: c.VENDIDO, publica: c.PUBLICA, qtdAnimais: c.QTDANIMAIS,
+    perimetroEscrotal: c.PERIMETRO_ESCROTAL != null ? Number(c.PERIMETRO_ESCROTAL) : null,
     tipoSecao: c.TIPO_SECAO, condic: c.CONDIC, comcom: c.COMCOM, comven: c.COMVEN,
     nomeRaca: c.DESCRICAO, especies: c.ESPECIES, nomeVendedor: c.NOMEXX, estabelecimento: c.ESTABELECIMENTO, nomeLeilao: c.LEILAO,
     dataLeilao: c.LEI_DATLEI, enderecoLeilao: c.LEI_ENDERE,
@@ -190,9 +194,10 @@ export async function criarLote(d: Lote): Promise<number> {
     .input('condic', sql.Int, d.condic||null).input('qtdAnimais', sql.Int, d.qtdAnimais||null)
     .input('comcom', sql.Decimal(9, 4), d.comcom ?? null).input('comven', sql.Decimal(9, 4), d.comven ?? null)
     .input('tipoSecao', sql.VarChar, d.tipoSecao || null)
-    .query(`INSERT INTO Lotes (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,RACAXX,IDLEILAO,CODVEN,ORDEM,CATEGO,VLRINS,PELAGE,DATNAS,OBSLOT,FILIACAO,LANMAX,URLVideo,Comentario,MULTIPLO,VENDIDO,PUBLICA,CONDIC,QTDANIMAIS,COMCOM,COMVEN,TIPO_SECAO)
+    .input('perimetroEscrotal', sql.Decimal(5, 1), numeroOuNulo(d.perimetroEscrotal))
+    .query(`INSERT INTO Lotes (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,RACAXX,IDLEILAO,CODVEN,ORDEM,CATEGO,VLRINS,PELAGE,DATNAS,OBSLOT,FILIACAO,LANMAX,URLVideo,Comentario,MULTIPLO,VENDIDO,PUBLICA,CONDIC,QTDANIMAIS,COMCOM,COMVEN,TIPO_SECAO,PERIMETRO_ESCROTAL)
       OUTPUT INSERTED.ID
-      VALUES ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@racaxx,@idleilao,@codven,@ordem,@catego,@vlrins,@pelage,@datnas,@obslot,@filiacao,@lanmax,@urlvideo,@comentario,@multiplo,@vendido,@publica,@condic,@qtdAnimais,@comcom,@comven,@tipoSecao)`);
+      VALUES ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@racaxx,@idleilao,@codven,@ordem,@catego,@vlrins,@pelage,@datnas,@obslot,@filiacao,@lanmax,@urlvideo,@comentario,@multiplo,@vendido,@publica,@condic,@qtdAnimais,@comcom,@comven,@tipoSecao,@perimetroEscrotal)`);
   return r.recordset[0].ID;
 }
 
@@ -259,11 +264,12 @@ export async function atualizarLote(id: number, d: Lote): Promise<void> {
     .input('publica', sql.Char, d.publica||'N').input('condic', sql.Int, d.condic||null)
     .input('qtdAnimais', sql.Int, d.qtdAnimais||null)
     .input('comcom', sql.Decimal(9, 4), d.comcom ?? null).input('comven', sql.Decimal(9, 4), d.comven ?? null)
+    .input('perimetroEscrotal', sql.Decimal(5, 1), numeroOuNulo(d.perimetroEscrotal))
     .query(`UPDATE Lotes SET LOTEXX=@lotexx,DESLOT=@deslot,RPXXX=@rpxxx,SBBXXX=@sbbxxx,PESOXX=@pesoxx,
       TATXXX=@tatxxx,RACAXX=@racaxx,IDLEILAO=@idleilao,CODVEN=@codven,ORDEM=@ordem,CATEGO=@catego,
       VLRINS=@vlrins,PELAGE=@pelage,DATNAS=@datnas,OBSLOT=@obslot,FILIACAO=@filiacao,LANMAX=@lanmax,
       URLVideo=@urlvideo,Comentario=@comentario,MULTIPLO=@multiplo,VENDIDO=@vendido,PUBLICA=@publica,
-      CONDIC=@condic,QTDANIMAIS=@qtdAnimais,COMCOM=@comcom,COMVEN=@comven,RASCUNHO_EM=NULL WHERE ID=@id`);
+      CONDIC=@condic,QTDANIMAIS=@qtdAnimais,COMCOM=@comcom,COMVEN=@comven,PERIMETRO_ESCROTAL=@perimetroEscrotal,RASCUNHO_EM=NULL WHERE ID=@id`);
 }
 
 /**
@@ -324,6 +330,7 @@ export async function deletarLote(id: number): Promise<void> {
 
 /** tipoSecao: seção do usuário que está duplicando (Macedo); sem ela, a cópia herda a do original. */
 export async function duplicarLote(id: number, tipoSecao?: string | null): Promise<number> {
+  await garantirColunaQtdAnimais();
   const pool = await getPool();
   const r = await pool.request().input('id', sql.Int, id).query(`SELECT * FROM Lotes WHERE ID=@id`);
   if (!r.recordset.length) throw new Error('Lote não encontrado');
@@ -355,10 +362,11 @@ export async function duplicarLote(id: number, tipoSecao?: string | null): Promi
     .input('comven',   sql.Decimal(9, 4), o.COMVEN ?? null)
     .input('iddup',    sql.Int,     id)
     .input('tipoSecao', sql.VarChar, tipoSecao || o.TIPO_SECAO || null)
+    .input('perimetroEscrotal', sql.Decimal(5, 1), numeroOuNulo(o.PERIMETRO_ESCROTAL))
     .query(`INSERT INTO Lotes
-      (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,FILIACAO,DATNAS,CATEGO,RACAXX,IDLEILAO,CODVEN,ORDEM,VLRINS,LANMAX,OBSLOT,PELAGE,URLVideo,Comentario,MULTIPLO,CONDIC,QTDANIMAIS,COMCOM,COMVEN,ID_DUPLICADO,VENDIDO,PUBLICA,TIPO_SECAO)
+      (ID,LOTEXX,DESLOT,RPXXX,SBBXXX,PESOXX,TATXXX,FILIACAO,DATNAS,CATEGO,RACAXX,IDLEILAO,CODVEN,ORDEM,VLRINS,LANMAX,OBSLOT,PELAGE,URLVideo,Comentario,MULTIPLO,CONDIC,QTDANIMAIS,COMCOM,COMVEN,ID_DUPLICADO,VENDIDO,PUBLICA,TIPO_SECAO,PERIMETRO_ESCROTAL)
       OUTPUT INSERTED.ID
       VALUES
-      ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@filiacao,@datnas,@catego,@racaxx,@idleilao,@codven,@ordem,@vlrins,@lanmax,@obslot,@pelage,@urlvideo,@comentario,@multiplo,@condic,@qtdAnimais,@comcom,@comven,@iddup,'N','N',@tipoSecao)`);
+      ((SELECT ISNULL(MAX(ID), 0) + 1 FROM Lotes WITH (UPDLOCK, HOLDLOCK)), @lotexx,@deslot,@rpxxx,@sbbxxx,@pesoxx,@tatxxx,@filiacao,@datnas,@catego,@racaxx,@idleilao,@codven,@ordem,@vlrins,@lanmax,@obslot,@pelage,@urlvideo,@comentario,@multiplo,@condic,@qtdAnimais,@comcom,@comven,@iddup,'N','N',@tipoSecao,@perimetroEscrotal)`);
   return nr.recordset[0].ID;
 }

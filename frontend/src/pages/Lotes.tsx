@@ -318,6 +318,14 @@ export default function Lotes() {
             <Col xs={12} md={6}><Form.Item name="rpxxx" label={labelRP(especiesLote)}><Input /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="sbbxxx" label={labelSBB(especiesLote)}><Input /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="pesoxx" label="Peso"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            {isBovino(especiesLote) && (
+              <Col xs={12} md={6}>
+                <Form.Item name="perimetroEscrotal" label="Perímetro Escrotal (cm)"
+                  tooltip="PE do touro. Aparece no Painel do Leiloeiro e nos relatórios de lotes.">
+                  <InputNumber style={{ width: '100%' }} min={0} max={99} step={0.5} decimalSeparator="," />
+                </Form.Item>
+              </Col>
+            )}
             <Col xs={24} sm={12}><Form.Item name="pelage" label="Pelagem"><Input /></Form.Item></Col>
             <Col xs={24} sm={12}><Form.Item name="filiacao" label="Filiação"><Input /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="vlrins" label="Valor Inscrição"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>

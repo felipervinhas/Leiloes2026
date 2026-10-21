@@ -17,6 +17,7 @@ export interface LoteOrdemPDF {
   catego?: string;
   rpxxx?: string;
   pesoxx?: number;
+  perimetroEscrotal?: number | null;
   obslot?: string;
   especies?: string;
   ordem: string;
@@ -35,11 +36,13 @@ export interface OpcoesOrdemEntrada {
   raca: boolean;
   rpTat: boolean;
   peso: boolean;
+  /** Perímetro escrotal (touros) */
+  pe: boolean;
   obs: boolean;
 }
 
 /** Padrão do Delphi: tudo visível, menos o peso. Observação (não existia no Delphi) começa desligada. */
-export const OPCOES_ORDEM_PADRAO: OpcoesOrdemEntrada = { ordem: true, vendedor: true, sexo: true, raca: true, rpTat: true, peso: false, obs: false };
+export const OPCOES_ORDEM_PADRAO: OpcoesOrdemEntrada = { ordem: true, vendedor: true, sexo: true, raca: true, rpTat: true, peso: false, pe: false, obs: false };
 
 const ROTULOS_OPCOES: { key: keyof OpcoesOrdemEntrada; label: string }[] = [
   { key: 'ordem', label: 'Número da ordem' },
@@ -48,6 +51,7 @@ const ROTULOS_OPCOES: { key: keyof OpcoesOrdemEntrada; label: string }[] = [
   { key: 'sexo', label: 'Sexo' },
   { key: 'rpTat', label: 'Tatuagem (RP nos equinos)' },
   { key: 'peso', label: 'Peso' },
+  { key: 'pe', label: 'Perímetro escrotal (PE)' },
   { key: 'obs', label: 'Observações do lote' },
 ];
 
@@ -125,6 +129,7 @@ const s = StyleSheet.create({
   cSexo:   { width: 50 },
   cRpTat:  { width: 60 },
   cPeso:   { width: 45 },
+  cPe:     { width: 40 },
   cObs:    { width: 170 },
 
   tdOrdem: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: ESCURO },
@@ -197,6 +202,7 @@ function OrdemEntradaPDF({ lotes, titulo, empresa, logoBase64, orientacao = 'pai
           {opcoes.raca && <View style={s.cRaca}><Text style={s.th}>Raça</Text></View>}
           {opcoes.sexo && <View style={s.cSexo}><Text style={[s.th, { textAlign: 'center' }]}>Sexo</Text></View>}
           {opcoes.peso && <View style={s.cPeso}><Text style={[s.th, { textAlign: 'right' }]}>Peso</Text></View>}
+          {opcoes.pe && <View style={s.cPe}><Text style={[s.th, { textAlign: 'right' }]}>PE (cm)</Text></View>}
           {opcoes.obs && <View style={s.cObs}><Text style={[s.th, { paddingLeft: 6 }]}>Observações</Text></View>}
         </View>
 
@@ -211,6 +217,7 @@ function OrdemEntradaPDF({ lotes, titulo, empresa, logoBase64, orientacao = 'pai
             {opcoes.raca && <View style={s.cRaca}><Text style={s.tdRaca}>{l.nomeRaca || '—'}</Text></View>}
             {opcoes.sexo && <View style={s.cSexo}><Text style={s.tdSexo}>{SEXO[l.catego || ''] || l.catego || '—'}</Text></View>}
             {opcoes.peso && <View style={s.cPeso}><Text style={[s.tdNormal, { textAlign: 'right' }]}>{fmtPeso(l.pesoxx)}</Text></View>}
+            {opcoes.pe && <View style={s.cPe}><Text style={[s.tdNormal, { textAlign: 'right' }]}>{fmtPeso(l.perimetroEscrotal ?? undefined)}</Text></View>}
             {opcoes.obs && <View style={s.cObs}><Text style={[s.tdRaca, { paddingLeft: 6 }]}>{l.obslot || '—'}</Text></View>}
           </View>
         ))}

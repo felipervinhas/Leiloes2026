@@ -24,6 +24,7 @@ interface LoteOrdem {
   catego?: string;
   rpxxx?: string;
   pesoxx?: number;
+  perimetroEscrotal?: number | null;
   obslot?: string;
   especies?: string;
   ordem?: string;

@@ -23,6 +23,8 @@ export interface Lote {
   vendido?: string;
   publica?: string;
   qtdAnimais?: number;
+  /** Perímetro escrotal em cm (touros). */
+  perimetroEscrotal?: number | null;
   tipoSecao?: string;
   condic?: number;
   // Comissão própria do lote (%) — sobrepõe a do leilão quando preenchida.
