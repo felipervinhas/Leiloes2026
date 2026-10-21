@@ -123,6 +123,15 @@ const leilaoObrigatorio = (req: Request) => {
 };
 export const recebimentos = tratar(async (req, res) => { res.json(await rel.recebimentosPorLeilao(leilaoObrigatorio(req))); });
 export const repasses = tratar(async (req, res) => { res.json(await rel.repassesPorLeilao(leilaoObrigatorio(req))); });
+export const lancarRepasses = tratar(async (req, res) => {
+  const idLeilao = Number(req.body?.idLeilao);
+  if (!idLeilao) throw new ConciliacaoError(400, 'Escolha o leilão');
+  const ids = Array.isArray(req.body?.idsVendedor) ? req.body.idsVendedor.map(Number).filter(Boolean) : undefined;
+  const r = await rel.lancarRepasses(idLeilao, ids);
+  await registrarLog(usuarioDe(req), 'Inserir', 'Conciliação - Lançar repasse',
+    `Leilão ${idLeilao}: ${r.lancados.map(l => `${l.idVendedor} ${l.valor.toFixed(2)}`).join(', ')}`);
+  res.json(r);
+});
 export const pendencias = tratar(async (_req, res) => { res.json(await rel.pendencias()); });
 
 // Configurações: qualquer usuário com acesso consulta; só administrador altera

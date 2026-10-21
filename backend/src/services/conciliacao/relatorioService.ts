@@ -1,6 +1,8 @@
 import { getPool, sql } from '../../config/database';
 import { garantirTabelasConciliacao } from './schema';
 import { ehParcelaDaLeiloeira, existeTabela, pagosPorItem, SQL_COLUNAS_GRUPOS } from './devidoService';
+import { ConciliacaoError } from './acessoService';
+import { criarDespesa } from '../despesaService';
 
 // Relatórios da conciliação. "Previsto" vem das vendas; "recebido" vem só das
 // baixas confirmadas (o que de fato entrou na conta), e é isso que distingue
@@ -156,6 +158,28 @@ export async function repassesPorLeilao(idLeilao: number) {
       creditos: soma('creditos'), repassado: soma('repassado'), conferido: soma('conferido'), saldo: soma('saldo'),
     },
   };
+}
+
+/**
+ * Lança o repasse (fechamento F nas Despesas do leilão, o mesmo do Acerto do Vendedor) com o
+ * saldo a repassar de cada vendedor escolhido — ou de todos com saldo. O valor é recalculado
+ * aqui, não vem da tela. Baixas que já pagaram o saldo do Acerto desse vendedor/leilão (item
+ * ACERTO, sem repasse lançado) passam para o repasse novo, senão ele ficaria em aberto em dobro.
+ */
+export async function lancarRepasses(idLeilao: number, idsVendedor?: number[]) {
+  const { linhas } = await repassesPorLeilao(idLeilao);
+  const escolhidas = linhas.filter(l => l.saldo > 0.009 && (!idsVendedor?.length || idsVendedor.includes(l.idVendedor)));
+  if (!escolhidas.length) throw new ConciliacaoError(400, 'Nenhum vendedor com saldo a repassar');
+  const pool = await getPool();
+  const lancados: { idVendedor: number; vendedor: string; valor: number; idDespesa: number }[] = [];
+  for (const l of escolhidas) {
+    const idDespesa = await criarDespesa({ codLei: idLeilao, codigoCliente: l.idVendedor, dc: 'F', valor: l.saldo, observacoes: 'REPASSE AO VENDEDOR' });
+    await pool.request().input('d', sql.Int, idDespesa).input('l', sql.Int, idLeilao).input('v', sql.Int, l.idVendedor).query(`
+      UPDATE CONC_BAIXAS SET TIPO_ALVO = 'REPASSE', ID_DESPESA = @d
+      WHERE TIPO_ALVO = 'ACERTO' AND DESFEITA = 'N' AND ID_LEILAO = @l AND ID_VENDEDOR = @v`);
+    lancados.push({ idVendedor: l.idVendedor, vendedor: l.vendedor, valor: l.saldo, idDespesa });
+  }
+  return { lancados, total: r2(lancados.reduce((a, l) => a + l.valor, 0)) };
 }
 
 /**

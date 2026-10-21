@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Table, Typography, Space, Button, Empty, Alert, message } from 'antd';
-import { FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
+import { Table, Typography, Space, Button, Empty, Alert, Popconfirm, message } from 'antd';
+import { FileExcelOutlined, FilePdfOutlined, SendOutlined } from '@ant-design/icons';
 import { baixarRelatorioFinanceiro } from '../../relatorios/RelatorioFinanceiro';
 import { useConfig } from '../../context/ConfigContext';
 import api from '../../services/api';
@@ -20,6 +20,7 @@ export default function Repasses() {
   const [dados, setDados] = useState<any | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  const [lancando, setLancando] = useState<number | 'todos' | null>(null);
   const config = useConfig();
 
   const carregar = async (id?: number) => {
@@ -30,6 +31,20 @@ export default function Repasses() {
     catch (e: any) { message.error(e.response?.data?.error || 'Erro ao carregar'); }
     finally { setCarregando(false); }
   };
+
+  // grava o fechamento (F) no Acerto do Vendedor com o saldo a repassar, recalculado no servidor
+  const lancar = async (idVendedor?: number) => {
+    setLancando(idVendedor ?? 'todos');
+    try {
+      const r = (await api.post('/conciliacao/repasses/lancar', { idLeilao, idsVendedor: idVendedor ? [idVendedor] : undefined })).data;
+      message.success(r.lancados.length === 1
+        ? `Repasse de ${fmtValor(r.total)} lançado no Acerto de ${r.lancados[0].vendedor}`
+        : `${r.lancados.length} repasses lançados, total ${fmtValor(r.total)}`);
+      await carregar(idLeilao);
+    } catch (e: any) { message.error(e.response?.data?.error || 'Erro ao lançar o repasse'); }
+    finally { setLancando(null); }
+  };
+  const comSaldo = (dados?.linhas || []).filter((l: any) => l.saldo > 0.009);
 
   const imprimir = async () => {
     setGerandoPdf(true);
@@ -68,18 +83,24 @@ export default function Repasses() {
         <SeletorLeilao value={idLeilao} onChange={(id, nome) => { setIdLeilao(id); setNomeLeilao(nome || ''); carregar(id); }} />
         <Button icon={<FilePdfOutlined />} disabled={!dados?.linhas?.length} loading={gerandoPdf} onClick={imprimir}>PDF</Button>
         <Button icon={<FileExcelOutlined />} disabled={!dados?.linhas?.length} onClick={exportar}>Excel</Button>
+        <Popconfirm disabled={!comSaldo.length} okText="Lançar" cancelText="Cancelar" onConfirm={() => lancar()}
+          title={`Lançar o repasse de ${comSaldo.length} vendedor${comSaldo.length > 1 ? 'es' : ''}?`}
+          description={`Total ${fmtValor(comSaldo.reduce((a: number, l: any) => a + l.saldo, 0))}, gravado no Acerto do Vendedor de cada um`}>
+          <Button icon={<SendOutlined />} disabled={!comSaldo.length} loading={lancando === 'todos'}>Lançar todos</Button>
+        </Popconfirm>
       </Space>
       <Alert type="info" showIcon style={{ marginBottom: 12 }}
         message="Saldo a repassar = recebido + créditos − comissão de venda − despesas − já repassado"
         description="Recebido é só o que foi conciliado no extrato. Saldo negativo quer dizer que ainda não entrou o suficiente para cobrir o que fica retido." />
       {!idLeilao ? <Empty description="Escolha o leilão" /> : (
         <Table rowKey="idVendedor" size="small" loading={carregando} dataSource={dados?.linhas || []} pagination={false}
-          scroll={{ x: 1100 }}
+          scroll={{ x: 1250 }}
           summary={() => t ? (
             <Table.Summary.Row style={{ fontWeight: 600 }}>
               <Table.Summary.Cell index={0}>Total</Table.Summary.Cell>
               {[t.previsto, t.recebido, t.comissao, t.despesas, t.creditos, t.repassado, t.conferido, t.saldo].map((v: number, i: number) =>
                 <Table.Summary.Cell key={i} index={i + 1} align="right">{fmtValor(v)}</Table.Summary.Cell>)}
+              <Table.Summary.Cell index={9} />
             </Table.Summary.Row>
           ) : null}
           columns={[
@@ -96,6 +117,12 @@ export default function Repasses() {
             { title: 'Saldo a repassar', dataIndex: 'saldo', align: 'right' as const,
               sorter: (a: any, b: any) => a.saldo - b.saldo,
               render: (v: number) => <Text strong type={v < -0.009 ? 'danger' : v > 0.009 ? 'success' : undefined}>{fmtValor(v)}</Text> },
+            { title: '', key: 'lancar', width: 150, align: 'center' as const,
+              render: (_: any, r: any) => r.saldo > 0.009 && (
+                <Popconfirm okText="Lançar" cancelText="Cancelar" onConfirm={() => lancar(r.idVendedor)}
+                  title={`Lançar repasse de ${fmtValor(r.saldo)}?`} description={`Gravado no Acerto do Vendedor de ${r.vendedor}`}>
+                  <Button size="small" icon={<SendOutlined />} loading={lancando === r.idVendedor} disabled={lancando !== null}>Lançar repasse</Button>
+                </Popconfirm>) },
           ]} />
       )}
     </>

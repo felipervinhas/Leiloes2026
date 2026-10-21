@@ -35,6 +35,7 @@ router.post('/lancamentos/:id/desfazer', conc.desfazer);
 router.post('/lancamentos/:id/nao-venda', conc.naoVenda);
 router.get('/pendencias', conc.pendencias);
 router.get('/repasses', conc.repasses);
+router.post('/repasses/lancar', conc.lancarRepasses);
 router.get('/relatorios/recebimentos', conc.recebimentos);
 router.get('/config/condicoes', conc.listarCondicoes);
 router.put('/config/condicoes/:id', conc.salvarGruposCondicao);
