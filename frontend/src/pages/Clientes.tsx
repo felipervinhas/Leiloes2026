@@ -31,9 +31,17 @@ import { CampoLayout } from '../relatorios/tipoLayout';
 const { Title } = Typography;
 
 interface Cliente { id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string; emailx?: string;
-  celu1?: string; ativox?: string; blocli?: string; acessoApp?: string; datcad?: string; datalt?: string;
+  celu1?: string; celu2?: string; telres?: string; telcom?: string; ativox?: string; blocli?: string; acessoApp?: string; datcad?: string; datalt?: string;
   nomeCidade?: string; nomeEstado?: string; idSolicitadoPor?: number | null; nomeSolicitadoPor?: string;
   classificacoesDescricao?: string; }
+
+// Todos os telefones preenchidos do cliente (celulares, residencial e comercial),
+// sem repetir o mesmo número cadastrado em dois campos (chamado #21).
+const telefonesCliente = (r: Cliente) =>
+  [r.celu1, r.celu2, r.telres, r.telcom]
+    .map(t => (t || '').trim())
+    .filter((t, i, todos) => t && todos.indexOf(t) === i)
+    .join(' / ');
 
 interface ClienteRanking { id: number; nomexx?: string; cpfxxx?: string; cnpjxx?: string;
   emailx?: string; celu1?: string; ativox?: string; classificacoesDescricao?: string;
@@ -74,7 +82,7 @@ export default function Clientes({ somenteCadastro }: { somenteCadastro?: Soment
   const location = useLocation();
   const { banco } = useBanco();
   const screens = Grid.useBreakpoint();
-  const { rz: rzC }  = useColumnWidths('clientes', { id: 70, nomexx: 220, cpfcnpj: 150, emailx: 180, celu1: 140, cidade: 160 });
+  const { rz: rzC }  = useColumnWidths('clientes', { id: 70, nomexx: 220, cpfcnpj: 150, emailx: 180, celu1: 220, cidade: 160 });
   const { rz: rzHC } = useColumnWidths('hist_compras', { leilao: 120, lotexx: 65, deslot: 160, descricaoRaca: 110, qtdxxx: 60, valorPagar: 110, valorLiquido: 110, primeiroVencimentoData: 100, defesa: 80 });
   const { rz: rzHV } = useColumnWidths('hist_vendas',  { leilao: 120, lotexx: 65, deslot: 160, descricaoRaca: 110, qtdxxx: 60, nomeComprador: 140, valorPagar: 110, valorComissaoVendedor: 100, defesa: 80 });
   const sm = !!screens.sm;  // ≥ 576px
@@ -554,14 +562,14 @@ export default function Clientes({ somenteCadastro }: { somenteCadastro?: Soment
         <div>
           <div style={{ fontWeight: 500 }}>{nome}</div>
           <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
-            {[r.cpfxxx || r.cnpjxx, r.celu1].filter(Boolean).join(' · ')}
+            {[r.cpfxxx || r.cnpjxx, telefonesCliente(r)].filter(Boolean).join(' · ')}
           </div>
         </div>
       ) : nome,
     },
     ...(sm ? [{ title: 'CPF/CNPJ', ...rzC('cpfcnpj'), render: (_: any, r: Cliente) => r.cpfxxx || r.cnpjxx }] : []),
     ...(md ? [{ title: 'E-mail', dataIndex: 'emailx', ellipsis: true, ...rzC('emailx') }] : []),
-    ...(sm ? [{ title: 'Celular', dataIndex: 'celu1', ...rzC('celu1') }] : []),
+    ...(sm ? [{ title: 'Telefones', ...rzC('celu1'), render: (_: any, r: Cliente) => telefonesCliente(r) }] : []),
     ...(md ? [{
       title: 'Cidade/UF', dataIndex: 'nomeCidade', ellipsis: true, ...rzC('cidade'),
       render: (_: any, r: Cliente) => r.nomeCidade
@@ -662,7 +670,7 @@ export default function Clientes({ somenteCadastro }: { somenteCadastro?: Soment
     { title: 'Nome', dataIndex: 'nomexx', ellipsis: true },
     { title: 'CPF/CNPJ', width: 160, render: (_: any, r: Cliente) => r.cpfxxx || r.cnpjxx },
     { title: 'E-mail', dataIndex: 'emailx', ellipsis: true },
-    { title: 'Celular', dataIndex: 'celu1', width: 140 },
+    { title: 'Telefones', width: 200, render: (_: any, r: Cliente) => telefonesCliente(r) },
     { title: 'Ativo', dataIndex: 'ativox', width: 70, render: (v: string) => <Tag color={STATUS_COLOR[v] || 'default'}>{v}</Tag> },
   ];
 
