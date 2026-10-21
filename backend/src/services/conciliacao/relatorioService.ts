@@ -108,10 +108,15 @@ export async function repassesPorLeilao(idLeilao: number) {
       FROM MOVIMENTO_COMPRADOR MC JOIN MOVIMENTO M ON M.ID = MC.IDMOV JOIN MOVIMENTO_LOTE ML ON ML.ID = MC.IDMOVLOTE
       WHERE M.IDLEILAO = @l GROUP BY ML.CODVEN`),
     pool.request().input('l', sql.Int, idLeilao).query(`
-      SELECT D.CODIGO_CLIENTE, SUM(B.VALOR) AS VALOR
-      FROM CONC_BAIXAS B JOIN DESPESAS D ON D.CODIGO = B.ID_DESPESA
-      WHERE B.TIPO_ALVO = 'REPASSE' AND B.DESFEITA = 'N' AND D.CODLEI = @l
-      GROUP BY D.CODIGO_CLIENTE`),
+      SELECT CODIGO_CLIENTE, SUM(VALOR) AS VALOR FROM (
+        SELECT D.CODIGO_CLIENTE, B.VALOR
+        FROM CONC_BAIXAS B JOIN DESPESAS D ON D.CODIGO = B.ID_DESPESA
+        WHERE B.TIPO_ALVO = 'REPASSE' AND B.DESFEITA = 'N' AND D.CODLEI = @l
+        UNION ALL
+        -- pago ao vendedor sem repasse lançado: baixa direto no saldo do Acerto
+        SELECT B.ID_VENDEDOR, B.VALOR FROM CONC_BAIXAS B
+        WHERE B.TIPO_ALVO = 'ACERTO' AND B.DESFEITA = 'N' AND B.ID_LEILAO = @l
+      ) X GROUP BY CODIGO_CLIENTE`),
   ]);
 
   const vendedores = [...new Set(parcelas.map(p => p.idVendedor).filter((v): v is number => !!v))];

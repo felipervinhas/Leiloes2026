@@ -1,7 +1,7 @@
 import { getPool, sql } from '../../config/database';
 import { garantirTabelasConciliacao } from './schema';
 import { ConciliacaoError } from './acessoService';
-import { itensDosClientes, ItemAberto, despesasDoLeilao } from './devidoService';
+import { itensDosClientes, ItemAberto, despesasDoLeilao, chaveDaBaixa, ehDoVendedor } from './devidoService';
 import { desfazerDespesaEmpresa } from './despesaEmpresaService';
 import { criarDespesa } from '../despesaService';
 import { atualizarSituacao, gravarBaixas, ItemSugerido, Sugestao, TOLERANCIA_ARREDONDAMENTO } from './motorService';
@@ -21,7 +21,7 @@ async function buscarLancamento(id: number) {
 /**
  * Consulta manual: itens em aberto de um cliente (o do CPF/CNPJ, ou outro escolhido
  * quando quem pagou foi um terceiro), opcionalmente de um leilão. O papel define o lado:
- * comprador vê parcelas e comissões; vendedor vê os repasses lançados.
+ * comprador vê parcelas e comissões; vendedor vê os repasses lançados (ou o saldo do Acerto).
  */
 export async function candidatos(idLancamento: number, f: { idCliente?: number; idLeilao?: number; papel?: 'comprador' | 'vendedor' | 'despesa' }) {
   const l = await buscarLancamento(idLancamento);
@@ -39,7 +39,7 @@ export async function candidatos(idLancamento: number, f: { idCliente?: number; 
       .query(`SELECT NOMEXX FROM Clientes WHERE ID = @c`)).recordset[0]?.NOMEXX ?? null;
   } else if (idCliente) {
     itens = (await itensDosClientes([idCliente], { idLeilao: f.idLeilao }))
-      .filter(i => i.idCliente === idCliente && (papel === 'vendedor' ? i.tipo === 'REPASSE' : i.tipo !== 'REPASSE'));
+      .filter(i => i.idCliente === idCliente && (papel === 'vendedor') === ehDoVendedor(i.tipo));
     if (idCliente !== l.ID_CLIENTE) {
       nomeCliente = (await pool.request().input('c', sql.Int, idCliente)
         .query(`SELECT NOMEXX FROM Clientes WHERE ID = @c`)).recordset[0]?.NOMEXX ?? null;
@@ -84,7 +84,7 @@ const txt = (v: any) => (v == null ? null : String(v).trim() || null);
 async function baixasDetalhadas(idLancamento: number) {
   const pool = await getPool();
   const r = await pool.request().input('id', sql.Int, idLancamento).query(`
-    SELECT B.ID, B.TIPO_ALVO, B.ID_PARCELA, B.ID_MOV_COMPRADOR, B.ID_DESPESA, B.VALOR, B.REGRA, B.NOME_USUARIO, B.DATA,
+    SELECT B.ID, B.TIPO_ALVO, B.ID_PARCELA, B.ID_MOV_COMPRADOR, B.ID_DESPESA, B.ID_LEILAO, B.ID_VENDEDOR, B.VALOR, B.REGRA, B.NOME_USUARIO, B.DATA,
            P.ORDXXX, P.DATVEN, P.VLRPAR,
            MC.COMISSAO, MC.VALORBASECOMISSAO, MC.VALORCOMISSAO, MC.VALORPAGAR,
            ML.LOTEXX, LT.DESLOT, M.DATLAN AS DATA_VENDA,
@@ -99,12 +99,12 @@ async function baixasDetalhadas(idLancamento: number) {
     LEFT JOIN DESPESAS D               ON D.CODIGO = B.ID_DESPESA
     LEFT JOIN LEILOES LE               ON LE.ID = COALESCE(B.ID_LEILAO, M.IDLEILAO, D.CODLEI)
     LEFT JOIN Clientes CC              ON CC.ID = TRY_CAST(ISNULL(MC.IDCLI, P.IDCLI) AS INT)
-    LEFT JOIN Clientes CV              ON CV.ID = TRY_CAST(ML.CODVEN AS INT)
+    LEFT JOIN Clientes CV              ON CV.ID = ISNULL(TRY_CAST(ML.CODVEN AS INT), B.ID_VENDEDOR)
     LEFT JOIN Clientes CD              ON CD.ID = D.CODIGO_CLIENTE
     WHERE B.ID_LANCAMENTO = @id AND B.DESFEITA = 'N' ORDER BY B.ID`);
   return r.recordset.map((b: any) => ({
     id: b.ID, tipo: b.TIPO_ALVO, valor: Number(b.VALOR), regra: b.REGRA, usuario: b.NOME_USUARIO, data: b.DATA,
-    chave: `${b.TIPO_ALVO}:${b.TIPO_ALVO === 'PARCELA' ? b.ID_PARCELA : b.TIPO_ALVO === 'REPASSE' || b.TIPO_ALVO === 'DESPESA' ? b.ID_DESPESA : b.ID_MOV_COMPRADOR}`,
+    chave: chaveDaBaixa(b),
     detalhe: {
       leilao: txt(b.LEILAO), dataLeilao: iso(b.DATLEI), lote: txt(b.LOTEXX), animal: txt(b.DESLOT),
       comprador: txt(b.COMPRADOR), vendedor: txt(b.VENDEDOR), dataVenda: iso(b.DATA_VENDA),
@@ -147,8 +147,8 @@ export async function confirmarBaixa(
     const it = porChave.get(a.chave);
     if (!it) throw new ConciliacaoError(409, 'Um dos itens não está mais em aberto — atualize a consulta');
     if (a.valor <= 0 || a.valor > it.saldo + 0.01) throw new ConciliacaoError(400, `Valor maior que o saldo de "${it.descricao}"`);
-    const deDebito = it.tipo === 'REPASSE' || it.tipo === 'DESPESA';
-    if ((l.SENTIDO === 'C') === deDebito) throw new ConciliacaoError(400, 'Crédito baixa parcela ou comissão; débito baixa repasse ou despesa');
+    const deDebito = ehDoVendedor(it.tipo) || it.tipo === 'DESPESA';
+    if ((l.SENTIDO === 'C') === deDebito) throw new ConciliacaoError(400, 'Crédito baixa parcela ou comissão; débito baixa repasse, acerto ou despesa');
     soma += a.valor;
   }
   // ajuste de arredondamento: só fecha o lançamento, até R$ 1,00 (positivo: pagou a mais; negativo: a menos)

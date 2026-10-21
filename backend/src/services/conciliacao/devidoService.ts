@@ -2,15 +2,19 @@ import { getPool, sql } from '../../config/database';
 
 // O que está em aberto para a conciliação, sempre lido das tabelas atuais do
 // sistema de leilões (nada é copiado): parcelas e comissão de compra do lado
-// do comprador, e repasses lançados no Acerto do Vendedor do lado do vendedor.
+// do comprador, e repasses lançados no Acerto do Vendedor do lado do vendedor
+// (ou, sem repasse lançado, o saldo do próprio Acerto).
 
-export type TipoItem = 'PARCELA' | 'COMISSAO_COMPRA' | 'REPASSE' | 'DESPESA';
+export type TipoItem = 'PARCELA' | 'COMISSAO_COMPRA' | 'REPASSE' | 'ACERTO' | 'DESPESA';
+
+/** Item que a leiloeira paga ao vendedor (débito do extrato). */
+export const ehDoVendedor = (tipo: string) => tipo === 'REPASSE' || tipo === 'ACERTO';
 
 export interface ItemAberto {
   chave: string;              // `${tipo}:${id}` — identifica o item nas baixas e nas sugestões
   tipo: TipoItem;
-  id: number;                 // MOVIMENTO_PARCELAMENTO.ID | MOVIMENTO_COMPRADOR.ID | DESPESAS.CODIGO
-  idCliente: number;          // comprador (parcela/comissão) ou vendedor (repasse)
+  id: number;                 // MOVIMENTO_PARCELAMENTO.ID | MOVIMENTO_COMPRADOR.ID | DESPESAS.CODIGO | LEILOES.ID (acerto)
+  idCliente: number;          // comprador (parcela/comissão) ou vendedor (repasse/acerto)
   idMovComprador: number | null;
   idLeilao: number | null;
   leilao: string | null;
@@ -59,16 +63,23 @@ export async function pagosPorItem(): Promise<Map<string, number>> {
   // o cálculo também serve para simular sem gravar (empresa ainda sem as tabelas CONC_)
   if (!(await existeTabela('CONC_BAIXAS'))) return m;
   const r = await pool.request().query(`
-    SELECT TIPO_ALVO, ID_PARCELA, ID_MOV_COMPRADOR, ID_DESPESA, SUM(VALOR) AS VALOR
-    FROM CONC_BAIXAS WHERE DESFEITA = 'N' AND TIPO_ALVO IN ('PARCELA','COMISSAO_COMPRA','REPASSE','DESPESA')
-    GROUP BY TIPO_ALVO, ID_PARCELA, ID_MOV_COMPRADOR, ID_DESPESA`);
-  for (const x of r.recordset) {
-    const id = x.TIPO_ALVO === 'PARCELA' ? x.ID_PARCELA
-      : x.TIPO_ALVO === 'REPASSE' || x.TIPO_ALVO === 'DESPESA' ? x.ID_DESPESA : x.ID_MOV_COMPRADOR;
-    m.set(`${x.TIPO_ALVO}:${id}`, Number(x.VALOR));
-  }
+    SELECT TIPO_ALVO, ID_PARCELA, ID_MOV_COMPRADOR, ID_DESPESA,
+           CASE WHEN TIPO_ALVO = 'ACERTO' THEN ID_LEILAO END AS ID_LEILAO,
+           CASE WHEN TIPO_ALVO = 'ACERTO' THEN ID_VENDEDOR END AS ID_VENDEDOR, SUM(VALOR) AS VALOR
+    FROM CONC_BAIXAS WHERE DESFEITA = 'N' AND TIPO_ALVO IN ('PARCELA','COMISSAO_COMPRA','REPASSE','ACERTO','DESPESA')
+    GROUP BY TIPO_ALVO, ID_PARCELA, ID_MOV_COMPRADOR, ID_DESPESA,
+             CASE WHEN TIPO_ALVO = 'ACERTO' THEN ID_LEILAO END, CASE WHEN TIPO_ALVO = 'ACERTO' THEN ID_VENDEDOR END`);
+  for (const x of r.recordset) m.set(chaveDaBaixa(x), Number(x.VALOR));
   return m;
 }
+
+/** Chave do item que uma linha de CONC_BAIXAS pagou (mesmo formato de ItemAberto.chave). */
+export function chaveDaBaixa(b: { TIPO_ALVO: string; ID_PARCELA?: number; ID_MOV_COMPRADOR?: number; ID_DESPESA?: number; ID_LEILAO?: number; ID_VENDEDOR?: number }) {
+  const t = b.TIPO_ALVO;
+  if (t === 'ACERTO') return chaveAcerto(b.ID_LEILAO!, b.ID_VENDEDOR!);
+  return `${t}:${t === 'PARCELA' ? b.ID_PARCELA : t === 'REPASSE' || t === 'DESPESA' ? b.ID_DESPESA : b.ID_MOV_COMPRADOR}`;
+}
+export const chaveAcerto = (idLeilao: number, idVendedor: number) => `ACERTO:${idLeilao}:${idVendedor}`;
 
 export async function existeTabela(nome: string): Promise<boolean> {
   const pool = await getPool();
@@ -84,7 +95,8 @@ function inClientes(req: sql.Request, ids: number[], prefixo: string) {
  * Itens dos clientes informados. Comprador: todas as parcelas e a comissão de compra
  * das vendas dos últimos 24 meses (o teste com o extrato real mostrou compradores
  * pagando à leiloeira parcelas depois das iniciais). Vendedor: repasses lançados no
- * Acerto (DESPESAS tipo F) no mesmo período.
+ * Acerto (DESPESAS tipo F) no mesmo período; no leilão em que o vendedor não tem repasse
+ * lançado (o escritório pagou sem lançar o fechamento), o saldo do Acerto do Vendedor.
  */
 export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?: boolean; idLeilao?: number } = {}): Promise<ItemAberto[]> {
   const unicos = [...new Set(ids.filter(Boolean))];
@@ -166,6 +178,53 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
         chave, tipo: 'REPASSE', id: x.CODIGO, idCliente: Number(x.CODIGO_CLIENTE), idMovComprador: null,
         idLeilao: x.CODLEI, leilao: x.LEILAO, lote: null,
         descricao: `Repasse${x.OBSERVACOES ? `: ${String(x.OBSERVACOES).trim()}` : ''}`, vencimento: iso(x.DATA_INCLUSAO),
+        valor, pago, saldo: r2(valor - pago), daLeiloeira: false,
+      });
+    }
+
+    // Saldo do Acerto do Vendedor por leilão, com a conta de calcularAcertoVendedor:
+    // entradas (parcela PRIPAR de cada comprador) + créditos − comissão de venda − despesas.
+    // Só vale onde não há fechamento (F) lançado — aí quem conta são os repasses acima.
+    const ra = pool.request();
+    const psA = lote.map((id, j) => { ra.input(`a${j}`, sql.VarChar, String(id)); return `@a${j}`; }).join(',');
+    if (opcoes.idLeilao) ra.input('leilao', sql.Int, opcoes.idLeilao);
+    // CODVEN do lote é texto no banco
+    const acertos = await ra.query(`
+      WITH V AS (
+        SELECT TRY_CAST(ML.CODVEN AS INT) AS ID_VENDEDOR, M.IDLEILAO, MAX(M.DATLAN) AS DATLAN, COUNT(*) AS LOTES,
+               SUM(ISNULL(E.VLRPAR, 0)) AS ENTRADAS
+        FROM MOVIMENTO_COMPRADOR MC
+        JOIN MOVIMENTO M         ON M.ID = MC.IDMOV
+        JOIN MOVIMENTO_LOTE ML   ON ML.ID = MC.IDMOVLOTE
+        OUTER APPLY (SELECT TOP 1 VLRPAR FROM MOVIMENTO_PARCELAMENTO
+                     WHERE IDMOVLOTE = MC.IDMOVLOTE AND IDCLI = MC.IDCLI AND PRIPAR = 'S') E
+        WHERE ML.CODVEN IN (${psA}) AND M.IDLEILAO IS NOT NULL
+          AND M.DATLAN >= DATEADD(MONTH, -${MESES_VENDAS}, GETDATE())
+          ${opcoes.idLeilao ? 'AND M.IDLEILAO = @leilao' : ''}
+        GROUP BY TRY_CAST(ML.CODVEN AS INT), M.IDLEILAO
+      )
+      SELECT V.ID_VENDEDOR, V.IDLEILAO, V.DATLAN, V.LOTES, V.ENTRADAS, L.LEILAO,
+             ISNULL(D.AJUSTE, 0) AS AJUSTE, ISNULL(D.FECHAMENTOS, 0) AS FECHAMENTOS
+      FROM V
+      LEFT JOIN LEILOES L ON L.ID = V.IDLEILAO
+      OUTER APPLY (
+        SELECT SUM(CASE WHEN X.TIPO_ORIGEM = 'COMISSAO_VENDEDOR' THEN -X.VALOR
+                        WHEN X.TIPO_ORIGEM = 'COMISSAO_COMPRADOR' THEN 0
+                        WHEN X.D_C IN ('C','E') THEN X.VALOR
+                        WHEN X.D_C IN ('D','S') THEN -X.VALOR ELSE 0 END) AS AJUSTE,
+               SUM(CASE WHEN X.D_C = 'F' AND ISNULL(X.TIPO_ORIGEM, '') NOT IN ('COMISSAO_VENDEDOR','COMISSAO_COMPRADOR') THEN 1 ELSE 0 END) AS FECHAMENTOS
+        FROM DESPESAS X WHERE X.CODLEI = V.IDLEILAO AND X.CODIGO_CLIENTE = V.ID_VENDEDOR
+      ) D`);
+    for (const x of acertos.recordset) {
+      if (Number(x.FECHAMENTOS) > 0 || !x.ID_VENDEDOR) continue;
+      const valor = r2(Number(x.ENTRADAS || 0) + Number(x.AJUSTE || 0));
+      if (valor <= 0.009) continue;
+      const chave = chaveAcerto(x.IDLEILAO, x.ID_VENDEDOR);
+      const pago = r2(pagos.get(chave) || 0);
+      itens.push({
+        chave, tipo: 'ACERTO', id: x.IDLEILAO, idCliente: Number(x.ID_VENDEDOR), idMovComprador: null,
+        idLeilao: x.IDLEILAO, leilao: x.LEILAO, lote: null,
+        descricao: `Acerto do vendedor (${x.LOTES} venda${x.LOTES > 1 ? 's' : ''}, sem repasse lançado)`, vencimento: iso(x.DATLAN),
         valor, pago, saldo: r2(valor - pago), daLeiloeira: false,
       });
     }

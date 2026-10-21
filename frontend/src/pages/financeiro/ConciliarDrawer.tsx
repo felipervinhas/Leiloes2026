@@ -19,7 +19,7 @@ interface Item {
 type Papel = 'comprador' | 'vendedor' | 'despesa';
 
 const NOMES_TIPO: Record<string, string> = {
-  PARCELA: 'Parcela', COMISSAO_COMPRA: 'Comissão de compra', REPASSE: 'Repasse ao vendedor', DESPESA: 'Despesa de cliente',
+  PARCELA: 'Parcela', COMISSAO_COMPRA: 'Comissão de compra', REPASSE: 'Repasse ao vendedor', ACERTO: 'Acerto do vendedor', DESPESA: 'Despesa de cliente',
   AJUSTE: 'Ajuste de arredondamento',
 };
 const TOLERANCIA_ARREDONDAMENTO = 1;
@@ -108,8 +108,8 @@ export default function ConciliarDrawer({ idLancamento, onFechar, onAlterado }: 
   const somaMarcada = r2(marcados.reduce((a, k) => a + (itensPorChave.get(k)?.saldo || 0), 0));
   const diferenca = r2(restante - somaMarcada);
   const outroCliente = !!(l && idCliente && idCliente !== l.idCliente && papel !== 'despesa');
-  // crédito baixa parcela ou comissão; débito baixa repasse ou despesa (o backend recusa o resto)
-  const ladoCerto = (it: Item) => (l?.sentido === 'C') !== (it.tipo === 'REPASSE' || it.tipo === 'DESPESA');
+  // crédito baixa parcela ou comissão; débito baixa repasse, acerto ou despesa (o backend recusa o resto)
+  const ladoCerto = (it: Item) => (l?.sentido === 'C') !== (it.tipo === 'REPASSE' || it.tipo === 'ACERTO' || it.tipo === 'DESPESA');
   const ladoTrocado = !!consulta?.itens.length && !consulta.itens.some(ladoCerto);
   // a sugestão fecha o lançamento com os próprios valores (parte de um pagamento dividido, ou com
   // ajuste de arredondamento) — aí confirma o que o motor propôs, não a soma dos saldos marcados

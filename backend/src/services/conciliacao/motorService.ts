@@ -1,6 +1,6 @@
 import { getPool, sql } from '../../config/database';
 import { garantirTabelasConciliacao } from './schema';
-import { ItemAberto, itensDosClientes } from './devidoService';
+import { ItemAberto, itensDosClientes, ehDoVendedor } from './devidoService';
 import { gravarDespesaEmpresaComNome } from './despesaEmpresaService';
 
 // Motor de casamento: compara os lançamentos pendentes com os itens em aberto
@@ -69,7 +69,7 @@ export function decidir(l: Lanc, itens: ItemAberto[]): { auto: boolean; sugestao
   const doCliente = itens.filter(i => i.idCliente === l.ID_CLIENTE);
 
   if (l.SENTIDO === 'C') {
-    const comprador = doCliente.filter(i => i.tipo !== 'REPASSE');
+    const comprador = doCliente.filter(i => !ehDoVendedor(i.tipo));
     const daCasa = comprador.filter(i => i.daLeiloeira);
 
     // A1: um único item da leiloeira (parcela inicial ou comissão) com o valor exato
@@ -117,6 +117,10 @@ export function decidir(l: Lanc, itens: ItemAberto[]): { auto: boolean; sugestao
   const rUnicos = repasses.filter(i => igual(i.saldo, valor));
   if (rUnicos.length === 1) return { auto: true, sugestao: sug('A3', 'Repasse lançado no Acerto do Vendedor', rUnicos) };
   if (rUnicos.length > 1) return { auto: false, sugestao: sug('S3', `${rUnicos.length} repasses com o mesmo valor`, [rUnicos[0]]) };
+  // sem repasse lançado: o saldo do Acerto do Vendedor de um leilão — só sugere, a conta
+  // do acerto pode não ter as despesas que o escritório descontou ao pagar
+  const acertos = doCliente.filter(i => i.tipo === 'ACERTO' && igual(i.saldo, valor));
+  if (acertos.length) return { auto: false, sugestao: sug('S3', 'Saldo do Acerto do Vendedor (sem repasse lançado)', [acertos[0]]) };
   return null;
 }
 
@@ -164,7 +168,7 @@ function pagamentosDivididos(lancs: Lanc[], abertos: ItemAberto[]): Map<number, 
 
   for (const [idCliente, ls] of porCliente) {
     if (ls.length < 2) continue;
-    const daCasa = abertos.filter(i => i.idCliente === idCliente && i.tipo !== 'REPASSE' && i.daLeiloeira)
+    const daCasa = abertos.filter(i => i.idCliente === idCliente && !ehDoVendedor(i.tipo) && i.daLeiloeira)
       .sort((a, b) => String(a.vencimento).localeCompare(String(b.vencimento)) || (a.tipo === 'PARCELA' ? -1 : 1));
     if (!daCasa.length) continue;
     const ordenados = [...ls].sort((a, b) => +new Date(a.DATA) - +new Date(b.DATA) || a.ID - b.ID);
@@ -305,7 +309,7 @@ export async function gravarBaixas(
   await tx.begin();
   try {
     for (const a of alvos) {
-      const [tipo, idStr] = a.chave.split(':');
+      const [tipo, idStr, idVendedorStr] = a.chave.split(':');
       const id = Number(idStr);
       const it = porChave.get(a.chave);
       await new sql.Request(tx)
@@ -314,8 +318,8 @@ export async function gravarBaixas(
         .input('parcela', sql.Int, tipo === 'PARCELA' ? id : null)
         .input('mc', sql.Int, tipo === 'COMISSAO_COMPRA' ? id : it?.idMovComprador ?? null)
         .input('despesa', sql.Int, tipo === 'REPASSE' || tipo === 'DESPESA' ? id : null)
-        .input('vendedor', sql.Int, tipo === 'REPASSE' ? it?.idCliente ?? null : null)
-        .input('leilao', sql.Int, it?.idLeilao ?? null)
+        .input('vendedor', sql.Int, tipo === 'ACERTO' ? Number(idVendedorStr) : tipo === 'REPASSE' ? it?.idCliente ?? null : null)
+        .input('leilao', sql.Int, it?.idLeilao ?? (tipo === 'ACERTO' ? id : null))
         .input('valor', sql.Decimal(18, 2), a.valor)
         .input('regra', sql.VarChar, regra)
         .input('idUsuario', sql.Int, usuario?.id ?? null)
