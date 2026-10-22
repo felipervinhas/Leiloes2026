@@ -30,6 +30,9 @@ export async function candidatos(idLancamento: number, f: { idCliente?: number; 
   const pool = await getPool();
 
   let itens: ItemAberto[] = [];
+  // leilões do cliente no período, inclusive os já quitados: o filtro não pode esconder
+  // um leilão só porque não sobrou item em aberto nele
+  let itensParaFiltro: ItemAberto[] = [];
   let nomeCliente: string | null = l.NOME_CLIENTE;
   if (papel === 'despesa') {
     // despesa paga a terceiro por conta de um cliente: procura pelo leilão (e cliente, se escolhido),
@@ -38,8 +41,9 @@ export async function candidatos(idLancamento: number, f: { idCliente?: number; 
     if (f.idCliente && f.idCliente !== l.ID_CLIENTE) nomeCliente = (await pool.request().input('c', sql.Int, f.idCliente)
       .query(`SELECT NOMEXX FROM Clientes WHERE ID = @c`)).recordset[0]?.NOMEXX ?? null;
   } else if (idCliente) {
-    itens = (await itensDosClientes([idCliente], { idLeilao: f.idLeilao }))
+    itensParaFiltro = (await itensDosClientes([idCliente], { incluirQuitados: true }))
       .filter(i => i.idCliente === idCliente && (papel === 'vendedor') === ehDoVendedor(i.tipo));
+    itens = itensParaFiltro.filter(i => i.saldo > 0.009 && (!f.idLeilao || i.idLeilao === f.idLeilao));
     if (idCliente !== l.ID_CLIENTE) {
       nomeCliente = (await pool.request().input('c', sql.Int, idCliente)
         .query(`SELECT NOMEXX FROM Clientes WHERE ID = @c`)).recordset[0]?.NOMEXX ?? null;
@@ -47,7 +51,7 @@ export async function candidatos(idLancamento: number, f: { idCliente?: number; 
   }
   // leilões do cliente (para o filtro), do mais recente para o mais antigo
   const leiloes = new Map<number, string>();
-  for (const i of [...itens].sort((a, b) => String(b.vencimento).localeCompare(String(a.vencimento))))
+  for (const i of [...(papel === 'despesa' ? itens : itensParaFiltro)].sort((a, b) => String(b.vencimento).localeCompare(String(a.vencimento))))
     if (i.idLeilao && !leiloes.has(i.idLeilao)) leiloes.set(i.idLeilao, i.leilao || `Leilão ${i.idLeilao}`);
 
   itens.sort((a, b) =>

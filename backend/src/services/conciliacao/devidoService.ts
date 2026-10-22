@@ -34,6 +34,7 @@ export const GRUPOS_PADRAO = 2;
 const MESES_VENDAS = 24;
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
+const fmtReais = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 /** Colunas da condição de pagamento que a regra precisa (PARC01..06 e os grupos da leiloeira). */
 export const SQL_COLUNAS_GRUPOS = (comGrupos: boolean) => `
@@ -97,6 +98,8 @@ function inClientes(req: sql.Request, ids: number[], prefixo: string) {
  * pagando à leiloeira parcelas depois das iniciais). Vendedor: repasses lançados no
  * Acerto (DESPESAS tipo F) no mesmo período; no leilão em que o vendedor não tem repasse
  * lançado (o escritório pagou sem lançar o fechamento), o saldo do Acerto do Vendedor.
+ * Com repasse lançado mas ainda saldo no Acerto (pagou em duas vezes e lançou só uma),
+ * o saldo restante também entra como item ACERTO.
  */
 export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?: boolean; idLeilao?: number } = {}): Promise<ItemAberto[]> {
   const unicos = [...new Set(ids.filter(Boolean))];
@@ -183,8 +186,9 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
     }
 
     // Saldo do Acerto do Vendedor por leilão, com a conta de calcularAcertoVendedor:
-    // entradas (parcela PRIPAR de cada comprador) + créditos − comissão de venda − despesas.
-    // Só vale onde não há fechamento (F) lançado — aí quem conta são os repasses acima.
+    // entradas (parcela PRIPAR de cada comprador) + créditos − comissão de venda − despesas
+    // − repasses (F) já lançados. Sem fechamento é o saldo inteiro; com fechamento, só o que
+    // passa dos repasses lançados (esses entram pelos itens REPASSE acima).
     const ra = pool.request();
     const psA = lote.map((id, j) => { ra.input(`a${j}`, sql.VarChar, String(id)); return `@a${j}`; }).join(',');
     if (opcoes.idLeilao) ra.input('leilao', sql.Int, opcoes.idLeilao);
@@ -204,7 +208,7 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
         GROUP BY TRY_CAST(ML.CODVEN AS INT), M.IDLEILAO
       )
       SELECT V.ID_VENDEDOR, V.IDLEILAO, V.DATLAN, V.LOTES, V.ENTRADAS, L.LEILAO,
-             ISNULL(D.AJUSTE, 0) AS AJUSTE, ISNULL(D.FECHAMENTOS, 0) AS FECHAMENTOS
+             ISNULL(D.AJUSTE, 0) AS AJUSTE, ISNULL(D.FECHAMENTOS, 0) AS FECHAMENTOS, ISNULL(D.REPASSADO, 0) AS REPASSADO
       FROM V
       LEFT JOIN LEILOES L ON L.ID = V.IDLEILAO
       OUTER APPLY (
@@ -212,19 +216,24 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
                         WHEN X.TIPO_ORIGEM = 'COMISSAO_COMPRADOR' THEN 0
                         WHEN X.D_C IN ('C','E') THEN X.VALOR
                         WHEN X.D_C IN ('D','S') THEN -X.VALOR ELSE 0 END) AS AJUSTE,
-               SUM(CASE WHEN X.D_C = 'F' AND ISNULL(X.TIPO_ORIGEM, '') NOT IN ('COMISSAO_VENDEDOR','COMISSAO_COMPRADOR') THEN 1 ELSE 0 END) AS FECHAMENTOS
+               SUM(CASE WHEN X.D_C = 'F' AND ISNULL(X.TIPO_ORIGEM, '') NOT IN ('COMISSAO_VENDEDOR','COMISSAO_COMPRADOR') THEN 1 ELSE 0 END) AS FECHAMENTOS,
+               SUM(CASE WHEN X.D_C = 'F' AND ISNULL(X.TIPO_ORIGEM, '') NOT IN ('COMISSAO_VENDEDOR','COMISSAO_COMPRADOR') THEN X.VALOR ELSE 0 END) AS REPASSADO
         FROM DESPESAS X WHERE X.CODLEI = V.IDLEILAO AND X.CODIGO_CLIENTE = V.ID_VENDEDOR
       ) D`);
     for (const x of acertos.recordset) {
-      if (Number(x.FECHAMENTOS) > 0 || !x.ID_VENDEDOR) continue;
-      const valor = r2(Number(x.ENTRADAS || 0) + Number(x.AJUSTE || 0));
+      if (!x.ID_VENDEDOR) continue;
+      const comFechamento = Number(x.FECHAMENTOS) > 0;
+      const valor = r2(Number(x.ENTRADAS || 0) + Number(x.AJUSTE || 0) - Number(x.REPASSADO || 0));
       if (valor <= 0.009) continue;
       const chave = chaveAcerto(x.IDLEILAO, x.ID_VENDEDOR);
       const pago = r2(pagos.get(chave) || 0);
       itens.push({
         chave, tipo: 'ACERTO', id: x.IDLEILAO, idCliente: Number(x.ID_VENDEDOR), idMovComprador: null,
         idLeilao: x.IDLEILAO, leilao: x.LEILAO, lote: null,
-        descricao: `Acerto do vendedor (${x.LOTES} venda${x.LOTES > 1 ? 's' : ''}, sem repasse lançado)`, vencimento: iso(x.DATLAN),
+        descricao: comFechamento
+          ? `Saldo do acerto além dos repasses lançados (${fmtReais(Number(x.REPASSADO))})`
+          : `Acerto do vendedor (${x.LOTES} venda${x.LOTES > 1 ? 's' : ''}, sem repasse lançado)`,
+        vencimento: iso(x.DATLAN),
         valor, pago, saldo: r2(valor - pago), daLeiloeira: false,
       });
     }
