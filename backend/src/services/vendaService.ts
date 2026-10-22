@@ -371,12 +371,14 @@ export async function buscarLoteMovimento(idMov: number) {
         ML.COMISS_VENDEDOR,
         L.LOTEXX, L.DESLOT, L.RPXXX, L.SBBXXX, L.PESOXX,
         L.PELAGE, L.DATNAS, L.RACAXX, L.CODVEN, L.QTDANIMAIS,
+        L.CONDIC, L.COMCOM, L.COMVEN, CP.QTDPAR AS CONDICAO_QTDPAR,
         C.NOMEXX AS NOME_VENDEDOR,
         R.DESCRICAO AS DESCRICAORACA, R.ESPECIES
       FROM MOVIMENTO_LOTE ML
       LEFT JOIN LOTES L    ON L.ID = ML.IDLOTE
       LEFT JOIN CLIENTES C ON C.ID = ML.CODVEN
       LEFT JOIN RACAS R    ON R.ID = L.RACAXX
+      LEFT JOIN CONDICAOPAGTOS CP ON CP.ID = L.CONDIC
       WHERE ML.IDMOV = @idMov
     `);
   if (!r.recordset.length) return null;
@@ -421,6 +423,13 @@ export async function buscarLoteMovimento(idMov: number) {
     qtdpar:        row.QTDPAR,
     comiss:        row.COMISS,
     comissVendedor: row.COMISS_VENDEDOR,
+    // Comissão/condição próprias do lote — mesmos campos de lotesDisponiveis.
+    // Sem eles, ao editar a venda o recálculo caía no % e nas parcelas do
+    // leilão e ignorava a comissão cadastrada no lote (ex.: Venda Particular).
+    condic:        row.CONDIC,
+    condicaoQtdpar: row.CONDICAO_QTDPAR,
+    comcom:        row.COMCOM,
+    comven:        row.COMVEN,
     datlan:        row.DATLAN,
     qtdAnimais:    row.QTDANIMAIS,
     qtdRestante,
