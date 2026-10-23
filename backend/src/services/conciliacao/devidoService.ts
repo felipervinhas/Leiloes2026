@@ -124,7 +124,10 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
       LEFT JOIN MOVIMENTO_COMPRADOR MC ON MC.IDMOVLOTE = P.IDMOVLOTE AND MC.IDCLI = P.IDCLI
       LEFT JOIN CONDICAOPAGTOS CP   ON CP.ID = MC.IDCONDPAGTO
       ${comGrupos ? 'LEFT JOIN CONC_CONDICAO_GRUPOS G ON G.ID_CONDPAGTO = MC.IDCONDPAGTO' : ''}
-      WHERE P.IDCLI IN (${psP}) AND M.DATLAN >= DATEADD(MONTH, -${MESES_VENDAS}, GETDATE())
+      -- venda recente OU parcela vencendo dentro da janela: parcelamentos longos (ex.: 2+2+2+44)
+      -- continuam sendo pagos anos depois da venda e sumiam da conciliação após 24 meses
+      WHERE P.IDCLI IN (${psP})
+        AND (M.DATLAN >= DATEADD(MONTH, -${MESES_VENDAS}, GETDATE()) OR P.DATVEN >= DATEADD(MONTH, -${MESES_VENDAS}, GETDATE()))
         ${opcoes.idLeilao ? 'AND M.IDLEILAO = @leilao' : ''}`);
     for (const x of parcelas.recordset) {
       const chave = `PARCELA:${x.ID}`;
