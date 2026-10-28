@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Typography, Row, Col, Card, Statistic, Alert, Button, Space, Spin, message } from 'antd';
+import { Table, Typography, Row, Col, Card, Statistic, Alert, Button, Space, Spin, DatePicker, message } from 'antd';
+import { Dayjs } from 'dayjs';
 import { FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { baixarRelatorioFinanceiro } from '../../relatorios/RelatorioFinanceiro';
 import { useConfig } from '../../context/ConfigContext';
@@ -11,6 +12,7 @@ import { fmtValor } from './Lancamentos';
 import { exportarPlanilha } from './comum';
 
 const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
 
 /**
  * Dois lados do que falta: lançamentos do extrato ainda sem dono, e o que devia ter
@@ -21,13 +23,16 @@ export default function Pendencias() {
   const { banco } = useBanco();
   const navigate = useNavigate();
   const [dados, setDados] = useState<any | null>(null);
+  // vazio = todo o período com extrato importado
+  const [periodo, setPeriodo] = useState<[Dayjs, Dayjs] | null>(null);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const config = useConfig();
 
   useEffect(() => {
-    api.get('/conciliacao/pendencias').then(r => setDados(r.data))
+    api.get('/conciliacao/pendencias', { params: periodo ? { de: periodo[0].format('YYYY-MM-DD'), ate: periodo[1].format('YYYY-MM-DD') } : {} })
+      .then(r => setDados(r.data))
       .catch(e => { setDados({ lancamentos: [], compradores: [] }); message.error(e.response?.data?.error || 'Erro ao carregar'); });
-  }, []);
+  }, [periodo]);
 
   if (!dados) return <Spin />;
   const soma = (f: (x: any) => boolean, k: 'qtd' | 'valor') => dados.lancamentos.filter(f).reduce((a: number, x: any) => a + x[k], 0);
@@ -72,7 +77,14 @@ export default function Pendencias() {
 
   return (
     <>
-      <Title level={4}>Pendências</Title>
+      <Space wrap style={{ width: '100%', justifyContent: 'space-between', marginBottom: 12 }}>
+        <Title level={4} style={{ margin: 0 }}>Pendências</Title>
+        <Space>
+          <Text type="secondary">Período</Text>
+          <RangePicker format="DD/MM/YYYY" allowClear placeholder={['Desde o início', 'Até hoje']}
+            value={periodo as any} onChange={v => setPeriodo(v as any)} />
+        </Space>
+      </Space>
       <Row gutter={12} style={{ marginBottom: 16 }}>
         <Col xs={12} md={6}><Card size="small" hoverable onClick={irLancamentos}><Statistic title="Sugestões para conferir" value={sugeridos} valueStyle={{ color: '#1677ff' }} /></Card></Col>
         <Col xs={12} md={6}><Card size="small" hoverable onClick={irLancamentos}><Statistic title="Com cliente, sem baixa" value={comClienteSemBaixa} valueStyle={{ color: '#d46b08' }} /></Card></Col>
@@ -88,7 +100,9 @@ export default function Pendencias() {
         </Space>
       </Space>
       {!dados.periodo ? (
-        <Alert type="info" showIcon message="Importe um extrato para ver o que venceu e não entrou." />
+        <Alert type="info" showIcon message={dados.foraDoExtrato
+          ? 'O período escolhido está fora das datas com extrato importado — não há como saber o que não entrou.'
+          : 'Importe um extrato para ver o que venceu e não entrou.'} />
       ) : (
         <>
           <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>

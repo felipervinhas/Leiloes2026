@@ -121,8 +121,22 @@ const leilaoObrigatorio = (req: Request) => {
   if (!id) throw new ConciliacaoError(400, 'Escolha o leilão');
   return id;
 };
-export const recebimentos = tratar(async (req, res) => { res.json(await rel.recebimentosPorLeilao(leilaoObrigatorio(req))); });
-export const repasses = tratar(async (req, res) => { res.json(await rel.repassesPorLeilao(leilaoObrigatorio(req))); });
+/** de e até (AAAA-MM-DD) da busca por período, ou null quando a busca é por leilão. */
+const periodoDe = (req: Request) => {
+  const { de, ate } = req.query as Record<string, string | undefined>;
+  if (!de && !ate) return null;
+  const ok = (d?: string) => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d);
+  if (!ok(de) || !ok(ate)) throw new ConciliacaoError(400, 'Informe o período (de e até)');
+  return { de: de!, ate: ate! };
+};
+export const recebimentos = tratar(async (req, res) => {
+  const p = periodoDe(req);
+  res.json(p ? await rel.movimentosPorPeriodo(p.de, p.ate, 'recebimentos') : await rel.recebimentosPorLeilao(leilaoObrigatorio(req)));
+});
+export const repasses = tratar(async (req, res) => {
+  const p = periodoDe(req);
+  res.json(p ? await rel.movimentosPorPeriodo(p.de, p.ate, 'repasses') : await rel.repassesPorLeilao(leilaoObrigatorio(req)));
+});
 export const lancarRepasses = tratar(async (req, res) => {
   const idLeilao = Number(req.body?.idLeilao);
   if (!idLeilao) throw new ConciliacaoError(400, 'Escolha o leilão');
@@ -132,7 +146,7 @@ export const lancarRepasses = tratar(async (req, res) => {
     `Leilão ${idLeilao}: ${r.lancados.map(l => `${l.idVendedor} ${l.valor.toFixed(2)}`).join(', ')}`);
   res.json(r);
 });
-export const pendencias = tratar(async (_req, res) => { res.json(await rel.pendencias()); });
+export const pendencias = tratar(async (req, res) => { res.json(await rel.pendencias(periodoDe(req) || {})); });
 
 // Configurações: qualquer usuário com acesso consulta; só administrador altera
 const soAdm = (req: Request) => {
@@ -201,5 +215,7 @@ export const despesaCliente = tratar(async (req, res) => {
 });
 export const relatorioDespesas = tratar(async (req, res) => {
   const q = req.query as Record<string, string | undefined>;
-  res.json(await despEmp.relatorioDespesas({ de: q.de, ate: q.ate, idCategoria: q.idCategoria ? Number(q.idCategoria) : undefined }));
+  // várias categorias: "3,7,9"
+  const idsCategoria = String(q.idsCategoria || q.idCategoria || '').split(',').map(Number).filter(Boolean);
+  res.json(await despEmp.relatorioDespesas({ de: q.de, ate: q.ate, idsCategoria }));
 });

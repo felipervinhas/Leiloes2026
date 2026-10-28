@@ -16,7 +16,7 @@ const { RangePicker } = DatePicker;
 export default function DespesasEmpresa() {
   const config = useConfig();
   const [periodo, setPeriodo] = useState<[Dayjs, Dayjs] | null>([dayjs().startOf('month').subtract(1, 'month'), dayjs()]);
-  const [idCategoria, setIdCategoria] = useState<number | undefined>();
+  const [idsCategoria, setIdsCategoria] = useState<number[]>([]);
   const [categorias, setCategorias] = useState<{ value: number; label: string }[]>([]);
   const [dados, setDados] = useState<any | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -30,9 +30,9 @@ export default function DespesasEmpresa() {
   useEffect(() => {
     setCarregando(true);
     api.get('/conciliacao/relatorios/despesas', { params: {
-      de: periodo?.[0]?.format('YYYY-MM-DD'), ate: periodo?.[1]?.format('YYYY-MM-DD'), idCategoria,
+      de: periodo?.[0]?.format('YYYY-MM-DD'), ate: periodo?.[1]?.format('YYYY-MM-DD'), idsCategoria: idsCategoria.join(',') || undefined,
     } }).then(r => setDados(r.data)).catch(() => message.error('Erro ao carregar as despesas')).finally(() => setCarregando(false));
-  }, [periodo, idCategoria]);
+  }, [periodo, idsCategoria]);
 
   const textoPeriodo = periodo ? `${periodo[0].format('DD/MM/YYYY')} a ${periodo[1].format('DD/MM/YYYY')}` : 'Todo o período';
 
@@ -45,7 +45,10 @@ export default function DespesasEmpresa() {
     setGerandoPdf(true);
     try {
       await baixarRelatorioFinanceiro({
-        titulo: 'Despesas da empresa', subtitulo: textoPeriodo, empresa: config.empresa, logoBase64: config.logoBase64,
+        titulo: 'Despesas da empresa',
+        subtitulo: idsCategoria.length
+          ? `${textoPeriodo} · ${categorias.filter(c => idsCategoria.includes(c.value)).map(c => c.label).join(', ')}`
+          : textoPeriodo, empresa: config.empresa, logoBase64: config.logoBase64,
         resumo: [
           { label: 'Total', valor: fmtValor(dados.total) },
           ...dados.porCategoria.slice(0, 4).map((c: any) => ({ label: c.categoria, valor: fmtValor(c.total) })),
@@ -71,7 +74,8 @@ export default function DespesasEmpresa() {
       </Text>
       <Space wrap style={{ marginBottom: 12 }}>
         <RangePicker format="DD/MM/YYYY" value={periodo as any} onChange={v => setPeriodo(v as any)} />
-        <Select allowClear placeholder="Todas as categorias" style={{ width: 240 }} options={categorias} value={idCategoria} onChange={setIdCategoria} />
+        <Select mode="multiple" allowClear maxTagCount="responsive" placeholder="Todas as categorias" style={{ minWidth: 260, maxWidth: 480 }}
+          options={categorias} value={idsCategoria} onChange={setIdsCategoria} optionFilterProp="label" />
         <Button icon={<FilePdfOutlined />} disabled={!dados?.linhas?.length} loading={gerandoPdf} onClick={imprimir}>PDF</Button>
         <Button icon={<FileExcelOutlined />} disabled={!dados?.linhas?.length} onClick={exportar}>Excel</Button>
       </Space>

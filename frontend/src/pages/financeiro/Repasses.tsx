@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Table, Typography, Space, Button, Empty, Alert, Popconfirm, message } from 'antd';
+import { Segmented, Table, Typography, Space, Button, Empty, Alert, Popconfirm, message } from 'antd';
 import { FileExcelOutlined, FilePdfOutlined, SendOutlined } from '@ant-design/icons';
 import { baixarRelatorioFinanceiro } from '../../relatorios/RelatorioFinanceiro';
 import { useConfig } from '../../context/ConfigContext';
 import api from '../../services/api';
 import { fmtValor } from './Lancamentos';
 import { exportarPlanilha, SeletorLeilao } from './comum';
+import MovimentosPeriodo from './MovimentosPeriodo';
 
 const { Title, Text } = Typography;
 
@@ -15,6 +16,20 @@ const { Title, Text } = Typography;
  * diferente do Acerto do Vendedor, que usa o valor previsto da entrada.
  */
 export default function Repasses() {
+  const [modo, setModo] = useState<'leilao' | 'periodo'>('leilao');
+  return (
+    <>
+      <Space wrap style={{ width: '100%', justifyContent: 'space-between', marginBottom: 12 }}>
+        <Title level={4} style={{ margin: 0 }}>Repasses {modo === 'leilao' ? 'aos vendedores' : 'por período'}</Title>
+        <Segmented value={modo} onChange={v => setModo(v as any)}
+          options={[{ value: 'leilao', label: 'Por leilão' }, { value: 'periodo', label: 'Por período (data do extrato)' }]} />
+      </Space>
+      {modo === 'leilao' ? <RepassesPorLeilao /> : <MovimentosPeriodo lado="repasses" />}
+    </>
+  );
+}
+
+function RepassesPorLeilao() {
   const [idLeilao, setIdLeilao] = useState<number | undefined>();
   const [nomeLeilao, setNomeLeilao] = useState('');
   const [dados, setDados] = useState<any | null>(null);
@@ -78,7 +93,6 @@ export default function Repasses() {
   const t = dados?.totais;
   return (
     <>
-      <Title level={4}>Repasses aos vendedores</Title>
       <Space style={{ marginBottom: 12 }}>
         <SeletorLeilao value={idLeilao} onChange={(id, nome) => { setIdLeilao(id); setNomeLeilao(nome || ''); carregar(id); }} />
         <Button icon={<FilePdfOutlined />} disabled={!dados?.linhas?.length} loading={gerandoPdf} onClick={imprimir}>PDF</Button>

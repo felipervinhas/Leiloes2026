@@ -102,14 +102,17 @@ export async function desfazerDespesaEmpresa(idLancamento: number) {
 }
 
 /** Relatório: despesas do período com o total por categoria. */
-export async function relatorioDespesas(f: { de?: string; ate?: string; idCategoria?: number }) {
+export async function relatorioDespesas(f: { de?: string; ate?: string; idsCategoria?: number[] }) {
   await garantirTabelasConciliacao();
   const pool = await getPool();
   const req = pool.request();
   const conds: string[] = [];
   if (f.de) { req.input('de', sql.Date, f.de); conds.push('D.DATA >= @de'); }
   if (f.ate) { req.input('ate', sql.Date, f.ate); conds.push('D.DATA <= @ate'); }
-  if (f.idCategoria) { req.input('c', sql.Int, f.idCategoria); conds.push('D.ID_CATEGORIA = @c'); }
+  if (f.idsCategoria?.length) {
+    const ps = f.idsCategoria.map((id, i) => { req.input(`c${i}`, sql.Int, id); return `@c${i}`; }).join(',');
+    conds.push(`D.ID_CATEGORIA IN (${ps})`);
+  }
   const r = await req.query(`
     SELECT D.*, C.NOME AS CATEGORIA, L.LEILAO, CT.DESCRICAO AS CONTA
     FROM CONC_DESPESAS_EMPRESA D

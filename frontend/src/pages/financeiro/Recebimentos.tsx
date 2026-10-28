@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Table, Typography, Space, Button, Tag, Row, Col, Card, Statistic, Empty, message } from 'antd';
+import { Segmented, Table, Typography, Space, Button, Tag, Row, Col, Card, Statistic, Empty, message } from 'antd';
 import { FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { baixarRelatorioFinanceiro } from '../../relatorios/RelatorioFinanceiro';
 import { useConfig } from '../../context/ConfigContext';
@@ -7,6 +7,7 @@ import api from '../../services/api';
 import { fmtValor } from './Lancamentos';
 import { fmtDataUTC } from '../../utils/data';
 import { exportarPlanilha, SeletorLeilao } from './comum';
+import MovimentosPeriodo from './MovimentosPeriodo';
 
 const { Title, Text } = Typography;
 
@@ -18,6 +19,20 @@ const SITUACAO_VENDA: Record<string, { label: string; cor: string }> = {
 
 /** Por venda do leilão: o que devia passar pela leiloeira (parcelas iniciais e comissão de compra) e o que já entrou. */
 export default function Recebimentos() {
+  const [modo, setModo] = useState<'leilao' | 'periodo'>('leilao');
+  return (
+    <>
+      <Space wrap style={{ width: '100%', justifyContent: 'space-between', marginBottom: 12 }}>
+        <Title level={4} style={{ margin: 0 }}>Recebimentos {modo === 'leilao' ? 'por leilão' : 'por período'}</Title>
+        <Segmented value={modo} onChange={v => setModo(v as any)}
+          options={[{ value: 'leilao', label: 'Por leilão' }, { value: 'periodo', label: 'Por período (data do extrato)' }]} />
+      </Space>
+      {modo === 'leilao' ? <RecebimentosPorLeilao /> : <MovimentosPeriodo lado="recebimentos" />}
+    </>
+  );
+}
+
+function RecebimentosPorLeilao() {
   const [idLeilao, setIdLeilao] = useState<number | undefined>();
   const [nomeLeilao, setNomeLeilao] = useState('');
   const [dados, setDados] = useState<any | null>(null);
@@ -68,7 +83,6 @@ export default function Recebimentos() {
 
   return (
     <>
-      <Title level={4}>Recebimentos por leilão</Title>
       <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
         Para cada venda, o que devia passar pela leiloeira (parcelas iniciais e comissão de compra) e o que já
         foi conciliado no extrato. "Vencido em aberto" só considera o período que já tem extrato importado.

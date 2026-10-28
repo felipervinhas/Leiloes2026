@@ -183,22 +183,84 @@ export async function lancarRepasses(idLeilao: number, idsVendedor?: number[]) {
 }
 
 /**
- * Pendências: o que deveria ter entrado e não entrou. Só olha vencimentos dentro do período
- * que já tem extrato importado — antes disso não há como saber se foi pago.
+ * O que entrou (crédito: parcelas e comissões de compra) ou saiu (débito: repasses e acertos
+ * de vendedor) pelo extrato num período, pela data do lançamento — de qualquer leilão.
+ * Cada linha é uma baixa: o mesmo pagamento dividido em itens aparece em várias linhas.
  */
-export async function pendencias() {
+export async function movimentosPorPeriodo(de: string, ate: string, lado: 'recebimentos' | 'repasses') {
+  await garantirTabelasConciliacao();
+  const pool = await getPool();
+  const credito = lado === 'recebimentos';
+  const r = await pool.request().input('de', sql.Date, de).input('ate', sql.Date, ate).query(`
+    SELECT B.ID, B.TIPO_ALVO, B.VALOR, L.ID AS ID_LANCAMENTO, L.DATA, L.NOME_CONTRAPARTE, L.DOC_CONTRAPARTE, CT.DESCRICAO AS CONTA,
+           P.ORDXXX, ML.LOTEXX, LE.ID AS ID_LEILAO, LE.LEILAO, LE.DATLEI,
+           CC.NOMEXX AS COMPRADOR, CV.NOMEXX AS VENDEDOR
+    FROM CONC_BAIXAS B
+    JOIN CONC_LANCAMENTOS L              ON L.ID = B.ID_LANCAMENTO
+    LEFT JOIN CONC_CONTAS CT             ON CT.ID = L.ID_CONTA
+    LEFT JOIN MOVIMENTO_PARCELAMENTO P   ON P.ID = B.ID_PARCELA
+    LEFT JOIN MOVIMENTO_COMPRADOR MC     ON MC.ID = B.ID_MOV_COMPRADOR
+    LEFT JOIN MOVIMENTO_LOTE ML          ON ML.ID = ISNULL(MC.IDMOVLOTE, P.IDMOVLOTE)
+    LEFT JOIN MOVIMENTO M                ON M.ID = ISNULL(MC.IDMOV, P.IDMOV)
+    LEFT JOIN DESPESAS D                 ON D.CODIGO = B.ID_DESPESA
+    LEFT JOIN LEILOES LE                 ON LE.ID = COALESCE(B.ID_LEILAO, M.IDLEILAO, D.CODLEI)
+    LEFT JOIN Clientes CC                ON CC.ID = TRY_CAST(ISNULL(MC.IDCLI, P.IDCLI) AS INT)
+    LEFT JOIN Clientes CV                ON CV.ID = COALESCE(TRY_CAST(ML.CODVEN AS INT), D.CODIGO_CLIENTE, B.ID_VENDEDOR)
+    WHERE B.DESFEITA = 'N' AND L.DATA BETWEEN @de AND @ate AND L.SENTIDO = '${credito ? 'C' : 'D'}'
+      AND B.TIPO_ALVO IN (${credito ? `'PARCELA','COMISSAO_COMPRA','AJUSTE'` : `'REPASSE','ACERTO','AJUSTE'`})
+    ORDER BY L.DATA, L.ID, B.ID`);
+  const txt = (v: any) => (v == null ? null : String(v).trim() || null);
+  const DESCRICAO: Record<string, string> = {
+    COMISSAO_COMPRA: 'Comissão de compra', REPASSE: 'Repasse lançado', ACERTO: 'Acerto do vendedor', AJUSTE: 'Ajuste de arredondamento',
+  };
+  const linhas = r.recordset.map((x: any) => ({
+    id: x.ID as number, idLancamento: x.ID_LANCAMENTO as number, data: iso(x.DATA), tipo: x.TIPO_ALVO as string,
+    descricao: x.TIPO_ALVO === 'PARCELA' ? `Parcela ${txt(x.ORDXXX) || ''}`.trim() : DESCRICAO[x.TIPO_ALVO] || x.TIPO_ALVO,
+    noExtrato: txt(x.NOME_CONTRAPARTE), docExtrato: txt(x.DOC_CONTRAPARTE), conta: txt(x.CONTA),
+    idLeilao: x.ID_LEILAO ?? null, leilao: txt(x.LEILAO), dataLeilao: iso(x.DATLEI), lote: txt(x.LOTEXX),
+    comprador: txt(x.COMPRADOR), vendedor: txt(x.VENDEDOR), valor: r2(Number(x.VALOR)),
+  }));
+  const porLeilao = new Map<string, { leilao: string; qtd: number; total: number }>();
+  for (const l of linhas) {
+    const k = l.leilao || 'Sem leilão';
+    const g = porLeilao.get(k) || { leilao: k, qtd: 0, total: 0 };
+    g.qtd++; g.total = r2(g.total + l.valor);
+    porLeilao.set(k, g);
+  }
+  return {
+    linhas,
+    porLeilao: [...porLeilao.values()].sort((a, b) => b.total - a.total),
+    total: r2(linhas.reduce((a, l) => a + l.valor, 0)),
+    lancamentos: new Set(linhas.map(l => l.idLancamento)).size,
+  };
+}
+
+/**
+ * Pendências: o que deveria ter entrado e não entrou. Só olha vencimentos dentro do período
+ * que já tem extrato importado — antes disso não há como saber se foi pago. Com de/até, fica
+ * no trecho escolhido (dentro desse mesmo período), e o resumo do extrato também.
+ */
+export async function pendencias(f: { de?: string; ate?: string } = {}) {
   await garantirTabelasConciliacao();
   const pool = await getPool();
   const per = (await pool.request().query(`SELECT MIN(DT_INICIO) INI, MAX(DT_FIM) FIM FROM CONC_IMPORTACOES`)).recordset[0];
-  const lanc = (await pool.request().query(`
+  const rl = pool.request();
+  const condsL: string[] = [];
+  if (f.de) { rl.input('de', sql.Date, f.de); condsL.push('DATA >= @de'); }
+  if (f.ate) { rl.input('ate', sql.Date, f.ate); condsL.push('DATA <= @ate'); }
+  const lanc = (await rl.query(`
     SELECT SENTIDO, SITUACAO, CASE WHEN ID_CLIENTE IS NULL THEN 0 ELSE 1 END AS COM_CLIENTE, COUNT(*) N, SUM(ABS(VALOR)) V
-    FROM CONC_LANCAMENTOS WHERE SITUACAO IN ('PENDENTE','SUGERIDO','PARCIAL')
+    FROM CONC_LANCAMENTOS WHERE SITUACAO IN ('PENDENTE','SUGERIDO','PARCIAL') ${condsL.map(c => `AND ${c}`).join(' ')}
     GROUP BY SENTIDO, SITUACAO, CASE WHEN ID_CLIENTE IS NULL THEN 0 ELSE 1 END`)).recordset;
   const resumoLanc = lanc.map((x: any) => ({ sentido: x.SENTIDO, situacao: x.SITUACAO, comCliente: !!x.COM_CLIENTE, qtd: x.N, valor: r2(Number(x.V)) }));
   if (!per?.INI) return { periodo: null, lancamentos: resumoLanc, compradores: [] };
 
   const hoje = new Date().toISOString().slice(0, 10);
-  const fim = iso(per.FIM)! < hoje ? iso(per.FIM)! : hoje;
+  let fim = iso(per.FIM)! < hoje ? iso(per.FIM)! : hoje;
+  if (f.ate && f.ate < fim) fim = f.ate;
+  if (f.de && f.de > iso(per.INI)!) per.INI = f.de;
+  // trecho escolhido fora do período com extrato: não há como dizer o que não entrou
+  if (iso(per.INI)! > fim) return { periodo: null, foraDoExtrato: true, lancamentos: resumoLanc, compradores: [] };
   const comGrupos = await existeTabela('CONC_CONDICAO_GRUPOS');
   const [parcelas, comissoes, pagos] = await Promise.all([
     pool.request().input('ini', sql.Date, iso(per.INI)).input('fim', sql.Date, fim).query(`
