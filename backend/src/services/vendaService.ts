@@ -1576,11 +1576,11 @@ export async function atualizarStatus(
   valor: string,
 ): Promise<void> {
   const pool = await getPool();
-  // o campo vem de VWVendas, o update vai em MOVIMENTO ou MOVIMENTO_COMPRADOR conforme o campo
+  // os ST_* ficam em Movimento (VWVendas os expõe como M.ST_*) — MOVIMENTO_COMPRADOR não tem essas colunas
   await pool.request()
     .input('id',    sql.Int,     id)
     .input('valor', sql.VarChar, valor)
-    .query(`UPDATE MOVIMENTO_COMPRADOR SET ${campo}=@valor WHERE IDMOV=@id`);
+    .query(`UPDATE MOVIMENTO SET ${campo}=@valor WHERE ID=@id`);
 }
 
 // Pagamento das parcelas informado no Encaminhamento: para qual conta foi pago
