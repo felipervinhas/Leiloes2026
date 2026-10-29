@@ -23,6 +23,8 @@ export interface VendaPDF {
   valorUnidade?: number;
   valorPagar?: number;
   valorComissao?: number;
+  valorComissaoVendedor?: number;
+  nomePisteiro?: string;
   valorDesconto?: number;
   valorDescontoFidelidade?: number;
   valorLiquido?: number;
@@ -35,6 +37,7 @@ export interface TotaisVendas {
   totalLotes: number;
   totalValor: number;
   totalComissao: number;
+  totalComissaoVendedor?: number;
   totalDesconto: number;
   totalDescontoFidelidade: number;
   totalLiquido: number;
@@ -69,13 +72,18 @@ export const COLUNAS_CONSULTA_VENDAS = [
   { key: 'tatuagem', label: 'Tatuagem / RP' },
   { key: 'comprador', label: 'Comprador' },
   { key: 'vendedor', label: 'Vendedor' },
+  { key: 'pisteiro', label: 'Pisteiro' },
   { key: 'descricao', label: 'Descrição' },
   { key: 'raca', label: 'Raça / Espécie' },
   { key: 'qtd', label: 'Qtd' },
   { key: 'valorPagar', label: 'Vlr. a Pagar' },
-  { key: 'comissao', label: 'Comissão' },
+  { key: 'comissao', label: 'Comissão Comprador' },
+  { key: 'comissaoVendedor', label: 'Comissão Vendedor' },
   { key: 'liquido', label: 'Vlr. Líquido' },
 ];
+
+/** Colunas que começam desmarcadas — Pisteiro só sai no mapa se o usuário pedir. */
+export const COLUNAS_CONSULTA_VENDAS_OPCIONAIS = ['pisteiro'];
 
 const ESCURO = '#222';
 const MEDIO  = '#555';
@@ -200,16 +208,19 @@ const s = StyleSheet.create({
   // retrato; em pt fixo a soma das colunas já estourava sozinha a página retrato
   // (603pt de colunas fixas > 555pt úteis de uma A4 em pé), fazendo o texto
   // desenhar por cima um do outro.
-  cLote:     { width: '5.3%' },
+  // Lote/RP/Qtd estreitos e Comprador largo: nome do comprador quebrava em
+  // várias linhas enquanto as colunas numéricas sobravam (MacedoLeiloes, chamado #31).
+  cLote:     { width: '3.8%' },
   cDes:      { flex: 1 },
-  cTat:      { width: '8%' },
-  cRaca:     { width: '10.3%' },
+  cTat:      { width: '5%' },
+  cRaca:     { width: '9.5%' },
   cVend:     { width: '13.3%' },
-  cComp:     { width: '13.3%' },
-  cQtd:      { width: '4.4%' },
-  cPagar:    { width: '10%' },
-  cComissao: { width: '9%' },
-  cLiquido:  { width: '10%' },
+  cComp:     { width: '18%' },
+  cPist:     { width: '10%' },
+  cQtd:      { width: '3.2%' },
+  cPagar:    { width: '9%' },
+  cComissao: { width: '8%' },
+  cLiquido:  { width: '9%' },
 
   // Células
   tdNormal:      { fontSize: 7.5 },
@@ -302,7 +313,9 @@ function ConsultaVendasPDF({
     || (variosLeiloes ? `${grupos.length} leilões` : grupos[0]?.leilao)
     || 'Todas as vendas';
   const dataLeilao = variosLeiloes ? null : fmtData(grupos[0]?.datlei);
-  const v = (chave: string) => !colunasVisiveis || colunasVisiveis.includes(chave);
+  const v = (chave: string) => colunasVisiveis
+    ? colunasVisiveis.includes(chave)
+    : !COLUNAS_CONSULTA_VENDAS_OPCIONAIS.includes(chave);
   // Cabeçalho não pode variar por linha — usa a espécie do primeiro lote, igual à grade on-screen.
   const labelTatuagem = labelRP(vendas[0]?.especies);
 
@@ -326,6 +339,11 @@ function ConsultaVendasPDF({
       {v('vendedor') && (
         <View style={s.cVend}>
           <Text style={s.tdNormal}>{venda.nomeVendedor || '—'}</Text>
+        </View>
+      )}
+      {v('pisteiro') && (
+        <View style={s.cPist}>
+          <Text style={s.tdSmall}>{venda.nomePisteiro || '—'}</Text>
         </View>
       )}
       {v('descricao') && (
@@ -353,6 +371,11 @@ function ConsultaVendasPDF({
       {v('comissao') && (
         <View style={s.cComissao}>
           <Text style={[s.tdNormalRight, { color: ESCURO }]}>{fmtR(venda.valorComissao)}</Text>
+        </View>
+      )}
+      {v('comissaoVendedor') && (
+        <View style={s.cComissao}>
+          <Text style={[s.tdNormalRight, { color: ESCURO }]}>{fmtR(venda.valorComissaoVendedor)}</Text>
         </View>
       )}
       {v('liquido') && (
@@ -413,9 +436,31 @@ function ConsultaVendasPDF({
             <>
               <View style={s.resumoSep} />
               <View style={s.resumoItem}>
-                <Text style={s.resumoLabel}>Comissão</Text>
+                <Text style={s.resumoLabel}>Comissão Comprador</Text>
                 <Text style={[s.resumoValor, { color: ESCURO }]}>
                   {fmtR(totais.totalComissao)}
+                </Text>
+              </View>
+            </>
+          )}
+          {v('comissaoVendedor') && (
+            <>
+              <View style={s.resumoSep} />
+              <View style={s.resumoItem}>
+                <Text style={s.resumoLabel}>Comissão Vendedor</Text>
+                <Text style={[s.resumoValor, { color: ESCURO }]}>
+                  {fmtR(totais.totalComissaoVendedor)}
+                </Text>
+              </View>
+            </>
+          )}
+          {v('comissao') && v('comissaoVendedor') && (
+            <>
+              <View style={s.resumoSep} />
+              <View style={s.resumoItem}>
+                <Text style={s.resumoLabel}>Comissão Total</Text>
+                <Text style={[s.resumoValor, { color: ESCURO }]}>
+                  {fmtR(totais.totalComissao + (totais.totalComissaoVendedor || 0))}
                 </Text>
               </View>
             </>
@@ -487,11 +532,13 @@ function ConsultaVendasPDF({
           {v('tatuagem') && <View style={s.cTat}><Text style={s.th}>{labelTatuagem}</Text></View>}
           {v('comprador') && <View style={s.cComp}><Text style={s.th}>Comprador</Text></View>}
           {v('vendedor') && <View style={s.cVend}><Text style={s.th}>Vendedor</Text></View>}
+          {v('pisteiro') && <View style={s.cPist}><Text style={s.th}>Pisteiro</Text></View>}
           {v('descricao') && <View style={s.cDes}><Text style={s.th}>Descrição</Text></View>}
           {v('raca') && <View style={s.cRaca}><Text style={s.th}>Raça / Espécie</Text></View>}
           {v('qtd') && <View style={s.cQtd}><Text style={s.thRight}>Qtd</Text></View>}
           {v('valorPagar') && <View style={s.cPagar}><Text style={s.thRight}>Vlr. a Pagar</Text></View>}
-          {v('comissao') && <View style={s.cComissao}><Text style={s.thRight}>Comissão</Text></View>}
+          {v('comissao') && <View style={s.cComissao}><Text style={s.thRight}>Com. Comprador</Text></View>}
+          {v('comissaoVendedor') && <View style={s.cComissao}><Text style={s.thRight}>Com. Vendedor</Text></View>}
           {v('liquido') && <View style={s.cLiquido}><Text style={s.thRight}>Vlr. Líquido</Text></View>}
         </View>
 
@@ -502,8 +549,9 @@ function ConsultaVendasPDF({
                 qtd: a.qtd + (x.qtdxxx || 0),
                 pagar: a.pagar + (x.valorPagar || 0),
                 comissao: a.comissao + (x.valorComissao || 0),
+                comissaoVendedor: a.comissaoVendedor + (x.valorComissaoVendedor || 0),
                 liquido: a.liquido + (x.valorLiquido || 0),
-              }), { qtd: 0, pagar: 0, comissao: 0, liquido: 0 });
+              }), { qtd: 0, pagar: 0, comissao: 0, comissaoVendedor: 0, liquido: 0 });
               return (
                 <View key={g.chave}>
                   {/* minPresenceAhead: não deixa a faixa do leilão sozinha no pé da página */}
@@ -519,11 +567,13 @@ function ConsultaVendasPDF({
                     {v('tatuagem') && <View style={s.cTat}><Text style={s.tdSubLabel} /></View>}
                     {v('comprador') && <View style={s.cComp}><Text style={s.tdSubLabel} /></View>}
                     {v('vendedor') && <View style={s.cVend}><Text style={s.tdSubLabel} /></View>}
+                    {v('pisteiro') && <View style={s.cPist}><Text style={s.tdSubLabel} /></View>}
                     {v('descricao') && <View style={s.cDes}><Text style={s.tdSubLabel}>Subtotal do leilão</Text></View>}
                     {v('raca') && <View style={s.cRaca}><Text style={s.tdSubLabel} /></View>}
                     {v('qtd') && <View style={s.cQtd}><Text style={s.tdSubVal}>{fmtN(sub.qtd)}</Text></View>}
                     {v('valorPagar') && <View style={s.cPagar}><Text style={s.tdSubVal}>{fmtR(sub.pagar)}</Text></View>}
                     {v('comissao') && <View style={s.cComissao}><Text style={s.tdSubVal}>{fmtR(sub.comissao)}</Text></View>}
+                    {v('comissaoVendedor') && <View style={s.cComissao}><Text style={s.tdSubVal}>{fmtR(sub.comissaoVendedor)}</Text></View>}
                     {v('liquido') && <View style={s.cLiquido}><Text style={s.tdSubVal}>{fmtR(sub.liquido)}</Text></View>}
                   </View>
                 </View>
@@ -539,6 +589,7 @@ function ConsultaVendasPDF({
             {v('tatuagem') && <View style={s.cTat}><Text style={s.tdTotLabel} /></View>}
             {v('raca') && <View style={s.cRaca}><Text style={s.tdTotLabel} /></View>}
             {v('vendedor') && <View style={s.cVend}><Text style={s.tdTotLabel} /></View>}
+            {v('pisteiro') && <View style={s.cPist}><Text style={s.tdTotLabel} /></View>}
             {v('comprador') && <View style={s.cComp}><Text style={s.tdTotLabel} /></View>}
             {v('qtd') && (
               <View style={s.cQtd}>
@@ -553,6 +604,11 @@ function ConsultaVendasPDF({
             {v('comissao') && (
               <View style={s.cComissao}>
                 <Text style={s.tdTotOrange}>{fmtR(totais.totalComissao)}</Text>
+              </View>
+            )}
+            {v('comissaoVendedor') && (
+              <View style={s.cComissao}>
+                <Text style={s.tdTotOrange}>{fmtR(totais.totalComissaoVendedor)}</Text>
               </View>
             )}
             {v('liquido') && (

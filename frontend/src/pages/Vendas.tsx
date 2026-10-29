@@ -69,6 +69,9 @@ const TITULO_FATURA_VARIANTE: Record<VarianteFatura, string> = {
 // LISTAGEM
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Bancos que pediram para tirar a "Fatura Sindicatos" do menu da venda (MacedoLeiloes, chamado #27)
+const BANCOS_SEM_FATURA_SINDICATO = new Set(['macedoleiloes', 'macedobkp']);
+
 const TIPO_BUSCA = [
   { value: 'todos',     label: 'Todos' },
   { value: 'codigo',    label: 'Código' },
@@ -104,6 +107,8 @@ function Listagem({
   });
 
   const config = useConfig();
+  const { banco } = useBanco();
+  const mostraFaturaSindicato = !BANCOS_SEM_FATURA_SINDICATO.has(banco.toLowerCase());
   const [faturaLoading, setFaturaLoading]           = useState<number | null>(null);
   const [faturaData, setFaturaData]                 = useState<FaturaData | null>(null);
   const [faturaModal, setFaturaModal]               = useState(false);
@@ -251,7 +256,20 @@ function Listagem({
     if (!encRow) return;
     await api.put(`/vendas/${encRow.id}/forma-pagamento`, { forma });
     setEncRow((r: any) => ({ ...r, formaPagamento: forma }));
+    setDados(ds => ds.map(d => d.id === encRow.id ? { ...d, formaPagamento: forma } : d));
     message.success('Forma de pagamento atualizada');
+  };
+
+  const atualizarPagamentoParcelas = async (alt: { pagoPara?: string | null; dataPagamentoParcelas?: string | null }) => {
+    if (!encRow) return;
+    const novo = { pagoPara: encRow.pagoPara ?? null, dataPagamentoParcelas: encRow.dataPagamentoParcelas ?? null, ...alt };
+    await api.put(`/vendas/${encRow.id}/pagamento-parcelas`, {
+      pagoPara: novo.pagoPara,
+      dataPagamento: dataUTC(novo.dataPagamentoParcelas)?.format('YYYY-MM-DD') ?? null,
+    });
+    setEncRow((r: any) => ({ ...r, ...novo }));
+    setDados(ds => ds.map(d => d.id === encRow.id ? { ...d, ...novo } : d));
+    message.success('Pagamento das parcelas atualizado');
   };
 
   useEffect(() => {
@@ -346,7 +364,9 @@ function Listagem({
                     { key: 'fatura',          label: 'Fatura de Compras',  icon: <FileDoneOutlined />, onClick: () => abrirFatura(row.id) },
                     { key: 'promissoria',     label: 'Promissórias',       icon: <AuditOutlined />,    onClick: () => abrirPromissoria(row.id) },
                     { key: 'notaVenda',       label: 'Nota de Leilão',     onClick: () => abrirNotaVenda(row.id) },
-                    { key: 'faturaSindicato', label: 'Fatura Sindicatos',  onClick: () => abrirFatura(row.id, 'sindicato') },
+                    ...(mostraFaturaSindicato
+                      ? [{ key: 'faturaSindicato', label: 'Fatura Sindicatos', onClick: () => abrirFatura(row.id, 'sindicato') }]
+                      : []),
                     { key: 'faturaVendedor',  label: 'Fatura de Vendedor', onClick: () => abrirFatura(row.id, 'vendedor') },
                     { key: 'contrato',        label: 'Contrato',           onClick: () => abrirContrato(row) },
                   ],
@@ -686,7 +706,7 @@ function Listagem({
             <span>Encaminhamento {encRow ? `— Venda #${encRow.id}` : ''}</span>
           </Space>
         }
-        width={420}
+        width={460}
       >
         {encRow && (
           <div style={{ padding: '8px 0' }}>
@@ -710,15 +730,39 @@ function Listagem({
                 <Radio value="A">Em andamento</Radio>
                 <Radio value="C">Concluído</Radio>
               </Radio.Group>
-              {encRow.stParcela === 'C' && (
-                <Select
-                  style={{ width: '100%', marginTop: 8 }}
-                  placeholder="Forma de pagamento"
-                  value={encRow.formaPagamento}
-                  onChange={atualizarFormaPagtoVenda}
-                  options={FORMA_PAGAMENTO_OPTS}
-                />
-              )}
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 2 }}>Pago para</div>
+                  <Radio.Group
+                    value={encRow.pagoPara ?? undefined}
+                    onChange={e => atualizarPagamentoParcelas({ pagoPara: e.target.value })}
+                  >
+                    <Radio value="LEILOEIRA">Conta da leiloeira</Radio>
+                    <Radio value="VENDEDOR">Conta do vendedor</Radio>
+                  </Radio.Group>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, color: '#888', marginBottom: 2 }}>Data do pagamento</div>
+                    <DatePicker
+                      style={{ width: '100%' }}
+                      format="DD/MM/YYYY"
+                      value={dataUTC(encRow.dataPagamentoParcelas)}
+                      onChange={d => atualizarPagamentoParcelas({ dataPagamentoParcelas: d ? d.format('YYYY-MM-DD') : null })}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, color: '#888', marginBottom: 2 }}>Forma de pagamento</div>
+                    <Select
+                      style={{ width: '100%' }}
+                      placeholder="Selecione"
+                      value={encRow.formaPagamento || undefined}
+                      onChange={atualizarFormaPagtoVenda}
+                      options={FORMA_PAGAMENTO_OPTS}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <Divider style={{ margin: '12px 0' }} />

@@ -12,8 +12,9 @@ function bloco(n: number): string {
   if (n === 100) return 'cem';
   const c = Math.floor(n / 100);
   const resto = n % 100;
-  const cStr = c > 0 ? CENTENAS[c] : '';
-  if (resto === 0) return cStr;
+  // 101–199 é "cento e ...", não "cem e ..."
+  const cStr = c > 0 ? (c === 1 ? 'cento' : CENTENAS[c]) : '';
+  if (resto === 0) return c === 1 ? 'cem' : cStr;
   if (resto < 20) return (cStr ? cStr + ' e ' : '') + UNIDADES[resto];
   const d = Math.floor(resto / 10);
   const u = resto % 10;

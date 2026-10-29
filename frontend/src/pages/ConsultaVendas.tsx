@@ -14,7 +14,7 @@ import { BlobProvider, pdf } from '@react-pdf/renderer';
 import api from '../services/api';
 import dayjs from 'dayjs';
 import { fmtDataUTC } from '../utils/data';
-import ConsultaVendasPDF, { COLUNAS_CONSULTA_VENDAS } from '../relatorios/RelatorioConsultaVendas';
+import ConsultaVendasPDF, { COLUNAS_CONSULTA_VENDAS, COLUNAS_CONSULTA_VENDAS_OPCIONAIS } from '../relatorios/RelatorioConsultaVendas';
 import PartesVendasPDF from '../relatorios/RelatorioPartesVendas';
 import MediasLeilaoPDF from '../relatorios/RelatorioMediasLeilao';
 import RelatorioFaturaUnificada, { FaturaUnificadaGrupo } from '../relatorios/RelatorioFaturaUnificada';
@@ -161,7 +161,8 @@ export default function ConsultaVendas() {
   // pra impressão e CSV seguirem a mesma ordem escolhida na tela.
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | undefined>();
-  const [colunasVisiveis, setColunasVisiveis] = useState<string[]>(COLUNAS_CONSULTA_VENDAS.map(c => c.key));
+  const [colunasVisiveis, setColunasVisiveis] = useState<string[]>(
+    COLUNAS_CONSULTA_VENDAS.map(c => c.key).filter(k => !COLUNAS_CONSULTA_VENDAS_OPCIONAIS.includes(k)));
   const [gerandoFaturaUnificada, setGerandoFaturaUnificada] = useState(false);
   const [faturasUnificadas, setFaturasUnificadas] = useState<FaturaUnificadaGrupo[] | null>(null);
   const [modalFaturaOpen, setModalFaturaOpen] = useState(false);
@@ -402,6 +403,7 @@ export default function ConsultaVendas() {
     const totalLotes      = lista.length;
     const totalValor      = lista.reduce((a, d) => a + (d.valorPagar     || 0), 0);
     const totalComissao   = lista.reduce((a, d) => a + (d.valorComissao  || 0), 0);
+    const totalComissaoVendedor = lista.reduce((a, d) => a + (d.valorComissaoVendedor || 0), 0);
     const totalLiquido    = lista.reduce((a, d) => a + (d.valorLiquido   || 0), 0);
     const totalDesconto   = lista.reduce((a, d) => a + (d.valorDesconto  || 0), 0);
     const totalDescontoFidelidade = lista.reduce((a, d) => a + (d.valorDescontoFidelidade || 0), 0);
@@ -435,10 +437,13 @@ export default function ConsultaVendas() {
         return map.set(key, atual);
       }, new Map<string, MediaCategoria>()).values()
     ).sort((a, b) => a.categoria.localeCompare(b.categoria));
-    return { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediaKgGeral, mediasCategoria };
+    return { totalLotes, totalValor, totalComissao, totalComissaoVendedor, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediaKgGeral, mediasCategoria };
   }
 
-  const { totalLotes, totalValor, totalComissao, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediaKgGeral, mediasCategoria } = calcularTotais(dados);
+  // Pisteiro só aparece como opção do PDF no banco que tem pisteiro cadastrado
+  const colunasPdfDisponiveis = COLUNAS_CONSULTA_VENDAS.filter(c => c.key !== 'pisteiro' || pisteiros.length > 0);
+
+  const { totalLotes, totalValor, totalComissao, totalComissaoVendedor, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediaKgGeral, mediasCategoria } = calcularTotais(dados);
 
   // Reordena os dados igual ao que o usuário escolheu clicando no cabeçalho da
   // tabela (sortField/sortOrder, capturado no onChange do Table), pra impressão
@@ -548,9 +553,12 @@ export default function ConsultaVendas() {
     { title: 'Vlr. a Pagar', dataIndex: 'valorPagar', ...rzCV('valorPagar'), align: 'right' as const,
       render: (v: number) => <Text strong>{fmt(v)}</Text>,
       sorter: COMPARADORES.valorPagar },
-    { title: 'Comissão', dataIndex: 'valorComissao', ...rzCV('valorComissao'), align: 'right' as const,
+    { title: 'Com. Comprador', dataIndex: 'valorComissao', ...rzCV('valorComissao'), align: 'right' as const,
       render: (v: number) => <Text type="warning">{fmt(v)}</Text>,
       sorter: COMPARADORES.valorComissao },
+    { title: 'Com. Vendedor', dataIndex: 'valorComissaoVendedor', width: 120, align: 'right' as const,
+      render: (v: number) => <Text type="warning">{fmt(v)}</Text>,
+      sorter: (a: any, b: any) => (a.valorComissaoVendedor || 0) - (b.valorComissaoVendedor || 0) },
     { title: 'Vlr. Líquido', dataIndex: 'valorLiquido', ...rzCV('valorLiquido'), align: 'right' as const,
       render: (v: number) => <Text strong style={{ color: '#52c41a' }}>{fmt(v)}</Text>,
       sorter: COMPARADORES.valorLiquido },
@@ -725,7 +733,8 @@ export default function ConsultaVendas() {
           {[
             { title: 'Lotes',           value: totalLotes,    suffix: '',   color: undefined },
             { title: 'Valor Total',     value: totalValor,    suffix: 'R$', color: '#1677ff' },
-            { title: 'Comissão Total',  value: totalComissao, suffix: 'R$', color: '#faad14' },
+            { title: 'Com. Comprador',  value: totalComissao, suffix: 'R$', color: '#faad14' },
+            { title: 'Com. Vendedor',   value: totalComissaoVendedor, suffix: 'R$', color: '#faad14' },
             { title: 'Total Descontos', value: totalDesconto, suffix: 'R$', color: '#ff4d4f' },
             { title: 'Desc. Fidelidade', value: totalDescontoFidelidade, suffix: 'R$', color: '#ff4d4f' },
             { title: 'Valor Líquido',   value: totalLiquido,  suffix: 'R$', color: '#52c41a' },
@@ -838,12 +847,12 @@ export default function ConsultaVendas() {
                         <a
                           style={{ fontSize: 12 }}
                           onClick={() => setColunasVisiveis(
-                            colunasVisiveis.length === COLUNAS_CONSULTA_VENDAS.length
+                            colunasVisiveis.length === colunasPdfDisponiveis.length
                               ? []
-                              : COLUNAS_CONSULTA_VENDAS.map(c => c.key)
+                              : colunasPdfDisponiveis.map(c => c.key)
                           )}
                         >
-                          {colunasVisiveis.length === COLUNAS_CONSULTA_VENDAS.length ? 'Limpar' : 'Marcar todas'}
+                          {colunasVisiveis.length === colunasPdfDisponiveis.length ? 'Limpar' : 'Marcar todas'}
                         </a>
                       </div>
                       <Checkbox.Group
@@ -851,7 +860,7 @@ export default function ConsultaVendas() {
                         onChange={vals => setColunasVisiveis(vals as string[])}
                         style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
                       >
-                        {COLUNAS_CONSULTA_VENDAS.map(c => (
+                        {colunasPdfDisponiveis.map(c => (
                           <Checkbox key={c.key} value={c.key}>{c.label}</Checkbox>
                         ))}
                       </Checkbox.Group>
@@ -859,7 +868,7 @@ export default function ConsultaVendas() {
                   )}
                 >
                   <Button icon={<SettingOutlined />}>
-                    Colunas ({colunasVisiveis.length}/{COLUNAS_CONSULTA_VENDAS.length})
+                    Colunas ({colunasVisiveis.length}/{colunasPdfDisponiveis.length})
                   </Button>
                 </Dropdown>
               )}

@@ -290,6 +290,22 @@ export const atualizarFormaPagamento = async (req: Request, res: Response) => {
   res.json({ ok: true });
 };
 
+const PAGO_PARA = ['LEILOEIRA', 'VENDEDOR'];
+
+export const atualizarPagamentoParcelas = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const { pagoPara, dataPagamento } = req.body;
+  if (pagoPara && !PAGO_PARA.includes(pagoPara)) {
+    return res.status(400).json({ error: 'Conta de pagamento inválida' });
+  }
+  if (dataPagamento && !/^\d{4}-\d{2}-\d{2}$/.test(dataPagamento)) {
+    return res.status(400).json({ error: 'Data de pagamento inválida' });
+  }
+  await svc.atualizarPagamentoParcelas(id, pagoPara || null, dataPagamento || null);
+  await registrarLog((req as any).usuario, 'Alterar', 'Vendas', id);
+  res.json({ ok: true });
+};
+
 // ─── atualizar informações ───────────────────────────────────────────────────
 
 export const atualizarInfo = async (req: Request, res: Response) => {

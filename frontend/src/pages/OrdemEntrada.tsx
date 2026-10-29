@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Select, Button, Table, Input, Space, message, Typography, Row, Col, Tag, Grid, Tooltip, Spin } from 'antd';
+import { Select, Button, Table, Input, Space, message, Typography, Row, Col, Tag, Grid, Tooltip, Spin, Modal } from 'antd';
 import {
   SaveOutlined, OrderedListOutlined, ClearOutlined, CalendarOutlined, EyeOutlined, HolderOutlined, SoundOutlined,
-  CaretUpOutlined, CaretDownOutlined,
+  CaretUpOutlined, CaretDownOutlined, NumberOutlined, FileExcelOutlined,
 } from '@ant-design/icons';
 import { pdf } from '@react-pdf/renderer';
 import api from '../services/api';
@@ -181,6 +181,44 @@ export default function OrdemEntrada() {
     message.success('Numeração automática aplicada — salve para confirmar');
   };
 
+  // Ordem digitada como lista de números de lote ("5, 3, 12 1"): esses lotes vão
+  // pra frente nessa sequência e o resto mantém a posição relativa atrás deles.
+  const [modalListaOpen, setModalListaOpen] = useState(false);
+  const [textoLista, setTextoLista] = useState('');
+  const normLote = (v: string) => v.trim().toUpperCase().replace(/^0+(?=.)/, '');
+  const aplicarLista = () => {
+    const porLote = new Map(lotes.map(l => [normLote(l.lotexx), l.id]));
+    const escolhidos: number[] = [];
+    const naoAchados: string[] = [];
+    textoLista.split(/[\s,;]+/).filter(Boolean).forEach(t => {
+      const id = porLote.get(normLote(t));
+      if (id == null) naoAchados.push(t);
+      else if (!escolhidos.includes(id)) escolhidos.push(id);
+    });
+    if (!escolhidos.length) { message.warning('Nenhum dos números digitados corresponde a um lote deste leilão'); return; }
+    const ids = [...escolhidos, ...ordemIds.filter(id => !escolhidos.includes(id))];
+    setOrdemIds(ids);
+    renumerar(ids);
+    setOrdenacao(null);
+    setModalListaOpen(false);
+    if (naoAchados.length) message.warning(`Lotes não encontrados: ${naoAchados.join(', ')}`);
+    message.info(`${escolhidos.length} lote(s) ordenados — clique em Salvar para confirmar`);
+  };
+
+  const exportarExcel = () => {
+    const linhas = lotesParaPDF.map(l => [
+      l.ordem || '', l.lotexx, l.deslot || '', l.nomeVendedor || '', l.nomeRaca || '',
+      CATEGO_LABEL[l.catego || ''] || l.catego || '', l.rpxxx || '',
+    ].map(v => String(v).replace(/;/g, ',').replace(/\r?\n/g, ' ')).join(';'));
+    const csv = '﻿' + ['Ordem;Lote;Descrição;Vendedor;Raça;Sexo;RP/Tatuagem', ...linhas].join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ordem-entrada-${(nomeLeilao || 'leilao').replace(/[^\w-]+/g, '_')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const limparOrdens = () => {
     const novas: Record<number, string> = {};
     lotes.forEach(l => { novas[l.id] = ''; });
@@ -316,6 +354,11 @@ export default function OrdemEntrada() {
                   Auto-numerar
                 </Button>
               </Tooltip>
+              <Tooltip title="Digite os números dos lotes na ordem de entrada">
+                <Button icon={<NumberOutlined />} onClick={() => setModalListaOpen(true)}>
+                  Ordenar por números
+                </Button>
+              </Tooltip>
               <Button icon={<ClearOutlined />} onClick={limparOrdens}>
                 Limpar
               </Button>
@@ -340,6 +383,9 @@ export default function OrdemEntrada() {
                 empresa={config.empresa}
                 logoBase64={config.logoBase64}
               />
+              <Button icon={<FileExcelOutlined />} onClick={exportarExcel}>
+                Excel
+              </Button>
               {layoutAtivo && (
                 <Button
                   icon={<EyeOutlined />}
@@ -384,6 +430,27 @@ export default function OrdemEntrada() {
           })}
         />
       )}
+
+      <Modal
+        title="Ordenar por números de lote"
+        open={modalListaOpen}
+        onOk={aplicarLista}
+        onCancel={() => setModalListaOpen(false)}
+        okText="Aplicar ordem"
+        cancelText="Cancelar"
+      >
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
+          Digite os números dos lotes na ordem em que vão entrar, separados por espaço, vírgula ou um por linha
+          (ex.: <code>5 3 12 1</code>). Os lotes não digitados ficam depois, na ordem atual.
+        </Typography.Paragraph>
+        <Input.TextArea
+          rows={6}
+          autoFocus
+          value={textoLista}
+          onChange={e => setTextoLista(e.target.value)}
+          placeholder="5, 3, 12, 1, 8..."
+        />
+      </Modal>
 
       <style>{`
         .lote-com-ordem td { background-color: #f6ffed !important; }

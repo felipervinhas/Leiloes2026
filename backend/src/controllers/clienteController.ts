@@ -41,8 +41,14 @@ export const buscar = async (req: Request, res: Response) => {
 const SENHA_INVALIDA = 'A senha não pode ter acentos nem cedilha.';
 const senhaInvalida = (s: unknown) => typeof s === 'string' && /[^\x20-\x7E]/.test(s);
 
+// Cliente sem nome não é aproveitável e se acumulava no cadastro (MacedoLeiloes
+// tinha 278 em branco, chamado #30) — o form exige, mas a API não barrava.
+const NOME_OBRIGATORIO = 'Informe o nome do cliente.';
+const nomeVazio = (n: unknown) => typeof n !== 'string' || n.trim() === '';
+
 export const criar = async (req: Request, res: Response) => {
   if (senhaInvalida(req.body.senhax)) return res.status(400).json({ error: SENHA_INVALIDA });
+  if (nomeVazio(req.body.nomexx)) return res.status(400).json({ error: NOME_OBRIGATORIO });
   try {
     const idUsuario = (req as any).usuario?.id ?? null;
     const dados = { ...req.body, usucad: idUsuario };
@@ -60,6 +66,8 @@ export const criar = async (req: Request, res: Response) => {
 };
 export const atualizar = async (req: Request, res: Response) => {
   if (senhaInvalida(req.body.senhax)) return res.status(400).json({ error: SENHA_INVALIDA });
+  // O UPDATE grava NOMEXX sempre — sem o nome no corpo, apagaria o nome do cliente
+  if (nomeVazio(req.body.nomexx)) return res.status(400).json({ error: NOME_OBRIGATORIO });
   try {
     const idUsuario = (req as any).usuario?.id ?? null;
     const id = Number(req.params.id);

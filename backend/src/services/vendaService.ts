@@ -112,12 +112,18 @@ export async function listarVendas(filtros: FiltrosListagem) {
     where += ' AND V.IDLEILAO = @idLeilao';
   }
 
+  await garantirColunasPagamentoParcelas();
   const r = await req.query(`
-    SELECT V.*, L.LEILAO, CV.NOMEXX AS NOME_VENDEDOR
+    SELECT V.*, L.LEILAO, CV.NOMEXX AS NOME_VENDEDOR,
+           PG.PAGO_PARA, PG.DATA_PAGAMENTO_PARCELAS
     FROM VWVendas V
     LEFT JOIN Leiloes L ON L.ID = V.IDLEILAO
     LEFT JOIN LOTES LOV ON LOV.ID = V.IDLOTE
     LEFT JOIN CLIENTES CV ON CV.ID = LOV.CODVEN
+    OUTER APPLY (
+      SELECT TOP 1 MC.PAGO_PARA, MC.DATA_PAGAMENTO_PARCELAS
+      FROM MOVIMENTO_COMPRADOR MC WHERE MC.IDMOV = V.ID AND MC.IDCLI = V.IDCLI
+    ) PG
     ${where}
     ORDER BY V.DATLAN DESC, V.ID DESC
   `);
@@ -147,6 +153,9 @@ export async function listarVendas(filtros: FiltrosListagem) {
     stParcela:    row.ST_PARCELA,
     stContrato:   row.ST_CONTRATO,
     stEmbarque:   row.ST_EMBARQUE,
+    formaPagamento: row.FORMA_PAGAMENTO,
+    pagoPara:     row.PAGO_PARA,
+    dataPagamentoParcelas: row.DATA_PAGAMENTO_PARCELAS,
   }));
 }
 
@@ -1572,6 +1581,34 @@ export async function atualizarStatus(
     .input('id',    sql.Int,     id)
     .input('valor', sql.VarChar, valor)
     .query(`UPDATE MOVIMENTO_COMPRADOR SET ${campo}=@valor WHERE IDMOV=@id`);
+}
+
+// Pagamento das parcelas informado no Encaminhamento: para qual conta foi pago
+// (LEILOEIRA ou VENDEDOR) e em que data — junto da FORMA_PAGAMENTO que já existia.
+const colunasPagamentoPorBanco = new Set<string>();
+export async function garantirColunasPagamentoParcelas() {
+  const banco = getBanco();
+  if (colunasPagamentoPorBanco.has(banco)) return;
+  const pool = await getPool();
+  await pool.request().query(`
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='MOVIMENTO_COMPRADOR' AND COLUMN_NAME='PAGO_PARA')
+      ALTER TABLE MOVIMENTO_COMPRADOR ADD PAGO_PARA VARCHAR(20) NULL;
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='MOVIMENTO_COMPRADOR' AND COLUMN_NAME='DATA_PAGAMENTO_PARCELAS')
+      ALTER TABLE MOVIMENTO_COMPRADOR ADD DATA_PAGAMENTO_PARCELAS DATE NULL;
+  `);
+  colunasPagamentoPorBanco.add(banco);
+}
+
+export async function atualizarPagamentoParcelas(
+  idMov: number, pagoPara: string | null, dataPagamento: string | null,
+): Promise<void> {
+  await garantirColunasPagamentoParcelas();
+  const pool = await getPool();
+  await pool.request()
+    .input('idMov',    sql.Int,     idMov)
+    .input('pagoPara', sql.VarChar, pagoPara)
+    .input('data',     sql.Date,    dataPagamento)
+    .query(`UPDATE MOVIMENTO_COMPRADOR SET PAGO_PARA=@pagoPara, DATA_PAGAMENTO_PARCELAS=@data WHERE IDMOV=@idMov`);
 }
 
 export async function atualizarFormaPagamentoMovimento(idMov: number, forma: string): Promise<void> {

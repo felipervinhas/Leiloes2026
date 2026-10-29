@@ -1,4 +1,5 @@
 import { getPool } from '../config/database';
+import { valorExtenso } from '../utils/extenso';
 
 // ── Inicialização da tabela ──────────────────────────────────────────────────
 
@@ -266,6 +267,16 @@ export async function gerarContrato(
   const meses = ['','janeiro','fevereiro','março','abril','maio','junho',
                   'julho','agosto','setembro','outubro','novembro','dezembro'];
 
+  // Modelos trazidos do Delphi (MacedoLeiloes) usam %COMPRA%/%VENDED% e outra
+  // semântica em três variáveis: %LOTEXX% é a descrição do animal, %MES% é o
+  // nome do mês e %VLRTOT% vem sem "R$" (o texto já traz "R$ %VLRTOT%").
+  // Nos modelos feitos aqui elas seguem como número do lote / mês / valor com R$.
+  const legado = /%(COMPRA|VENDED)%/.test(tmpl.CONTEUDO || '');
+  const fmtN = (v?: number | null) =>
+    Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const vlrPri = parcelasEntrada.reduce((s: number, p: any) => s + Number(p.VLRPAR), 0);
+  const mesNome = meses[d.MES] || '';
+
   const vars: Record<string, string> = {
     EMPRESA:       d.EMPRESA || '',
     LEILAO:        d.LEILAO  || '',
@@ -275,7 +286,7 @@ export async function gerarContrato(
     DATLEI:        d.DATLEI  || '',
     DATLAN:        d.DATLAN  || '',
     DIA:           String(d.DIA),
-    MES:           String(d.MES),
+    MES:           legado ? mesNome.charAt(0).toUpperCase() + mesNome.slice(1) : String(d.MES),
     MESEXTENSO:    meses[d.MES] || '',
     ANO:           String(d.ANO),
     // Mesma data do leilão com os nomes usados no modelo "Parceria Genetica" da Knorr
@@ -312,7 +323,8 @@ export async function gerarContrato(
     ESTVEN:        d.ESTVEN  || '',
     FONVEN:        d.COMVEN  || d.RESVEN || d.CL1VEN || '',
 
-    LOTEXX:        String(d.LOTEXX || ''),
+    LOTEXX:        legado ? (d.DESLOT || '') : String(d.LOTEXX || ''),
+    NUMLOTE:       String(d.LOTEXX || ''),
     DESLOT:        d.DESLOT  || '',
     RPXXXX:        d.RPXXX   || '',
     SBBXXX:        d.SBBXXX  || '',
@@ -322,7 +334,8 @@ export async function gerarContrato(
     OBSLOT:        d.OBSLOT  || '',
     RACACOM:       d.DESRAC  || '',
 
-    VLRTOT:        fmtR(d.VLRTOT),
+    VLRTOT:        legado ? fmtN(d.VLRTOT) : fmtR(d.VLRTOT),
+    EXTTOT:        valorExtenso(Number(d.VLRTOT || 0)),
     VLRLIQ:        fmtR(d.VLRLIQ),
     VLRPAR:        fmtR(d.VLRPAR),
     DESFIN:        d.DESFIN  || '',
@@ -331,12 +344,26 @@ export async function gerarContrato(
 
     // Entrada
     PARCELAINICIAL: fmtR(parcelasEntrada.reduce((s: number, p: any) => s + Number(p.VLRPAR), 0) || null),
-    EXTPRI:         '',
     PRIMEIRO_VENCIMENTO_DATA:  parcelasSaldo[0]?.DATVEN  || '',
     PRIMEIRO_VENCIMENTO_VALOR: fmtR(parcelasSaldo[0]?.VLRPAR),
     SALDOFINAL:    fmtR(parcelasSaldo.reduce((s: number, p: any) => s + Number(p.VLRPAR), 0) || null),
 
     CODNOT:        String(d.CODNOT || ''),
+
+    // Nomes do Delphi (unContratos.pas), usados nos modelos importados
+    COMPRA:        d.NOMCOM  || '',
+    CIDCOM:        d.MUNCOM  || '',
+    UFCOMP:        d.ESTCOM  || '',
+    VENDED:        d.NOMVEN  || '',
+    CIDVEN:        d.MUNVEN  || '',
+    UFVEND:        d.ESTVEN  || '',
+    CIDADE:        [(d.CIDLEI || '').trim(), d.ESTLEI || ''].filter(Boolean).join('/'),
+    PRIPAR:        fmtN(vlrPri),
+    EXTPRI:        vlrPri > 0 ? valorExtenso(vlrPri) : '',
+    EXTPAR:        valorExtenso(Number(d.VLRPAR || 0)),
+    SALPAR:        fmtN(Number(d.VLRTOT || 0) - vlrPri),
+    TESTEMUNHA1:   testemunhas.testemunha1,
+    TESTEMUNHA2:   testemunhas.testemunha2,
   };
 
   // Substituição
@@ -352,12 +379,12 @@ export async function gerarContrato(
 
 export const VARIAVEIS_DISPONIVEIS = [
   { grupo: 'Empresa',     vars: ['EMPRESA'] },
-  { grupo: 'Leilão',      vars: ['LEILAO','LEILOE','CIDLEI','ESTLEI','DATLEI','DIALEI','MESLEI','ANOLEI'] },
+  { grupo: 'Leilão',      vars: ['LEILAO','LEILOE','CIDLEI','ESTLEI','CIDADE','DATLEI','DIALEI','MESLEI','ANOLEI'] },
   { grupo: 'Data',        vars: ['DATLAN','DIA','MES','MESEXTENSO','ANO'] },
   { grupo: 'Comprador',   vars: ['NOMCOM','CPFCOM','ENDCOM','BAICOM','CEPCOM','MUNCOM','ESTCOM','EMACOM','FONCOM','ESTCIV','PROFISS','PAIXXX','MAEXXX'] },
   { grupo: 'Vendedor',    vars: ['NOMVEN','CPFVEN','ENDVEN','BAIVEN','CEPVEN','MUNVEN','ESTVEN','FONVEN'] },
-  { grupo: 'Lote',        vars: ['LOTEXX','DESLOT','RACACOM','RPXXXX','SBBXXX','DATNAS','CATEGO','PELAGE','OBSLOT'] },
-  { grupo: 'Financeiro',  vars: ['VLRTOT','VLRLIQ','VLRPAR','DESFIN','PARC01','QTDPARA','CODNOT'] },
+  { grupo: 'Lote',        vars: ['LOTEXX','NUMLOTE','DESLOT','RACACOM','RPXXXX','SBBXXX','DATNAS','CATEGO','PELAGE','OBSLOT'] },
+  { grupo: 'Financeiro',  vars: ['VLRTOT','EXTTOT','VLRLIQ','VLRPAR','DESFIN','PARC01','QTDPARA','CODNOT'] },
   { grupo: 'Parcelas',    vars: ['PARCELAINICIAL','PRIMEIRO_VENCIMENTO_DATA','PRIMEIRO_VENCIMENTO_VALOR','SALDOFINAL'] },
   { grupo: 'Assinaturas', vars: ['NOMTEST1','NOMTEST2','NOMFIA1','NOMFIA2'] },
 ];
