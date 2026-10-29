@@ -16,3 +16,25 @@ export function fmtDataUTC(v: string | Date | null | undefined, fallback = '—'
   const d = dataUTC(v);
   return d ? d.format('DD/MM/YYYY') : fallback;
 }
+
+/**
+ * Encerramento do pré-leilão (Leiloes.HORA_FECHAMENTO_PRE, texto). O site e os apps
+ * leem no formato do Delphi, "DD/MM/AAAA HH:mm"; gravar só "19:00" quebrava a contagem
+ * regressiva do site. Valor antigo só com a hora é completado com a data do leilão.
+ */
+export function encerramentoParaDayjs(valor: string | null | undefined, datlei?: string | Date | null): Dayjs | null {
+  const v = (valor || '').trim();
+  const completo = v.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2})/);
+  if (completo) {
+    const [, d, m, a, h, mi] = completo.map(Number);
+    return dayjs(new Date(a, m - 1, d, h, mi));
+  }
+  const soHora = v.match(/^(\d{1,2}):(\d{2})$/);
+  const dia = dataUTC(datlei ?? null);
+  if (soHora && dia) return dia.hour(Number(soHora[1])).minute(Number(soHora[2]));
+  return null;
+}
+
+export function encerramentoParaTexto(d: Dayjs | null | undefined): string | null {
+  return d ? d.format('DD/MM/YYYY HH:mm') : null;
+}

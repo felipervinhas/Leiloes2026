@@ -5,7 +5,7 @@ import ResizableTitle from '../components/ResizableTitle';
 import { useColumnWidths } from '../hooks/useColumnWidths';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, PictureOutlined, CalendarOutlined } from '@ant-design/icons';
 import api from '../services/api';
-import { dataUTC, fmtDataUTC } from '../utils/data';
+import { dataUTC, fmtDataUTC, encerramentoParaDayjs, encerramentoParaTexto } from '../utils/data';
 import ImageUpload from '../components/ImageUpload';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { useBanco } from '../context/BancoContext';
@@ -57,7 +57,8 @@ export default function Leiloes() {
         api.get(`/leiloes/${item.id}/imagens`),
       ]);
       const d = r.data;
-      form.setFieldsValue({ ...d, datlei: dataUTC(d.datlei), dataSaldo: dataUTC(d.dataSaldo), avalistaObrigatorio: d.avalistaObrigatorio === 'S' });
+      form.setFieldsValue({ ...d, datlei: dataUTC(d.datlei), dataSaldo: dataUTC(d.dataSaldo), avalistaObrigatorio: d.avalistaObrigatorio === 'S',
+        horaFechamentoPre: encerramentoParaDayjs(d.horaFechamentoPre, d.datlei) });
       setEditando(d);
       setImagens(imgs.data);
     } else {
@@ -73,6 +74,8 @@ export default function Leiloes() {
       ...values,
       datlei: values.datlei?.format('YYYY-MM-DD') || null,
       dataSaldo: values.dataSaldo?.format('YYYY-MM-DD') || null,
+      // texto no formato do Delphi (DD/MM/AAAA HH:mm), que o site e os apps leem
+      horaFechamentoPre: encerramentoParaTexto(values.horaFechamentoPre),
       avalistaObrigatorio: values.avalistaObrigatorio ? 'S' : 'N',
     };
     try {
@@ -136,7 +139,10 @@ export default function Leiloes() {
             </Col>
             <Col xs={24} sm={12} md={8}><Form.Item name="datlei" label="Data do Leilão"><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
             <Col xs={24} sm={12} md={8}><Form.Item name="horaInicio" label="Hora Início"><Input placeholder="HH:MM" /></Form.Item></Col>
-            <Col xs={24} sm={12} md={8}><Form.Item name="horaFechamentoPre" label="Hora Fechamento"><Input placeholder="HH:MM" /></Form.Item></Col>
+            <Col xs={24} sm={12} md={8}><Form.Item name="horaFechamentoPre" label="Encerramento do Pré-Leilão"
+              tooltip="Data e hora em que os lances pelo site/app encerram. Antes era só a hora, e o site não conseguia montar a contagem regressiva.">
+              <DatePicker showTime={{ format: 'HH:mm' }} format="DD/MM/YYYY HH:mm" style={{ width: '100%' }} placeholder="DD/MM/AAAA HH:MM" />
+            </Form.Item></Col>
             <Col xs={24} sm={12}><Form.Item name="leiloe" label="Leiloeiro"><Input /></Form.Item></Col>
             <Col xs={24} sm={12}><Form.Item name="endere" label="Endereço"><Input /></Form.Item></Col>
             <Col xs={24} sm={12}>
