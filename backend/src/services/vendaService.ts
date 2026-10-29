@@ -1,6 +1,7 @@
 import { getPool, sql } from '../config/database';
 import { getBanco } from '../config/bancoContext';
 import { garantirColunaAvalistaObrigatorio } from './leilaoService';
+import { ehParcelaDaLeiloeira, existeTabela, SQL_COLUNAS_GRUPOS } from './conciliacao/devidoService';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -156,6 +157,10 @@ export async function listarVendas(filtros: FiltrosListagem) {
     formaPagamento: row.FORMA_PAGAMENTO,
     pagoPara:     row.PAGO_PARA,
     dataPagamentoParcelas: row.DATA_PAGAMENTO_PARCELAS,
+    // resumo de quanto vai pra conta da leiloeira e do vendedor, no Encaminhamento
+    valorPagar:            row.VALORPAGAR,
+    valorComissao:         row.VALORCOMISSAO,
+    valorComissaoVendedor: row.VALORCOMISSAOVENDEDOR,
   }));
 }
 
@@ -820,14 +825,21 @@ export async function listarParcelas(idMov: number, idCli?: number) {
     req.input('idCli', sql.Int, idCli);
     where += ' AND MP.IDCLI=@idCli';
   }
+  // daLeiloeira: mesma regra da conciliação (grupos iniciais da condição, ou o "Pago para")
+  await garantirColunasPagamentoParcelas();
+  const comGrupos = await existeTabela('CONC_CONDICAO_GRUPOS');
   const r = await req.query(`
-    SELECT MP.*, C.NOMEXX
+    SELECT MP.*, C.NOMEXX, ${SQL_COLUNAS_GRUPOS(comGrupos, true)}
     FROM MOVIMENTO_PARCELAMENTO MP
     LEFT JOIN CLIENTES C ON C.ID = MP.IDCLI
+    LEFT JOIN MOVIMENTO_COMPRADOR MC ON MC.IDMOVLOTE = MP.IDMOVLOTE AND MC.IDCLI = MP.IDCLI
+    LEFT JOIN CONDICAOPAGTOS CP   ON CP.ID = MC.IDCONDPAGTO
+    ${comGrupos ? 'LEFT JOIN CONC_CONDICAO_GRUPOS G ON G.ID_CONDPAGTO = MC.IDCONDPAGTO' : ''}
     ${where}
     ORDER BY MP.DATVEN, MP.ORDXXX
   `);
   return r.recordset.map((row: any) => ({
+    daLeiloeira: ehParcelaDaLeiloeira(row),
     id:     row.ID,
     idMov:  row.IDMOV,
     idCli:  row.IDCLI,

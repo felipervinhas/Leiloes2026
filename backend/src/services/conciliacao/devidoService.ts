@@ -36,9 +36,11 @@ const MESES_VENDAS = 24;
 const r2 = (v: number) => Math.round(v * 100) / 100;
 const fmtReais = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-/** Colunas da condição de pagamento que a regra precisa (PARC01..06 e os grupos da leiloeira). */
-export const SQL_COLUNAS_GRUPOS = (comGrupos: boolean) => `
+/** Colunas da condição de pagamento que a regra precisa (PARC01..06 e os grupos da leiloeira),
+ *  mais o "Pago para" da venda (MC). comPagoPara: a coluna só existe depois do primeiro uso do Encaminhamento. */
+export const SQL_COLUNAS_GRUPOS = (comGrupos: boolean, comPagoPara = false) => `
   ${comGrupos ? `ISNULL(G.GRUPOS_LEILOEIRA, ${GRUPOS_PADRAO})` : GRUPOS_PADRAO} AS GRUPOS,
+  ${comPagoPara ? 'MC.PAGO_PARA' : 'NULL'} AS PAGO_PARA,
   TRY_CAST(CP.PARC01 AS INT) P1, TRY_CAST(CP.PARC02 AS INT) P2, TRY_CAST(CP.PARC03 AS INT) P3,
   TRY_CAST(CP.PARC04 AS INT) P4, TRY_CAST(CP.PARC05 AS INT) P5, TRY_CAST(CP.PARC06 AS INT) P6`;
 
@@ -47,8 +49,12 @@ export const SQL_COLUNAS_GRUPOS = (comGrupos: boolean) => `
  * N primeiros grupos da condição (PARC01, PARC02...). Condição sem grupos iniciais
  * (só saldo, ex.: "25 PARCELAS", "1 PARCELA", ou venda sem condição): só a 1ª parcela.
  * A marcação PRIPAR sozinha não serve: vendas antigas têm várias parcelas marcadas.
+ * O "Pago para" do Encaminhamento da venda, quando marcado, vale por cima da regra:
+ * LEILOEIRA = todas passam pela leiloeira; VENDEDOR = nenhuma (pagas direto ao vendedor).
  */
-export function ehParcelaDaLeiloeira(x: { ORDXXX?: string; GRUPOS?: number; P1?: number; P2?: number; P3?: number; P4?: number; P5?: number; P6?: number }): boolean {
+export function ehParcelaDaLeiloeira(x: { ORDXXX?: string; GRUPOS?: number; PAGO_PARA?: string | null; P1?: number; P2?: number; P3?: number; P4?: number; P5?: number; P6?: number }): boolean {
+  if (x.PAGO_PARA === 'LEILOEIRA') return true;
+  if (x.PAGO_PARA === 'VENDEDOR') return false;
   const numero = parseInt(String(x.ORDXXX || '').split('/')[0], 10);
   if (!Number.isFinite(numero)) return false;
   const grupos = [x.P1, x.P2, x.P3, x.P4, x.P5, x.P6].map(v => Number(v) || 0);
@@ -88,6 +94,15 @@ export async function existeTabela(nome: string): Promise<boolean> {
   return r.recordset[0].X != null;
 }
 
+export async function existeColuna(tabela: string, coluna: string): Promise<boolean> {
+  const pool = await getPool();
+  const r = await pool.request().input('t', sql.VarChar, tabela).input('c', sql.VarChar, coluna)
+    .query(`SELECT COL_LENGTH(@t, @c) AS X`);
+  return r.recordset[0].X != null;
+}
+/** "Pago para" do Encaminhamento já existe neste banco? (ver SQL_COLUNAS_GRUPOS) */
+export const existePagoPara = () => existeColuna('MOVIMENTO_COMPRADOR', 'PAGO_PARA');
+
 function inClientes(req: sql.Request, ids: number[], prefixo: string) {
   return ids.map((id, i) => { req.input(`${prefixo}${i}`, sql.Int, id); return `@${prefixo}${i}`; }).join(',');
 }
@@ -107,6 +122,7 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
   const pool = await getPool();
   const pagos = await pagosPorItem();
   const comGrupos = await existeTabela('CONC_CONDICAO_GRUPOS');
+  const comPagoPara = await existePagoPara();
   const itens: ItemAberto[] = [];
 
   for (let i = 0; i < unicos.length; i += 400) {
@@ -117,7 +133,7 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
     if (opcoes.idLeilao) rp.input('leilao', sql.Int, opcoes.idLeilao);
     const parcelas = await rp.query(`
       SELECT P.ID, P.IDCLI, P.LOTEXX, P.ORDXXX, P.VLRPAR, P.DATVEN, MC.ID AS ID_MC, M.IDLEILAO, L.LEILAO,
-             ${SQL_COLUNAS_GRUPOS(comGrupos)}
+             ${SQL_COLUNAS_GRUPOS(comGrupos, comPagoPara)}
       FROM MOVIMENTO_PARCELAMENTO P
       JOIN MOVIMENTO M              ON M.ID = P.IDMOV
       LEFT JOIN LEILOES L           ON L.ID = M.IDLEILAO

@@ -238,7 +238,18 @@ function Listagem({
   const [encModal, setEncModal] = useState(false);
   const [encRow, setEncRow]     = useState<any | null>(null);
 
-  const abrirEncaminhamento = (row: any) => { setEncRow(row); setEncModal(true); };
+  const [encParcelas, setEncParcelas] = useState<any[] | null>(null);
+
+  // o destino de cada parcela (daLeiloeira) vem do backend e depende do "Pago para"
+  const carregarParcelasEnc = (row: any) =>
+    api.get(`/vendas/${row.id}/parcelas`, { params: { idCli: row.idcli } })
+      .then(r => setEncParcelas(r.data))
+      .catch(() => setEncParcelas([]));
+
+  const abrirEncaminhamento = (row: any) => {
+    setEncRow(row); setEncModal(true); setEncParcelas(null);
+    carregarParcelasEnc(row);
+  };
 
   const atualizarCampoStatus = async (
     campo: 'stComissao' | 'stParcela' | 'stContrato' | 'stEmbarque',
@@ -269,6 +280,7 @@ function Listagem({
     });
     setEncRow((r: any) => ({ ...r, ...novo }));
     setDados(ds => ds.map(d => d.id === encRow.id ? { ...d, ...novo } : d));
+    if ('pagoPara' in alt) carregarParcelasEnc(encRow);
     message.success('Pagamento das parcelas atualizado');
   };
 
@@ -698,7 +710,7 @@ function Listagem({
       {/* Modal Encaminhamento */}
       <Modal
         open={encModal}
-        onCancel={() => { setEncModal(false); setEncRow(null); }}
+        onCancel={() => { setEncModal(false); setEncRow(null); setEncParcelas(null); }}
         footer={null}
         title={
           <Space>
@@ -706,7 +718,7 @@ function Listagem({
             <span>Encaminhamento {encRow ? `— Venda #${encRow.id}` : ''}</span>
           </Space>
         }
-        width={460}
+        width={560}
       >
         {encRow && (
           <div style={{ padding: '8px 0' }}>
@@ -734,9 +746,10 @@ function Listagem({
                 <div>
                   <div style={{ fontSize: 12, color: '#888', marginBottom: 2 }}>Pago para</div>
                   <Radio.Group
-                    value={encRow.pagoPara ?? undefined}
-                    onChange={e => atualizarPagamentoParcelas({ pagoPara: e.target.value })}
+                    value={encRow.pagoPara || ''}
+                    onChange={e => atualizarPagamentoParcelas({ pagoPara: e.target.value || null })}
                   >
+                    <Radio value="">Conforme a condição</Radio>
                     <Radio value="LEILOEIRA">Conta da leiloeira</Radio>
                     <Radio value="VENDEDOR">Conta do vendedor</Radio>
                   </Radio.Group>
@@ -762,6 +775,14 @@ function Listagem({
                     />
                   </div>
                 </div>
+                {encRow.formaPagamento && FORMA_PAGAMENTO_AJUDA[encRow.formaPagamento] && (
+                  <Alert
+                    type="info" showIcon
+                    style={{ fontSize: 12, padding: '6px 10px' }}
+                    message={<><Text strong style={{ fontSize: 12 }}>{FORMA_PAGAMENTO_LABEL[encRow.formaPagamento]}: </Text>{FORMA_PAGAMENTO_AJUDA[encRow.formaPagamento]}</>}
+                  />
+                )}
+                <ResumoRepasse row={encRow} parcelas={encParcelas} />
               </div>
             </div>
 
@@ -861,6 +882,95 @@ const FORMA_PAGAMENTO_LABEL: Record<string, string> = {
   FINANCIAMENTO: 'Financiamento', PIX: 'PIX', ACERTO_DIRETO: 'Acerto Direto',
 };
 const FORMA_PAGAMENTO_OPTS = FORMAS_PAGAMENTO.map(f => ({ value: f, label: FORMA_PAGAMENTO_LABEL[f] }));
+// Texto de apoio do Encaminhamento: o que cada forma significa na prática
+const FORMA_PAGAMENTO_AJUDA: Record<string, string> = {
+  PROMISSORIA:   'o comprador assina uma nota promissória por parcela; cada parcela é paga no vencimento na conta escolhida em "Pago para", e a promissória fica guardada até a quitação.',
+  CHEQUE:        'o comprador entrega um cheque (pré-datado) por parcela; cada cheque é depositado no vencimento na conta escolhida em "Pago para".',
+  DINHEIRO:      'pagamento em espécie; o valor é entregue de uma vez e deve ser depositado na conta escolhida em "Pago para".',
+  FINANCIAMENTO: 'um banco ou agente financeiro libera o valor do lote de uma vez na conta escolhida em "Pago para"; o comprador passa a dever ao banco, não às parcelas do leilão.',
+  PIX:           'o comprador transfere cada parcela por PIX, no vencimento, para a chave da conta escolhida em "Pago para".',
+  ACERTO_DIRETO: 'comprador e vendedor acertam o pagamento entre si, sem passar pela leiloeira, que só recebe as comissões. Marque "Conta do vendedor" em "Pago para" para a conciliação não esperar parcelas na conta da leiloeira.',
+};
+
+/** Resumo do Encaminhamento: quanto e quando entra na conta da leiloeira e na do vendedor.
+ *  Cada parcela traz daLeiloeira do backend, com a mesma regra da conciliação: os grupos
+ *  iniciais da condição passam pela leiloeira e o resto vai direto ao vendedor, salvo
+ *  quando o "Pago para" da venda manda tudo para um lado. As comissões (comprador e
+ *  vendedor) são da leiloeira; a do vendedor sai do repasse. */
+function ResumoRepasse({ row, parcelas }: { row: any; parcelas: any[] | null }) {
+  const comC = Number(row.valorComissao) || 0;
+  const comV = Number(row.valorComissaoVendedor) || 0;
+  const lista = parcelas ?? [];
+  const soma = (ps: any[]) => ps.reduce((s, p) => s + (Number(p.vlrpar) || 0), 0);
+  const totLei = soma(lista.filter(p => p.daLeiloeira));
+  const totVen = soma(lista.filter(p => !p.daLeiloeira));
+  const repasse = totLei - comV;
+
+  const regra = row.pagoPara === 'LEILOEIRA' ? 'Pago para a leiloeira: todas as parcelas entram na conta da leiloeira.'
+    : row.pagoPara === 'VENDEDOR' ? 'Pago para o vendedor: todas as parcelas vão direto para a conta do vendedor.'
+    : 'Conforme a condição de pagamento: as parcelas iniciais passam pela leiloeira e as demais vão direto ao vendedor.';
+
+  const linha = (rotulo: React.ReactNode, valor: number, forte = false) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+      <span>{rotulo}</span>
+      {forte ? <Text strong>{fmt(valor)}</Text> : <span>{fmt(valor)}</span>}
+    </div>
+  );
+  const bloco = (titulo: string, cor: string, conteudo: React.ReactNode) => (
+    <div style={{ flex: 1, minWidth: 220, border: `1px solid ${cor}`, borderRadius: 6, padding: '6px 10px', fontSize: 12 }}>
+      <div style={{ fontWeight: 600, color: cor, marginBottom: 4 }}>{titulo}</div>
+      {conteudo}
+    </div>
+  );
+
+  return (
+    <div style={{ background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 6, padding: 10 }}>
+      <div style={{ fontWeight: 600 }}>Para onde vão os valores</div>
+      <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>{regra}</div>
+
+      {parcelas === null ? <Spin size="small" /> : (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {bloco('Conta da leiloeira', '#b45309', <>
+            {linha('Parcelas recebidas do comprador', totLei)}
+            {linha('Comissão do comprador', comC)}
+            {linha('(−) Repasse ao vendedor', -Math.max(repasse, 0))}
+            <Divider style={{ margin: '4px 0' }} />
+            {linha('Fica com a leiloeira', comC + comV, true)}
+          </>)}
+          {bloco('Conta do vendedor', '#15803d', <>
+            {linha('Parcelas direto do comprador', totVen)}
+            {linha('Repasse da leiloeira', Math.max(repasse, 0))}
+            {repasse < 0 && linha(<Text type="danger">Paga à leiloeira (comissão)</Text>, repasse)}
+            <Divider style={{ margin: '4px 0' }} />
+            {linha('Total do vendedor', totVen + repasse, true)}
+            <div style={{ color: '#888', marginTop: 2 }}>
+              repasse = parcelas da leiloeira − comissão do vendedor ({fmt(comV)})
+            </div>
+          </>)}
+        </div>
+      )}
+
+      <div style={{ marginTop: 10, fontSize: 12 }}>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>Quando</div>
+        {parcelas === null ? null : lista.length === 0 ? (
+          <Text type="secondary" style={{ fontSize: 12 }}>Parcelas ainda não geradas para esta venda.</Text>
+        ) : (
+          <div style={{ maxHeight: 160, overflowY: 'auto' }}>
+            {lista.map((p, i) => (
+              <div key={p.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '1px 0', borderBottom: '1px dashed #eee' }}>
+                <span style={{ flex: 1 }}>{p.ordxxx ? `Parcela ${String(p.ordxxx).trim()}` : `${i + 1}ª parcela`} — {fmtDataUTC(p.datven)}</span>
+                {p.daLeiloeira
+                  ? <Tag color="orange" style={{ fontSize: 10, margin: 0 }}>Leiloeira</Tag>
+                  : <Tag color="green" style={{ fontSize: 10, margin: 0 }}>Vendedor</Tag>}
+                <span style={{ width: 90, textAlign: 'right' }}>{fmt(p.vlrpar)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 type MediaCategoriaWizard = { categoria: string; qtd: number; valor: number; media: number };
 

@@ -1,6 +1,6 @@
 import { getPool, sql } from '../../config/database';
 import { garantirTabelasConciliacao } from './schema';
-import { ehParcelaDaLeiloeira, existeTabela, pagosPorItem, SQL_COLUNAS_GRUPOS } from './devidoService';
+import { ehParcelaDaLeiloeira, existePagoPara, existeTabela, pagosPorItem, SQL_COLUNAS_GRUPOS } from './devidoService';
 import { ConciliacaoError } from './acessoService';
 import { criarDespesa } from '../despesaService';
 
@@ -14,9 +14,10 @@ const iso = (d: Date | string | null) => (d ? new Date(d).toISOString().slice(0,
 async function parcelasDoLeilao(idLeilao: number) {
   const pool = await getPool();
   const comGrupos = await existeTabela('CONC_CONDICAO_GRUPOS');
+  const comPagoPara = await existePagoPara();
   const r = await pool.request().input('l', sql.Int, idLeilao).query(`
     SELECT P.ID, P.ORDXXX, P.VLRPAR, P.DATVEN, MC.ID AS ID_MC, ML.CODVEN,
-           ${SQL_COLUNAS_GRUPOS(comGrupos)}
+           ${SQL_COLUNAS_GRUPOS(comGrupos, comPagoPara)}
     FROM MOVIMENTO_PARCELAMENTO P
     JOIN MOVIMENTO M              ON M.ID = P.IDMOV
     JOIN MOVIMENTO_LOTE ML        ON ML.ID = P.IDMOVLOTE
@@ -262,9 +263,10 @@ export async function pendencias(f: { de?: string; ate?: string } = {}) {
   // trecho escolhido fora do período com extrato: não há como dizer o que não entrou
   if (iso(per.INI)! > fim) return { periodo: null, foraDoExtrato: true, lancamentos: resumoLanc, compradores: [] };
   const comGrupos = await existeTabela('CONC_CONDICAO_GRUPOS');
+  const comPagoPara = await existePagoPara();
   const [parcelas, comissoes, pagos] = await Promise.all([
     pool.request().input('ini', sql.Date, iso(per.INI)).input('fim', sql.Date, fim).query(`
-      SELECT P.ID, P.IDCLI, P.LOTEXX, P.ORDXXX, P.VLRPAR, P.DATVEN, L.LEILAO, ${SQL_COLUNAS_GRUPOS(comGrupos)}
+      SELECT P.ID, P.IDCLI, P.LOTEXX, P.ORDXXX, P.VLRPAR, P.DATVEN, L.LEILAO, ${SQL_COLUNAS_GRUPOS(comGrupos, comPagoPara)}
       FROM MOVIMENTO_PARCELAMENTO P
       JOIN MOVIMENTO M              ON M.ID = P.IDMOV
       LEFT JOIN LEILOES L           ON L.ID = M.IDLEILAO
