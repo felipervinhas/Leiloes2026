@@ -103,6 +103,12 @@ export async function existeColuna(tabela: string, coluna: string): Promise<bool
 /** "Pago para" do Encaminhamento já existe neste banco? (ver SQL_COLUNAS_GRUPOS) */
 export const existePagoPara = () => existeColuna('MOVIMENTO_COMPRADOR', 'PAGO_PARA');
 
+/** "Pago para" da comissão do comprador (Encaminhamento), separado do das parcelas: a
+ *  comissão paga na conta do vendedor não é esperada no extrato da leiloeira. */
+export const existePagoParaComissao = () => existeColuna('MOVIMENTO_COMPRADOR', 'PAGO_PARA_COMISSAO');
+export const SQL_PAGO_PARA_COMISSAO = (existe: boolean) => `${existe ? 'MC.PAGO_PARA_COMISSAO' : 'NULL'} AS PAGO_PARA_COMISSAO`;
+export const comissaoDaLeiloeira = (x: { PAGO_PARA_COMISSAO?: string | null }) => x.PAGO_PARA_COMISSAO !== 'VENDEDOR';
+
 function inClientes(req: sql.Request, ids: number[], prefixo: string) {
   return ids.map((id, i) => { req.input(`${prefixo}${i}`, sql.Int, id); return `@${prefixo}${i}`; }).join(',');
 }
@@ -123,6 +129,7 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
   const pagos = await pagosPorItem();
   const comGrupos = await existeTabela('CONC_CONDICAO_GRUPOS');
   const comPagoPara = await existePagoPara();
+  const comPagoParaComissao = await existePagoParaComissao();
   const itens: ItemAberto[] = [];
 
   for (let i = 0; i < unicos.length; i += 400) {
@@ -163,7 +170,8 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
     if (opcoes.idLeilao) rc.input('leilao', sql.Int, opcoes.idLeilao);
     // IDCLI do comprador da venda é texto no banco
     const comissoes = await rc.query(`
-      SELECT MC.ID, MC.IDCLI, MC.VALORCOMISSAO, M.DATLAN, M.IDLEILAO, L.LEILAO, ML.LOTEXX
+      SELECT MC.ID, MC.IDCLI, MC.VALORCOMISSAO, M.DATLAN, M.IDLEILAO, L.LEILAO, ML.LOTEXX,
+             ${SQL_PAGO_PARA_COMISSAO(comPagoParaComissao)}
       FROM MOVIMENTO_COMPRADOR MC
       JOIN MOVIMENTO M          ON M.ID = MC.IDMOV
       LEFT JOIN MOVIMENTO_LOTE ML ON ML.ID = MC.IDMOVLOTE
@@ -179,7 +187,7 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
         chave, tipo: 'COMISSAO_COMPRA', id: x.ID, idCliente: Number(x.IDCLI), idMovComprador: x.ID,
         idLeilao: x.IDLEILAO, leilao: x.LEILAO, lote: x.LOTEXX?.trim() || null,
         descricao: 'Comissão de compra', vencimento: iso(x.DATLAN),
-        valor, pago, saldo: r2(valor - pago), daLeiloeira: true,
+        valor, pago, saldo: r2(valor - pago), daLeiloeira: comissaoDaLeiloeira(x),
       });
     }
 

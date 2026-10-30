@@ -298,7 +298,7 @@ const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
 export const atualizarPagamentoParcelas = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   const b = req.body || {};
-  if (b.pagoPara && !PAGO_PARA.includes(b.pagoPara)) {
+  if ((b.pagoPara && !PAGO_PARA.includes(b.pagoPara)) || (b.pagoParaComissao && !PAGO_PARA.includes(b.pagoParaComissao))) {
     return res.status(400).json({ error: 'Conta de pagamento inválida' });
   }
   for (const k of ['dataPagamento', 'dataPagamentoComissao']) {
@@ -308,6 +308,7 @@ export const atualizarPagamentoParcelas = async (req: Request, res: Response) =>
   await svc.atualizarPagamentoParcelas(id, {
     pagoPara: opcional('pagoPara'),
     dataPagamento: opcional('dataPagamento'),
+    pagoParaComissao: opcional('pagoParaComissao'),
     dataPagamentoComissao: opcional('dataPagamentoComissao'),
   });
   await registrarLog((req as any).usuario, 'Alterar', 'Vendas', id);

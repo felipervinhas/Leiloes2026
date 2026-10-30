@@ -273,11 +273,13 @@ function Listagem({
 
   // grava só o campo alterado; datas chegam como 'YYYY-MM-DD' (ou null)
   const atualizarPagamentoParcelas = async (alt: {
-    pagoPara?: string | null; dataPagamentoParcelas?: string | null; dataPagamentoComissao?: string | null;
+    pagoPara?: string | null; dataPagamentoParcelas?: string | null;
+    pagoParaComissao?: string | null; dataPagamentoComissao?: string | null;
   }) => {
     if (!encRow) return;
     const corpo: Record<string, string | null> = {};
     if ('pagoPara' in alt) corpo.pagoPara = alt.pagoPara ?? null;
+    if ('pagoParaComissao' in alt) corpo.pagoParaComissao = alt.pagoParaComissao ?? null;
     if ('dataPagamentoParcelas' in alt) corpo.dataPagamento = alt.dataPagamentoParcelas ?? null;
     if ('dataPagamentoComissao' in alt) corpo.dataPagamentoComissao = alt.dataPagamentoComissao ?? null;
     await api.put(`/vendas/${encRow.id}/pagamento-parcelas`, corpo);
@@ -734,14 +736,26 @@ function Listagem({
                 <Radio value="A">Em andamento</Radio>
                 <Radio value="C">Concluído</Radio>
               </Radio.Group>
-              <div style={{ marginTop: 10, width: 'calc(50% - 4px)' }}>
-                <div style={{ fontSize: 12, color: '#888', marginBottom: 2 }}>Data do pagamento da comissão</div>
-                <DatePicker
-                  style={{ width: '100%' }}
-                  format="DD/MM/YYYY"
-                  value={dataUTC(encRow.dataPagamentoComissao)}
-                  onChange={d => atualizarPagamentoParcelas({ dataPagamentoComissao: d ? d.format('YYYY-MM-DD') : null })}
-                />
+              <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 2 }}>Pago para</div>
+                  <Radio.Group
+                    value={encRow.pagoParaComissao || 'LEILOEIRA'}
+                    onChange={e => atualizarPagamentoParcelas({ pagoParaComissao: e.target.value })}
+                  >
+                    <Radio value="LEILOEIRA">Conta da leiloeira</Radio>
+                    <Radio value="VENDEDOR">Conta do vendedor</Radio>
+                  </Radio.Group>
+                </div>
+                <div style={{ width: 'calc(40% - 4px)' }}>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 2 }}>Data do pagamento</div>
+                  <DatePicker
+                    style={{ width: '100%' }}
+                    format="DD/MM/YYYY"
+                    value={dataUTC(encRow.dataPagamentoComissao)}
+                    onChange={d => atualizarPagamentoParcelas({ dataPagamentoComissao: d ? d.format('YYYY-MM-DD') : null })}
+                  />
+                </div>
               </div>
             </div>
 
@@ -768,7 +782,7 @@ function Listagem({
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, color: '#888', marginBottom: 2 }}>Data do pagamento da entrada</div>
+                    <div style={{ fontSize: 12, color: '#888', marginBottom: 2 }}>Data do pagamento</div>
                     <DatePicker
                       style={{ width: '100%' }}
                       format="DD/MM/YYYY"
@@ -794,9 +808,10 @@ function Listagem({
                     message={<><Text strong style={{ fontSize: 12 }}>{FORMA_PAGAMENTO_LABEL[encRow.formaPagamento]}: </Text>{FORMA_PAGAMENTO_AJUDA[encRow.formaPagamento]}</>}
                   />
                 )}
-                <ResumoRepasse row={encRow} pagamentos={encPagamentos} />
               </div>
             </div>
+
+            <ResumoRepasse row={encRow} pagamentos={encPagamentos} />
 
             <Divider style={{ margin: '12px 0' }} />
 
@@ -924,11 +939,18 @@ function ResumoRepasse({ row, pagamentos }: { row: any; pagamentos: PagamentosEn
   const totLei = soma(daLei);
   const totVen = soma(lista.filter(p => !p.daLeiloeira));
   const recebidoLei = soma(daLei, 'pago');
-  const repasse = totLei - comV;
+  // comissão do comprador paga na conta do vendedor: ele fica devendo esse valor à leiloeira,
+  // que desconta do repasse (e o que faltar o vendedor paga)
+  const comNoVendedor = row.pagoParaComissao === 'VENDEDOR';
+  const comCLei = comNoVendedor ? 0 : comC;
+  const repasse = totLei - comV - (comNoVendedor ? comC : 0);
 
-  const regra = row.pagoPara === 'LEILOEIRA' ? 'Pago para a leiloeira: todas as parcelas entram na conta da leiloeira.'
-    : row.pagoPara === 'VENDEDOR' ? 'Pago para o vendedor: todas as parcelas vão direto para a conta do vendedor.'
-    : 'Conforme a condição de pagamento: as parcelas iniciais passam pela leiloeira e as demais vão direto ao vendedor.';
+  const regra = [
+    row.pagoPara === 'LEILOEIRA' ? 'Parcelas: todas na conta da leiloeira.'
+      : row.pagoPara === 'VENDEDOR' ? 'Parcelas: todas direto na conta do vendedor.'
+      : 'Parcelas: as iniciais passam pela leiloeira e as demais vão direto ao vendedor (condição de pagamento).',
+    comNoVendedor ? 'Comissão do comprador: paga na conta do vendedor.' : 'Comissão do comprador: paga na conta da leiloeira.',
+  ].join(' ');
 
   // valor sempre positivo; "menos" marca o que sai da conta
   const linha = (rotulo: React.ReactNode, valor: number, opt: { forte?: boolean; menos?: boolean } = {}) => {
@@ -966,19 +988,21 @@ function ResumoRepasse({ row, pagamentos }: { row: any; pagamentos: PagamentosEn
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {bloco('Conta da leiloeira', '#b45309', <>
             {linha(`Parcelas da leiloeira (${daLei.length})`, totLei)}
-            {linha('Comissão do comprador', comC)}
+            {linha('Comissão do comprador', comCLei)}
             {linha('Repasse ao vendedor', Math.max(repasse, 0), { menos: true })}
+            {repasse < 0 && linha(<Text type="danger">A receber do vendedor</Text>, -repasse)}
             <Divider style={{ margin: '4px 0' }} />
             {linha('Fica com a leiloeira', comC + comV, { forte: true })}
-            {nota(<>Já recebido pelo extrato: {fmt(recebidoLei + comPagamento.pago)} de {fmt(totLei + comC)}</>)}
+            {nota(<>Já recebido pelo extrato: {fmt(recebidoLei + (comNoVendedor ? 0 : comPagamento.pago))} de {fmt(totLei + comCLei)}</>)}
           </>)}
           {bloco('Conta do vendedor', '#15803d', <>
             {linha('Parcelas direto do comprador', totVen)}
+            {comNoVendedor && linha('Comissão do comprador (da leiloeira)', comC)}
             {linha('Repasse da leiloeira', Math.max(repasse, 0))}
-            {repasse < 0 && linha(<Text type="danger">Deve de comissão à leiloeira</Text>, repasse, { menos: true })}
+            {repasse < 0 && linha(<Text type="danger">Paga à leiloeira</Text>, -repasse, { menos: true })}
             <Divider style={{ margin: '4px 0' }} />
-            {linha('Total do vendedor', totVen + repasse, { forte: true })}
-            {nota(<>repasse = parcelas da leiloeira − comissão do vendedor ({fmt(comV)})</>)}
+            {linha('Fica com o vendedor', totVen + totLei - comV, { forte: true })}
+            {nota(<>repasse = parcelas da leiloeira − comissão do vendedor ({fmt(comV)}){comNoVendedor ? ' − comissão do comprador recebida por ele' : ''}</>)}
           </>)}
         </div>
       )}
@@ -990,8 +1014,10 @@ function ResumoRepasse({ row, pagamentos }: { row: any; pagamentos: PagamentosEn
             {comC > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '1px 0', borderBottom: '1px dashed #eee' }}>
                 <span style={{ flex: 1 }}>Comissão do comprador</span>
-                {situacao(comC, comPagamento.pago, comPagamento.dataPago, row.dataPagamentoComissao)}
-                <Tag color="orange" style={{ fontSize: 10, margin: 0 }}>Leiloeira</Tag>
+                {situacao(comC, comNoVendedor ? 0 : comPagamento.pago, comPagamento.dataPago, row.dataPagamentoComissao)}
+                {comNoVendedor
+                  ? <Tag color="green" style={{ fontSize: 10, margin: 0 }}>Vendedor</Tag>
+                  : <Tag color="orange" style={{ fontSize: 10, margin: 0 }}>Leiloeira</Tag>}
                 <span style={{ width: 90, textAlign: 'right' }}>{fmt(comC)}</span>
               </div>
             )}

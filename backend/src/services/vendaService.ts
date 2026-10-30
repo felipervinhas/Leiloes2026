@@ -116,13 +116,13 @@ export async function listarVendas(filtros: FiltrosListagem) {
   await garantirColunasPagamentoParcelas();
   const r = await req.query(`
     SELECT V.*, L.LEILAO, CV.NOMEXX AS NOME_VENDEDOR,
-           PG.PAGO_PARA, PG.DATA_PAGAMENTO_PARCELAS, PG.DATA_PAGAMENTO_COMISSAO
+           PG.PAGO_PARA, PG.DATA_PAGAMENTO_PARCELAS, PG.PAGO_PARA_COMISSAO, PG.DATA_PAGAMENTO_COMISSAO
     FROM VWVendas V
     LEFT JOIN Leiloes L ON L.ID = V.IDLEILAO
     LEFT JOIN LOTES LOV ON LOV.ID = V.IDLOTE
     LEFT JOIN CLIENTES CV ON CV.ID = LOV.CODVEN
     OUTER APPLY (
-      SELECT TOP 1 MC.PAGO_PARA, MC.DATA_PAGAMENTO_PARCELAS, MC.DATA_PAGAMENTO_COMISSAO
+      SELECT TOP 1 MC.PAGO_PARA, MC.DATA_PAGAMENTO_PARCELAS, MC.PAGO_PARA_COMISSAO, MC.DATA_PAGAMENTO_COMISSAO
       FROM MOVIMENTO_COMPRADOR MC WHERE MC.IDMOV = V.ID AND MC.IDCLI = V.IDCLI
     ) PG
     ${where}
@@ -157,6 +157,7 @@ export async function listarVendas(filtros: FiltrosListagem) {
     formaPagamento: row.FORMA_PAGAMENTO,
     pagoPara:     row.PAGO_PARA,
     dataPagamentoParcelas: row.DATA_PAGAMENTO_PARCELAS,
+    pagoParaComissao:      row.PAGO_PARA_COMISSAO,
     dataPagamentoComissao: row.DATA_PAGAMENTO_COMISSAO,
     // resumo de quanto vai pra conta da leiloeira e do vendedor, no Encaminhamento
     valorPagar:            row.VALORPAGAR,
@@ -1610,6 +1611,8 @@ export async function garantirColunasPagamentoParcelas() {
       ALTER TABLE MOVIMENTO_COMPRADOR ADD DATA_PAGAMENTO_PARCELAS DATE NULL;
     IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='MOVIMENTO_COMPRADOR' AND COLUMN_NAME='DATA_PAGAMENTO_COMISSAO')
       ALTER TABLE MOVIMENTO_COMPRADOR ADD DATA_PAGAMENTO_COMISSAO DATE NULL;
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='MOVIMENTO_COMPRADOR' AND COLUMN_NAME='PAGO_PARA_COMISSAO')
+      ALTER TABLE MOVIMENTO_COMPRADOR ADD PAGO_PARA_COMISSAO VARCHAR(20) NULL;
   `);
   colunasPagamentoPorBanco.add(banco);
 }
@@ -1618,13 +1621,14 @@ export async function garantirColunasPagamentoParcelas() {
  *  costuma pagar a comissão num dia e a entrada em outro, por isso datas separadas. */
 export async function atualizarPagamentoParcelas(
   idMov: number,
-  d: { pagoPara?: string | null; dataPagamento?: string | null; dataPagamentoComissao?: string | null },
+  d: { pagoPara?: string | null; dataPagamento?: string | null; pagoParaComissao?: string | null; dataPagamentoComissao?: string | null },
 ): Promise<void> {
   await garantirColunasPagamentoParcelas();
   const pool = await getPool();
   const req = pool.request().input('idMov', sql.Int, idMov);
   const sets: string[] = [];
   if (d.pagoPara !== undefined)              { req.input('pagoPara', sql.VarChar, d.pagoPara);           sets.push('PAGO_PARA=@pagoPara'); }
+  if (d.pagoParaComissao !== undefined)      { req.input('pagoParaCom', sql.VarChar, d.pagoParaComissao); sets.push('PAGO_PARA_COMISSAO=@pagoParaCom'); }
   if (d.dataPagamento !== undefined)         { req.input('data',     sql.Date,    d.dataPagamento);      sets.push('DATA_PAGAMENTO_PARCELAS=@data'); }
   if (d.dataPagamentoComissao !== undefined) { req.input('dataCom',  sql.Date,    d.dataPagamentoComissao); sets.push('DATA_PAGAMENTO_COMISSAO=@dataCom'); }
   if (!sets.length) return;

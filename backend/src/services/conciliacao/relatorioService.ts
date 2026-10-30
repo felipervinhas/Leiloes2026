@@ -1,6 +1,9 @@
 import { getPool, sql } from '../../config/database';
 import { garantirTabelasConciliacao } from './schema';
-import { ehParcelaDaLeiloeira, existePagoPara, existeTabela, pagosPorItem, SQL_COLUNAS_GRUPOS } from './devidoService';
+import {
+  comissaoDaLeiloeira, ehParcelaDaLeiloeira, existePagoPara, existePagoParaComissao, existeTabela, pagosPorItem,
+  SQL_COLUNAS_GRUPOS, SQL_PAGO_PARA_COMISSAO,
+} from './devidoService';
 import { ConciliacaoError } from './acessoService';
 import { criarDespesa } from '../despesaService';
 
@@ -36,10 +39,11 @@ async function parcelasDoLeilao(idLeilao: number) {
 export async function recebimentosPorLeilao(idLeilao: number) {
   await garantirTabelasConciliacao();
   const pool = await getPool();
+  const comPagoParaComissao = await existePagoParaComissao();
   const [vendas, parcelas, pagos] = await Promise.all([
     pool.request().input('l', sql.Int, idLeilao).query(`
       SELECT MC.ID, MC.IDCLI, C.NOMEXX AS COMPRADOR, C.CELU_1, ML.LOTEXX, ML.CODVEN, V.NOMEXX AS VENDEDOR, M.DATLAN,
-             MC.VALORPAGAR, MC.VALORCOMISSAO, CP.DESFIN
+             MC.VALORPAGAR, MC.VALORCOMISSAO, CP.DESFIN, ${SQL_PAGO_PARA_COMISSAO(comPagoParaComissao)}
       FROM MOVIMENTO_COMPRADOR MC
       JOIN MOVIMENTO M          ON M.ID = MC.IDMOV
       JOIN MOVIMENTO_LOTE ML    ON ML.ID = MC.IDMOVLOTE
@@ -63,7 +67,8 @@ export async function recebimentosPorLeilao(idLeilao: number) {
     const previstoParcelas = r2(daCasa.reduce((a, p) => a + p.valor, 0));
     const recebidoParcelas = r2(daCasa.reduce((a, p) => a + (pagos.get(`PARCELA:${p.id}`) || 0), 0));
     const recebidoOutras = r2(ps.filter(p => !p.daLeiloeira).reduce((a, p) => a + (pagos.get(`PARCELA:${p.id}`) || 0), 0));
-    const previstoComissao = r2(Number(v.VALORCOMISSAO) || 0);
+    // comissão paga na conta do vendedor (Encaminhamento) não é recebimento da leiloeira
+    const previstoComissao = comissaoDaLeiloeira(v) ? r2(Number(v.VALORCOMISSAO) || 0) : 0;
     const recebidoComissao = r2(pagos.get(`COMISSAO_COMPRA:${v.ID}`) || 0);
     const previsto = r2(previstoParcelas + previstoComissao);
     const recebido = r2(recebidoParcelas + recebidoComissao);
@@ -264,6 +269,7 @@ export async function pendencias(f: { de?: string; ate?: string } = {}) {
   if (iso(per.INI)! > fim) return { periodo: null, foraDoExtrato: true, lancamentos: resumoLanc, compradores: [] };
   const comGrupos = await existeTabela('CONC_CONDICAO_GRUPOS');
   const comPagoPara = await existePagoPara();
+  const comPagoParaComissao = await existePagoParaComissao();
   const [parcelas, comissoes, pagos] = await Promise.all([
     pool.request().input('ini', sql.Date, iso(per.INI)).input('fim', sql.Date, fim).query(`
       SELECT P.ID, P.IDCLI, P.LOTEXX, P.ORDXXX, P.VLRPAR, P.DATVEN, L.LEILAO, ${SQL_COLUNAS_GRUPOS(comGrupos, comPagoPara)}
@@ -275,7 +281,7 @@ export async function pendencias(f: { de?: string; ate?: string } = {}) {
       ${comGrupos ? 'LEFT JOIN CONC_CONDICAO_GRUPOS G ON G.ID_CONDPAGTO = MC.IDCONDPAGTO' : ''}
       WHERE P.DATVEN BETWEEN @ini AND @fim`),
     pool.request().input('ini', sql.Date, iso(per.INI)).input('fim', sql.Date, fim).query(`
-      SELECT MC.ID, MC.IDCLI, MC.VALORCOMISSAO, M.DATLAN, L.LEILAO, ML.LOTEXX
+      SELECT MC.ID, MC.IDCLI, MC.VALORCOMISSAO, M.DATLAN, L.LEILAO, ML.LOTEXX, ${SQL_PAGO_PARA_COMISSAO(comPagoParaComissao)}
       FROM MOVIMENTO_COMPRADOR MC JOIN MOVIMENTO M ON M.ID = MC.IDMOV
       LEFT JOIN MOVIMENTO_LOTE ML ON ML.ID = MC.IDMOVLOTE LEFT JOIN LEILOES L ON L.ID = M.IDLEILAO
       WHERE MC.VALORCOMISSAO > 0 AND M.DATLAN BETWEEN @ini AND @fim`),
@@ -291,6 +297,7 @@ export async function pendencias(f: { de?: string; ate?: string } = {}) {
       vencimento: iso(x.DATVEN), emAberto: r2(Number(x.VLRPAR) - (pagos.get(`PARCELA:${x.ID}`) || 0)) });
   }
   for (const x of comissoes.recordset) {
+    if (!comissaoDaLeiloeira(x)) continue;
     add(Number(x.IDCLI), { tipo: 'COMISSAO_COMPRA', leilao: x.LEILAO, lote: x.LOTEXX?.trim() || null, descricao: 'Comissão de compra',
       vencimento: iso(x.DATLAN), emAberto: r2(Number(x.VALORCOMISSAO) - (pagos.get(`COMISSAO_COMPRA:${x.ID}`) || 0)) });
   }

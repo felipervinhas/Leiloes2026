@@ -88,7 +88,7 @@ export function decidir(l: Lanc, itens: ItemAberto[]): { auto: boolean; sugestao
     // A2: todas as comissões em aberto do cliente num mesmo leilão
     if (unicos.length === 0 && mesmaVenda.length === 0) {
       const porLeilao = new Map<number, ItemAberto[]>();
-      for (const c of comprador.filter(i => i.tipo === 'COMISSAO_COMPRA'))
+      for (const c of daCasa.filter(i => i.tipo === 'COMISSAO_COMPRA'))
         porLeilao.set(c.idLeilao ?? 0, [...(porLeilao.get(c.idLeilao ?? 0) || []), c]);
       const somam = [...porLeilao.values()].filter(cs => cs.length > 1 && igual(cs.reduce((a, c) => a + c.saldo, 0), valor));
       if (somam.length === 1) return { auto: true, sugestao: sug('A2', 'Comissões do mesmo leilão', somam[0]) };
@@ -137,7 +137,7 @@ function arredondado(valor: number, comprador: ItemAberto[], daCasa: ItemAberto[
       if (daCasa[i].idMovComprador && daCasa[i].idMovComprador === daCasa[j].idMovComprador && perto(daCasa[i].saldo + daCasa[j].saldo, valor))
         grupos.push([daCasa[i], daCasa[j]]);
   const porLeilao = new Map<number, ItemAberto[]>();
-  for (const c of comprador.filter(i => i.tipo === 'COMISSAO_COMPRA'))
+  for (const c of daCasa.filter(i => i.tipo === 'COMISSAO_COMPRA'))
     porLeilao.set(c.idLeilao ?? 0, [...(porLeilao.get(c.idLeilao ?? 0) || []), c]);
   for (const cs of porLeilao.values()) if (cs.length > 1 && perto(cs.reduce((a, c) => a + c.saldo, 0), valor)) grupos.push(cs);
   if (!grupos.length) for (const i of comprador) if (perto(i.saldo, valor)) grupos.push([i]);
