@@ -292,18 +292,30 @@ export const atualizarFormaPagamento = async (req: Request, res: Response) => {
 
 const PAGO_PARA = ['LEILOEIRA', 'VENDEDOR'];
 
+const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+// Só os campos enviados no corpo são gravados (null limpa)
 export const atualizarPagamentoParcelas = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  const { pagoPara, dataPagamento } = req.body;
-  if (pagoPara && !PAGO_PARA.includes(pagoPara)) {
+  const b = req.body || {};
+  if (b.pagoPara && !PAGO_PARA.includes(b.pagoPara)) {
     return res.status(400).json({ error: 'Conta de pagamento inválida' });
   }
-  if (dataPagamento && !/^\d{4}-\d{2}-\d{2}$/.test(dataPagamento)) {
-    return res.status(400).json({ error: 'Data de pagamento inválida' });
+  for (const k of ['dataPagamento', 'dataPagamentoComissao']) {
+    if (b[k] && !DATA_ISO.test(b[k])) return res.status(400).json({ error: 'Data de pagamento inválida' });
   }
-  await svc.atualizarPagamentoParcelas(id, pagoPara || null, dataPagamento || null);
+  const opcional = (k: string) => (k in b ? b[k] || null : undefined);
+  await svc.atualizarPagamentoParcelas(id, {
+    pagoPara: opcional('pagoPara'),
+    dataPagamento: opcional('dataPagamento'),
+    dataPagamentoComissao: opcional('dataPagamentoComissao'),
+  });
   await registrarLog((req as any).usuario, 'Alterar', 'Vendas', id);
   res.json({ ok: true });
+};
+
+export const pagamentosEncaminhamento = async (req: Request, res: Response) => {
+  res.json(await svc.pagamentosEncaminhamento(Number(req.params.id), Number(req.query.idCli)));
 };
 
 // ─── atualizar informações ───────────────────────────────────────────────────

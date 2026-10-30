@@ -203,6 +203,7 @@ bancoRouter.post('/vendas/:id/compradores/:idComp/parcelas', venda.gerarParcelas
 bancoRouter.put('/vendas/:id/encaminhamento', venda.atualizarEncaminhamento);
 bancoRouter.put('/vendas/:id/forma-pagamento', venda.atualizarFormaPagamento);
 bancoRouter.put('/vendas/:id/pagamento-parcelas', venda.atualizarPagamentoParcelas);
+bancoRouter.get('/vendas/:id/pagamentos-encaminhamento', venda.pagamentosEncaminhamento);
 bancoRouter.post('/vendas/:id/atualizar-info', venda.atualizarInfo);
 bancoRouter.get('/clientes/:idCli/propriedades', clientePropriedade.listar);
 bancoRouter.post('/clientes/:idCli/propriedades', clientePropriedade.criar);

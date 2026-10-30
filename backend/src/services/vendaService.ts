@@ -116,13 +116,13 @@ export async function listarVendas(filtros: FiltrosListagem) {
   await garantirColunasPagamentoParcelas();
   const r = await req.query(`
     SELECT V.*, L.LEILAO, CV.NOMEXX AS NOME_VENDEDOR,
-           PG.PAGO_PARA, PG.DATA_PAGAMENTO_PARCELAS
+           PG.PAGO_PARA, PG.DATA_PAGAMENTO_PARCELAS, PG.DATA_PAGAMENTO_COMISSAO
     FROM VWVendas V
     LEFT JOIN Leiloes L ON L.ID = V.IDLEILAO
     LEFT JOIN LOTES LOV ON LOV.ID = V.IDLOTE
     LEFT JOIN CLIENTES CV ON CV.ID = LOV.CODVEN
     OUTER APPLY (
-      SELECT TOP 1 MC.PAGO_PARA, MC.DATA_PAGAMENTO_PARCELAS
+      SELECT TOP 1 MC.PAGO_PARA, MC.DATA_PAGAMENTO_PARCELAS, MC.DATA_PAGAMENTO_COMISSAO
       FROM MOVIMENTO_COMPRADOR MC WHERE MC.IDMOV = V.ID AND MC.IDCLI = V.IDCLI
     ) PG
     ${where}
@@ -157,6 +157,7 @@ export async function listarVendas(filtros: FiltrosListagem) {
     formaPagamento: row.FORMA_PAGAMENTO,
     pagoPara:     row.PAGO_PARA,
     dataPagamentoParcelas: row.DATA_PAGAMENTO_PARCELAS,
+    dataPagamentoComissao: row.DATA_PAGAMENTO_COMISSAO,
     // resumo de quanto vai pra conta da leiloeira e do vendedor, no Encaminhamento
     valorPagar:            row.VALORPAGAR,
     valorComissao:         row.VALORCOMISSAO,
@@ -1607,20 +1608,60 @@ export async function garantirColunasPagamentoParcelas() {
       ALTER TABLE MOVIMENTO_COMPRADOR ADD PAGO_PARA VARCHAR(20) NULL;
     IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='MOVIMENTO_COMPRADOR' AND COLUMN_NAME='DATA_PAGAMENTO_PARCELAS')
       ALTER TABLE MOVIMENTO_COMPRADOR ADD DATA_PAGAMENTO_PARCELAS DATE NULL;
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='MOVIMENTO_COMPRADOR' AND COLUMN_NAME='DATA_PAGAMENTO_COMISSAO')
+      ALTER TABLE MOVIMENTO_COMPRADOR ADD DATA_PAGAMENTO_COMISSAO DATE NULL;
   `);
   colunasPagamentoPorBanco.add(banco);
 }
 
+/** Grava os campos de pagamento informados (os ausentes ficam como estão) — o comprador
+ *  costuma pagar a comissão num dia e a entrada em outro, por isso datas separadas. */
 export async function atualizarPagamentoParcelas(
-  idMov: number, pagoPara: string | null, dataPagamento: string | null,
+  idMov: number,
+  d: { pagoPara?: string | null; dataPagamento?: string | null; dataPagamentoComissao?: string | null },
 ): Promise<void> {
   await garantirColunasPagamentoParcelas();
   const pool = await getPool();
-  await pool.request()
-    .input('idMov',    sql.Int,     idMov)
-    .input('pagoPara', sql.VarChar, pagoPara)
-    .input('data',     sql.Date,    dataPagamento)
-    .query(`UPDATE MOVIMENTO_COMPRADOR SET PAGO_PARA=@pagoPara, DATA_PAGAMENTO_PARCELAS=@data WHERE IDMOV=@idMov`);
+  const req = pool.request().input('idMov', sql.Int, idMov);
+  const sets: string[] = [];
+  if (d.pagoPara !== undefined)              { req.input('pagoPara', sql.VarChar, d.pagoPara);           sets.push('PAGO_PARA=@pagoPara'); }
+  if (d.dataPagamento !== undefined)         { req.input('data',     sql.Date,    d.dataPagamento);      sets.push('DATA_PAGAMENTO_PARCELAS=@data'); }
+  if (d.dataPagamentoComissao !== undefined) { req.input('dataCom',  sql.Date,    d.dataPagamentoComissao); sets.push('DATA_PAGAMENTO_COMISSAO=@dataCom'); }
+  if (!sets.length) return;
+  await req.query(`UPDATE MOVIMENTO_COMPRADOR SET ${sets.join(', ')} WHERE IDMOV=@idMov`);
+}
+
+/** Para o Encaminhamento: parcelas com o destino (daLeiloeira) e o que a conciliação
+ *  bancária já baixou de cada uma e da comissão do comprador (valor e data do extrato). */
+export async function pagamentosEncaminhamento(idMov: number, idCli: number) {
+  const parcelas = await listarParcelas(idMov, idCli);
+  const pool = await getPool();
+  if (!(await existeTabela('CONC_BAIXAS'))) {
+    return { parcelas: parcelas.map(p => ({ ...p, pago: 0, dataPago: null })), comissao: { pago: 0, dataPago: null } };
+  }
+  const r = await pool.request()
+    .input('idMov', sql.Int, idMov).input('idCli', sql.VarChar, String(idCli))
+    .query(`
+      SELECT B.TIPO_ALVO, B.ID_PARCELA, SUM(B.VALOR) AS PAGO, MAX(L.DATA) AS DATA_PAGO
+      FROM CONC_BAIXAS B
+      JOIN CONC_LANCAMENTOS L ON L.ID = B.ID_LANCAMENTO
+      WHERE B.DESFEITA = 'N' AND (
+        (B.TIPO_ALVO = 'PARCELA' AND B.ID_PARCELA IN (SELECT ID FROM MOVIMENTO_PARCELAMENTO WHERE IDMOV=@idMov AND IDCLI=@idCli))
+        OR (B.TIPO_ALVO = 'COMISSAO_COMPRA' AND B.ID_MOV_COMPRADOR IN (SELECT ID FROM MOVIMENTO_COMPRADOR WHERE IDMOV=@idMov AND IDCLI=@idCli)))
+      GROUP BY B.TIPO_ALVO, B.ID_PARCELA`);
+  const porParcela = new Map<number, any>();
+  let comissao = { pago: 0, dataPago: null as Date | null };
+  for (const x of r.recordset) {
+    if (x.TIPO_ALVO === 'PARCELA') porParcela.set(x.ID_PARCELA, x);
+    else comissao = { pago: Number(x.PAGO) || 0, dataPago: x.DATA_PAGO };
+  }
+  return {
+    parcelas: parcelas.map(p => {
+      const b = porParcela.get(p.id);
+      return { ...p, pago: b ? Number(b.PAGO) || 0 : 0, dataPago: b?.DATA_PAGO ?? null };
+    }),
+    comissao,
+  };
 }
 
 export async function atualizarFormaPagamentoMovimento(idMov: number, forma: string): Promise<void> {
