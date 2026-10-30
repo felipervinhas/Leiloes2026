@@ -237,6 +237,8 @@ function Listagem({
   // ── Encaminhamento (status comissão/parcela/contrato/embarque + forma pagto) ──
   const [encModal, setEncModal] = useState(false);
   const [encRow, setEncRow]     = useState<any | null>(null);
+  // 'status' = andamento/conclusão; 'financeiro' = conta de destino, datas, forma e resumo
+  const [encTipo, setEncTipo]   = useState<'status' | 'financeiro'>('status');
 
   // parcelas com destino (daLeiloeira, depende do "Pago para") e o que a conciliação já baixou
   const [encPagamentos, setEncPagamentos] = useState<PagamentosEnc | null>(null);
@@ -246,9 +248,9 @@ function Listagem({
       .then(r => setEncPagamentos(r.data))
       .catch(() => setEncPagamentos({ parcelas: [], comissao: { pago: 0, dataPago: null } }));
 
-  const abrirEncaminhamento = (row: any) => {
-    setEncRow(row); setEncModal(true); setEncPagamentos(null);
-    carregarParcelasEnc(row);
+  const abrirEncaminhamento = (row: any, tipo: 'status' | 'financeiro') => {
+    setEncRow(row); setEncTipo(tipo); setEncModal(true); setEncPagamentos(null);
+    if (tipo === 'financeiro') carregarParcelasEnc(row);
   };
 
   const atualizarCampoStatus = async (
@@ -285,7 +287,7 @@ function Listagem({
     await api.put(`/vendas/${encRow.id}/pagamento-parcelas`, corpo);
     setEncRow((r: any) => ({ ...r, ...alt }));
     setDados(ds => ds.map(d => d.id === encRow.id ? { ...d, ...alt } : d));
-    if ('pagoPara' in alt) carregarParcelasEnc(encRow);
+    if ('pagoPara' in alt && encTipo === 'financeiro') carregarParcelasEnc(encRow);
     message.success('Encaminhamento atualizado');
   };
 
@@ -388,7 +390,8 @@ function Listagem({
                     { key: 'contrato',        label: 'Contrato',           onClick: () => abrirContrato(row) },
                   ],
                 },
-                { key: 'encaminhamento', label: 'Encaminhamento', icon: <FlagOutlined />, onClick: () => abrirEncaminhamento(row) },
+                { key: 'encaminhamento', label: 'Encaminhamentos', icon: <FlagOutlined />, onClick: () => abrirEncaminhamento(row, 'status') },
+                { key: 'encaminhamentoFin', label: 'Encaminhamentos Financeiros', icon: <DollarOutlined />, onClick: () => abrirEncaminhamento(row, 'financeiro') },
                 { type: 'divider' },
                 {
                   key: 'excluir', label: 'Excluir', icon: <DeleteOutlined />, danger: true,
@@ -712,20 +715,23 @@ function Listagem({
         )}
       </Modal>
 
-      {/* Modal Encaminhamento */}
+      {/* Modal Encaminhamento (status) / Encaminhamento Financeiro */}
       <Modal
         open={encModal}
         onCancel={() => { setEncModal(false); setEncRow(null); setEncPagamentos(null); }}
         footer={null}
         title={
           <Space>
-            <FlagOutlined />
-            <span>Encaminhamento {encRow ? `— Venda #${encRow.id}` : ''}</span>
+            {encTipo === 'financeiro' ? <DollarOutlined /> : <FlagOutlined />}
+            <span>
+              {encTipo === 'financeiro' ? 'Encaminhamentos Financeiros' : 'Encaminhamentos'}
+              {encRow ? ` — Venda #${encRow.id}` : ''}
+            </span>
           </Space>
         }
-        width={560}
+        width={encTipo === 'financeiro' ? 560 : 420}
       >
-        {encRow && (
+        {encRow && encTipo === 'status' && (
           <div style={{ padding: '8px 0' }}>
             <div style={{ marginBottom: 16 }}>
               <div style={{ marginBottom: 4 }}><Text strong>Pagamento Comissão</Text></div>
@@ -736,7 +742,42 @@ function Listagem({
                 <Radio value="A">Em andamento</Radio>
                 <Radio value="C">Concluído</Radio>
               </Radio.Group>
-              <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 4 }}><Text strong>Pagamento Parcelas</Text></div>
+              <Radio.Group
+                value={encRow.stParcela === 'C' ? 'C' : 'A'}
+                onChange={e => atualizarCampoStatus('stParcela', 'ST_PARCELA', e.target.value)}
+              >
+                <Radio value="A">Em andamento</Radio>
+                <Radio value="C">Concluído</Radio>
+              </Radio.Group>
+            </div>
+
+            <Divider style={{ margin: '12px 0' }} />
+
+            <Checkbox
+              checked={encRow.stContrato === 'C'}
+              onChange={e => atualizarCampoStatus('stContrato', 'ST_CONTRATO', e.target.checked ? 'C' : 'A')}
+              style={{ display: 'block', marginBottom: 8 }}
+            >
+              Contrato Concluído
+            </Checkbox>
+            <Checkbox
+              checked={encRow.stEmbarque === 'C'}
+              onChange={e => atualizarCampoStatus('stEmbarque', 'ST_EMBARQUE', e.target.checked ? 'C' : 'A')}
+            >
+              Embarque Concluído
+            </Checkbox>
+          </div>
+        )}
+
+        {encRow && encTipo === 'financeiro' && (
+          <div style={{ padding: '8px 0' }}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 4 }}><Text strong>Comissão</Text></div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12, color: '#888', marginBottom: 2 }}>Pago para</div>
                   <Radio.Group
@@ -760,15 +801,8 @@ function Listagem({
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <div style={{ marginBottom: 4 }}><Text strong>Pagamento Parcelas</Text></div>
-              <Radio.Group
-                value={encRow.stParcela === 'C' ? 'C' : 'A'}
-                onChange={e => atualizarCampoStatus('stParcela', 'ST_PARCELA', e.target.value)}
-              >
-                <Radio value="A">Em andamento</Radio>
-                <Radio value="C">Concluído</Radio>
-              </Radio.Group>
-              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ marginBottom: 4 }}><Text strong>Parcelas</Text></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div>
                   <div style={{ fontSize: 12, color: '#888', marginBottom: 2 }}>Pago para</div>
                   <Radio.Group
@@ -812,22 +846,6 @@ function Listagem({
             </div>
 
             <ResumoRepasse row={encRow} pagamentos={encPagamentos} />
-
-            <Divider style={{ margin: '12px 0' }} />
-
-            <Checkbox
-              checked={encRow.stContrato === 'C'}
-              onChange={e => atualizarCampoStatus('stContrato', 'ST_CONTRATO', e.target.checked ? 'C' : 'A')}
-              style={{ display: 'block', marginBottom: 8 }}
-            >
-              Contrato Concluído
-            </Checkbox>
-            <Checkbox
-              checked={encRow.stEmbarque === 'C'}
-              onChange={e => atualizarCampoStatus('stEmbarque', 'ST_EMBARQUE', e.target.checked ? 'C' : 'A')}
-            >
-              Embarque Concluído
-            </Checkbox>
           </div>
         )}
       </Modal>
