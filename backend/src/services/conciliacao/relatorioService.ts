@@ -1,7 +1,7 @@
 import { getPool, sql } from '../../config/database';
 import { garantirTabelasConciliacao } from './schema';
 import {
-  comissaoDaLeiloeira, ehParcelaDaLeiloeira, existePagoPara, existePagoParaComissao, existeTabela, pagosPorItem,
+  chaveDaBaixa, comissaoDaLeiloeira, ehParcelaDaLeiloeira, existePagoPara, existePagoParaComissao, existeTabela, pagosPorItem,
   SQL_COLUNAS_GRUPOS, SQL_PAGO_PARA_COMISSAO,
 } from './devidoService';
 import { ConciliacaoError } from './acessoService';
@@ -40,7 +40,7 @@ export async function recebimentosPorLeilao(idLeilao: number) {
   await garantirTabelasConciliacao();
   const pool = await getPool();
   const comPagoParaComissao = await existePagoParaComissao();
-  const [vendas, parcelas, pagos] = await Promise.all([
+  const [vendas, parcelas, pagos, datas] = await Promise.all([
     pool.request().input('l', sql.Int, idLeilao).query(`
       SELECT MC.ID, MC.IDCLI, C.NOMEXX AS COMPRADOR, C.CELU_1, ML.LOTEXX, ML.CODVEN, V.NOMEXX AS VENDEDOR, M.DATLAN,
              MC.VALORPAGAR, MC.VALORCOMISSAO, CP.DESFIN, ${SQL_PAGO_PARA_COMISSAO(comPagoParaComissao)}
@@ -53,7 +53,22 @@ export async function recebimentosPorLeilao(idLeilao: number) {
       WHERE M.IDLEILAO = @l AND ISNULL(MC.VALORPAGAR, 0) > 0`),
     parcelasDoLeilao(idLeilao),
     pagosPorItem(),
+    // data do pagamento = data do lançamento do extrato que baixou o item (o último, se foram vários)
+    pool.request().input('l', sql.Int, idLeilao).query(`
+      SELECT B.TIPO_ALVO, B.ID_PARCELA, B.ID_MOV_COMPRADOR, MAX(L.DATA) AS DATA
+      FROM CONC_BAIXAS B
+      JOIN CONC_LANCAMENTOS L ON L.ID = B.ID_LANCAMENTO
+      WHERE B.DESFEITA = 'N' AND B.TIPO_ALVO IN ('PARCELA','COMISSAO_COMPRA')
+        AND (B.ID_MOV_COMPRADOR IN (SELECT MC.ID FROM MOVIMENTO_COMPRADOR MC JOIN MOVIMENTO M ON M.ID = MC.IDMOV WHERE M.IDLEILAO = @l)
+          OR B.ID_PARCELA IN (SELECT P.ID FROM MOVIMENTO_PARCELAMENTO P JOIN MOVIMENTO M ON M.ID = P.IDMOV WHERE M.IDLEILAO = @l))
+      GROUP BY B.TIPO_ALVO, B.ID_PARCELA, B.ID_MOV_COMPRADOR`),
   ]);
+  const dataPago = new Map<string, string>();
+  for (const x of datas.recordset) {
+    const d = iso(x.DATA);
+    if (d) dataPago.set(chaveDaBaixa(x), d);
+  }
+  const maisRecente = (ds: (string | undefined)[]) => ds.filter(Boolean).sort().pop() || null;
   // "vencido em aberto" só dentro do período que já tem extrato: antes dele não há como saber se foi pago
   const per = (await pool.request().query(`SELECT MIN(DT_INICIO) INI, MAX(DT_FIM) FIM FROM CONC_IMPORTACOES`)).recordset[0];
   const hoje = new Date().toISOString().slice(0, 10);
@@ -75,8 +90,12 @@ export async function recebimentosPorLeilao(idLeilao: number) {
     const vencidoAberto = r2(daCasa.filter(p => noPeriodo(p.vencimento))
       .reduce((a, p) => a + Math.max(0, p.valor - (pagos.get(`PARCELA:${p.id}`) || 0)), 0)
       + (noPeriodo(v.DATLAN ? iso(v.DATLAN) : null) ? Math.max(0, previstoComissao - recebidoComissao) : 0));
+    const dataPagamentoComissao = dataPago.get(`COMISSAO_COMPRA:${v.ID}`) || null;
+    const dataPagamentoParcelas = maisRecente(daCasa.map(p => dataPago.get(`PARCELA:${p.id}`)));
     return {
       idMovComprador: v.ID, idComprador: Number(v.IDCLI), comprador: v.COMPRADOR, telefone: v.CELU_1,
+      dataPagamentoComissao, dataPagamentoParcelas,
+      dataPagamento: maisRecente([dataPagamentoComissao ?? undefined, dataPagamentoParcelas ?? undefined]),
       lote: v.LOTEXX?.trim() || null, idVendedor: v.CODVEN != null ? Number(v.CODVEN) : null, vendedor: v.VENDEDOR, condicao: v.DESFIN,
       qtdParcelasLeiloeira: daCasa.length, previstoParcelas, recebidoParcelas,
       previstoComissao, recebidoComissao, previsto, recebido, recebidoOutras, vencidoAberto,

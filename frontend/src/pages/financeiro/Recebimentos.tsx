@@ -17,6 +17,13 @@ const SITUACAO_VENDA: Record<string, { label: string; cor: string }> = {
   EM_ABERTO: { label: 'Em aberto', cor: 'orange' },
 };
 
+// Comissão e parcelas podem ser pagas em dias diferentes: mostra as duas datas quando diferem
+const textoPagoEm = (l: any): string[] => {
+  const c = l.dataPagamentoComissao, p = l.dataPagamentoParcelas;
+  if (c && p && c !== p) return [`Comissão ${fmtDataUTC(c)}`, `Parcelas ${fmtDataUTC(p)}`];
+  return c || p ? [fmtDataUTC(c || p)] : [];
+};
+
 /** Por venda do leilão: o que devia passar pela leiloeira (parcelas iniciais e comissão de compra) e o que já entrou. */
 export default function Recebimentos() {
   const [modo, setModo] = useState<'leilao' | 'periodo'>('leilao');
@@ -62,11 +69,11 @@ function RecebimentosPorLeilao() {
         ],
         colunas: [
           { titulo: 'Lote', flex: 0.5 }, { titulo: 'Comprador', flex: 2.2 }, { titulo: 'Vendedor', flex: 2 }, { titulo: 'Condição', flex: 1.4 },
-          { titulo: 'Previsto', direita: true }, { titulo: 'Recebido', direita: true }, { titulo: 'Vencido em aberto', direita: true }, { titulo: 'Situação', flex: 0.8 },
+          { titulo: 'Previsto', direita: true }, { titulo: 'Recebido', direita: true }, { titulo: 'Pago em', flex: 1.2 }, { titulo: 'Vencido em aberto', direita: true }, { titulo: 'Situação', flex: 0.8 },
         ],
         linhas: dados.linhas.map((l: any) => ({ celulas: [l.lote || '', l.comprador || '', l.vendedor || '', l.condicao || '',
-          fmtValor(l.previsto), fmtValor(l.recebido), l.vencidoAberto > 0 ? fmtValor(l.vencidoAberto) : '—', SITUACAO_VENDA[l.situacao]?.label || ''] })),
-        total: ['', 'Total', '', '', fmtValor(t.previsto), fmtValor(t.recebido), fmtValor(t.vencidoAberto), ''],
+          fmtValor(l.previsto), fmtValor(l.recebido), textoPagoEm(l).join(' / ') || '—', l.vencidoAberto > 0 ? fmtValor(l.vencidoAberto) : '—', SITUACAO_VENDA[l.situacao]?.label || ''] })),
+        total: ['', 'Total', '', '', fmtValor(t.previsto), fmtValor(t.recebido), '', fmtValor(t.vencidoAberto), ''],
         rodapeNota: 'Recebido = pagamentos conciliados no extrato',
       }, `recebimentos-${nomeLeilao.replace(/[^\w-]+/g, '_').slice(0, 50)}`);
     } catch { message.error('Erro ao gerar o PDF'); }
@@ -77,6 +84,8 @@ function RecebimentosPorLeilao() {
     Lote: l.lote, Comprador: l.comprador, Telefone: l.telefone, Vendedor: l.vendedor, Condição: l.condicao,
     'Parcelas da leiloeira (previsto)': l.previstoParcelas, 'Parcelas recebidas': l.recebidoParcelas,
     'Comissão de compra (prevista)': l.previstoComissao, 'Comissão recebida': l.recebidoComissao,
+    'Data pagamento comissão': l.dataPagamentoComissao ? fmtDataUTC(l.dataPagamentoComissao) : '',
+    'Data pagamento parcelas': l.dataPagamentoParcelas ? fmtDataUTC(l.dataPagamentoParcelas) : '',
     'Total previsto': l.previsto, 'Total recebido': l.recebido, 'Vencido em aberto': l.vencidoAberto,
     'Recebido de parcelas posteriores': l.recebidoOutras, Situação: SITUACAO_VENDA[l.situacao]?.label,
   })), `recebimentos-${nomeLeilao.replace(/[^\w-]+/g, '_').slice(0, 50)}`, 'Recebimentos');
@@ -116,6 +125,12 @@ function RecebimentosPorLeilao() {
                 sorter: (a: any, b: any) => a.previsto - b.previsto },
               { title: 'Recebido', dataIndex: 'recebido', align: 'right' as const, width: 120,
                 render: (v: number) => <Text style={{ color: v > 0 ? '#389e0d' : undefined }}>{fmtValor(v)}</Text> },
+              { title: 'Pago em', dataIndex: 'dataPagamento', width: 150,
+                sorter: (a: any, b: any) => String(a.dataPagamento || '').localeCompare(String(b.dataPagamento || '')),
+                render: (_: any, l: any) => {
+                  const t = textoPagoEm(l);
+                  return t.length ? t.map(x => <div key={x} style={{ fontSize: t.length > 1 ? 12 : undefined }}>{x}</div>) : '—';
+                } },
               { title: 'Vencido em aberto', dataIndex: 'vencidoAberto', align: 'right' as const, width: 140,
                 sorter: (a: any, b: any) => a.vencidoAberto - b.vencidoAberto,
                 render: (v: number) => v > 0 ? <Text type="warning">{fmtValor(v)}</Text> : '—' },
