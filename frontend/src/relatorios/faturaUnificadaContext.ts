@@ -65,7 +65,7 @@ export function montarContextoFaturaUnificada(
     compradorCidade: comp ? (comp.nomeCidade || '—') : '—',
     compradorUf: comp ? (comp.nomeEstado || '—') : '—',
     compradorCep: comp ? (comp.cepxxx || '—') : '—',
-    compradorTelefone: comp ? (comp.celu1 || comp.telres || comp.telcom || '—') : '—',
+    compradorTelefone: comp ? (comp.celu1 || comp.celu2 || comp.telcom || comp.telres || '—') : '—',
     compradorEmail: comp ? (comp.emailx || '—') : '—',
     compradorPropriedade: comp ? (comp.nomePropriedade || '—') : '—',
     vendedorNome: ven ? (ven.nomexx || '—') : `Vários vendedores (${grupo.contrapartes.length}): ${nomesContrapartes}`,

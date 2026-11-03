@@ -107,6 +107,10 @@ const fmtFidelidade = (tipo?: 'P' | 'V' | null, valor?: number | null) => {
     : `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 };
 
+// primeiro telefone preenchido (há cliente só com Celular 2 ou comercial)
+const telefoneDe = (c: { celu1?: string; celu2?: string; telcom?: string; telres?: string }) =>
+  c.celu1 || c.celu2 || c.telcom || c.telres || '';
+
 function parseDataBr(str?: string): Date | null {
   if (!str) return null;
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(str);
@@ -341,7 +345,7 @@ function paginaFatura(
               <Text style={s.cpfXX}>{docContraparte(comp)}</Text>
               {enderecoComp ? <Text style={s.endereco}>{enderecoComp}</Text> : null}
               {cidadeComp   ? <Text style={s.endereco}>{cidadeComp}{comp.cepxxx ? `  CEP ${comp.cepxxx}` : ''}</Text> : null}
-              {(comp.celu1 || comp.telres) ? <Text style={s.telefone}>Tel: {comp.celu1 || comp.telres}</Text> : null}
+              {telefoneDe(comp) ? <Text style={s.telefone}>Tel: {telefoneDe(comp)}</Text> : null}
               {comp.emailx ? <Text style={s.telefone}>{comp.emailx}</Text> : null}
               {comp.nomePropriedade || comp.inscricaoProp ? (
                 <View style={s.propBox}>
@@ -368,7 +372,7 @@ function paginaFatura(
               <Text style={s.cpfXX}>{docContraparte(ven)}</Text>
               {enderecoVen ? <Text style={s.endereco}>{enderecoVen}</Text> : null}
               {cidadeVen   ? <Text style={s.endereco}>{cidadeVen}{ven.cepxxx ? `  CEP ${ven.cepxxx}` : ''}</Text> : null}
-              {(ven.celu1 || ven.telres) ? <Text style={s.telefone}>Tel: {ven.celu1 || ven.telres}</Text> : null}
+              {telefoneDe(ven) ? <Text style={s.telefone}>Tel: {telefoneDe(ven)}</Text> : null}
               {ven.emailx ? <Text style={s.telefone}>{ven.emailx}</Text> : null}
             </>
           ) : (

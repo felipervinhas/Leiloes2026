@@ -171,7 +171,7 @@ export async function gerarContrato(
           COMPRAD.EMAILX   AS EMACOM,
           COMPRAD.TELCOM   AS COMCOM,
           COMPRAD.TELRES   AS RESCOM,
-          COMPRAD.CELU_1   AS CL1COM,
+          COALESCE(NULLIF(COMPRAD.CELU_1,''), NULLIF(COMPRAD.CELU_2,'')) AS CL1COM,
           COMPRAD.ESTCIV,
           COMPRAD.PROFISS,
           COMPRAD.PAIXXX,
@@ -189,7 +189,7 @@ export async function gerarContrato(
           VENDED.CEPXXX    AS CEPVEN,
           VENDED.TELCOM    AS COMVEN,
           VENDED.TELRES    AS RESVEN,
-          VENDED.CELU_1    AS CL1VEN,
+          COALESCE(NULLIF(VENDED.CELU_1,''), NULLIF(VENDED.CELU_2,'')) AS CL1VEN,
           CIDVEN.CIDADE    AS MUNVEN,
           CIDVEN.ESTADO    AS ESTVEN,
 
