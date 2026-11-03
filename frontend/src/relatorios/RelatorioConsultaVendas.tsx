@@ -67,16 +67,18 @@ interface Props {
 }
 
 /** Catálogo de colunas que o usuário pode ocultar/mostrar no PDF de Consulta de Vendas. */
+// A ordem desta lista é a ordem das colunas no PDF. Começa como a Macedo pediu
+// (chamado #32): Lote, Quantidade, Descrição, RP, Categoria, Valor, Comprador.
 export const COLUNAS_CONSULTA_VENDAS = [
   { key: 'lote', label: 'Lote' },
+  { key: 'qtd', label: 'Qtd' },
+  { key: 'descricao', label: 'Descrição' },
   { key: 'tatuagem', label: 'Tatuagem / RP' },
+  { key: 'raca', label: 'Raça / Espécie' },
+  { key: 'valorPagar', label: 'Vlr. a Pagar' },
   { key: 'comprador', label: 'Comprador' },
   { key: 'vendedor', label: 'Vendedor' },
   { key: 'pisteiro', label: 'Pisteiro' },
-  { key: 'descricao', label: 'Descrição' },
-  { key: 'raca', label: 'Raça / Espécie' },
-  { key: 'qtd', label: 'Qtd' },
-  { key: 'valorPagar', label: 'Vlr. a Pagar' },
   { key: 'comissao', label: 'Comissão Comprador' },
   { key: 'comissaoVendedor', label: 'Comissão Vendedor' },
   { key: 'liquido', label: 'Vlr. Líquido' },
@@ -319,72 +321,51 @@ function ConsultaVendasPDF({
   // Cabeçalho não pode variar por linha — usa a espécie do primeiro lote, igual à grade on-screen.
   const labelTatuagem = labelRP(vendas[0]?.especies);
 
+  // Uma definição por coluna: cabeçalho, célula, subtotal e total saem sempre na mesma ordem
+  type Soma = { qtd: number; pagar: number; comissao: number; comissaoVendedor: number; liquido: number };
+  const COLS: Record<string, {
+    estilo: any; titulo: string; direita?: boolean;
+    celula: (x: VendaPDF) => React.ReactNode;
+    soma?: (t: Soma) => string; rotulo?: boolean; laranja?: boolean;
+  }> = {
+    lote:      { estilo: s.cLote, titulo: 'Lote', celula: x => <Text style={[s.tdBold, { color: ESCURO }]}>{x.lotexx || '—'}</Text> },
+    qtd:       { estilo: s.cQtd, titulo: 'Qtd', direita: true, celula: x => <Text style={s.tdNormalRight}>{fmtN(x.qtdxxx)}</Text>, soma: t => fmtN(t.qtd) },
+    descricao: { estilo: s.cDes, titulo: 'Descrição', rotulo: true, celula: x => <Text style={s.tdNormal}>{x.deslot || '—'}</Text> },
+    tatuagem:  { estilo: s.cTat, titulo: labelTatuagem, celula: x => <Text style={s.tdSmall}>{x.rpxxx || '—'}</Text> },
+    raca:      { estilo: s.cRaca, titulo: 'Raça / Espécie', celula: x => <Text style={s.tdSmall}>{[x.descricaoRaca, x.especies].filter(Boolean).join(' / ') || '—'}</Text> },
+    valorPagar:{ estilo: s.cPagar, titulo: 'Vlr. a Pagar', direita: true, celula: x => <Text style={s.tdBoldRight}>{fmtR(x.valorPagar)}</Text>, soma: t => fmtR(t.pagar) },
+    comprador: { estilo: s.cComp, titulo: 'Comprador', celula: x => <Text style={s.tdNormal}>{x.nomeComprador || '—'}</Text> },
+    vendedor:  { estilo: s.cVend, titulo: 'Vendedor', celula: x => <Text style={s.tdNormal}>{x.nomeVendedor || '—'}</Text> },
+    pisteiro:  { estilo: s.cPist, titulo: 'Pisteiro', celula: x => <Text style={s.tdSmall}>{x.nomePisteiro || '—'}</Text> },
+    comissao:  { estilo: s.cComissao, titulo: 'Com. Comprador', direita: true, laranja: true, celula: x => <Text style={[s.tdNormalRight, { color: ESCURO }]}>{fmtR(x.valorComissao)}</Text>, soma: t => fmtR(t.comissao) },
+    comissaoVendedor: { estilo: s.cComissao, titulo: 'Com. Vendedor', direita: true, laranja: true, celula: x => <Text style={[s.tdNormalRight, { color: ESCURO }]}>{fmtR(x.valorComissaoVendedor)}</Text>, soma: t => fmtR(t.comissaoVendedor) },
+    liquido:   { estilo: s.cLiquido, titulo: 'Vlr. Líquido', direita: true, celula: x => <Text style={[s.tdBoldRight, { color: '#000' }]}>{fmtR(x.valorLiquido)}</Text>, soma: t => fmtR(t.liquido) },
+  };
+  const colunas = COLUNAS_CONSULTA_VENDAS.map(c => c.key).filter(k => COLS[k] && v(k));
+  // o rótulo "Subtotal"/"TOTAIS" vai na Descrição; sem ela, na primeira coluna sem valor
+  const colRotulo = colunas.find(k => COLS[k].rotulo) ?? colunas.find(k => !COLS[k].soma);
+  const totaisGerais: Soma = {
+    qtd: totais.totalQtd, pagar: totais.totalValor, comissao: totais.totalComissao,
+    comissaoVendedor: totais.totalComissaoVendedor ?? 0, liquido: totais.totalLiquido,
+  };
+
   const renderLinha = (venda: VendaPDF, i: number) => (
     <View key={venda.id} style={[s.row, i % 2 === 1 ? s.rowAlt : {}]} wrap={false}>
-      {v('lote') && (
-        <View style={s.cLote}>
-          <Text style={[s.tdBold, { color: ESCURO }]}>{venda.lotexx || '—'}</Text>
-        </View>
-      )}
-      {v('tatuagem') && (
-        <View style={s.cTat}>
-          <Text style={s.tdSmall}>{venda.rpxxx || '—'}</Text>
-        </View>
-      )}
-      {v('comprador') && (
-        <View style={s.cComp}>
-          <Text style={s.tdNormal}>{venda.nomeComprador || '—'}</Text>
-        </View>
-      )}
-      {v('vendedor') && (
-        <View style={s.cVend}>
-          <Text style={s.tdNormal}>{venda.nomeVendedor || '—'}</Text>
-        </View>
-      )}
-      {v('pisteiro') && (
-        <View style={s.cPist}>
-          <Text style={s.tdSmall}>{venda.nomePisteiro || '—'}</Text>
-        </View>
-      )}
-      {v('descricao') && (
-        <View style={s.cDes}>
-          <Text style={s.tdNormal}>{venda.deslot || '—'}</Text>
-        </View>
-      )}
-      {v('raca') && (
-        <View style={s.cRaca}>
-          <Text style={s.tdSmall}>
-            {[venda.descricaoRaca, venda.especies].filter(Boolean).join(' / ') || '—'}
-          </Text>
-        </View>
-      )}
-      {v('qtd') && (
-        <View style={s.cQtd}>
-          <Text style={s.tdNormalRight}>{fmtN(venda.qtdxxx)}</Text>
-        </View>
-      )}
-      {v('valorPagar') && (
-        <View style={s.cPagar}>
-          <Text style={s.tdBoldRight}>{fmtR(venda.valorPagar)}</Text>
-        </View>
-      )}
-      {v('comissao') && (
-        <View style={s.cComissao}>
-          <Text style={[s.tdNormalRight, { color: ESCURO }]}>{fmtR(venda.valorComissao)}</Text>
-        </View>
-      )}
-      {v('comissaoVendedor') && (
-        <View style={s.cComissao}>
-          <Text style={[s.tdNormalRight, { color: ESCURO }]}>{fmtR(venda.valorComissaoVendedor)}</Text>
-        </View>
-      )}
-      {v('liquido') && (
-        <View style={s.cLiquido}>
-          <Text style={[s.tdBoldRight, { color: '#000' }]}>{fmtR(venda.valorLiquido)}</Text>
-        </View>
-      )}
+      {colunas.map(k => <View key={k} style={COLS[k].estilo}>{COLS[k].celula(venda)}</View>)}
     </View>
   );
+
+  const renderSoma = (t: Soma, rotulo: string, total: boolean) => colunas.map(k => {
+    const c = COLS[k];
+    const estiloVal = total ? (c.laranja ? s.tdTotOrange : s.tdTotVal) : s.tdSubVal;
+    const estiloRot = total ? s.tdTotLabel : s.tdSubLabel;
+    return (
+      <View key={k} style={c.estilo}>
+        {c.soma ? <Text style={estiloVal}>{c.soma(t)}</Text>
+          : <Text style={estiloRot}>{k === colRotulo ? rotulo : ''}</Text>}
+      </View>
+    );
+  });
 
   return (
     <Document title={`Relatório de Vendas — ${subtitulo}`} author={nomeEmpresa}>
@@ -528,18 +509,11 @@ function ConsultaVendasPDF({
         ) : null}
 
         <View style={s.tableHeader} fixed>
-          {v('lote') && <View style={s.cLote}><Text style={s.th}>Lote</Text></View>}
-          {v('tatuagem') && <View style={s.cTat}><Text style={s.th}>{labelTatuagem}</Text></View>}
-          {v('comprador') && <View style={s.cComp}><Text style={s.th}>Comprador</Text></View>}
-          {v('vendedor') && <View style={s.cVend}><Text style={s.th}>Vendedor</Text></View>}
-          {v('pisteiro') && <View style={s.cPist}><Text style={s.th}>Pisteiro</Text></View>}
-          {v('descricao') && <View style={s.cDes}><Text style={s.th}>Descrição</Text></View>}
-          {v('raca') && <View style={s.cRaca}><Text style={s.th}>Raça / Espécie</Text></View>}
-          {v('qtd') && <View style={s.cQtd}><Text style={s.thRight}>Qtd</Text></View>}
-          {v('valorPagar') && <View style={s.cPagar}><Text style={s.thRight}>Vlr. a Pagar</Text></View>}
-          {v('comissao') && <View style={s.cComissao}><Text style={s.thRight}>Com. Comprador</Text></View>}
-          {v('comissaoVendedor') && <View style={s.cComissao}><Text style={s.thRight}>Com. Vendedor</Text></View>}
-          {v('liquido') && <View style={s.cLiquido}><Text style={s.thRight}>Vlr. Líquido</Text></View>}
+          {colunas.map(k => (
+            <View key={k} style={COLS[k].estilo}>
+              <Text style={COLS[k].direita ? s.thRight : s.th}>{COLS[k].titulo}</Text>
+            </View>
+          ))}
         </View>
 
         {/* Linhas — agrupadas por leilão quando há mais de um */}
@@ -563,18 +537,7 @@ function ConsultaVendasPDF({
                   </View>
                   {g.vendas.map((venda, i) => renderLinha(venda, i))}
                   <View style={s.subtotalRow} wrap={false}>
-                    {v('lote') && <View style={s.cLote}><Text style={s.tdSubLabel} /></View>}
-                    {v('tatuagem') && <View style={s.cTat}><Text style={s.tdSubLabel} /></View>}
-                    {v('comprador') && <View style={s.cComp}><Text style={s.tdSubLabel} /></View>}
-                    {v('vendedor') && <View style={s.cVend}><Text style={s.tdSubLabel} /></View>}
-                    {v('pisteiro') && <View style={s.cPist}><Text style={s.tdSubLabel} /></View>}
-                    {v('descricao') && <View style={s.cDes}><Text style={s.tdSubLabel}>Subtotal do leilão</Text></View>}
-                    {v('raca') && <View style={s.cRaca}><Text style={s.tdSubLabel} /></View>}
-                    {v('qtd') && <View style={s.cQtd}><Text style={s.tdSubVal}>{fmtN(sub.qtd)}</Text></View>}
-                    {v('valorPagar') && <View style={s.cPagar}><Text style={s.tdSubVal}>{fmtR(sub.pagar)}</Text></View>}
-                    {v('comissao') && <View style={s.cComissao}><Text style={s.tdSubVal}>{fmtR(sub.comissao)}</Text></View>}
-                    {v('comissaoVendedor') && <View style={s.cComissao}><Text style={s.tdSubVal}>{fmtR(sub.comissaoVendedor)}</Text></View>}
-                    {v('liquido') && <View style={s.cLiquido}><Text style={s.tdSubVal}>{fmtR(sub.liquido)}</Text></View>}
+                    {renderSoma(sub, 'Subtotal do leilão', false)}
                   </View>
                 </View>
               );
@@ -584,38 +547,7 @@ function ConsultaVendasPDF({
         {/* Linha de totais */}
         {vendas.length > 0 && (
           <View style={s.totaisRow}>
-            {v('lote') && <View style={s.cLote}><Text style={s.tdTotLabel} /></View>}
-            {v('descricao') && <View style={s.cDes}><Text style={s.tdTotLabel}>TOTAIS</Text></View>}
-            {v('tatuagem') && <View style={s.cTat}><Text style={s.tdTotLabel} /></View>}
-            {v('raca') && <View style={s.cRaca}><Text style={s.tdTotLabel} /></View>}
-            {v('vendedor') && <View style={s.cVend}><Text style={s.tdTotLabel} /></View>}
-            {v('pisteiro') && <View style={s.cPist}><Text style={s.tdTotLabel} /></View>}
-            {v('comprador') && <View style={s.cComp}><Text style={s.tdTotLabel} /></View>}
-            {v('qtd') && (
-              <View style={s.cQtd}>
-                <Text style={s.tdTotVal}>{fmtN(totais.totalQtd)}</Text>
-              </View>
-            )}
-            {v('valorPagar') && (
-              <View style={s.cPagar}>
-                <Text style={s.tdTotVal}>{fmtR(totais.totalValor)}</Text>
-              </View>
-            )}
-            {v('comissao') && (
-              <View style={s.cComissao}>
-                <Text style={s.tdTotOrange}>{fmtR(totais.totalComissao)}</Text>
-              </View>
-            )}
-            {v('comissaoVendedor') && (
-              <View style={s.cComissao}>
-                <Text style={s.tdTotOrange}>{fmtR(totais.totalComissaoVendedor)}</Text>
-              </View>
-            )}
-            {v('liquido') && (
-              <View style={s.cLiquido}>
-                <Text style={s.tdTotGreen}>{fmtR(totais.totalLiquido)}</Text>
-              </View>
-            )}
+            {renderSoma(totaisGerais, 'TOTAIS', true)}
           </View>
         )}
 
