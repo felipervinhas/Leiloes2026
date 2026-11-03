@@ -156,11 +156,15 @@ export async function gerarContrato(
           DATEPART(DAY,   CAD003.DATLEI)      AS DIA,
           DATEPART(MONTH, CAD003.DATLEI)      AS MES,
           DATEPART(YEAR,  CAD003.DATLEI)      AS ANO,
+          DATEPART(DAY,   MOV002.DATLAN)      AS DIACOM,
+          DATEPART(MONTH, MOV002.DATLAN)      AS MESCOM,
+          DATEPART(YEAR,  MOV002.DATLAN)      AS ANOCOM,
 
           -- Comprador
           COMPRAD.NOMEXX   AS NOMCOM,
           COMPRAD.CPFXXX   AS CPFCOM,
           COMPRAD.CNPJXX   AS CNPJCOM,
+          COMPRAD.CODCLA   AS CLACOM,
           COMPRAD.ENDERE   AS ENDCOM,
           COMPRAD.BAIRRO   AS BAICOM,
           COMPRAD.CEPXXX   AS CEPCOM,
@@ -179,6 +183,7 @@ export async function gerarContrato(
           VENDED.NOMEXX    AS NOMVEN,
           VENDED.CPFXXX    AS CPFVEN,
           VENDED.CNPJXX    AS CNPJVEN,
+          VENDED.CODCLA    AS CLAVEN,
           VENDED.ENDERE    AS ENDVEN,
           VENDED.BAIRRO    AS BAIVEN,
           VENDED.CEPXXX    AS CEPVEN,
@@ -275,7 +280,14 @@ export async function gerarContrato(
   const fmtN = (v?: number | null) =>
     Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const vlrPri = parcelasEntrada.reduce((s: number, p: any) => s + Number(p.VLRPAR), 0);
-  const mesNome = meses[d.MES] || '';
+  // No Delphi %DIA%/%MES%/%ANO% eram a data da venda (MOV002.DATLAN), não a do leilão
+  const diaDoc = legado && d.DIACOM ? d.DIACOM : d.DIA;
+  const mesDoc = legado && d.MESCOM ? d.MESCOM : d.MES;
+  const anoDoc = legado && d.ANOCOM ? d.ANOCOM : d.ANO;
+  const mesNome = meses[mesDoc] || '';
+  // Pessoa jurídica (CODCLA 'J') usa o CNPJ, como no Delphi; senão o que estiver preenchido
+  const docCli = (cla: string, cpf: string, cnpj: string) =>
+    (cla === 'J' ? (cnpj || cpf) : (cpf || cnpj)) || '';
 
   const vars: Record<string, string> = {
     EMPRESA:       d.EMPRESA || '',
@@ -285,10 +297,10 @@ export async function gerarContrato(
     ESTLEI:        d.ESTLEI  || '',
     DATLEI:        d.DATLEI  || '',
     DATLAN:        d.DATLAN  || '',
-    DIA:           String(d.DIA),
+    DIA:           String(diaDoc),
     MES:           legado ? mesNome.charAt(0).toUpperCase() + mesNome.slice(1) : String(d.MES),
     MESEXTENSO:    meses[d.MES] || '',
-    ANO:           String(d.ANO),
+    ANO:           String(anoDoc),
     // Mesma data do leilão com os nomes usados no modelo "Parceria Genetica" da Knorr
     DIALEI:        String(d.DIA),
     MESLEI:        meses[d.MES] || '',
@@ -301,7 +313,7 @@ export async function gerarContrato(
     NOMFIA2:       (avalistas.avalista2 || '').trim(),
 
     NOMCOM:        d.NOMCOM  || '',
-    CPFCOM:        d.CPFCOM  || d.CNPJCOM || '',
+    CPFCOM:        docCli(d.CLACOM, d.CPFCOM, d.CNPJCOM),
     ENDCOM:        d.ENDCOM  || '',
     BAICOM:        d.BAICOM  || '',
     CEPCOM:        d.CEPCOM  || '',
@@ -315,7 +327,7 @@ export async function gerarContrato(
     MAEXXX:        d.MAEXXX  || '',
 
     NOMVEN:        d.NOMVEN  || '',
-    CPFVEN:        d.CPFVEN  || d.CNPJVEN || '',
+    CPFVEN:        docCli(d.CLAVEN, d.CPFVEN, d.CNPJVEN),
     ENDVEN:        d.ENDVEN  || '',
     BAIVEN:        d.BAIVEN  || '',
     CEPVEN:        d.CEPVEN  || '',
@@ -366,11 +378,14 @@ export async function gerarContrato(
     TESTEMUNHA2:   testemunhas.testemunha2,
   };
 
-  // Substituição
-  let html: string = tmpl.CONTEUDO;
-  for (const [k, v] of Object.entries(vars)) {
-    html = html.split(`%${k}%`).join(v);
-  }
+  // Substituição. O editor às vezes grava formatação dentro do marcador
+  // (ex.: "%<strong>LOTEXX%" ou "%NOM</span><span>COM%"): as tags são mantidas
+  // em volta do valor e o marcador é trocado do mesmo jeito.
+  const html: string = (tmpl.CONTEUDO || '').replace(
+    /%((?:<[^<>%]*>)*)([A-Z0-9_]+)((?:<[^<>%]*>)*)%/g,
+    (orig: string, antes: string, nome: string, depois: string) =>
+      nome in vars ? `${antes}${vars[nome]}${depois}` : orig,
+  );
 
   return { html, dados: vars, imagemTopo: tmpl.IMAGEM_TOPO, imagemRodape: tmpl.IMAGEM_RODAPE };
 }
