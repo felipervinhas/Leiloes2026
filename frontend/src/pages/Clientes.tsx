@@ -75,7 +75,8 @@ export interface SomenteCadastro { id: number; onFechar: () => void; onSalvo?: (
 
 export default function Clientes({ somenteCadastro }: { somenteCadastro?: SomenteCadastro } = {}) {
   const config = useConfig();
-  // Macedo: só pisteiro (acesso web) mexe em Bloqueado/Acesso App, como no Delphi
+  // Macedo: só pisteiro (acesso web) mexe em Bloqueado. Acesso App (aprovar/reprovar) o atendente
+  // também altera, mas só em cadastro já salvo: o cliente novo de interno entra como Bloqueado.
   const usuarioInterno = useAuth().usuario?.tipoSecao === 'I';
   const dicaSomenteWeb = usuarioInterno ? 'Somente usuários pisteiros (acesso web) alteram este campo' : undefined;
   const navigate = useNavigate();
@@ -759,7 +760,7 @@ export default function Clientes({ somenteCadastro }: { somenteCadastro?: Soment
     <Row gutter={[12, 0]}>
       <Col xs={12} sm={8} md={6}><Form.Item name="ativox" label="Ativo"><Select options={SN} /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="blocli" label="Bloqueado" tooltip={dicaSomenteWeb}><Select disabled={usuarioInterno} options={[{ value: 'Não', label: 'Não' }, { value: 'Sim', label: 'Sim' }]} /></Form.Item></Col>
-      <Col xs={12} sm={8} md={6}><Form.Item name="acessoApp" label="Acesso App" tooltip={dicaSomenteWeb}><Select disabled={usuarioInterno} options={ACESSO} allowClear /></Form.Item></Col>
+      <Col xs={12} sm={8} md={6}><Form.Item name="acessoApp" label="Acesso App" tooltip={usuarioInterno && !editando ? 'Cadastro novo entra como Bloqueado; aprove ou reprove depois de salvar' : undefined}><Select disabled={usuarioInterno && !editando} options={ACESSO} allowClear /></Form.Item></Col>
       <Col xs={12} sm={8} md={6}><Form.Item name="limcre" label="Limite de Crédito"><Input /></Form.Item></Col>      
       <Col xs={24} sm={16} md={12}>
         <Form.Item name="classificacoes" label="Classificações">

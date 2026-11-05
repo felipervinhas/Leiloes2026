@@ -73,8 +73,8 @@ export const atualizar = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const dados = { ...req.body, usualt: idUsuario };
     if (await tipoSecaoDoUsuario(idUsuario) === 'I') {
+      // Macedo: interno aprova/reprova pelo Acesso App, mas Bloqueado continua só com o pisteiro
       const atual = await svc.buscarClientePorId(id);
-      dados.acessoApp = atual?.acessoApp ?? null;
       dados.blocli = atual?.blocli ?? 'Não';
     }
     await svc.atualizarCliente(id, dados);
