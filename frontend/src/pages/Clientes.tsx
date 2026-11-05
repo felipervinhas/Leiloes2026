@@ -55,6 +55,22 @@ const STATUS_COLOR: Record<string, string> = { S: 'green', N: 'red' };
 const SN = [{ value: 'S', label: 'Sim' }, { value: 'N', label: 'Não' }];
 const ESTADO_CIVIL = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'União Estável'].map(v => ({ value: v, label: v }));
 const ACESSO = ['1 - Liberado', '2 - Bloqueado', '3 - Em Analise', '3 - Pendente', '4 - Reprovado'].map(v => ({ value: v, label: v }));
+// Status da listagem: vem do Acesso App, mas Bloqueado = Sim prevalece sobre ele. Os valores
+// "Em Analise" e "Pendente" são a mesma situação para quem olha a lista.
+function statusCliente(c: Cliente): { label: string; color: string } | null {
+  if (c.blocli === 'Sim' || c.blocli === 'S') return { label: 'Bloqueado', color: 'red' };
+  const acesso = (c.acessoApp || '').toLowerCase();
+  if (acesso.includes('liberado'))  return { label: 'Liberado', color: 'green' };
+  if (acesso.includes('bloqueado')) return { label: 'Bloqueado', color: 'red' };
+  if (acesso.includes('reprovado')) return { label: 'Reprovado', color: 'magenta' };
+  if (acesso.includes('pendente') || acesso.includes('analise') || acesso.includes('análise')) return { label: 'Pendente', color: 'gold' };
+  return null;
+}
+const TagStatusCliente = ({ cliente }: { cliente: Cliente }) => {
+  const status = statusCliente(cliente);
+  return status ? <Tag color={status.color}>{status.label}</Tag> : <>—</>;
+};
+
 const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB',
   'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'].map(v => ({ value: v, label: v }));
 const SITUACOES = [
@@ -565,6 +581,7 @@ export default function Clientes({ somenteCadastro }: { somenteCadastro?: Soment
           <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
             {[r.cpfxxx || r.cnpjxx, telefonesCliente(r)].filter(Boolean).join(' · ')}
           </div>
+          <div style={{ marginTop: 4 }}><TagStatusCliente cliente={r} /></div>
         </div>
       ) : nome,
     },
@@ -582,6 +599,10 @@ export default function Clientes({ somenteCadastro }: { somenteCadastro?: Soment
       render: (v: string) => v
         ? <Space size={[4, 4]} wrap>{v.split(', ').map(c => <Tag key={c}>{c}</Tag>)}</Space>
         : '—',
+    }] : []),
+    ...(sm ? [{
+      title: 'Status', width: 110,
+      render: (_: any, r: Cliente) => <TagStatusCliente cliente={r} />,
     }] : []),
     {
       title: 'Ativo', dataIndex: 'ativox', width: 70,
