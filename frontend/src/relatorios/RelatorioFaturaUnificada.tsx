@@ -284,7 +284,7 @@ function paginaFatura(
   // Agrupa as parcelas de todos os lotes por data de vencimento, somando os valores
   // que caem no mesmo dia — sem isso, um comprador com vários lotes parcelados em
   // muitas vezes gera uma lista enorme (ex.: 6 lotes x 24 parcelas = 144 linhas).
-  const porData = new Map<string, { datven: string; vlrpar: number; temSinal: boolean }>();
+  const porData = new Map<string, { datven: string; vlrpar: number; temSinal: boolean; numeros: Set<string> }>();
   for (const l of grupo.lotes) {
     // Condições sem parcelamento gerado (ex.: Acerto Direto) não passam pela
     // casa — o comprador acerta direto com o vendedor. Não entram aqui de
@@ -293,8 +293,10 @@ function paginaFatura(
     // dinheiro (só a comissão, já lançada à parte).
     for (const p of l.parcelas) {
       const key = p.datven || '—';
-      const atual = porData.get(key) || { datven: key, vlrpar: 0, temSinal: false };
+      const atual = porData.get(key) || { datven: key, vlrpar: 0, temSinal: false, numeros: new Set<string>() };
       atual.vlrpar += p.vlrpar || 0;
+      // lotes com condições diferentes podem ter números diferentes na mesma data
+      if (p.ordxxx?.trim()) atual.numeros.add(p.ordxxx.trim());
       if (p.pripar === 'S') atual.temSinal = true;
       porData.set(key, atual);
     }
@@ -455,6 +457,7 @@ function paginaFatura(
           <View style={s.parcelasHeader}>
             {[0, 1, 2].map(c => (
               <View key={c} style={[s.cGrupo, c > 0 ? s.cGrupoSep : {}]}>
+                <View style={s.cNumP}><Text style={s.thP}>Nº</Text></View>
                 <View style={s.cDatP}><Text style={s.thP}>Vencimento</Text></View>
                 <View style={s.cVlrP}><Text style={s.thPRight}>Valor</Text></View>
               </View>
@@ -466,6 +469,7 @@ function paginaFatura(
                 <View key={ci} style={[s.cGrupo, ci > 0 ? s.cGrupoSep : {}]}>
                   {p ? (
                     <View style={{ flexDirection: 'row', flex: 1 }}>
+                      <View style={s.cNumP}><Text style={p.temSinal ? s.tdPBold : s.tdP}>{Array.from(p.numeros).sort().join('\n')}</Text></View>
                       <View style={s.cDatP}><Text style={p.temSinal ? s.tdPBold : s.tdP}>{p.datven || '—'}</Text></View>
                       <View style={s.cVlrP}><Text style={p.temSinal ? s.tdPBold : s.tdPRight}>{fmtR(p.vlrpar)}</Text></View>
                     </View>
