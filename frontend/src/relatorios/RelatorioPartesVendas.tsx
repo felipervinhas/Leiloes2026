@@ -293,6 +293,8 @@ function ColunaComprador({ v }: { v: VendaPartesPDF }) {
   const cid  = linhaCidadeEstado(v.cidadeComprador, v.estadoComprador, v.cepComprador);
   const tel  = v.celularComprador;
   const temProp = v.nomePropriedade || v.inscricao || v.localidade || v.cidadePropriedade;
+  const cidadeProp = [v.cidadePropriedade, v.estadoPropriedade].filter(Boolean).join('/');
+  const localProp = [v.localidade?.trim(), cidadeProp].filter(Boolean).join(' — ');
 
   return (
     <View style={s.colDir}>
@@ -310,9 +312,8 @@ function ColunaComprador({ v }: { v: VendaPartesPDF }) {
           <Text style={s.propLabel}>Propriedade</Text>
           {v.nomePropriedade ? <Text style={s.propText}>{v.nomePropriedade}</Text> : null}
           {v.inscricao ? <Text style={s.propText}>Inscrição Estadual: {v.inscricao}</Text> : null}
-          {v.localidade
-            ? <Text style={s.propText}>{v.localidade}{v.cidadePropriedade ? ` — ${v.cidadePropriedade}` : ''}{v.estadoPropriedade ? `/${v.estadoPropriedade}` : ''}</Text>
-            : null}
+          {/* cidade não depende da localidade: propriedade sem localidade ficava sem cidade */}
+          {localProp ? <Text style={s.propText}>{localProp}</Text> : null}
         </>
       ) : null}
     </View>

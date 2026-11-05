@@ -394,7 +394,8 @@ function MapaSeguroPDF({
                 <View style={s.cLote2}><Text style={[s.tdBold, { color: ESCURO }]}>{v.lotexx || '—'}</Text></View>
                 <View style={s.cDes2}><Text style={s.tdNormal}>{v.deslot || '—'}</Text></View>
                 <View style={s.cRp2}><Text style={s.tdNormal}>{v.rpxxx || '—'}</Text></View>
-                <View style={s.cLocal}><Text style={s.tdNormal}>{v.localidade || '—'}</Text></View>
+                {/* propriedade sem localidade preenchida: mostra a cidade dela em vez de "—" */}
+                <View style={s.cLocal}><Text style={s.tdNormal}>{v.localidade?.trim() || [v.cidadePropriedade, v.estadoPropriedade].filter(Boolean).join(' / ') || '—'}</Text></View>
                 <View style={s.cProp}><Text style={s.tdNormal}>{v.nomePropriedade || '—'}</Text></View>
                 <View style={s.cInsc}><Text style={s.tdNormal}>{v.inscricao || '—'}</Text></View>
               </View>
