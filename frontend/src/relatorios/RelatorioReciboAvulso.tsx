@@ -25,7 +25,7 @@ const MEDIO  = '#555';
 const CINZA  = '#bbb';
 
 const fmtR = (v?: number | null) =>
-  `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const s = StyleSheet.create({
   page: {

@@ -20,7 +20,7 @@ const CATEGO = CATEGORIAS_LOTE;
 
 const fmtR = (v?: number | null) =>
   v != null && v !== 0
-    ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+    ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : '—';
 
 const DISCLAIMER =

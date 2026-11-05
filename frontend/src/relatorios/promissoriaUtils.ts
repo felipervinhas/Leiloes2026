@@ -48,7 +48,7 @@ export function valorExtenso(valor: number): string {
 // ─── Utilitários gerais ─────────────────────────────────────────────────────────
 
 export const fmtR = (v?: number | null) =>
-  v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—';
+  v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—';
 
 const MESES_EXT = ['janeiro','fevereiro','março','abril','maio','junho',
                    'julho','agosto','setembro','outubro','novembro','dezembro'];

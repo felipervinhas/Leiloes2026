@@ -42,7 +42,7 @@ export interface FaturaUnificadaContexto {
 }
 
 const fmtR = (v?: number | null) =>
-  v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—';
+  v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—';
 
 export function montarContextoFaturaUnificada(
   grupo: FaturaUnificadaGrupo,

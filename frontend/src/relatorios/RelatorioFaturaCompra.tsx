@@ -115,7 +115,7 @@ const CATEGO = CATEGORIAS_LOTE;
 
 const fmtR = (v?: number | null) =>
   v != null && v !== 0
-    ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+    ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : '—';
 
 /** Mostra o valor bruto digitado no desconto de fidelidade (% ou R$), não o valor calculado. */
@@ -123,7 +123,7 @@ export const fmtFidelidade = (tipo?: 'P' | 'V' | null, valor?: number | null) =>
   if (!tipo || valor == null || valor <= 0) return undefined;
   return tipo === 'P'
     ? `${valor}%`
-    : `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    : `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 const s = StyleSheet.create({

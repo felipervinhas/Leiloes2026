@@ -29,7 +29,7 @@ const CINZA  = '#bbb';
 const CLARO  = '#f0f0f0';
 
 const fmtR = (v?: number | null) =>
-  `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const DC_LABEL: Record<string, string> = { E: 'E', D: 'D', S: 'D', C: 'C', F: 'F', P: 'P' };
 

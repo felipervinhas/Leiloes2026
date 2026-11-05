@@ -26,7 +26,7 @@ const CINZA  = '#bbb';
 const CLARO  = '#f0f0f0';
 
 const fmtR = (v?: number | null) =>
-  `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const TIPO_INFO: Record<string, { titulo: string; frase: (cliente: string) => string }> = {
   D: { titulo: 'RECIBO DE DESPESA', frase: c => `Pagamos a ${c || 'acima identificado(a)'} a quantia de` },
