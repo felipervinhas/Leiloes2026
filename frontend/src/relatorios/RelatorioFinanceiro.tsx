@@ -13,7 +13,7 @@ interface Props {
   subtitulo?: string;
   empresa?: string;
   logoBase64?: string | null;
-  resumo?: { label: string; valor: string }[];
+  resumo?: { label: string; valor: string; detalhe?: string }[];
   colunas: ColunaPDF[];
   linhas: LinhaPDF[];
   total?: string[];
@@ -40,6 +40,7 @@ const s = StyleSheet.create({
   resumoItem: { flex: 1, alignItems: 'center' },
   resumoLabel: { fontSize: 6, color: '#888', marginBottom: 2 },
   resumoValor: { fontSize: 9, fontFamily: 'Helvetica-Bold' },
+  resumoDetalhe: { fontSize: 6, color: '#666', marginTop: 2 },
   thRow: { flexDirection: 'row', backgroundColor: ESCURO, paddingVertical: 4, paddingHorizontal: 4 },
   th: { color: '#fff', fontSize: 6.8, fontFamily: 'Helvetica-Bold' },
   tr: { flexDirection: 'row', paddingVertical: 3, paddingHorizontal: 4, borderBottomColor: '#e5e5e5', borderBottomWidth: 0.5 },
@@ -54,7 +55,11 @@ const s = StyleSheet.create({
 });
 
 export function RelatorioFinanceiroPDF({ titulo, subtitulo, empresa, logoBase64, resumo, colunas, linhas, total, rodapeNota }: Props) {
-  const estilo = (c: ColunaPDF) => ({ flexGrow: c.flex ?? 1, flexShrink: 1, flexBasis: 0, textAlign: (c.direita ? 'right' : 'left') as 'right' | 'left', paddingRight: 4 });
+  // coluna à esquerda logo depois de uma à direita (ex.: valor | data) ficava colada: ganha respiro à esquerda
+  const estilo = (c: ColunaPDF, j = -1) => ({
+    flexGrow: c.flex ?? 1, flexShrink: 1, flexBasis: 0, textAlign: (c.direita ? 'right' : 'left') as 'right' | 'left', paddingRight: 4,
+    paddingLeft: !c.direita && j > 0 && colunas[j - 1]?.direita ? 8 : 0,
+  });
   return (
     <Document title={titulo}>
       <Page size="A4" orientation="landscape" style={s.page}>
@@ -76,26 +81,27 @@ export function RelatorioFinanceiroPDF({ titulo, subtitulo, empresa, logoBase64,
               <View key={i} style={s.resumoItem}>
                 <Text style={s.resumoLabel}>{r.label}</Text>
                 <Text style={s.resumoValor}>{r.valor}</Text>
+                {r.detalhe ? <Text style={s.resumoDetalhe}>{r.detalhe}</Text> : null}
               </View>
             ))}
           </View>
         ) : null}
 
         <View style={s.thRow} fixed>
-          {colunas.map((c, i) => <Text key={i} style={[s.th, estilo(c)]}>{c.titulo}</Text>)}
+          {colunas.map((c, i) => <Text key={i} style={[s.th, estilo(c, i)]}>{c.titulo}</Text>)}
         </View>
         {linhas.map((l, i) => (
           <View key={i} style={[s.tr, l.destaque ? s.trDestaque : {}]} wrap={false}>
             {l.celulas.map((v, j) => (
               // recuo com espaços (não padding): no @react-pdf o padding soma à largura e desalinhava as colunas
-              <Text key={j} style={[s.td, estilo(colunas[j]), l.destaque ? { fontFamily: 'Helvetica-Bold' } : {},
+              <Text key={j} style={[s.td, estilo(colunas[j], j), l.destaque ? { fontFamily: 'Helvetica-Bold' } : {},
                 l.recuo && j === 0 ? { color: MEDIO } : {}]}>{l.recuo && j === 0 ? `    ${v}` : v}</Text>
             ))}
           </View>
         ))}
         {total ? (
           <View style={s.totalRow} wrap={false}>
-            {total.map((v, j) => <Text key={j} style={[s.totalTd, estilo(colunas[j])]}>{v}</Text>)}
+            {total.map((v, j) => <Text key={j} style={[s.totalTd, estilo(colunas[j], j)]}>{v}</Text>)}
           </View>
         ) : null}
 

@@ -17,12 +17,17 @@ const SITUACAO_VENDA: Record<string, { label: string; cor: string }> = {
   EM_ABERTO: { label: 'Em aberto', cor: 'orange' },
 };
 
-// Comissão e parcelas podem ser pagas em dias diferentes: mostra as duas datas quando diferem
+// Comissão e entrada podem ser pagas em dias diferentes: mostra as duas datas quando diferem
 const textoPagoEm = (l: any): string[] => {
   const c = l.dataPagamentoComissao, p = l.dataPagamentoParcelas;
-  if (c && p && c !== p) return [`Comissão ${fmtDataUTC(c)}`, `Parcelas ${fmtDataUTC(p)}`];
+  if (c && p && c !== p) return [`Entrada ${fmtDataUTC(p)}`, `Comissão ${fmtDataUTC(c)}`];
   return c || p ? [fmtDataUTC(c || p)] : [];
 };
+
+// "Entrada" = parcelas iniciais que passam pela leiloeira; "Comissão" = comissão de compra do comprador
+const detalhePorTipo = (entrada: number, comissao: number) => `Entrada ${fmtValor(entrada)} · Comissão ${fmtValor(comissao)}`;
+const valorOuTraco = (v: number) => (v ? fmtValor(v) : '—');
+const renderRecebido = (v: number) => (v ? <Text style={{ color: '#389e0d' }}>{fmtValor(v)}</Text> : '—');
 
 /** Por venda do leilão: o que devia passar pela leiloeira (parcelas iniciais e comissão de compra) e o que já entrou. */
 export default function Recebimentos() {
@@ -63,18 +68,23 @@ function RecebimentosPorLeilao() {
       await baixarRelatorioFinanceiro({
         titulo: 'Recebimentos por leilão', subtitulo: nomeLeilao, empresa: config.empresa, logoBase64: config.logoBase64,
         resumo: [
-          { label: 'Previsto', valor: fmtValor(t.previsto) }, { label: 'Recebido', valor: fmtValor(t.recebido) },
+          { label: 'Previsto', valor: fmtValor(t.previsto), detalhe: detalhePorTipo(t.previstoParcelas, t.previstoComissao) },
+          { label: 'Recebido', valor: fmtValor(t.recebido), detalhe: detalhePorTipo(t.recebidoParcelas, t.recebidoComissao) },
           { label: dados.periodo ? `Vencido em aberto (${fmtDataUTC(dados.periodo.inicio)} a ${fmtDataUTC(dados.periodo.fim)})` : 'Vencido em aberto', valor: fmtValor(t.vencidoAberto) },
           { label: 'Vendas quitadas', valor: `${t.quitadas} de ${t.vendas}` },
         ],
         colunas: [
-          { titulo: 'Lote', flex: 0.5 }, { titulo: 'Comprador', flex: 2.2 }, { titulo: 'Vendedor', flex: 2 }, { titulo: 'Condição', flex: 1.4 },
-          { titulo: 'Previsto', direita: true }, { titulo: 'Recebido', direita: true }, { titulo: 'Pago em', flex: 1.2 }, { titulo: 'Vencido em aberto', direita: true }, { titulo: 'Situação', flex: 0.8 },
+          { titulo: 'Lote', flex: 0.4 }, { titulo: 'Comprador', flex: 2 }, { titulo: 'Vendedor', flex: 1.7 }, { titulo: 'Condição', flex: 1.3 },
+          { titulo: 'Entrada prev.', direita: true }, { titulo: 'Entrada receb.', direita: true },
+          { titulo: 'Comissão prev.', direita: true }, { titulo: 'Comissão receb.', direita: true },
+          { titulo: 'Pago em', flex: 1.3 }, { titulo: 'Vencido em aberto', direita: true }, { titulo: 'Situação', flex: 0.7 },
         ],
         linhas: dados.linhas.map((l: any) => ({ celulas: [l.lote || '', l.comprador || '', l.vendedor || '', l.condicao || '',
-          fmtValor(l.previsto), fmtValor(l.recebido), textoPagoEm(l).join(' / ') || '—', l.vencidoAberto > 0 ? fmtValor(l.vencidoAberto) : '—', SITUACAO_VENDA[l.situacao]?.label || ''] })),
-        total: ['', 'Total', '', '', fmtValor(t.previsto), fmtValor(t.recebido), '', fmtValor(t.vencidoAberto), ''],
-        rodapeNota: 'Recebido = pagamentos conciliados no extrato',
+          valorOuTraco(l.previstoParcelas), valorOuTraco(l.recebidoParcelas), valorOuTraco(l.previstoComissao), valorOuTraco(l.recebidoComissao),
+          textoPagoEm(l).join(' / ') || '—', l.vencidoAberto > 0 ? fmtValor(l.vencidoAberto) : '—', SITUACAO_VENDA[l.situacao]?.label || ''] })),
+        total: ['', 'Total', '', '', fmtValor(t.previstoParcelas), fmtValor(t.recebidoParcelas), fmtValor(t.previstoComissao), fmtValor(t.recebidoComissao),
+          '', fmtValor(t.vencidoAberto), ''],
+        rodapeNota: 'Entrada = parcelas iniciais pagas à leiloeira · Comissão = comissão de compra · Recebido = conciliado no extrato',
       }, `recebimentos-${nomeLeilao.replace(/[^\w-]+/g, '_').slice(0, 50)}`);
     } catch { message.error('Erro ao gerar o PDF'); }
     finally { setGerandoPdf(false); }
@@ -82,10 +92,10 @@ function RecebimentosPorLeilao() {
 
   const exportar = () => exportarPlanilha(dados.linhas.map((l: any) => ({
     Lote: l.lote, Comprador: l.comprador, Telefone: l.telefone, Vendedor: l.vendedor, Condição: l.condicao,
-    'Parcelas da leiloeira (previsto)': l.previstoParcelas, 'Parcelas recebidas': l.recebidoParcelas,
+    'Entrada (prevista)': l.previstoParcelas, 'Entrada recebida': l.recebidoParcelas,
     'Comissão de compra (prevista)': l.previstoComissao, 'Comissão recebida': l.recebidoComissao,
     'Data pagamento comissão': l.dataPagamentoComissao ? fmtDataUTC(l.dataPagamentoComissao) : '',
-    'Data pagamento parcelas': l.dataPagamentoParcelas ? fmtDataUTC(l.dataPagamentoParcelas) : '',
+    'Data pagamento entrada': l.dataPagamentoParcelas ? fmtDataUTC(l.dataPagamentoParcelas) : '',
     'Total previsto': l.previsto, 'Total recebido': l.recebido, 'Vencido em aberto': l.vencidoAberto,
     'Recebido de parcelas posteriores': l.recebidoOutras, Situação: SITUACAO_VENDA[l.situacao]?.label,
   })), `recebimentos-${nomeLeilao.replace(/[^\w-]+/g, '_').slice(0, 50)}`, 'Recebimentos');
@@ -93,7 +103,7 @@ function RecebimentosPorLeilao() {
   return (
     <>
       <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-        Para cada venda, o que devia passar pela leiloeira (parcelas iniciais e comissão de compra) e o que já
+        Para cada venda, o que devia passar pela leiloeira (a entrada, ou seja, as parcelas iniciais, e a comissão de compra) e o que já
         foi conciliado no extrato. "Vencido em aberto" só considera o período que já tem extrato importado.
       </Text>
       <Space style={{ marginBottom: 16 }}>
@@ -106,8 +116,10 @@ function RecebimentosPorLeilao() {
         <>
           {dados?.totais && (
             <Row gutter={12} style={{ marginBottom: 12 }}>
-              <Col xs={12} md={6}><Card size="small"><Statistic title="Previsto" value={fmtValor(dados.totais.previsto)} /></Card></Col>
-              <Col xs={12} md={6}><Card size="small"><Statistic title="Recebido" value={fmtValor(dados.totais.recebido)} valueStyle={{ color: '#389e0d' }} /></Card></Col>
+              <Col xs={12} md={6}><Card size="small"><Statistic title="Previsto" value={fmtValor(dados.totais.previsto)} />
+                <Text type="secondary" style={{ fontSize: 12 }}>{detalhePorTipo(dados.totais.previstoParcelas, dados.totais.previstoComissao)}</Text></Card></Col>
+              <Col xs={12} md={6}><Card size="small"><Statistic title="Recebido" value={fmtValor(dados.totais.recebido)} valueStyle={{ color: '#389e0d' }} />
+                <Text type="secondary" style={{ fontSize: 12 }}>{detalhePorTipo(dados.totais.recebidoParcelas, dados.totais.recebidoComissao)}</Text></Card></Col>
               <Col xs={12} md={6}><Card size="small"><Statistic
                 title={dados.periodo ? `Vencido em aberto (${fmtDataUTC(dados.periodo.inicio)} a ${fmtDataUTC(dados.periodo.fim)})` : 'Vencido em aberto'}
                 value={fmtValor(dados.totais.vencidoAberto)} valueStyle={{ color: '#d46b08' }} /></Card></Col>
@@ -121,10 +133,16 @@ function RecebimentosPorLeilao() {
               { title: 'Comprador', dataIndex: 'comprador', ellipsis: true },
               { title: 'Vendedor', dataIndex: 'vendedor', ellipsis: true },
               { title: 'Condição', dataIndex: 'condicao', ellipsis: true, width: 160 },
-              { title: 'Previsto', dataIndex: 'previsto', align: 'right' as const, width: 120, render: fmtValor,
-                sorter: (a: any, b: any) => a.previsto - b.previsto },
-              { title: 'Recebido', dataIndex: 'recebido', align: 'right' as const, width: 120,
-                render: (v: number) => <Text style={{ color: v > 0 ? '#389e0d' : undefined }}>{fmtValor(v)}</Text> },
+              { title: 'Entrada', children: [
+                { title: 'Previsto', dataIndex: 'previstoParcelas', align: 'right' as const, width: 115, render: valorOuTraco,
+                  sorter: (a: any, b: any) => a.previstoParcelas - b.previstoParcelas },
+                { title: 'Recebido', dataIndex: 'recebidoParcelas', align: 'right' as const, width: 115, render: renderRecebido },
+              ] },
+              { title: 'Comissão', children: [
+                { title: 'Previsto', dataIndex: 'previstoComissao', align: 'right' as const, width: 115, render: valorOuTraco,
+                  sorter: (a: any, b: any) => a.previstoComissao - b.previstoComissao },
+                { title: 'Recebido', dataIndex: 'recebidoComissao', align: 'right' as const, width: 115, render: renderRecebido },
+              ] },
               { title: 'Pago em', dataIndex: 'dataPagamento', width: 150,
                 sorter: (a: any, b: any) => String(a.dataPagamento || '').localeCompare(String(b.dataPagamento || '')),
                 render: (_: any, l: any) => {
@@ -138,7 +156,22 @@ function RecebimentosPorLeilao() {
                 filters: Object.entries(SITUACAO_VENDA).map(([value, s]) => ({ value, text: s.label })),
                 onFilter: (v: any, r: any) => r.situacao === v,
                 render: (v: string) => <Tag color={SITUACAO_VENDA[v]?.cor}>{SITUACAO_VENDA[v]?.label}</Tag> },
-            ]} />
+            ]}
+            summary={() => dados?.totais && (
+              <Table.Summary.Row style={{ fontWeight: 600 }}>
+                <Table.Summary.Cell index={0} colSpan={4}>Total</Table.Summary.Cell>
+                {[dados.totais.previstoParcelas, dados.totais.recebidoParcelas, dados.totais.previstoComissao, dados.totais.recebidoComissao]
+                  .map((v: number, i: number) => <Table.Summary.Cell key={i} index={4 + i} align="right">{fmtValor(v)}</Table.Summary.Cell>)}
+                <Table.Summary.Cell index={8} />
+                <Table.Summary.Cell index={9} align="right">{fmtValor(dados.totais.vencidoAberto)}</Table.Summary.Cell>
+                <Table.Summary.Cell index={10} />
+              </Table.Summary.Row>
+            )} />
+          {dados?.totais?.recebidoOutras > 0 && (
+            <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+              Também entraram {fmtValor(dados.totais.recebidoOutras)} de parcelas posteriores à entrada (detalhadas no Excel).
+            </Text>
+          )}
         </>
       )}
     </>

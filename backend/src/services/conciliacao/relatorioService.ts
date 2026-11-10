@@ -109,7 +109,9 @@ export async function recebimentosPorLeilao(idLeilao: number) {
     periodo: perIni ? { inicio: perIni, fim: perFim } : null,
     totais: {
       previsto: soma('previsto'), recebido: soma('recebido'), vencidoAberto: soma('vencidoAberto'),
+      previstoParcelas: soma('previstoParcelas'), recebidoParcelas: soma('recebidoParcelas'),
       previstoComissao: soma('previstoComissao'), recebidoComissao: soma('recebidoComissao'),
+      recebidoOutras: soma('recebidoOutras'),
       vendas: linhas.length, quitadas: linhas.filter((l: any) => l.situacao === 'QUITADO').length,
     },
   };
