@@ -34,6 +34,8 @@ import * as preferencia from '../controllers/preferenciaController';
 import * as chamado from '../controllers/chamadoController';
 import { chatAI } from '../controllers/aiController';
 import conciliacaoRoutes from './conciliacao';
+import whatsappRoutes from './whatsapp';
+import { webhookVerificar, webhookReceber } from '../controllers/whatsappController';
 import { VERSAO } from '../config/versao';
 import multer from 'multer';
 
@@ -67,11 +69,19 @@ bancoRouter.get('/configuracoes', getConfiguracoes);
 bancoRouter.get('/configuracoes/logo', getLogoBase64);
 bancoRouter.get('/configuracoes/logo-imagem', getLogoImagem);
 
+// Webhook da Meta (WhatsApp): chamado pelos servidores da Meta, sem JWT — a
+// autenticidade é conferida pela assinatura X-Hub-Signature-256 (App Secret).
+bancoRouter.get('/whatsapp/webhook', webhookVerificar);
+bancoRouter.post('/whatsapp/webhook', webhookReceber);
+
 // Rotas protegidas
 bancoRouter.use(authMiddleware);
 
 // Financeiro — Conciliação Bancária (bloqueio por plano e controle dentro do próprio router)
 bancoRouter.use('/conciliacao', conciliacaoRoutes);
+
+// WhatsApp — campanhas, conversas e descadastrados (bloqueio por plano dentro do router)
+bancoRouter.use('/whatsapp', whatsappRoutes);
 
 // Troca do logotipo do tenant (S3) — protegida; a leitura (GET acima) é pública pro Login
 bancoRouter.post('/configuracoes/logo', memStorage.single('file'), reafirmarBanco, uploadLogo);

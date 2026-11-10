@@ -6,6 +6,7 @@ import { getPool } from './config/database';
 import { executarMigracao } from './config/migracao';
 import routes from './routes';
 import { errorHandler } from './middleware/errorHandler';
+import { iniciarFilaWhatsapp } from './services/whatsapp/filaWorker';
 
 dotenv.config();
 
@@ -37,7 +38,8 @@ app.use(cors({
 }));
 // Limite default de 100kb estoura ao salvar templates de contrato com
 // imagem de cabeçalho/rodapé em base64 no corpo do JSON.
-app.use(express.json({ limit: '20mb' }));
+// rawBody: o webhook do WhatsApp confere a assinatura da Meta sobre o corpo bruto
+app.use(express.json({ limit: '20mb', verify: (req, _res, buf) => { (req as any).rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 app.use('/api', routes);
@@ -48,6 +50,7 @@ async function start() {
   try {
     await getPool();
     await executarMigracao();
+    iniciarFilaWhatsapp();
     app.listen(PORT, () => {
       console.log(`API rodando em http://localhost:${PORT}`);
     });

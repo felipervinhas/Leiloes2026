@@ -23,6 +23,7 @@ import Lances from './pages/Lances';
 import OrdemEntrada from './pages/OrdemEntrada';
 import Cotacoes from './pages/Cotacoes';
 import Notificacoes from './pages/Notificacoes';
+import WhatsApp from './pages/whatsapp/WhatsApp';
 import Vendas from './pages/Vendas';
 import ConsultaVendas from './pages/ConsultaVendas';
 import MediasCategoria from './pages/MediasCategoria';
@@ -134,6 +135,7 @@ function App() {
                 <Route path="ordem-entrada" element={<OrdemEntrada />} />
                 <Route path="cotacoes" element={<Cotacoes />} />
                 <Route path="notificacoes" element={<Notificacoes />} />
+                <Route path="whatsapp" element={<WhatsApp />} />
                 <Route path="vendas" element={<Vendas />} />
                 <Route path="consulta-vendas" element={<ConsultaVendas />} />
                 <Route path="medias-categoria" element={<MediasCategoria />} />

@@ -7,6 +7,7 @@ import {
   MenuUnfoldOutlined, TrophyOutlined, BellOutlined, LineChartOutlined,
   DollarOutlined, WalletOutlined, FileSearchOutlined, OrderedListOutlined,
   FileTextOutlined, MenuOutlined, TagsOutlined, SoundOutlined, BugOutlined, MergeCellsOutlined, BarChartOutlined,
+  WhatsAppOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import axios from 'axios';
@@ -57,6 +58,7 @@ const ALL_MENU_ITEMS = [
       { key: '/clientes', icon: <TeamOutlined />, label: 'Clientes', controle: 'Clientes' },
       { key: '/clientes/duplicados', icon: <MergeCellsOutlined />, label: 'Clientes duplicados', controle: 'Clientes' },
       { key: '/notificacoes', icon: <BellOutlined />, label: 'Notificações', controle: 'Notificações' },
+      { key: '/whatsapp', icon: <WhatsAppOutlined />, label: 'WhatsApp', controle: 'WhatsApp' },
     ],
   },
   {
@@ -97,6 +99,7 @@ const ROUTE_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
   '/clientes': { label: 'Clientes', icon: <TeamOutlined /> },
   '/clientes/duplicados': { label: 'Clientes duplicados', icon: <MergeCellsOutlined /> },
   '/notificacoes': { label: 'Notificações', icon: <BellOutlined /> },
+  '/whatsapp': { label: 'WhatsApp', icon: <WhatsAppOutlined /> },
   '/cidades': { label: 'Cidades', icon: <EnvironmentOutlined /> },
   '/racas': { label: 'Raças', icon: <BranchesOutlined /> },
   '/condicoes-pagamento': { label: 'Cond. Pagto.', icon: <CreditCardOutlined /> },
