@@ -29,7 +29,8 @@ export default function ConfigWhatsapp({ aoSalvar }: { aoSalvar?: () => void }) 
       const r = await api.put('/whatsapp/config', v);
       setCfg(r.data);
       form.setFieldsValue({ ...r.data, token: '', appSecret: '' });
-      message.success('Configuração salva');
+      if (r.data.webhookLigado) message.success('Configuração salva e app ligado à conta do WhatsApp');
+      else message.warning(`Configuração salva, mas o app não foi ligado à conta do WhatsApp (os eventos do webhook não vão chegar): ${r.data.webhookErro || 'erro desconhecido'}`, 8);
       aoSalvar?.();
     } catch (e) { message.error(erroApi(e, 'Erro ao salvar')); }
     finally { setSalvando(false); }
@@ -122,6 +123,9 @@ export default function ConfigWhatsapp({ aoSalvar }: { aoSalvar?: () => void }) 
               <Descriptions.Item label="Nome verificado">{teste.verified_name}</Descriptions.Item>
               <Descriptions.Item label="Qualidade">{teste.quality_rating}</Descriptions.Item>
               <Descriptions.Item label="Nível de limite">{teste.messaging_limit_tier || '—'}</Descriptions.Item>
+              <Descriptions.Item label="App ligado à conta (webhook)">
+                {teste.webhookLigado ? 'Sim' : <Text type="danger">Não — {teste.webhookErro}</Text>}
+              </Descriptions.Item>
               <Descriptions.Item label="Templates na conta">
                 {teste.templates ?? <Text type="danger">não foi possível listar — confira o WABA ID</Text>}
               </Descriptions.Item>

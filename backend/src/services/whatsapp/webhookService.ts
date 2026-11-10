@@ -46,7 +46,8 @@ async function processarStatus(s: any) {
   const quando = s.timestamp ? new Date(Number(s.timestamp) * 1000) : new Date();
   if (s.status === 'failed') {
     const e = s.errors?.[0] || {};
-    const msg = [e.title, e.error_data?.details].filter(Boolean).join(' — ') || 'Falha na entrega';
+    // A Meta às vezes repete o título no detalhe — mostra uma vez só
+    const msg = [...new Set([e.title, e.error_data?.details].filter(Boolean))].join(' — ') || 'Falha na entrega';
     await pool.request().input('w', sql.VarChar(100), s.id).input('cod', sql.Int, Number(e.code) || null)
       .input('erro', sql.NVarChar(500), msg.slice(0, 500)).query(`
         UPDATE WPP_ENVIOS SET STATUS = 'FALHOU', ERRO_CODIGO = @cod, ERRO = @erro, ATUALIZADO_EM = GETUTCDATE()

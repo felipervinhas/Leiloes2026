@@ -115,6 +115,18 @@ export async function listarTemplates(c: CredenciaisMeta): Promise<TemplateMeta[
   return todos;
 }
 
+/**
+ * Liga o app (dono do token) à conta do WhatsApp (WABA). Sem isso a Meta valida a URL
+ * do webhook mas não manda os eventos da conta — nem respostas, nem status de entrega.
+ * É idempotente: chamar de novo com o app já ligado só devolve success.
+ */
+export async function assinarAppNaConta(c: CredenciaisMeta): Promise<boolean> {
+  try {
+    const r = await axios.post(`${base(c)}/${c.wabaId}/subscribed_apps`, {}, { headers: headers(c), timeout: 20_000 });
+    return r.data?.success === true;
+  } catch (e) { throw converterErro(e); }
+}
+
 export interface InfoNumero {
   display_phone_number?: string;
   verified_name?: string;

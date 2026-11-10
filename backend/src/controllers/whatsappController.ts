@@ -7,7 +7,7 @@ import { garantirTabelasWhatsapp } from '../services/whatsapp/schema';
 import * as camp from '../services/whatsapp/campanhaService';
 import * as conv from '../services/whatsapp/conversaService';
 import { assinaturaValida, processarWebhook } from '../services/whatsapp/webhookService';
-import { infoNumero, MetaError } from '../services/whatsapp/metaApi';
+import { assinarAppNaConta, infoNumero, MetaError } from '../services/whatsapp/metaApi';
 import { FONTES } from '../services/whatsapp/templateService';
 
 const usuarioDe = (req: Request) => (req as any).usuario;
@@ -81,11 +81,22 @@ export const obterConfig = tratar(async (req, res) => {
   res.json(await configParaTela());
 });
 
+/** Liga o app à conta do WhatsApp para os eventos chegarem no webhook. Devolve o erro em texto, sem lançar. */
+async function ligarWebhook(): Promise<{ webhookLigado: boolean; webhookErro?: string }> {
+  const cfg = await lerConfig();
+  if (!cfg?.token || !cfg.wabaId) return { webhookLigado: false, webhookErro: 'Informe o WABA ID e o token' };
+  try {
+    return { webhookLigado: await assinarAppNaConta(credenciais(cfg)) };
+  } catch (e: any) {
+    return { webhookLigado: false, webhookErro: e?.message || String(e) };
+  }
+}
+
 export const atualizarConfig = tratar(async (req, res) => {
   exigirAdmin(req);
   await salvarConfig(req.body, usuarioDe(req)?.nome);
   await registrarLog(usuarioDe(req), 'Alterar', 'WhatsApp - Configuração', 1);
-  res.json(await configParaTela());
+  res.json({ ...(await configParaTela()), ...(await ligarWebhook()) });
 });
 
 export const testarConexao = tratar(async (req, res) => {
@@ -93,7 +104,7 @@ export const testarConexao = tratar(async (req, res) => {
   const info = await infoNumero(credenciais(await lerConfig()));
   let templates: number | null = null;
   try { templates = (await camp.templatesAprovados(true)).length; } catch { /* WABA ausente/errado */ }
-  res.json({ ...info, templates });
+  res.json({ ...info, templates, ...(await ligarWebhook()) });
 });
 
 // ───────────────────────── templates ─────────────────────────
