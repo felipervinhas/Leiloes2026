@@ -223,6 +223,9 @@ const s = StyleSheet.create({
   cPagar:    { width: '9%' },
   cComissao: { width: '8%' },
   cLiquido:  { width: '9%' },
+  // Respiro entre colunas: sem ele a Qtd (à direita) colava na Descrição (à esquerda),
+  // e "4" + "4 TERNEIRAS" virava "44 TERNEIRAS"; idem Vlr. a Pagar + Comprador.
+  cel:       { paddingHorizontal: 2.5 },
 
   // Células
   tdNormal:      { fontSize: 7.5 },
@@ -351,7 +354,7 @@ function ConsultaVendasPDF({
 
   const renderLinha = (venda: VendaPDF, i: number) => (
     <View key={venda.id} style={[s.row, i % 2 === 1 ? s.rowAlt : {}]} wrap={false}>
-      {colunas.map(k => <View key={k} style={COLS[k].estilo}>{COLS[k].celula(venda)}</View>)}
+      {colunas.map(k => <View key={k} style={[COLS[k].estilo, s.cel]}>{COLS[k].celula(venda)}</View>)}
     </View>
   );
 
@@ -360,7 +363,7 @@ function ConsultaVendasPDF({
     const estiloVal = total ? (c.laranja ? s.tdTotOrange : s.tdTotVal) : s.tdSubVal;
     const estiloRot = total ? s.tdTotLabel : s.tdSubLabel;
     return (
-      <View key={k} style={c.estilo}>
+      <View key={k} style={[c.estilo, s.cel]}>
         {c.soma ? <Text style={estiloVal}>{c.soma(t)}</Text>
           : <Text style={estiloRot}>{k === colRotulo ? rotulo : ''}</Text>}
       </View>
@@ -510,7 +513,7 @@ function ConsultaVendasPDF({
 
         <View style={s.tableHeader} fixed>
           {colunas.map(k => (
-            <View key={k} style={COLS[k].estilo}>
+            <View key={k} style={[COLS[k].estilo, s.cel]}>
               <Text style={COLS[k].direita ? s.thRight : s.th}>{COLS[k].titulo}</Text>
             </View>
           ))}
