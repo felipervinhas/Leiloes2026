@@ -46,6 +46,12 @@ import Repasses from './pages/financeiro/Repasses';
 import Recebimentos from './pages/financeiro/Recebimentos';
 import ConfiguracoesFinanceiro from './pages/financeiro/ConfiguracoesFinanceiro';
 import DespesasEmpresa from './pages/financeiro/DespesasEmpresa';
+import CobrancaLayout from './pages/cobranca/CobrancaLayout';
+import CobrancaPainel from './pages/cobranca/CobrancaPainel';
+import CobrancaParcelas from './pages/cobranca/CobrancaParcelas';
+import CobrancaLotes from './pages/cobranca/CobrancaLotes';
+import CobrancaFechamento from './pages/cobranca/CobrancaFechamento';
+import CobrancaConfiguracoes from './pages/cobranca/CobrancaConfiguracoes';
 
 function UrlInvalida() {
   return (
@@ -112,6 +118,17 @@ function App() {
                 <Route path="recebimentos" element={<Recebimentos />} />
                 <Route path="configuracoes" element={<ConfiguracoesFinanceiro />} />
                 <Route path="despesas" element={<DespesasEmpresa />} />
+              </Route>
+            </Route>
+            <Route path="cobranca/login" element={<Login destino="cobranca" subtitulo="Intermediação de cobrança" />} />
+            <Route path="cobranca" element={<PrivateRoute loginPath="cobranca/login" />}>
+              <Route element={<CobrancaLayout />}>
+                <Route index element={<Navigate to="painel" replace />} />
+                <Route path="painel" element={<CobrancaPainel />} />
+                <Route path="parcelas" element={<CobrancaParcelas />} />
+                <Route path="lotes" element={<CobrancaLotes />} />
+                <Route path="fechamento" element={<CobrancaFechamento />} />
+                <Route path="configuracoes" element={<CobrancaConfiguracoes />} />
               </Route>
             </Route>
             <Route element={<PrivateRoute />}>

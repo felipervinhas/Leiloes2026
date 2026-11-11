@@ -22,9 +22,9 @@ const CONTROLES_GRUPOS = [
   { label: 'Clientes',  itens: ['Clientes', 'Notificações', 'WhatsApp'] },
   { label: 'Cadastros', itens: ['Cidades', 'Raças', 'Condições de Pagamento', 'Classificações'] },
   { label: 'Sistema',   itens: ['Perfis', 'Usuários', 'Editor de Relatórios', 'Configurações'] },
-  // Área Financeiro (/:banco/financeiro): só abre com este controle marcado ou para administrador.
-  // Não restringe o sistema: marcar só ele mantém o acesso total às páginas acima.
-  { label: 'Financeiro', itens: CONTROLES_FINANCEIRO },
+  // Áreas à parte (/:banco/financeiro e /:banco/cobranca): só abrem com o controle marcado ou para
+  // administrador. Não restringem o sistema: marcar só elas mantém o acesso total às páginas acima.
+  { label: 'Financeiro e Cobrança', itens: CONTROLES_FINANCEIRO },
 ];
 
 const TODOS_CONTROLES = CONTROLES_GRUPOS.flatMap(g => g.itens);
@@ -221,7 +221,7 @@ export default function Usuarios() {
       <Alert
         type="info"
         showIcon
-        message="Sem nenhuma página do sistema selecionada, o usuário terá acesso total a todas as páginas. O Financeiro é à parte: só abre com Conciliação Bancária marcada (ou para administrador)."
+        message="Sem nenhuma página do sistema selecionada, o usuário terá acesso total a todas as páginas. Financeiro e Cobrança são à parte: só abrem com Conciliação Bancária / Intermediação de Cobrança marcada (ou para administrador)."
         style={{ marginBottom: 16 }}
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -229,7 +229,7 @@ export default function Usuarios() {
           {controlesDoSistema(controlesSelecionados).length === 0
             ? 'Nenhuma restrição — acesso total'
             : `${controlesDoSistema(controlesSelecionados).length} de ${CONTROLES_SISTEMA.length} páginas permitidas`}
-          {controlesSelecionados.some(c => CONTROLES_FINANCEIRO.includes(c)) ? ' · Financeiro liberado' : ''}
+          {controlesSelecionados.some(c => CONTROLES_FINANCEIRO.includes(c)) ? ' · Financeiro/Cobrança liberado' : ''}
         </Text>
         <Space size={8}>
           <Button size="small" onClick={() => setControlesSelecionados(TODOS_CONTROLES)}>Selecionar todas</Button>

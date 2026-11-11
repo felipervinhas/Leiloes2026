@@ -34,6 +34,7 @@ import * as preferencia from '../controllers/preferenciaController';
 import * as chamado from '../controllers/chamadoController';
 import { chatAI } from '../controllers/aiController';
 import conciliacaoRoutes from './conciliacao';
+import cobrancaRoutes from './cobranca';
 import whatsappRoutes from './whatsapp';
 import { webhookVerificar, webhookReceber } from '../controllers/whatsappController';
 import { VERSAO } from '../config/versao';
@@ -79,6 +80,9 @@ bancoRouter.use(authMiddleware);
 
 // Financeiro — Conciliação Bancária (bloqueio por plano e controle dentro do próprio router)
 bancoRouter.use('/conciliacao', conciliacaoRoutes);
+
+// Intermediação de Cobrança (bloqueio por plano e controle dentro do próprio router)
+bancoRouter.use('/cobranca', cobrancaRoutes);
 
 // WhatsApp — campanhas, conversas e descadastrados (bloqueio por plano dentro do router)
 bancoRouter.use('/whatsapp', whatsappRoutes);
