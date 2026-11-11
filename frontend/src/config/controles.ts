@@ -3,7 +3,7 @@
  * restrição do sistema principal: lá, nenhum controle marcado = acesso total, e marcar só
  * "Conciliação Bancária" não pode tirar o resto do menu do usuário.
  */
-export const CONTROLES_FINANCEIRO = ['Conciliação Bancária'];
+export const CONTROLES_FINANCEIRO = ['Conciliação Bancária', 'Intermediação de Cobrança'];
 
 /** Os controles que restringem o menu do sistema principal (sem os do Financeiro). */
 export const controlesDoSistema = (controles: string[] | undefined | null) =>

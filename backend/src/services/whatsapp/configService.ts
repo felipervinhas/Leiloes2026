@@ -122,7 +122,7 @@ interface UsuarioJwt { adm?: string; controles?: string[] }
 export function temAcessoWhatsapp(u: UsuarioJwt | undefined): boolean {
   if (!u) return false;
   if (u.adm === 'S') return true;
-  const controles = (u.controles || []).filter(c => c !== 'Conciliação Bancária');
+  const controles = (u.controles || []).filter(c => c !== 'Conciliação Bancária' && c !== 'Intermediação de Cobrança');
   return controles.length === 0 || controles.includes(CONTROLE_WHATSAPP);
 }
 

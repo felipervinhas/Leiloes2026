@@ -17,6 +17,9 @@ import { labelRP, labelSBB, isEquino, isBovino, isOvino, CATEGORIAS_LOTE } from 
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { useBanco } from '../context/BancoContext';
 import { useAuth } from '../context/AuthContext';
+import {
+  CamposCobrancaLote, CAMPOS_COBRANCA, aplicarPadraoDoVendedor, carregarCobrancaDoLote, cobrancaDisponivel, salvarCobrancaDoLote,
+} from './cobranca/CamposCobrancaLote';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -52,6 +55,10 @@ export default function Lotes() {
   const [imagens, setImagens] = useState<LoteImagem[]>([]);
   const [form] = Form.useForm();
   const [fichaAberta, setFichaAberta] = useState(false);
+  // Intermediação de cobrança: a seção só aparece com o plano contratado e acesso do usuário
+  const [cobranca, setCobranca] = useState<{ disponivel: boolean; taxaPadrao: number }>({ disponivel: false, taxaPadrao: 0 });
+  const cobrancaEstavaAtiva = React.useRef(false);
+  useEffect(() => { cobrancaDisponivel().then(setCobranca); }, []);
   const racaxxSelecionada = Form.useWatch('racaxx', form);
   const especiesLote = racas.find(r => r.value === racaxxSelecionada)?.especies;
   // lote antigo com outra letra (E, B...) continua mostrando a dele em vez de apagar
@@ -144,6 +151,7 @@ export default function Lotes() {
         setRacas(prev => [...prev, { value: d.racaxx, descricao: d.nomeRaca || `Raça #${d.racaxx} (não encontrada)` }]);
       }
       garantirOpcaoLeilao(d.idleilao, d.nomeLeilao);
+      cobrancaEstavaAtiva.current = cobranca.disponivel ? await carregarCobrancaDoLote(form, d.id) : false;
     } else {
       // "Novo Lote" já cria o lote como rascunho: ele ganha ID na hora e as fotos
       // podem ser enviadas antes do primeiro Salvar (antes era preciso salvar, sair e entrar de novo)
@@ -151,7 +159,8 @@ export default function Lotes() {
       try { id = (await api.post('/lotes/rascunho')).data.id; }
       catch { message.error('Não foi possível iniciar o novo lote'); return; }
       form.resetFields();
-      form.setFieldsValue({ catego: 'M', publica: false, vendido: false, lanmax: 0, idleilao: leilaoFiltro });
+      form.setFieldsValue({ catego: 'M', publica: false, vendido: false, lanmax: 0, idleilao: leilaoFiltro, cobrAtiva: false, cobrDestino: 'VENDEDOR' });
+      cobrancaEstavaAtiva.current = false;
       setEditando({ id, lotexx: '', rascunho: true });
     }
     setModalOpen(true);
@@ -164,8 +173,10 @@ export default function Lotes() {
   };
 
   const salvar = async (values: any) => {
+    const valoresLote = { ...values };
+    CAMPOS_COBRANCA.forEach(c => delete valoresLote[c]);
     const payload = {
-      ...values,
+      ...valoresLote,
       datnas: values.datnas?.format('YYYY-MM-DD') || null,
       publica: values.publica ? 'S' : 'N',
       vendido: values.vendido ? 'S' : 'N',
@@ -176,6 +187,10 @@ export default function Lotes() {
       // salvo: deixa de ser rascunho (fechar a janela não pode mais apagá-lo)
       if (editando?.rascunho) setEditando({ ...editando, rascunho: false });
       message.success('Salvo com sucesso');
+      if (cobranca.disponivel && editando?.id) {
+        try { await salvarCobrancaDoLote(editando.id, values, cobrancaEstavaAtiva.current); }
+        catch (e: any) { message.warning(`Lote salvo, mas a cobrança não: ${e?.response?.data?.error || 'erro'}`, 8); }
+      }
       // a quinta geração é guardada pelo SBB: trocar o SBB deixa o PDF no nome antigo
       const sbbAntes = String(editando?.sbbxxx ?? '').trim();
       if (editando && sbbAntes && sbbAntes !== String(values.sbbxxx ?? '').trim()) {
@@ -295,6 +310,7 @@ export default function Lotes() {
                   filterOption={false}
                   loading={carregandoClientes}
                   notFoundContent={carregandoClientes ? <Spin size="small" /> : 'Digite 2+ letras para buscar'}
+                  onChange={(v?: number) => { if (cobranca.disponivel && editando?.rascunho) aplicarPadraoDoVendedor(form, v); }}
                 />
               </Form.Item>
             </Col>
@@ -344,6 +360,7 @@ export default function Lotes() {
             <Col span={24}><Form.Item name="urlvideo" label="URL Vídeo"><Input /></Form.Item></Col>
             <Col span={24}><Form.Item name="obslot" label="Observações"><TextArea rows={2} /></Form.Item></Col>
             <Col span={24}><Form.Item name="comentario" label="Comentário"><TextArea rows={2} /></Form.Item></Col>
+            {cobranca.disponivel && <CamposCobrancaLote taxaPadrao={cobranca.taxaPadrao} />}
           </Row>
         </Form>
       ),

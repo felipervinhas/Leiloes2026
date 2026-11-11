@@ -2,6 +2,7 @@ import { getPool, sql } from '../config/database';
 import { getBanco } from '../config/bancoContext';
 import { garantirColunaAvalistaObrigatorio } from './leilaoService';
 import { ehParcelaDaLeiloeira, existeTabela, SQL_COLUNAS_GRUPOS } from './conciliacao/devidoService';
+import { exigirSemBaixasDeCobranca, fotografarParcelas, remapearParcelas } from './cobranca/protecaoParcelas';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -231,6 +232,7 @@ export async function buscarMovimento(id: number) {
 }
 
 export async function excluirVenda(id: number): Promise<void> {
+  await exigirSemBaixasDeCobranca({ idMov: id });
   const pool = await getPool();
   await pool.request().input('id', sql.Int, id)
     .query(`DELETE FROM DESPESAS WHERE IDMOVCOMPRADOR IN (SELECT ID FROM MOVIMENTO_COMPRADOR WHERE IDMOV=@id)`);
@@ -803,6 +805,7 @@ export async function excluirComprador(idMov: number, idComp: number): Promise<v
     .query(`SELECT IDCLI, IDMOVLOTE FROM MOVIMENTO_COMPRADOR WHERE ID=@id`);
   if (!comp.recordset.length) return;
   const { IDCLI, IDMOVLOTE } = comp.recordset[0];
+  await exigirSemBaixasDeCobranca({ idMov, idCli: IDCLI, idMovLote: IDMOVLOTE });
 
   await pool.request()
     .input('idMov',     sql.Int, idMov)
@@ -855,7 +858,18 @@ export async function listarParcelas(idMov: number, idCli?: number) {
   }));
 }
 
+/**
+ * Gera (ou gera de novo) as parcelas do comprador. Quando alguma parcela já tem baixa
+ * (Cobrança ou extrato), histórico ou fechamento ligado, os registros passam para as
+ * parcelas novas de mesmo número — a regeneração troca os IDs.
+ */
 export async function gerarParcelas(p: GerarParcelasParams): Promise<void> {
+  const foto = await fotografarParcelas(p.pMovimento, p.pCliente, p.pIdMovLote);
+  await gerarParcelasSemProtecao(p);
+  await remapearParcelas(foto);
+}
+
+async function gerarParcelasSemProtecao(p: GerarParcelasParams): Promise<void> {
   const pool = await getPool();
 
   // 1. DATA_SALDO do leilão

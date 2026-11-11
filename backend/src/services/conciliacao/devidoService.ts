@@ -61,6 +61,16 @@ export function ehParcelaDaLeiloeira(x: { ORDXXX?: string; GRUPOS?: number; PAGO
   const limite = grupos.slice(0, Math.max(1, Number(x.GRUPOS) || GRUPOS_PADRAO)).reduce((a, b) => a + b, 0);
   return limite > 0 ? numero <= limite : numero === 1;
 }
+/**
+ * Intermediação de Cobrança: parcela de lote em cobrança com o dinheiro indo para a conta
+ * da leiloeira também é esperada no extrato (mesma regra de cobranca/parcelasService.ehDaCobranca).
+ */
+function cobradaNaContaDaLeiloeira(x: any): boolean {
+  if (x.COBR_DESTINO !== 'MACEDO') return false;
+  const numero = parseInt(String(x.ORDXXX || '').split('/')[0], 10);
+  if (x.COBR_PARC_INICIAL != null) return Number.isFinite(numero) && numero >= Number(x.COBR_PARC_INICIAL);
+  return !ehParcelaDaLeiloeira({ ...x, PAGO_PARA: null });
+}
 const iso = (d: Date | string | null) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 
 /** Valor já baixado por item (chave), só baixas não desfeitas. */
@@ -77,6 +87,16 @@ export async function pagosPorItem(): Promise<Map<string, number>> {
     GROUP BY TIPO_ALVO, ID_PARCELA, ID_MOV_COMPRADOR, ID_DESPESA,
              CASE WHEN TIPO_ALVO = 'ACERTO' THEN ID_LEILAO END, CASE WHEN TIPO_ALVO = 'ACERTO' THEN ID_VENDEDOR END`);
   for (const x of r.recordset) m.set(chaveDaBaixa(x), Number(x.VALOR));
+  // Intermediação de Cobrança: parcela com recebimento informado lá (ou quitada antes de
+  // entrar na cobrança) também está paga — senão um crédito do extrato a pagaria de novo.
+  if (await existeTabela('COBR_BAIXAS')) {
+    const rc = await pool.request().query(`
+      SELECT ID_PARCELA, SUM(VALOR) AS VALOR FROM COBR_BAIXAS WHERE DESFEITA = 'N' GROUP BY ID_PARCELA`);
+    for (const x of rc.recordset) {
+      const chave = `PARCELA:${x.ID_PARCELA}`;
+      m.set(chave, (m.get(chave) || 0) + Number(x.VALOR));
+    }
+  }
   return m;
 }
 
@@ -130,6 +150,7 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
   const comGrupos = await existeTabela('CONC_CONDICAO_GRUPOS');
   const comPagoPara = await existePagoPara();
   const comPagoParaComissao = await existePagoParaComissao();
+  const comCobranca = await existeTabela('COBR_LOTES');
   const itens: ItemAberto[] = [];
 
   for (let i = 0; i < unicos.length; i += 400) {
@@ -140,9 +161,12 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
     if (opcoes.idLeilao) rp.input('leilao', sql.Int, opcoes.idLeilao);
     const parcelas = await rp.query(`
       SELECT P.ID, P.IDCLI, P.LOTEXX, P.ORDXXX, P.VLRPAR, P.DATVEN, MC.ID AS ID_MC, M.IDLEILAO, L.LEILAO,
+             ${comCobranca ? 'CL.DESTINO AS COBR_DESTINO, CL.PARC_INICIAL AS COBR_PARC_INICIAL' : 'NULL AS COBR_DESTINO, NULL AS COBR_PARC_INICIAL'},
              ${SQL_COLUNAS_GRUPOS(comGrupos, comPagoPara)}
       FROM MOVIMENTO_PARCELAMENTO P
       JOIN MOVIMENTO M              ON M.ID = P.IDMOV
+      ${comCobranca ? `LEFT JOIN MOVIMENTO_LOTE MLC ON MLC.ID = P.IDMOVLOTE
+      LEFT JOIN COBR_LOTES CL       ON CL.ID_LOTE = MLC.IDLOTE AND CL.ATIVA = 'S'` : ''}
       LEFT JOIN LEILOES L           ON L.ID = M.IDLEILAO
       LEFT JOIN MOVIMENTO_COMPRADOR MC ON MC.IDMOVLOTE = P.IDMOVLOTE AND MC.IDCLI = P.IDCLI
       LEFT JOIN CONDICAOPAGTOS CP   ON CP.ID = MC.IDCONDPAGTO
@@ -161,7 +185,7 @@ export async function itensDosClientes(ids: number[], opcoes: { incluirQuitados?
         idLeilao: x.IDLEILAO, leilao: x.LEILAO, lote: x.LOTEXX?.trim() || null,
         descricao: `Parcela ${x.ORDXXX || ''}`.trim(), vencimento: iso(x.DATVEN),
         valor, pago, saldo: r2(valor - pago),
-        daLeiloeira: ehParcelaDaLeiloeira(x),
+        daLeiloeira: ehParcelaDaLeiloeira(x) || cobradaNaContaDaLeiloeira(x),
       });
     }
 
