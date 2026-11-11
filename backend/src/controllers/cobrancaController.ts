@@ -156,3 +156,15 @@ export const configurarAcesso = tratar(async (req, res) => {
   await registrarLog(usuarioDe(req), 'Alterar', `${CONTROLE} - Acesso ao painel${b.senha ? ' (senha definida)' : ''}`, req.params.id);
   res.json({ ok: true });
 });
+
+export const gerarLinkPainel = tratar(async (req, res) => {
+  const token = await portal.gerarLink(Number(req.params.id));
+  await registrarLog(usuarioDe(req), 'Alterar', `${CONTROLE} - Link do painel gerado`, req.params.id);
+  res.json({ token });
+});
+
+export const revogarLinkPainel = tratar(async (req, res) => {
+  await portal.revogarLink(Number(req.params.id));
+  await registrarLog(usuarioDe(req), 'Deletar', `${CONTROLE} - Link do painel revogado`, req.params.id);
+  res.json({ ok: true });
+});

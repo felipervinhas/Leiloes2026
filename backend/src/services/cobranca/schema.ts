@@ -132,6 +132,13 @@ END
 -- Fase 2: painel do cliente (/:banco/cliente) liberado pela leiloeira, por cliente.
 IF COL_LENGTH('COBR_VENDEDORES', 'PORTAL') IS NULL
   ALTER TABLE COBR_VENDEDORES ADD PORTAL CHAR(1) NOT NULL CONSTRAINT DF_COBR_VEND_PORTAL DEFAULT 'N';
+
+-- Link exclusivo do painel (sem senha): guarda só o hash SHA-256 do link; gerar outro ou
+-- revogar invalida o anterior e as sessões abertas com ele. LINK_ERROS: confirmações erradas
+-- dos dígitos do CPF/CNPJ (5 bloqueiam o link).
+IF COL_LENGTH('COBR_VENDEDORES', 'LINK_HASH') IS NULL
+  ALTER TABLE COBR_VENDEDORES ADD LINK_HASH CHAR(64) NULL, LINK_CRIADO DATETIME NULL,
+    LINK_ERROS INT NOT NULL CONSTRAINT DF_COBR_VEND_LINK_ERROS DEFAULT 0, LINK_ULTIMO_ACESSO DATETIME NULL;
 `;
 
 export async function garantirTabelasCobranca(): Promise<void> {

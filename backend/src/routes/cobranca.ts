@@ -30,6 +30,8 @@ router.put('/vendedores/:id', c.salvarVendedor);
 router.delete('/vendedores/:id', c.excluirVendedor);
 router.get('/vendedores/:id/acesso', c.statusAcesso);
 router.put('/vendedores/:id/acesso', c.configurarAcesso);
+router.post('/vendedores/:id/link', c.gerarLinkPainel);
+router.delete('/vendedores/:id/link', c.revogarLinkPainel);
 router.put('/config/taxa', c.salvarTaxaPadrao);
 
 router.get('/fechamentos', c.listarFechamentos);

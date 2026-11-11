@@ -53,6 +53,7 @@ import CobrancaLotes from './pages/cobranca/CobrancaLotes';
 import CobrancaFechamento from './pages/cobranca/CobrancaFechamento';
 import CobrancaConfiguracoes from './pages/cobranca/CobrancaConfiguracoes';
 import ClienteLogin from './pages/cliente/ClienteLogin';
+import ClienteAcesso from './pages/cliente/ClienteAcesso';
 import ClienteLayout from './pages/cliente/ClienteLayout';
 import ClienteParcelas from './pages/cliente/ClienteParcelas';
 import ClienteTaxas from './pages/cliente/ClienteTaxas';
@@ -126,6 +127,7 @@ function App() {
             </Route>
             {/* Painel do cliente: login e sessão próprios (services/portalApi), fora do PrivateRoute do sistema */}
             <Route path="cliente/login" element={<ClienteLogin />} />
+            <Route path="cliente/acesso/:token" element={<ClienteAcesso />} />
             <Route path="cliente" element={<ClienteLayout />}>
               <Route index element={<Navigate to="recebimentos" replace />} />
               <Route path="recebimentos" element={<ClienteParcelas key="v" lado="VENDEDOR" />} />

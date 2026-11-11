@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { getPool, sql } from '../../config/database';
 import { ehParcelaDaLeiloeira, existeTabela, SQL_COLUNAS_GRUPOS } from '../conciliacao/devidoService';
 import { CobrancaError, statusPlano } from './acessoService';
@@ -42,15 +43,92 @@ export async function autenticar(login: string, senha: string) {
   return { idCliente: c.ID as number, nome: c.NOMEXX as string };
 }
 
-/** O cliente continua liberado? (conferido a cada requisição: a leiloeira pode bloquear a qualquer hora) */
-export async function aindaLiberado(idCliente: number): Promise<boolean> {
+/**
+ * O cliente continua liberado? (conferido a cada requisição: a leiloeira pode bloquear a qualquer
+ * hora). Sessão aberta pelo link (lk = começo do hash do link): vale só enquanto o link for o mesmo
+ * — gerar outro ou revogar derruba quem entrou pelo anterior.
+ */
+export async function aindaLiberado(idCliente: number, lk?: string): Promise<boolean> {
   await garantirTabelasCobranca();
   const pool = await getPool();
   const r = await pool.request().input('id', sql.Int, idCliente).query(`
-    SELECT C.BLOCLI, C.ATIVOX, V.PORTAL, (SELECT TOP 1 COBR_ATIVA FROM Configuracoes) AS ATIVA
+    SELECT C.BLOCLI, C.ATIVOX, V.PORTAL, V.LINK_HASH, (SELECT TOP 1 COBR_ATIVA FROM Configuracoes) AS ATIVA
     FROM CLIENTES C LEFT JOIN COBR_VENDEDORES V ON V.ID_CLIENTE = C.ID WHERE C.ID = @id`);
   const x = r.recordset[0];
-  return !!x && x.ATIVA === 'S' && x.PORTAL === 'S' && x.BLOCLI !== 'Sim' && x.ATIVOX !== 'N';
+  if (!x || x.ATIVA !== 'S' || x.PORTAL !== 'S' || x.BLOCLI === 'Sim' || x.ATIVOX === 'N') return false;
+  return !lk || (!!x.LINK_HASH && String(x.LINK_HASH).startsWith(lk));
+}
+
+// ─── link exclusivo (sem senha) ───────────────────────────────────────────────
+
+const MAX_ERROS_LINK = 5;
+const hashLink = (token: string) => crypto.createHash('sha256').update(String(token)).digest('hex');
+const documentoDe = (x: { CNPJXX?: string; CPFXXX?: string }) => {
+  const cnpj = soDigitos(x.CNPJXX);
+  return cnpj.length === 14 ? { tipo: 'CNPJ' as const, digitos: cnpj } : { tipo: 'CPF' as const, digitos: soDigitos(x.CPFXXX) };
+};
+
+async function buscarPorLink(token: string) {
+  if (!token || token.length < 30) return null;
+  await garantirTabelasCobranca();
+  const pool = await getPool();
+  const r = await pool.request().input('h', sql.Char(64), hashLink(token)).query(`
+    SELECT V.ID_CLIENTE, V.PORTAL, V.LINK_HASH, V.LINK_ERROS, C.NOMEXX, C.CPFXXX, C.CNPJXX, C.BLOCLI, C.ATIVOX
+    FROM COBR_VENDEDORES V JOIN CLIENTES C ON C.ID = V.ID_CLIENTE WHERE V.LINK_HASH = @h`);
+  return r.recordset[0] || null;
+}
+
+/** Gera (ou troca) o link do cliente e libera o painel. Devolve o token só agora: o banco guarda o hash. */
+export async function gerarLink(idCliente: number): Promise<string> {
+  await garantirTabelasCobranca();
+  const pool = await getPool();
+  const c = await pool.request().input('id', sql.Int, idCliente).query(`SELECT CPFXXX, CNPJXX FROM CLIENTES WHERE ID = @id`);
+  if (!c.recordset.length) throw new CobrancaError(404, 'Cliente não encontrado');
+  if (documentoDe(c.recordset[0]).digitos.length < 11) throw new CobrancaError(400, 'O cadastro do cliente não tem CPF/CNPJ: é com ele que o cliente confirma o acesso.');
+  const token = crypto.randomBytes(32).toString('base64url');
+  await pool.request().input('id', sql.Int, idCliente).input('h', sql.Char(64), hashLink(token)).query(`
+    IF EXISTS (SELECT 1 FROM COBR_VENDEDORES WHERE ID_CLIENTE = @id)
+      UPDATE COBR_VENDEDORES SET PORTAL = 'S', LINK_HASH = @h, LINK_CRIADO = GETDATE(), LINK_ERROS = 0, LINK_ULTIMO_ACESSO = NULL WHERE ID_CLIENTE = @id
+    ELSE
+      INSERT INTO COBR_VENDEDORES (ID_CLIENTE, PADRAO, DESTINO, PORTAL, LINK_HASH, LINK_CRIADO) VALUES (@id, 'N', 'VENDEDOR', 'S', @h, GETDATE())`);
+  return token;
+}
+
+export async function revogarLink(idCliente: number) {
+  await garantirTabelasCobranca();
+  const pool = await getPool();
+  await pool.request().input('id', sql.Int, idCliente)
+    .query(`UPDATE COBR_VENDEDORES SET LINK_HASH = NULL, LINK_CRIADO = NULL, LINK_ERROS = 0, LINK_ULTIMO_ACESSO = NULL WHERE ID_CLIENTE = @id`);
+}
+
+/** O que a tela do link precisa antes da confirmação: sem nome nem dado do cliente. */
+export async function infoLink(token: string) {
+  const x = await buscarPorLink(token);
+  if (!x || x.PORTAL !== 'S') throw new CobrancaError(404, 'Este link não vale mais. Peça um novo à leiloeira.');
+  if (x.LINK_ERROS >= MAX_ERROS_LINK) throw new CobrancaError(423, 'Este link foi bloqueado por tentativas erradas. Peça um novo à leiloeira.');
+  return { tipo: documentoDe(x).tipo };
+}
+
+/** Confirma os 4 primeiros dígitos do CPF/CNPJ do dono do link. */
+export async function confirmarLink(token: string, digitos: string) {
+  const { ativa } = await statusPlano();
+  if (!ativa) throw new CobrancaError(402, 'Painel indisponível para esta empresa');
+  const x = await buscarPorLink(token);
+  if (!x || x.PORTAL !== 'S') throw new CobrancaError(404, 'Este link não vale mais. Peça um novo à leiloeira.');
+  if (x.LINK_ERROS >= MAX_ERROS_LINK) throw new CobrancaError(423, 'Este link foi bloqueado por tentativas erradas. Peça um novo à leiloeira.');
+  if (x.BLOCLI === 'Sim' || x.ATIVOX === 'N') throw new CobrancaError(403, 'Cadastro bloqueado. Fale com a leiloeira.');
+  const pool = await getPool();
+  const doc = documentoDe(x);
+  if (soDigitos(digitos).length !== 4 || doc.digitos.slice(0, 4) !== soDigitos(digitos)) {
+    await pool.request().input('id', sql.Int, x.ID_CLIENTE).query(`UPDATE COBR_VENDEDORES SET LINK_ERROS = LINK_ERROS + 1 WHERE ID_CLIENTE = @id`);
+    const restam = MAX_ERROS_LINK - x.LINK_ERROS - 1;
+    throw new CobrancaError(restam > 0 ? 401 : 423, restam > 0
+      ? `Dígitos não conferem. ${restam === 1 ? 'Resta 1 tentativa' : `Restam ${restam} tentativas`}.`
+      : 'Dígitos errados demais: o link foi bloqueado. Peça um novo à leiloeira.');
+  }
+  await pool.request().input('id', sql.Int, x.ID_CLIENTE)
+    .query(`UPDATE COBR_VENDEDORES SET LINK_ERROS = 0, LINK_ULTIMO_ACESSO = GETDATE() WHERE ID_CLIENTE = @id`);
+  return { idCliente: x.ID_CLIENTE as number, nome: x.NOMEXX as string, lk: String(x.LINK_HASH).slice(0, 16) };
 }
 
 export interface ParcelaPortal {
@@ -172,7 +250,6 @@ export async function configurarAcesso(idCliente: number, d: { liberado: boolean
   const pool = await getPool();
   const c = await pool.request().input('id', sql.Int, idCliente).query(`SELECT SENHAX FROM CLIENTES WHERE ID = @id`);
   if (!c.recordset.length) throw new CobrancaError(404, 'Cliente não encontrado');
-  if (d.liberado && !c.recordset[0].SENHAX && !d.senha) throw new CobrancaError(400, 'Este cliente não tem senha. Defina uma para liberar o painel.');
   await pool.request().input('id', sql.Int, idCliente).input('p', sql.Char(1), d.liberado ? 'S' : 'N').query(`
     IF EXISTS (SELECT 1 FROM COBR_VENDEDORES WHERE ID_CLIENTE = @id)
       UPDATE COBR_VENDEDORES SET PORTAL = @p WHERE ID_CLIENTE = @id
@@ -188,10 +265,14 @@ export async function statusAcesso(idCliente: number) {
   await garantirTabelasCobranca();
   const pool = await getPool();
   const r = await pool.request().input('id', sql.Int, idCliente).query(`
-    SELECT C.NOMEXX, C.CPFXXX, C.CNPJXX, C.EMAILX, CASE WHEN ISNULL(C.SENHAX, '') = '' THEN 0 ELSE 1 END AS TEM_SENHA,
-           ISNULL(V.PORTAL, 'N') AS PORTAL
+    SELECT C.NOMEXX, C.CPFXXX, C.CNPJXX, C.EMAILX, C.CELU_1, C.CELU_2, CASE WHEN ISNULL(C.SENHAX, '') = '' THEN 0 ELSE 1 END AS TEM_SENHA,
+           ISNULL(V.PORTAL, 'N') AS PORTAL, V.LINK_HASH, V.LINK_CRIADO, ISNULL(V.LINK_ERROS, 0) AS LINK_ERROS, V.LINK_ULTIMO_ACESSO
     FROM CLIENTES C LEFT JOIN COBR_VENDEDORES V ON V.ID_CLIENTE = C.ID WHERE C.ID = @id`);
   const x = r.recordset[0];
   if (!x) throw new CobrancaError(404, 'Cliente não encontrado');
-  return { nome: x.NOMEXX, documento: x.CNPJXX || x.CPFXXX || null, email: x.EMAILX || null, temSenha: !!x.TEM_SENHA, liberado: x.PORTAL === 'S' };
+  return {
+    nome: x.NOMEXX, documento: x.CNPJXX || x.CPFXXX || null, email: x.EMAILX || null, celular: x.CELU_1 || x.CELU_2 || null,
+    temSenha: !!x.TEM_SENHA, liberado: x.PORTAL === 'S',
+    link: x.LINK_HASH ? { criado: x.LINK_CRIADO, bloqueado: x.LINK_ERROS >= MAX_ERROS_LINK, ultimoAcesso: x.LINK_ULTIMO_ACESSO } : null,
+  };
 }

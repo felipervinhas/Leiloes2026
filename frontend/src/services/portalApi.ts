@@ -12,7 +12,9 @@ const portalApi = axios.create({
 
 portalApi.interceptors.request.use((config) => {
   const token = localStorage.getItem(CHAVE_TOKEN_PORTAL);
-  const banco = localStorage.getItem('@leiloes:banco');
+  // o banco vem da própria URL (/:banco/cliente/...): no 1º acesso pelo link, num aparelho novo,
+  // a tela chama a API antes de o BancoProvider gravar o banco no localStorage
+  const banco = window.location.pathname.split('/')[1] || localStorage.getItem('@leiloes:banco');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   if (banco && config.url && !config.url.startsWith('http')) {
     const url = config.url.startsWith('/') ? config.url : `/${config.url}`;
@@ -24,11 +26,12 @@ portalApi.interceptors.request.use((config) => {
 portalApi.interceptors.response.use(
   (r) => r,
   (error) => {
-    const ehLogin = error.config?.url?.endsWith('/portal/login');
+    // login e link respondem 401 de propósito (senha/dígitos errados): mostram a mensagem, não redirecionam
+    const ehLogin = /\/portal\/(login|link)/.test(error.config?.url || '');
     if (error.response?.status === 401 && !ehLogin) {
       localStorage.removeItem(CHAVE_TOKEN_PORTAL);
       localStorage.removeItem(CHAVE_CLIENTE_PORTAL);
-      const banco = localStorage.getItem('@leiloes:banco');
+      const banco = window.location.pathname.split('/')[1] || localStorage.getItem('@leiloes:banco');
       window.location.href = banco ? `/${banco}/cliente/login` : '/';
     }
     return Promise.reject(error);

@@ -181,7 +181,8 @@
 .pc-login-caixa h3 { font-size: 26px; font-weight: 800; margin: 18px 0 6px; letter-spacing: -.02em; }
 .pc-login-caixa .ant-input-affix-wrapper { border-radius: 12px; padding: 10px 14px; }
 .pc-login-caixa .ant-btn-primary { border-radius: 12px; height: 48px; font-weight: 700; background: var(--pc-verde); }
-.pc-login-caixa .ant-btn-primary:hover { background: var(--pc-verde-2) !important; }
+.pc-login-caixa .ant-btn-primary:not(:disabled):hover { background: var(--pc-verde-2) !important; }
+.pc-login-caixa .ant-btn-primary:disabled { background: #d5ddd9; color: #fff; border-color: transparent; }
 
 @media (max-width: 860px) {
   .pc-destaques { grid-template-columns: 1fr 1fr; }
@@ -199,3 +200,16 @@
   .pc-mes-valor { display: none; }
   .pc-aba { padding: 8px 14px; font-size: 13px; }
 }
+
+/* confirmação do link: 4 dígitos do CPF/CNPJ */
+.pc-digitos { position: relative; display: flex; gap: 12px; margin: 24px 0; cursor: text; }
+.pc-digito {
+  flex: 1; height: 64px; border-radius: 14px; border: 2px solid var(--pc-linha); background: #fff;
+  display: grid; place-items: center; font-size: 28px; font-weight: 800; color: var(--pc-verde);
+}
+.pc-digito.atual { border-color: var(--pc-verde-2); box-shadow: 0 0 0 4px rgba(21,84,70,.1); }
+.pc-digitos-campo { position: absolute; inset: 0; opacity: 0; width: 100%; font-size: 16px; }
+.pc-login-alt { border: 0; background: transparent; color: var(--pc-verde-2); font-weight: 700; cursor: pointer; padding: 0; font-size: 14px; }
+.pc-login-alt:hover { text-decoration: underline; }
+.pc-zap { display: flex; gap: 14px; align-items: flex-start; background: #fff; border: 1px solid var(--pc-linha); border-radius: 16px; padding: 16px; margin-bottom: 20px; }
+.pc-zap i { font-style: normal; width: 40px; height: 40px; border-radius: 12px; background: #e3f4ec; display: grid; place-items: center; font-size: 20px; flex: none; }

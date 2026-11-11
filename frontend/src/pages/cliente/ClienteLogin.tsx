@@ -10,6 +10,7 @@ import './portal.css';
 /** Login do painel do cliente: CPF/CNPJ ou e-mail e a mesma senha do app e do site. */
 export default function ClienteLogin() {
   const [loading, setLoading] = useState(false);
+  const [comSenha, setComSenha] = useState(false);
   const { banco } = useBanco();
   const config = useConfig();
   const navigate = useNavigate();
@@ -46,9 +47,21 @@ export default function ClienteLogin() {
       </section>
       <section className="pc-login-form">
         <div className="pc-login-caixa">
-          <h3>Entrar</h3>
-          <p style={{ color: 'var(--pc-suave)', marginTop: 0, marginBottom: 24 }}>Use o CPF, CNPJ ou e-mail e a mesma senha do aplicativo e do site da leiloeira.</p>
-          <Form layout="vertical" onFinish={entrar} autoComplete="off" requiredMark={false}>
+          <h3>Acesse pelo seu link</h3>
+          <div className="pc-zap">
+            <i>💬</i>
+            <div>
+              <b>A leiloeira envia um link só seu pelo WhatsApp.</b>
+              <div style={{ color: 'var(--pc-suave)', fontSize: 14, marginTop: 4 }}>
+                É só tocar nele e confirmar os 4 primeiros dígitos do seu CPF ou CNPJ. Não precisa de senha.
+              </div>
+            </div>
+          </div>
+          <p style={{ color: 'var(--pc-suave)', fontSize: 14 }}>Perdeu o link? Peça um novo à leiloeira.</p>
+          {!comSenha ? (
+            <button className="pc-login-alt" onClick={() => setComSenha(true)}>Tenho senha do aplicativo — entrar com senha</button>
+          ) : (
+          <Form layout="vertical" onFinish={entrar} autoComplete="off" requiredMark={false} style={{ marginTop: 8 }}>
             <Form.Item name="login" rules={[{ required: true, message: 'Informe o CPF, CNPJ ou e-mail' }]}>
               <Input prefix={<UserOutlined />} placeholder="CPF, CNPJ ou e-mail" size="large" />
             </Form.Item>
@@ -57,7 +70,7 @@ export default function ClienteLogin() {
             </Form.Item>
             <Button type="primary" htmlType="submit" size="large" block loading={loading}>Entrar</Button>
           </Form>
-          <p style={{ color: 'var(--pc-suave)', fontSize: 13, marginTop: 20 }}>Sem acesso ou esqueceu a senha? Fale com a leiloeira.</p>
+          )}
         </div>
       </section>
     </div>
