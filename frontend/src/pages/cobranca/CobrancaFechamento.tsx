@@ -4,6 +4,7 @@ import {
 } from 'antd';
 import { FilePdfOutlined, LockOutlined, EyeOutlined, MoreOutlined, FileExcelOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import type { AxiosInstance } from 'axios';
 import api from '../../services/api';
 import { useConfig } from '../../context/ConfigContext';
 import { baixarRelatorioFinanceiro } from '../../relatorios/RelatorioFinanceiro';
@@ -220,9 +221,10 @@ function DrawerDetalhe({ id, onClose }: { id: number; onClose: () => void }) {
   );
 }
 
-export async function pdfFechamento(id: number, config: { empresa?: string; logoBase64?: string | null }) {
+export async function pdfFechamento(id: number, config: { empresa?: string; logoBase64?: string | null },
+  http: AxiosInstance = api, rota = '/cobranca/fechamentos') {
   try {
-    const { fechamento: f, itens } = (await api.get(`/cobranca/fechamentos/${id}`)).data;
+    const { fechamento: f, itens } = (await http.get(`${rota}/${id}`)).data;
     await baixarRelatorioFinanceiro({
       titulo: `Fechamento da cobrança — ${nomeMes(f.competencia)}`, subtitulo: f.vendedor, empresa: config.empresa, logoBase64: config.logoBase64,
       resumo: [

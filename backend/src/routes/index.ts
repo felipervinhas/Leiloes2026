@@ -35,6 +35,7 @@ import * as chamado from '../controllers/chamadoController';
 import { chatAI } from '../controllers/aiController';
 import conciliacaoRoutes from './conciliacao';
 import cobrancaRoutes from './cobranca';
+import portalRoutes from './portal';
 import whatsappRoutes from './whatsapp';
 import { webhookVerificar, webhookReceber } from '../controllers/whatsappController';
 import { VERSAO } from '../config/versao';
@@ -74,6 +75,9 @@ bancoRouter.get('/configuracoes/logo-imagem', getLogoImagem);
 // autenticidade é conferida pela assinatura X-Hub-Signature-256 (App Secret).
 bancoRouter.get('/whatsapp/webhook', webhookVerificar);
 bancoRouter.post('/whatsapp/webhook', webhookReceber);
+
+// Painel do cliente: login e token próprios (o token do sistema não serve lá, e vice-versa)
+bancoRouter.use('/portal', portalRoutes);
 
 // Rotas protegidas
 bancoRouter.use(authMiddleware);

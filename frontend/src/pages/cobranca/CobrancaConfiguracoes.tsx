@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Card, Typography, Space, Button, InputNumber, Table, Modal, Form, Switch, Radio, Popconfirm, Tag, message } from 'antd';
+import { Card, Typography, Space, Button, InputNumber, Input, Table, Modal, Form, Switch, Radio, Popconfirm, Tag, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import api from '../../services/api';
 import { DESTINOS, nomeDestino, SeletorCliente } from './comum';
@@ -51,10 +51,12 @@ export default function CobrancaConfiguracoes() {
             { title: 'Dinheiro vai para', dataIndex: 'destino', width: 170, render: nomeDestino },
             { title: 'Taxa', dataIndex: 'taxa', width: 110, render: (v: number | null) => (v != null ? `${v}%` : <Text type="secondary">padrão ({status.taxaPadrao}%)</Text>) },
             { title: 'Lotes em cobrança', dataIndex: 'lotes', width: 140, align: 'right' as const },
+            { title: 'Painel do cliente', dataIndex: 'portal', width: 150, render: (v: boolean, x: any) => (v ? <Tag color="green">Liberado</Tag>
+              : <Tag>{x.temSenha ? 'Bloqueado' : 'Sem senha'}</Tag>) },
             { title: '', width: 90, render: (_: any, v: any) => (
               <Space size={2}>
                 <Button size="small" type="text" icon={<EditOutlined />} onClick={() => setEditar(v)} />
-                <Popconfirm title="Remover a configuração deste vendedor?" description="Os lotes já marcados continuam na cobrança." onConfirm={() => excluir(v.idCliente)}>
+                <Popconfirm title="Remover a configuração deste vendedor?" description="Os lotes já marcados continuam na cobrança. O acesso ao painel do cliente é bloqueado." onConfirm={() => excluir(v.idCliente)}>
                   <Button size="small" type="text" danger icon={<DeleteOutlined />} />
                 </Popconfirm>
               </Space>
@@ -76,6 +78,7 @@ function ModalVendedor({ v, taxaPadrao, onClose }: { v: any; taxaPadrao: number;
     setSalvando(true);
     try {
       await api.put(`/cobranca/vendedores/${cliente.id}`, { padrao: x.padrao, destino: x.destino, taxa: x.taxaPropria ? x.taxa : null });
+      if (x.portal !== !!v.portal || x.senha) await api.put(`/cobranca/vendedores/${cliente.id}/acesso`, { liberado: !!x.portal, senha: x.senha || undefined });
       onClose(true);
     } catch (e: any) { message.error(e.response?.data?.error || 'Erro ao salvar'); }
     finally { setSalvando(false); }
@@ -85,7 +88,7 @@ function ModalVendedor({ v, taxaPadrao, onClose }: { v: any; taxaPadrao: number;
       {!v.idCliente && <div style={{ marginBottom: 12 }}><SeletorCliente placeholder="Vendedor" value={cliente.id} rotulo={cliente.nome} style={{ width: '100%' }}
         onChange={(id, nome) => setCliente({ id, nome })} /></div>}
       <Form form={form} layout="vertical" preserve={false} initialValues={{
-        padrao: v.padrao ?? true, destino: v.destino || 'VENDEDOR', taxaPropria: v.taxa != null, taxa: v.taxa ?? taxaPadrao,
+        padrao: v.padrao ?? true, destino: v.destino || 'VENDEDOR', taxaPropria: v.taxa != null, taxa: v.taxa ?? taxaPadrao, portal: !!v.portal,
       }}>
         <Form.Item name="padrao" label="Lotes novos deste vendedor já entram na cobrança" valuePropName="checked"><Switch /></Form.Item>
         <Form.Item name="destino" label="Para onde vai o dinheiro (padrão dos lotes dele)"><Radio.Group options={DESTINOS} /></Form.Item>
@@ -96,6 +99,15 @@ function ModalVendedor({ v, taxaPadrao, onClose }: { v: any; taxaPadrao: number;
               <InputNumber min={0} max={100} precision={2} decimalSeparator="," suffix="%" style={{ width: 140 }} />
             </Form.Item>
           )}
+        </Form.Item>
+        <Form.Item name="portal" label="Acesso ao painel do cliente" valuePropName="checked"
+          extra={`O cliente entra em ${window.location.origin}/${window.location.pathname.split('/')[1]}/cliente/login com CPF/CNPJ ou e-mail e vê todos os recebimentos e pagamentos dele.`}>
+          <Switch />
+        </Form.Item>
+        <Form.Item name="senha" label={v.temSenha ? 'Trocar a senha (opcional)' : 'Senha do cliente'}
+          extra="É a mesma senha do aplicativo e do site da leiloeira: trocar aqui troca lá também. Mínimo de 6 caracteres."
+          rules={[{ min: 6, message: 'Mínimo de 6 caracteres' }]}>
+          <Input.Password autoComplete="new-password" placeholder={v.temSenha ? 'Deixe em branco para manter' : 'Obrigatória para liberar o painel'} />
         </Form.Item>
       </Form>
     </Modal>

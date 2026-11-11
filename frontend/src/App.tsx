@@ -52,6 +52,10 @@ import CobrancaParcelas from './pages/cobranca/CobrancaParcelas';
 import CobrancaLotes from './pages/cobranca/CobrancaLotes';
 import CobrancaFechamento from './pages/cobranca/CobrancaFechamento';
 import CobrancaConfiguracoes from './pages/cobranca/CobrancaConfiguracoes';
+import ClienteLogin from './pages/cliente/ClienteLogin';
+import ClienteLayout from './pages/cliente/ClienteLayout';
+import ClienteParcelas from './pages/cliente/ClienteParcelas';
+import ClienteTaxas from './pages/cliente/ClienteTaxas';
 
 function UrlInvalida() {
   return (
@@ -119,6 +123,14 @@ function App() {
                 <Route path="configuracoes" element={<ConfiguracoesFinanceiro />} />
                 <Route path="despesas" element={<DespesasEmpresa />} />
               </Route>
+            </Route>
+            {/* Painel do cliente: login e sessão próprios (services/portalApi), fora do PrivateRoute do sistema */}
+            <Route path="cliente/login" element={<ClienteLogin />} />
+            <Route path="cliente" element={<ClienteLayout />}>
+              <Route index element={<Navigate to="recebimentos" replace />} />
+              <Route path="recebimentos" element={<ClienteParcelas key="v" lado="VENDEDOR" />} />
+              <Route path="pagamentos" element={<ClienteParcelas key="c" lado="COMPRADOR" />} />
+              <Route path="taxas" element={<ClienteTaxas />} />
             </Route>
             <Route path="cobranca/login" element={<Login destino="cobranca" subtitulo="Intermediação de cobrança" />} />
             <Route path="cobranca" element={<PrivateRoute loginPath="cobranca/login" />}>

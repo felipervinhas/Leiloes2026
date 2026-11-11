@@ -6,6 +6,7 @@ import {
 } from 'antd';
 import { CheckOutlined, EditOutlined, FileExcelOutlined, FilePdfOutlined, HistoryOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
+import type { AxiosInstance } from 'axios';
 import api from '../../services/api';
 import { useConfig } from '../../context/ConfigContext';
 import { baixarRelatorioFinanceiro } from '../../relatorios/RelatorioFinanceiro';
@@ -250,14 +251,17 @@ function ModalBaixa({ parcelas, onClose }: { parcelas: Parcela[]; onClose: (ok: 
   );
 }
 
-export function ModalRenegociar({ parcela, onClose, rota = '/cobranca/parcelas' }: { parcela: Parcela; onClose: (ok: boolean) => void; rota?: string }) {
+export function ModalRenegociar({ parcela, onClose, rota = '/cobranca/parcelas', http = api }: {
+  parcela: Pick<Parcela, 'id' | 'ordxxx' | 'lote' | 'comprador' | 'valor' | 'vencimento'>; onClose: (ok: boolean) => void;
+  rota?: string; http?: AxiosInstance;
+}) {
   const [form] = Form.useForm();
   const [salvando, setSalvando] = useState(false);
   const salvar = async () => {
     const v = await form.validateFields();
     setSalvando(true);
     try {
-      await api.put(`${rota}/${parcela.id}/renegociar`, {
+      await http.put(`${rota}/${parcela.id}/renegociar`, {
         vencimento: (v.vencimento as Dayjs)?.format('YYYY-MM-DD'), valor: v.valor, motivo: v.motivo,
       });
       message.success('Parcela renegociada');

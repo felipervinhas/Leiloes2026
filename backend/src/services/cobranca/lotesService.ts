@@ -111,7 +111,8 @@ export async function listarVendedores() {
   await garantirTabelasCobranca();
   const pool = await getPool();
   const r = await pool.request().query(`
-    SELECT V.ID_CLIENTE, C.NOMEXX, V.PADRAO, V.DESTINO, V.TAXA, V.NOME_USUARIO, V.DATA,
+    SELECT V.ID_CLIENTE, C.NOMEXX, V.PADRAO, V.DESTINO, V.TAXA, V.PORTAL, V.NOME_USUARIO, V.DATA,
+           CASE WHEN ISNULL(C.SENHAX, '') = '' THEN 0 ELSE 1 END AS TEM_SENHA,
            (SELECT COUNT(*) FROM COBR_LOTES CL JOIN LOTES LO ON LO.ID = CL.ID_LOTE
             WHERE CL.ATIVA = 'S' AND LO.CODVEN = V.ID_CLIENTE) AS LOTES
     FROM COBR_VENDEDORES V LEFT JOIN CLIENTES C ON C.ID = V.ID_CLIENTE
@@ -119,6 +120,7 @@ export async function listarVendedores() {
   return r.recordset.map((x: any) => ({
     idCliente: x.ID_CLIENTE, nome: x.NOMEXX, padrao: x.PADRAO === 'S', destino: destinoValido(x.DESTINO),
     taxa: x.TAXA != null ? Number(x.TAXA) : null, lotes: Number(x.LOTES) || 0, usuario: x.NOME_USUARIO, data: x.DATA,
+    portal: x.PORTAL === 'S', temSenha: !!x.TEM_SENHA,
   }));
 }
 

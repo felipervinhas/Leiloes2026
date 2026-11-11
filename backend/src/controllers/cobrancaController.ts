@@ -4,6 +4,7 @@ import { CobrancaError, statusPlano, temAcessoCobranca } from '../services/cobra
 import * as parc from '../services/cobranca/parcelasService';
 import * as lotes from '../services/cobranca/lotesService';
 import * as fech from '../services/cobranca/fechamentoService';
+import * as portal from '../services/cobranca/portalService';
 
 const usuarioDe = (req: Request) => (req as any).usuario;
 const num = (v: any) => (v === undefined || v === null || v === '' ? undefined : Number(v));
@@ -144,5 +145,14 @@ export const reabrirFechamento = tratar(async (req, res) => {
 export const situacaoFechamento = tratar(async (req, res) => {
   await fech.mudarSituacao(Number(req.params.id), String(req.body?.situacao));
   await registrarLog(usuarioDe(req), 'Alterar', `${CONTROLE} - Fechamento`, req.params.id);
+  res.json({ ok: true });
+});
+
+export const statusAcesso = tratar(async (req, res) => { res.json(await portal.statusAcesso(Number(req.params.id))); });
+
+export const configurarAcesso = tratar(async (req, res) => {
+  const b = req.body || {};
+  await portal.configurarAcesso(Number(req.params.id), { liberado: !!b.liberado, senha: txt(b.senha) });
+  await registrarLog(usuarioDe(req), 'Alterar', `${CONTROLE} - Acesso ao painel${b.senha ? ' (senha definida)' : ''}`, req.params.id);
   res.json({ ok: true });
 });
