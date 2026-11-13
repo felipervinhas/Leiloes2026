@@ -52,3 +52,29 @@ export const nomeMes = (comp: string) => {
   const [a, m] = comp.split('-').map(Number);
   return new Date(a, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 };
+
+/** Cabeçalho das páginas da área Cobrança (cobranca.css). */
+export function Cabecalho({ titulo, sub, extra }: { titulo: string; sub?: React.ReactNode; extra?: React.ReactNode }) {
+  return (
+    <div className="cb-cabecalho">
+      <div>
+        <h1>{titulo}</h1>
+        {sub && <p>{sub}</p>}
+      </div>
+      {extra && <div>{extra}</div>}
+    </div>
+  );
+}
+
+/** Cartão de número em destaque (principal = verde, para o número mais importante da tela). */
+export function Destaque({ rotulo, valor, sub, tom, principal }: {
+  rotulo: string; valor: React.ReactNode; sub?: React.ReactNode; tom?: 'alerta' | 'ok'; principal?: boolean;
+}) {
+  return (
+    <div className={`cb-destaque${principal ? ' principal' : ''}`}>
+      <div className="cb-destaque-rotulo">{rotulo}</div>
+      <div className={`cb-destaque-valor${tom ? ` ${tom}` : ''}`}>{valor}</div>
+      {sub && <div className="cb-destaque-sub">{sub}</div>}
+    </div>
+  );
+}

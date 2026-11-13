@@ -1,26 +1,47 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Layout, Menu, Button, Result, Spin, Typography, Space } from 'antd';
+import { Button, ConfigProvider, Result, Spin, Space } from 'antd';
 import {
-  DashboardOutlined, UnorderedListOutlined, TagsOutlined, CalendarOutlined, SettingOutlined, LogoutOutlined,
+  AppstoreOutlined, UnorderedListOutlined, TagsOutlined, CalendarOutlined, SettingOutlined,
 } from '@ant-design/icons';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useBanco } from '../../context/BancoContext';
 import { useConfig } from '../../context/ConfigContext';
-
-const { Sider, Header, Content } = Layout;
-const { Text } = Typography;
+import './cobranca.css';
 
 const MENU = [
-  { key: 'painel',        icon: <DashboardOutlined />,     label: 'Painel' },
-  { key: 'parcelas',      icon: <UnorderedListOutlined />, label: 'Parcelas' },
-  { key: 'lotes',         icon: <TagsOutlined />,          label: 'Lotes em cobrança' },
-  { key: 'fechamento',    icon: <CalendarOutlined />,      label: 'Fechamento mensal' },
-  { key: 'configuracoes', icon: <SettingOutlined />,       label: 'Configurações' },
+  { grupo: 'Acompanhar', itens: [
+    { key: 'painel', icon: <AppstoreOutlined />, label: 'Painel' },
+    { key: 'parcelas', icon: <UnorderedListOutlined />, label: 'Parcelas' },
+  ] },
+  { grupo: 'Operar', itens: [
+    { key: 'lotes', icon: <TagsOutlined />, label: 'Lotes em cobrança' },
+    { key: 'fechamento', icon: <CalendarOutlined />, label: 'Fechamento mensal' },
+  ] },
+  { grupo: 'Ajustes', itens: [
+    { key: 'configuracoes', icon: <SettingOutlined />, label: 'Configurações' },
+  ] },
 ];
 
+/** Tema do antd só dentro da área: mesma paleta e fonte do painel do cliente. */
+const TEMA = {
+  token: {
+    colorPrimary: '#155446', colorLink: '#155446', colorSuccess: '#2f9e6e', colorError: '#d64545', colorWarning: '#c9a227',
+    borderRadius: 10, fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif",
+    colorBgLayout: '#f5f3ec', colorBorder: '#e2ddcf', colorBorderSecondary: '#efebe1',
+  },
+  components: {
+    Button: { fontWeight: 600, primaryShadow: 'none', defaultShadow: 'none' },
+    Table: { headerBg: '#faf8f2', rowHoverBg: '#fbfaf5', borderColor: '#f1eee5' },
+    Modal: { borderRadiusLG: 18 },
+    Drawer: { borderRadiusLG: 18 },
+  },
+};
+
 type Status = { ativa: boolean; taxaPadrao: number; acesso: boolean };
+
+const iniciais = (nome?: string) => (nome || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
 
 /**
  * Área Cobrança (/:banco/cobranca) — intermediação de cobrança das parcelas do vendedor,
@@ -66,27 +87,35 @@ export default function CobrancaLayout() {
   }
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider width={220} theme="dark" breakpoint="lg" collapsedWidth={0}>
-        <div style={{ padding: '18px 16px', color: '#fff' }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Cobrança</div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Intermediação de cobrança</div>
-        </div>
-        <Menu theme="dark" mode="inline" selectedKeys={[atual]} items={MENU}
-          onClick={e => navigate(`/${banco}/cobranca/${e.key}`)} />
-      </Sider>
-      <Layout>
-        <Header style={{ background: '#fff', padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0' }}>
-          <Text strong>{config.empresa}</Text>
-          <Space>
-            <Text type="secondary">{usuario?.nome}</Text>
-            <Button icon={<LogoutOutlined />} onClick={sair}>Sair</Button>
-          </Space>
-        </Header>
-        <Content style={{ padding: 20 }}>
+    <ConfigProvider theme={TEMA}>
+      <div className="cb">
+        <aside className="cb-menu">
+          <div className="cb-menu-marca">
+            {config.logoBase64 && <img src={config.logoBase64} alt="" />}
+            <div><b>Cobrança</b><span>{config.empresa}</span></div>
+          </div>
+          {MENU.map(g => (
+            <React.Fragment key={g.grupo}>
+              <div className="cb-menu-rotulo">{g.grupo}</div>
+              {g.itens.map(i => (
+                <button key={i.key} className={`cb-menu-item${atual === i.key ? ' ativo' : ''}`} onClick={() => navigate(`/${banco}/cobranca/${i.key}`)}>
+                  {i.icon}{i.label}
+                </button>
+              ))}
+            </React.Fragment>
+          ))}
+          <div className="cb-menu-rodape">
+            <span className="cb-avatar">{iniciais(usuario?.nome)}</span>
+            <div>
+              <b>{usuario?.nome}</b>
+              <button onClick={sair}>Sair</button>
+            </div>
+          </div>
+        </aside>
+        <main className="cb-conteudo">
           <Outlet context={status} />
-        </Content>
-      </Layout>
-    </Layout>
+        </main>
+      </div>
+    </ConfigProvider>
   );
 }

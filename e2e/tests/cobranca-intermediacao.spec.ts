@@ -49,7 +49,7 @@ test('Cobrança: lotes marcados, baixa de parcela e fechamento do mês', async (
     // a mais antiga: a lista vem por vencimento, então ela está na primeira página
     const alvo = parcelas[0];
 
-    await page.getByRole('menuitem', { name: /Parcelas/ }).click();
+    await page.locator('.cb-menu-item', { hasText: 'Parcelas' }).click();
     await page.waitForURL(`**/${BANCO}/cobranca/parcelas`);
     const linha = page.locator('tr.ant-table-row', { hasText: alvo.comprador }).filter({ hasText: alvo.ordxxx }).first();
     await expect(linha).toBeVisible({ timeout: 20_000 });
@@ -76,7 +76,7 @@ test('Cobrança: lotes marcados, baixa de parcela e fechamento do mês', async (
     expect(item?.recebidoEm).toBe('VENDEDOR');
     expect(item?.taxaValor).toBeCloseTo(alvo.saldo * alvo.taxa / 100, 2);
 
-    await page.getByRole('menuitem', { name: /Fechamento mensal/ }).click();
+    await page.locator('.cb-menu-item', { hasText: 'Fechamento mensal' }).click();
     await expect(page.locator('tr.ant-table-row', { hasText: alvo.vendedor }).first()).toBeVisible({ timeout: 20_000 });
   } finally {
     if (idBaixa) await request.post(api(`/baixas/${idBaixa}/desfazer`), { headers: h });

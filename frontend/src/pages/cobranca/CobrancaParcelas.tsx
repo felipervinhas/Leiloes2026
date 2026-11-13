@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Table, Typography, Space, Button, Select, DatePicker, Modal, Form, InputNumber, Input, Drawer, Descriptions,
-  Tag, Popconfirm, Card, Row, Col, Statistic, message, Tooltip, Timeline, Empty,
+  Tag, Popconfirm, message, Tooltip, Timeline, Empty,
 } from 'antd';
 import { CheckOutlined, EditOutlined, FileExcelOutlined, FilePdfOutlined, HistoryOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
@@ -11,7 +11,7 @@ import api from '../../services/api';
 import { useConfig } from '../../context/ConfigContext';
 import { baixarRelatorioFinanceiro } from '../../relatorios/RelatorioFinanceiro';
 import { exportarPlanilha, SeletorLeilao } from '../financeiro/comum';
-import { DESTINOS, fmtData, fmtValor, nomeDestino, SeletorCliente, SITUACOES, TagSituacao } from './comum';
+import { Cabecalho, Destaque, DESTINOS, fmtData, fmtValor, nomeDestino, SeletorCliente, SITUACOES, TagSituacao } from './comum';
 
 const { Title, Text } = Typography;
 
@@ -130,8 +130,8 @@ export default function CobrancaParcelas() {
 
   return (
     <>
-      <Title level={4}>Parcelas em cobrança</Title>
-      <Space wrap style={{ marginBottom: 12 }}>
+      <Cabecalho titulo="Parcelas" sub="Todas as parcelas dos lotes em cobrança: dê baixa, renegocie e tire o relatório do vendedor." />
+      <div className="cb-filtros">
         <SeletorCliente placeholder="Vendedor" value={filtro.idVendedor} rotulo={filtro.vendedor} style={{ width: 260 }}
           onChange={(id, nome) => setFiltro((f: any) => ({ ...f, idVendedor: id, vendedor: nome }))} />
         <SeletorCliente placeholder="Comprador" value={filtro.idComprador} rotulo={filtro.comprador} style={{ width: 260 }}
@@ -146,16 +146,18 @@ export default function CobrancaParcelas() {
         <DatePicker.RangePicker format="DD/MM/YYYY" placeholder={['Vencimento de', 'até']} value={filtro.venc}
           onChange={v => setFiltro((f: any) => ({ ...f, venc: v && v[0] && v[1] ? [v[0], v[1]] : undefined }))} />
         <Button icon={<ReloadOutlined />} onClick={carregar} />
-      </Space>
+      </div>
 
-      <Row gutter={16} style={{ marginBottom: 12 }}>
-        <Col xs={12} md={6}><Card size="small"><Statistic title="Parcelas" value={dados.length} /></Card></Col>
-        <Col xs={12} md={6}><Card size="small"><Statistic title="Valor" value={fmtValor(totais.valor)} /></Card></Col>
-        <Col xs={12} md={6}><Card size="small"><Statistic title="Recebido" value={fmtValor(totais.pago)} valueStyle={{ color: '#389e0d' }} /></Card></Col>
-        <Col xs={12} md={6}><Card size="small"><Statistic title="A receber" value={fmtValor(totais.saldo)} /></Card></Col>
-      </Row>
+      <section className="cb-destaques">
+        <Destaque principal rotulo="A receber" valor={fmtValor(totais.saldo)} sub={`${dados.length} parcela${dados.length === 1 ? '' : 's'} na lista`} />
+        <Destaque rotulo="Valor das parcelas" valor={fmtValor(totais.valor)} />
+        <Destaque rotulo="Recebido" valor={fmtValor(totais.pago)} tom="ok" />
+        <Destaque rotulo="Vencidas na lista" valor={String(dados.filter(p => p.situacao === 'VENCIDA').length)}
+          tom={dados.some(p => p.situacao === 'VENCIDA') ? 'alerta' : undefined} />
+      </section>
 
-      <Space style={{ marginBottom: 8 }} wrap>
+      <div className="cb-card">
+      <div className="cb-acoes">
         <Button type="primary" icon={<CheckOutlined />} disabled={!selecionadasObj.some(p => p.saldo > 0)}
           onClick={() => setBaixa(selecionadasObj.filter(p => p.saldo > 0))}>
           Dar baixa{selecionadas.length ? ` (${selecionadas.length})` : ''}
@@ -164,25 +166,31 @@ export default function CobrancaParcelas() {
         <Button icon={<FilePdfOutlined />} disabled={!dados.length} loading={gerandoPdf} onClick={pdf}>
           {filtro.idVendedor ? 'Relatório do vendedor' : 'PDF'}
         </Button>
-      </Space>
+      </div>
 
       <Table size="small" rowKey="id" loading={carregando} dataSource={dados}
         pagination={{ pageSize: 50, showSizeChanger: true, pageSizeOptions: [50, 100, 500] }}
         rowSelection={{ selectedRowKeys: selecionadas, onChange: k => setSelecionadas(k as number[]),
           getCheckboxProps: (p: Parcela) => ({ disabled: p.saldo <= 0 }) }}
-        scroll={{ x: 1200 }}
+        scroll={{ x: 1050 }}
         columns={[
-          { title: 'Vencimento', dataIndex: 'vencimento', render: fmtData, width: 100, sorter: (a: Parcela, b: Parcela) => a.vencimento.localeCompare(b.vencimento) },
-          { title: 'Leilão', dataIndex: 'leilao', ellipsis: true },
-          { title: 'Lote', dataIndex: 'lote', width: 60, render: (v: string, p: Parcela) => <Tooltip title={p.animal}>{v}</Tooltip> },
-          { title: 'Vendedor', dataIndex: 'vendedor', ellipsis: true },
-          { title: 'Comprador', dataIndex: 'comprador', ellipsis: true },
-          { title: 'Parcela', dataIndex: 'ordxxx', width: 75 },
-          { title: 'Valor', dataIndex: 'valor', align: 'right' as const, render: fmtValor, width: 110 },
-          { title: 'Recebido', dataIndex: 'pago', align: 'right' as const, width: 110, render: (v: number) => (v ? fmtValor(v) : '—') },
-          { title: 'Pago em', dataIndex: 'dataPagamento', render: fmtData, width: 95 },
-          { title: 'Situação', dataIndex: 'situacao', width: 120, render: (s: string) => <TagSituacao s={s} /> },
-          { title: 'Vai para', dataIndex: 'destino', width: 95, render: (d: string) => <Tag>{d === 'MACEDO' ? 'Leiloeira' : 'Vendedor'}</Tag> },
+          { title: 'Vencimento', dataIndex: 'vencimento', width: 115, sorter: (a: Parcela, b: Parcela) => a.vencimento.localeCompare(b.vencimento),
+            render: (v: string, p: Parcela) => <div className="cb-celula"><b>{fmtData(v)}</b><small>parcela {p.ordxxx}</small></div> },
+          { title: 'Lote', dataIndex: 'lote', render: (v: string, p: Parcela) => (
+            <Tooltip title={`${p.leilao}${p.animal ? ` · ${p.animal}` : ''}`}>
+              <div className="cb-celula"><b>Lote {v} · {p.animal || 'sem descrição'}</b><small>{p.leilao}</small></div>
+            </Tooltip>
+          ) },
+          { title: 'Comprador', dataIndex: 'comprador', render: (v: string, p: Parcela) => (
+            <div className="cb-celula"><b>{v}</b><small>vendedor: {p.vendedor}</small></div>
+          ) },
+          { title: 'Valor', dataIndex: 'valor', align: 'right' as const, width: 130, render: (v: number, p: Parcela) => (
+            <div className="cb-celula"><b>{fmtValor(v)}</b>{p.pago ? <small style={{ color: 'var(--cb-verde-ok)' }}>recebido {fmtValor(p.pago)}</small> : null}</div>
+          ) },
+          { title: 'Situação', dataIndex: 'situacao', width: 150, render: (s: string, p: Parcela) => (
+            <div className="cb-celula"><span><TagSituacao s={s} /></span>
+              <small>{p.dataPagamento ? `pago em ${fmtData(p.dataPagamento)}` : p.destino === 'MACEDO' ? 'cai na leiloeira' : 'cai no vendedor'}</small></div>
+          ) },
           {
             title: '', width: 110, fixed: 'right' as const, render: (_: any, p: Parcela) => (
               <Space size={2}>
@@ -193,6 +201,7 @@ export default function CobrancaParcelas() {
             ),
           },
         ]} />
+      </div>
 
       {baixa && <ModalBaixa parcelas={baixa} onClose={ok => { setBaixa(null); if (ok) carregar(); }} />}
       {reneg && <ModalRenegociar parcela={reneg} onClose={ok => { setReneg(null); if (ok) carregar(); }} />}

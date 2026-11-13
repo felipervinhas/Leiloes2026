@@ -2,15 +2,15 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   Table, Typography, Space, Button, Select, Modal, Form, InputNumber, Radio, DatePicker, Tag, Alert, Checkbox,
-  Drawer, Popconfirm, message, Tooltip, Empty,
+  Drawer, Popconfirm, message, Tooltip,
 } from 'antd';
 import { PlusOutlined, StopOutlined, CheckSquareOutlined, HistoryOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import api from '../../services/api';
-import { DESTINOS, fmtData, fmtValor, SeletorCliente } from './comum';
+import { Cabecalho, DESTINOS, fmtData, fmtValor, SeletorCliente } from './comum';
 import { Historico } from './CobrancaParcelas';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface LoteVendedor {
   idLote: number; lote: string; animal: string; idLeilao: number; leilao: string; dataLeilao: string;
@@ -62,14 +62,14 @@ export default function CobrancaLotes() {
 
   return (
     <>
-      <Title level={4}>Lotes em cobrança</Title>
-      <Space wrap style={{ marginBottom: 12 }}>
+      <Cabecalho titulo="Lotes em cobrança" sub="Escolha o vendedor, marque os lotes que a leiloeira vai cobrar e defina para onde vai o dinheiro e a taxa." />
+      <div className="cb-filtros">
         <SeletorCliente placeholder="Vendedor" value={vendedor.id} rotulo={vendedor.nome} style={{ width: 340 }}
           onChange={(id, nome) => setVendedor({ id, nome })} />
         <Checkbox checked={soVendidos} onChange={e => setSoVendidos(e.target.checked)}>Só lotes já vendidos</Checkbox>
-      </Space>
+      </div>
 
-      {!vendedor.id ? <Empty description="Escolha o vendedor para ver os lotes dele" /> : (
+      {!vendedor.id ? <div className="cb-card cb-vazio"><b>Escolha um vendedor</b>Os lotes dele aparecem aqui, vendidos ou não, com a situação da cobrança.</div> : (
         <>
           <Alert style={{ marginBottom: 12 }} type="info" showIcon
             message={<>
@@ -78,7 +78,8 @@ export default function CobrancaLotes() {
                 ? <>Lotes novos deste vendedor já entram na cobrança ({padrao.destino === 'MACEDO' ? 'conta da leiloeira' : 'conta do vendedor'}, taxa {padrao.taxa ?? status.taxaPadrao}%).</>
                 : <>Lotes novos deste vendedor não entram sozinhos (ver Configurações).</>}
             </>} />
-          <Space style={{ marginBottom: 8 }} wrap>
+          <div className="cb-card">
+          <div className="cb-acoes">
             <Button type="primary" icon={<PlusOutlined />} disabled={!sel.length} onClick={() => setIncluir(true)}>
               Incluir / alterar cobrança{sel.length ? ` (${sel.length})` : ''}
             </Button>
@@ -88,7 +89,7 @@ export default function CobrancaLotes() {
             <Popconfirm title={`Tirar ${emCobranca.length} lote(s) da cobrança?`} description="As baixas e o histórico continuam guardados." onConfirm={tirar} disabled={!emCobranca.length}>
               <Button danger icon={<StopOutlined />} disabled={!emCobranca.length}>Tirar da cobrança</Button>
             </Popconfirm>
-          </Space>
+          </div>
           <Table size="small" rowKey="idLote" loading={carregando} dataSource={dados} pagination={{ pageSize: 100, hideOnSinglePage: true }}
             rowSelection={{ selectedRowKeys: sel, onChange: k => setSel(k as number[]) }}
             columns={[
@@ -112,6 +113,7 @@ export default function CobrancaLotes() {
                 <Tooltip title="Histórico do lote"><Button size="small" type="text" icon={<HistoryOutlined />} onClick={() => setHist(l)} /></Tooltip>
               ) },
             ]} />
+          </div>
         </>
       )}
 

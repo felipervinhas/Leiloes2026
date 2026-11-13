@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Table, Typography, Space, Button, DatePicker, Tag, Drawer, Descriptions, Modal, Input, Select, Card, message, Tooltip, Dropdown,
+  Table, Typography, Space, Button, DatePicker, Tag, Drawer, Descriptions, Modal, Input, Select, message, Tooltip, Dropdown,
 } from 'antd';
 import { FilePdfOutlined, LockOutlined, EyeOutlined, MoreOutlined, FileExcelOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -9,9 +9,9 @@ import api from '../../services/api';
 import { useConfig } from '../../context/ConfigContext';
 import { baixarRelatorioFinanceiro } from '../../relatorios/RelatorioFinanceiro';
 import { exportarPlanilha } from '../financeiro/comum';
-import { fmtData, fmtValor, mesAtual, nomeMes, SeletorCliente, SITUACOES_FECHAMENTO } from './comum';
+import { Cabecalho, fmtData, fmtValor, mesAtual, nomeMes, SeletorCliente, SITUACOES_FECHAMENTO } from './comum';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export const textoSaldo = (s: number) =>
   s > 0.009 ? `Leiloeira repassa ${fmtValor(s)}` : s < -0.009 ? `Vendedor paga ${fmtValor(-s)}` : 'Sem saldo';
@@ -24,7 +24,7 @@ const colunasValores = [
   { title: 'Recebido pelo vendedor', dataIndex: 'recebidoVendedor', align: 'right' as const, render: fmtValor },
   { title: 'Taxa retida', dataIndex: 'taxaRetida', align: 'right' as const, render: fmtValor },
   { title: 'Taxa a cobrar', dataIndex: 'taxaACobrar', align: 'right' as const, render: fmtValor },
-  { title: 'Acerto', dataIndex: 'saldo', render: (s: number) => <Text strong type={s < 0 ? 'warning' : undefined}>{textoSaldo(s)}</Text> },
+  { title: 'Acerto', dataIndex: 'saldo', render: (s: number) => <Text strong type={s < 0 ? 'warning' : undefined} style={{ whiteSpace: 'nowrap' }}>{textoSaldo(s)}</Text> },
 ];
 
 export default function CobrancaFechamento() {
@@ -106,17 +106,15 @@ export default function CobrancaFechamento() {
 
   return (
     <>
-      <Title level={4}>Fechamento mensal</Title>
-      <Text type="secondary">Parcelas recebidas no mês × taxa de cada lote. Na conta da leiloeira, a taxa fica retida e o resto é repassado ao vendedor;
-        na conta do vendedor, a taxa é cobrada dele.</Text>
-      <Space style={{ margin: '12px 0', display: 'flex' }}>
-        <DatePicker picker="month" format="MM/YYYY" allowClear={false} value={dayjs(`${comp}-01`)} onChange={d => d && setComp(d.format('YYYY-MM'))} />
-        <Text>Recebimentos até {dados ? fmtData(dados.ate) : '…'}, ainda não fechados</Text>
-      </Space>
+      <Cabecalho titulo="Fechamento mensal"
+        sub="Parcelas recebidas no mês × taxa de cada lote. Na conta da leiloeira, a taxa fica retida e o resto é repassado ao vendedor; na conta do vendedor, a taxa é cobrada dele."
+        extra={<DatePicker picker="month" format="MM/YYYY" allowClear={false} size="large" value={dayjs(`${comp}-01`)} onChange={d => d && setComp(d.format('YYYY-MM'))} />} />
+      <div className="cb-card">
+      <h3 className="cb-card-titulo" style={{ textTransform: 'none' }}>{nomeMes(comp)} <small>recebimentos até {dados ? fmtData(dados.ate) : '…'} ainda não fechados</small></h3>
       <Table size="small" rowKey="idVendedor" loading={carregando} dataSource={dados?.vendedores || []} pagination={false}
-        locale={{ emptyText: 'Nenhum recebimento no mês' }} style={{ marginBottom: 24 }}
+        locale={{ emptyText: 'Nenhum recebimento no mês' }}
         columns={[
-          { title: 'Vendedor', dataIndex: 'vendedor' },
+          { title: 'Vendedor', dataIndex: 'vendedor', width: 230, render: (v: string) => <b>{v}</b> },
           { title: 'Situação', width: 220, render: (_: any, v: any) => (
             <Space direction="vertical" size={0}>
               {v.fechamento ? <span><TagFech s={v.fechamento.situacao} /> {textoSaldo(v.fechamento.saldo)}</span> : null}
@@ -135,16 +133,17 @@ export default function CobrancaFechamento() {
             </Space>
           ) },
         ]} />
+      </div>
 
-      <Card size="small" title="Todos os fechamentos" extra={
+      <div className="cb-card">
+        <h3 className="cb-card-titulo">Todos os fechamentos
         <Space>
           <SeletorCliente placeholder="Vendedor" value={filtroLista.idVendedor} rotulo={filtroLista.vendedor} style={{ width: 240 }}
             onChange={(id, nome) => setFiltroLista((f: any) => ({ ...f, idVendedor: id, vendedor: nome }))} />
           <Select allowClear placeholder="Situação" style={{ width: 130 }} value={filtroLista.situacao}
             onChange={v => setFiltroLista((f: any) => ({ ...f, situacao: v }))}
             options={Object.entries(SITUACOES_FECHAMENTO).map(([value, x]) => ({ value, label: x.label }))} />
-        </Space>
-      }>
+        </Space></h3>
         <Table size="small" rowKey="id" dataSource={lista} pagination={{ pageSize: 20, hideOnSinglePage: true }}
           columns={[
             { title: 'Mês', dataIndex: 'competencia', width: 140, render: nomeMes },
@@ -153,7 +152,7 @@ export default function CobrancaFechamento() {
             { title: 'Situação', dataIndex: 'situacao', width: 100, render: (s: string) => <TagFech s={s} /> },
             { title: '', width: 110, render: (_: any, f: any) => acoesFechamento(f) },
           ]} />
-      </Card>
+      </div>
 
       {previa && <DrawerPrevia comp={comp} {...previa} onClose={() => setPrevia(null)} />}
       {detalhe && <DrawerDetalhe id={detalhe} onClose={() => setDetalhe(null)} />}

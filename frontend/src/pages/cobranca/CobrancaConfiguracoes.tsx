@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
-  Card, Typography, Space, Button, InputNumber, Input, Table, Modal, Form, Switch, Radio, Popconfirm, Tag, Alert, Descriptions, Spin, Collapse, message,
+  Typography, Space, Button, InputNumber, Input, Table, Modal, Form, Switch, Radio, Popconfirm, Tag, Alert, Descriptions, Spin, Collapse, message,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, LinkOutlined, CopyOutlined, WhatsAppOutlined } from '@ant-design/icons';
 import api from '../../services/api';
 import { useBanco } from '../../context/BancoContext';
 import { useConfig } from '../../context/ConfigContext';
-import { DESTINOS, nomeDestino, SeletorCliente } from './comum';
+import { Cabecalho, DESTINOS, nomeDestino, SeletorCliente } from './comum';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 
 export default function CobrancaConfiguracoes() {
   const status = useOutletContext<{ taxaPadrao: number }>();
@@ -38,15 +38,17 @@ export default function CobrancaConfiguracoes() {
 
   return (
     <>
-      <Title level={4}>Configurações</Title>
-      <Card size="small" title="Taxa padrão da empresa" style={{ marginBottom: 16 }}>
+      <Cabecalho titulo="Configurações" sub="Taxa do serviço, regras por vendedor e o link do painel do cliente." />
+      <div className="cb-card">
+        <h3 className="cb-card-titulo">Taxa padrão da empresa</h3>
         <Space>
           <InputNumber min={0} max={100} precision={2} decimalSeparator="," suffix="%" value={taxa} onChange={v => setTaxa(v)} style={{ width: 140 }} />
           <Button type="primary" onClick={salvarTaxa} disabled={taxa == null}>Salvar</Button>
         </Space>
         <div><Text type="secondary">Vale para os lotes sem taxa própria e de vendedores sem taxa própria. Taxa de cada parcela recebida.</Text></div>
-      </Card>
-      <Card size="small" title="Vendedores" extra={<Button icon={<PlusOutlined />} onClick={() => setEditar({})}>Adicionar vendedor</Button>}>
+      </div>
+      <div className="cb-card">
+        <h3 className="cb-card-titulo">Vendedores <Button icon={<PlusOutlined />} onClick={() => setEditar({})}>Adicionar vendedor</Button></h3>
         <Text type="secondary">Taxa e destino próprios do vendedor, se os lotes novos dele já entram na cobrança, e o link do painel do cliente.</Text>
         <Table size="small" rowKey="idCliente" loading={carregando} dataSource={vendedores} pagination={false} style={{ marginTop: 8 }}
           locale={{ emptyText: 'Nenhum vendedor configurado — os lotes usam a taxa padrão' }}
@@ -70,7 +72,7 @@ export default function CobrancaConfiguracoes() {
               </Space>
             ) },
           ]} />
-      </Card>
+      </div>
       {editar && <ModalVendedor v={editar} taxaPadrao={status.taxaPadrao} onClose={ok => { setEditar(null); if (ok) carregar(); }} />}
       {painel && <ModalPainel idCliente={painel.idCliente} onClose={() => { setPainel(null); carregar(); }} />}
     </>
