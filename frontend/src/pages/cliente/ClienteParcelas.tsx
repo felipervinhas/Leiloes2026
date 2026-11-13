@@ -140,8 +140,8 @@ export default function ClienteParcelas({ lado }: { lado: Lado }) {
   if (!todas.length) {
     return (
       <div className="pc-card pc-vazio">
-        <b>{ehVendedor ? 'Nenhuma venda sua na cobrança da leiloeira' : 'Nenhuma compra sua na cobrança da leiloeira'}</b>
-        {ehVendedor ? 'Quando a leiloeira assumir a cobrança de um animal seu, as parcelas aparecem aqui.' : 'As compras cobradas pela leiloeira aparecem aqui.'}
+        <b>{ehVendedor ? 'Nenhuma venda sua na cobrança da leiloeira' : 'Nenhuma compra por aqui ainda'}</b>
+        {ehVendedor ? 'Quando a leiloeira assumir a cobrança de um animal seu, as parcelas aparecem aqui.' : 'Quando você arrematar em um leilão, as parcelas aparecem aqui.'}
       </div>
     );
   }

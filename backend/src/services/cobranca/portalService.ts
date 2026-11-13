@@ -5,9 +5,10 @@ import { CobrancaError, statusPlano } from './acessoService';
 import { ehDaCobranca } from './parcelasService';
 import { garantirTabelasCobranca } from './schema';
 
-// Painel do cliente (/:banco/cliente): o cliente vê as vendas dele — como vendedor (recebimentos)
-// e como comprador (pagamentos) — SÓ dos lotes na intermediação de cobrança (o que a leiloeira
-// cobra; decisão de 2026-11-11 depois de ver o painel com todas as vendas). Cada parcela
+// Painel do cliente (/:banco/cliente). Como vendedor (recebimentos): SÓ os lotes dele na
+// intermediação de cobrança (decisão de 2026-11-11 depois de ver o painel com todas as vendas).
+// Como comprador (pagamentos): TODAS as compras — o que ele compra raramente é de lote em cobrança
+// (é de outro vendedor), e sem isso a aba ficava vazia. Cada parcela
 // diz quem cobra: o escritório (as iniciais, o "2 + 2"), a leiloeira pela intermediação de
 // cobrança, ou o próprio vendedor (fora da cobrança — aí a situação não é controlada aqui).
 
@@ -187,7 +188,7 @@ export async function parcelasDoCliente(idCliente: number, lado: 'VENDEDOR' | 'C
                FROM CONC_BAIXAS B JOIN CONC_LANCAMENTOS LC ON LC.ID = B.ID_LANCAMENTO
                WHERE B.DESFEITA = 'N' AND B.TIPO_ALVO = 'PARCELA' GROUP BY B.ID_PARCELA) KB ON KB.ID_PARCELA = P.ID` : ''}
     WHERE ${lado === 'VENDEDOR' ? 'TRY_CAST(ML.CODVEN AS INT) = @c' : 'P.IDCLI = @c'}
-      AND CL.ID_LOTE IS NOT NULL
+      ${lado === 'VENDEDOR' ? 'AND CL.ID_LOTE IS NOT NULL' : ''}
     ORDER BY P.DATVEN, P.ID`);
 
   const hoje = new Date().toISOString().slice(0, 10);
