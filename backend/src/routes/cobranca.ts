@@ -17,6 +17,7 @@ router.get('/parcelas/:id/baixas', c.baixasDaParcela);
 router.get('/parcelas/:id/historico', c.historicoDaParcela);
 router.put('/parcelas/:id/renegociar', c.renegociar);
 router.post('/baixas/:id/desfazer', c.desfazerBaixa);
+router.post('/baixas-extrato/:id/desfazer', c.desfazerBaixaExtrato);
 router.post('/quitar-anteriores', c.quitarAnteriores);
 
 router.put('/lotes', c.salvarLotes);

@@ -310,8 +310,9 @@ function DrawerParcela({ parcela, onClose }: { parcela: Parcela; onClose: (mudou
   }, [parcela.id]);
   useEffect(() => { carregar(); }, [carregar]);
 
-  const desfazer = async (id: number) => {
-    try { await api.post(`/cobranca/baixas/${id}/desfazer`); message.success('Baixa desfeita'); setMudou(true); carregar(); }
+  const desfazer = async (b: any) => {
+    const rota = b.origemTabela === 'CONC' ? `/cobranca/baixas-extrato/${b.id}/desfazer` : `/cobranca/baixas/${b.id}/desfazer`;
+    try { await api.post(rota); message.success('Baixa desfeita'); setMudou(true); carregar(); }
     catch (e: any) { message.error(e.response?.data?.error || 'Erro ao desfazer'); }
   };
 
@@ -338,9 +339,12 @@ function DrawerParcela({ parcela, onClose }: { parcela: Parcela; onClose: (mudou
               {b.fechamento ? <Tag style={{ marginLeft: 4 }}>fechamento</Tag> : null}</>
           ) },
           { title: 'Caiu na', dataIndex: 'recebidoEm', render: (d: string) => (d === 'MACEDO' ? 'Leiloeira' : 'Vendedor') },
-          { title: '', width: 80, render: (_: any, b: any) => b.origemTabela === 'COBR' && !b.desfeita && !b.fechamento ? (
-            <Popconfirm title="Desfazer esta baixa?" onConfirm={() => desfazer(b.id)}><Button size="small" danger type="link">Desfazer</Button></Popconfirm>
-          ) : b.origemTabela === 'CONC' && !b.desfeita ? <Tooltip title="Baixa do extrato: desfaz-se na Conciliação"><Text type="secondary">—</Text></Tooltip> : null },
+          { title: '', width: 80, render: (_: any, b: any) => !b.desfeita && !b.fechamento ? (
+            <Popconfirm title="Desfazer esta baixa?" onConfirm={() => desfazer(b)} okText="Desfazer" cancelText="Cancelar"
+              description={b.origemTabela === 'CONC' ? <div style={{ maxWidth: 260 }}>Veio do extrato: o lançamento volta a ficar pendente na Conciliação para ser conciliado de novo.</div> : undefined}>
+              <Button size="small" danger type="link">Desfazer</Button>
+            </Popconfirm>
+          ) : null },
         ]} />
       <Title level={5}>Histórico</Title>
       <Historico itens={hist} />

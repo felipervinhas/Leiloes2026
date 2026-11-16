@@ -63,6 +63,12 @@ export const desfazerBaixa = tratar(async (req, res) => {
   res.json({ ok: true });
 });
 
+export const desfazerBaixaExtrato = tratar(async (req, res) => {
+  await parc.desfazerBaixaExtrato(Number(req.params.id), usuarioDe(req));
+  await registrarLog(usuarioDe(req), 'Deletar', `${CONTROLE} - Baixa do extrato`, req.params.id);
+  res.json({ ok: true });
+});
+
 export const renegociar = tratar(async (req, res) => {
   const b = req.body || {};
   await parc.renegociar(Number(req.params.id), { vencimento: txt(b.vencimento), valor: num(b.valor), motivo: txt(b.motivo) }, usuarioDe(req), 'MACEDO');

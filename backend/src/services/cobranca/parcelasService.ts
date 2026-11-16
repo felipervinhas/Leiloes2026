@@ -1,6 +1,7 @@
 import { getPool, sql } from '../../config/database';
 import { ehParcelaDaLeiloeira, existeTabela, SQL_COLUNAS_GRUPOS } from '../conciliacao/devidoService';
 import { atualizarParcela } from '../vendaService';
+import { desfazer as desfazerConciliacao } from '../conciliacao/manualService';
 import { CobrancaError, UsuarioCobranca } from './acessoService';
 import { garantirTabelasCobranca } from './schema';
 
@@ -266,6 +267,26 @@ export async function desfazerBaixa(idBaixa: number, usuario: UsuarioCobranca) {
   await pool.request().input('id', sql.Int, idBaixa).input('uid', sql.Int, usuario.id ?? null)
     .query(`UPDATE COBR_BAIXAS SET DESFEITA = 'S', ID_USUARIO_DESFEZ = @uid, DATA_DESFEITA = GETDATE() WHERE ID = @id`);
   await registrarHistorico({ idParcela: b.ID_PARCELA, acao: 'BAIXA_DESFEITA', antes: `${fmtR(Number(b.VALOR))} em ${fmtD(iso(b.DATA_PAGAMENTO))}`, usuario });
+}
+
+/**
+ * Desfaz, pela tela da Cobrança, uma baixa que veio do extrato (Conciliação). É o mesmo
+ * desfazer da Conciliação: o lançamento do extrato volta a ficar pendente para ser
+ * conciliado de novo. Baixa já num fechamento mensal não volta.
+ */
+export async function desfazerBaixaExtrato(idBaixa: number, usuario: UsuarioCobranca) {
+  await garantirTabelasCobranca();
+  const pool = await getPool();
+  const r = await pool.request().input('id', sql.Int, idBaixa).query(`
+    SELECT B.ID, B.ID_LANCAMENTO, B.ID_PARCELA, B.VALOR, B.DESFEITA, B.TIPO_ALVO, L.DATA,
+           (SELECT COUNT(*) FROM COBR_FECHAMENTO_ITENS I WHERE I.ORIGEM = 'CONC' AND I.ID_BAIXA = B.ID) AS EM_FECHAMENTO
+    FROM CONC_BAIXAS B JOIN CONC_LANCAMENTOS L ON L.ID = B.ID_LANCAMENTO
+    WHERE B.ID = @id`);
+  const b = r.recordset[0];
+  if (!b || b.DESFEITA === 'S' || b.TIPO_ALVO !== 'PARCELA') throw new CobrancaError(404, 'Baixa não encontrada');
+  if (b.EM_FECHAMENTO > 0) throw new CobrancaError(409, 'Esta baixa já está num fechamento mensal. Reabra o fechamento antes.');
+  await desfazerConciliacao(b.ID_LANCAMENTO, usuario, b.ID);
+  await registrarHistorico({ idParcela: b.ID_PARCELA, acao: 'BAIXA_DESFEITA', antes: `${fmtR(Number(b.VALOR))} em ${fmtD(iso(b.DATA))} (extrato)`, usuario });
 }
 
 /** Renegociação (leiloeira ou vendedor): muda vencimento e/ou valor na própria parcela da
