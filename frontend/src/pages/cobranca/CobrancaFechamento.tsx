@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Table, Typography, Space, Button, DatePicker, Tag, Drawer, Descriptions, Modal, Input, Select, message, Tooltip, Dropdown,
+  Table, Typography, Space, Button, DatePicker, Tag, Drawer, Descriptions, Modal, Input, Select, message, Tooltip, Dropdown, Checkbox,
 } from 'antd';
-import { FilePdfOutlined, LockOutlined, EyeOutlined, MoreOutlined, FileExcelOutlined } from '@ant-design/icons';
+import { FilePdfOutlined, LockOutlined, EyeOutlined, EyeInvisibleOutlined, MoreOutlined, FileExcelOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { AxiosInstance } from 'axios';
 import api from '../../services/api';
@@ -17,6 +17,7 @@ export const textoSaldo = (s: number) =>
   s > 0.009 ? `Leiloeira repassa ${fmtValor(s)}` : s < -0.009 ? `Vendedor paga ${fmtValor(-s)}` : 'Sem saldo';
 
 const TagFech = ({ s }: { s: string }) => <Tag color={SITUACOES_FECHAMENTO[s]?.cor}>{SITUACOES_FECHAMENTO[s]?.label || s}</Tag>;
+const TagInterno = () => <Tooltip title="Fechamento só interno: não aparece no painel do vendedor"><Tag icon={<EyeInvisibleOutlined />}>só interno</Tag></Tooltip>;
 
 const colunasValores = [
   { title: 'Parcelas', dataIndex: 'qtdParcelas', align: 'right' as const, width: 80 },
@@ -53,6 +54,7 @@ export default function CobrancaFechamento() {
 
   const fechar = (v: any) => {
     let obs = '';
+    let oculto = false;
     Modal.confirm({
       title: `Fechar ${nomeMes(comp)} — ${v.vendedor}`,
       content: (
@@ -60,12 +62,15 @@ export default function CobrancaFechamento() {
           <p>{v.pendente.qtdParcelas} parcela(s) recebida(s) até {fmtData(dados.ate)}. {textoSaldo(v.pendente.saldo)}.</p>
           <p style={{ color: '#888' }}>Depois de fechado, o mês não muda: recebimentos lançados depois entram no mês seguinte.</p>
           <Input.TextArea placeholder="Observação (opcional)" rows={2} onChange={e => { obs = e.target.value; }} />
+          <Checkbox style={{ marginTop: 10 }} onChange={e => { oculto = e.target.checked; }}>
+            Só interno: fechar as contas sem mostrar no painel do vendedor (ex.: mês da entrada)
+          </Checkbox>
         </>
       ),
       okText: 'Fechar mês',
       onOk: async () => {
         try {
-          await api.post('/cobranca/fechamentos', { competencia: comp, idVendedor: v.idVendedor, observacao: obs || undefined });
+          await api.post('/cobranca/fechamentos', { competencia: comp, idVendedor: v.idVendedor, observacao: obs || undefined, ocultoPainel: oculto });
           message.success('Mês fechado'); recarregar();
         } catch (e: any) { message.error(e.response?.data?.error || 'Erro ao fechar'); throw e; }
       },
@@ -75,6 +80,13 @@ export default function CobrancaFechamento() {
   const mudar = async (id: number, situacao: string) => {
     try { await api.put(`/cobranca/fechamentos/${id}/situacao`, { situacao }); recarregar(); }
     catch (e: any) { message.error(e.response?.data?.error || 'Erro'); }
+  };
+  const painel = async (f: any) => {
+    try {
+      await api.put(`/cobranca/fechamentos/${f.id}/painel`, { oculto: !f.ocultoPainel });
+      message.success(f.ocultoPainel ? 'O fechamento volta a aparecer no painel do vendedor' : 'Fechamento escondido do painel do vendedor');
+      recarregar();
+    } catch (e: any) { message.error(e.response?.data?.error || 'Erro'); }
   };
   const reabrir = (id: number) => Modal.confirm({
     title: 'Reabrir este fechamento?', content: 'As baixas voltam a ficar pendentes e o mês pode ser fechado de novo.',
@@ -95,9 +107,11 @@ export default function CobrancaFechamento() {
           { key: 'PAGO', label: 'Marcar como pago', disabled: f.situacao === 'PAGO' },
           { key: 'VOLTAR', label: 'Voltar para fechado', disabled: f.situacao === 'FECHADO' },
           { type: 'divider' as const },
+          { key: 'PAINEL', label: f.ocultoPainel ? 'Mostrar no painel do vendedor' : 'Esconder do painel do vendedor (só interno)' },
+          { type: 'divider' as const },
           { key: 'REABRIR', label: 'Reabrir (desfazer fechamento)', danger: true, disabled: f.situacao !== 'FECHADO' },
         ],
-        onClick: ({ key }) => key === 'REABRIR' ? reabrir(f.id) : mudar(f.id, key === 'VOLTAR' ? 'FECHADO' : key),
+        onClick: ({ key }) => key === 'REABRIR' ? reabrir(f.id) : key === 'PAINEL' ? painel(f) : mudar(f.id, key === 'VOLTAR' ? 'FECHADO' : key),
       }}>
         <Button size="small" type="text" icon={<MoreOutlined />} />
       </Dropdown>
@@ -117,7 +131,7 @@ export default function CobrancaFechamento() {
           { title: 'Vendedor', dataIndex: 'vendedor', width: 230, render: (v: string) => <b>{v}</b> },
           { title: 'Situação', width: 220, render: (_: any, v: any) => (
             <Space direction="vertical" size={0}>
-              {v.fechamento ? <span><TagFech s={v.fechamento.situacao} /> {textoSaldo(v.fechamento.saldo)}</span> : null}
+              {v.fechamento ? <span><TagFech s={v.fechamento.situacao} />{v.fechamento.ocultoPainel && <TagInterno />} {textoSaldo(v.fechamento.saldo)}</span> : null}
               {v.pendente ? <Text type="warning">{v.pendente.qtdParcelas} recebimento(s) pendente(s)</Text> : null}
             </Space>
           ) },
@@ -149,7 +163,7 @@ export default function CobrancaFechamento() {
             { title: 'Mês', dataIndex: 'competencia', width: 140, render: nomeMes },
             { title: 'Vendedor', dataIndex: 'vendedor' },
             ...colunasValores,
-            { title: 'Situação', dataIndex: 'situacao', width: 100, render: (s: string) => <TagFech s={s} /> },
+            { title: 'Situação', dataIndex: 'situacao', width: 170, render: (s: string, f: any) => <><TagFech s={s} />{f.ocultoPainel && <TagInterno />}</> },
             { title: '', width: 110, render: (_: any, f: any) => acoesFechamento(f) },
           ]} />
       </div>
@@ -210,6 +224,7 @@ function DrawerDetalhe({ id, onClose }: { id: number; onClose: () => void }) {
       {f && <>
         <Space style={{ marginBottom: 8 }}>
           <TagFech s={f.situacao} />
+          {f.ocultoPainel && <TagInterno />}
           <Text type="secondary">fechado em {new Date(f.dataFechamento).toLocaleDateString('pt-BR')}{f.usuario ? ` por ${f.usuario}` : ''}</Text>
           {f.observacao && <Text type="secondary">· {f.observacao}</Text>}
         </Space>

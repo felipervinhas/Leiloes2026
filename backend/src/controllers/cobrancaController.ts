@@ -130,7 +130,7 @@ export const previa = tratar(async (req, res) => {
 
 export const fechar = tratar(async (req, res) => {
   const b = req.body || {};
-  const r = await fech.fechar(String(b.competencia), Number(b.idVendedor), txt(b.observacao), usuarioDe(req));
+  const r = await fech.fechar(String(b.competencia), Number(b.idVendedor), txt(b.observacao), usuarioDe(req), b.ocultoPainel === true);
   await registrarLog(usuarioDe(req), 'Inserir', `${CONTROLE} - Fechamento`, r.id);
   res.json(r);
 });
@@ -151,6 +151,12 @@ export const reabrirFechamento = tratar(async (req, res) => {
 export const situacaoFechamento = tratar(async (req, res) => {
   await fech.mudarSituacao(Number(req.params.id), String(req.body?.situacao));
   await registrarLog(usuarioDe(req), 'Alterar', `${CONTROLE} - Fechamento`, req.params.id);
+  res.json({ ok: true });
+});
+
+export const painelFechamento = tratar(async (req, res) => {
+  await fech.mudarOcultoPainel(Number(req.params.id), req.body?.oculto === true);
+  await registrarLog(usuarioDe(req), 'Alterar', `${CONTROLE} - Fechamento (painel)`, req.params.id);
   res.json({ ok: true });
 });
 

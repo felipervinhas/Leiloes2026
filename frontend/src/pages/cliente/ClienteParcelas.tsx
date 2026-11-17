@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Drawer, Skeleton, message } from 'antd';
+import { DatePicker, Drawer, Modal, Skeleton, message } from 'antd';
+import dayjs, { Dayjs } from 'dayjs';
 import portalApi from '../../services/portalApi';
 import { useConfig } from '../../context/ConfigContext';
 import { baixarRelatorioFinanceiro } from '../../relatorios/RelatorioFinanceiro';
@@ -45,12 +46,13 @@ export default function ClienteParcelas({ lado }: { lado: Lado }) {
   const config = useConfig();
   const ehVendedor = lado === 'VENDEDOR';
   const [dados, setDados] = useState<ParcelaPortal[] | null>(null);
-  const [filtro, setFiltro] = useState<'ANDAMENTO' | 'TODAS'>('ANDAMENTO');
+  const [filtro, setFiltro] = useState<'ANDAMENTO' | 'QUITADAS' | 'TODAS'>('ANDAMENTO');
   const [busca, setBusca] = useState('');
   const [aberta, setAberta] = useState<number | null>(null);
   const [limite, setLimite] = useState(12);
   const [hist, setHist] = useState<ParcelaPortal | null>(null);
   const [reneg, setReneg] = useState<ParcelaPortal | null>(null);
+  const [modalPdf, setModalPdf] = useState(false);
 
   const carregar = useCallback(async () => {
     try { setDados((await portalApi.get(ehVendedor ? '/recebimentos' : '/pagamentos')).data); }
@@ -63,6 +65,11 @@ export default function ClienteParcelas({ lado }: { lado: Lado }) {
   const futuras = todas.filter(p => p.vencimento && p.vencimento >= hoje && p.saldo > 0.009);
   const aVencer = futuras.reduce((a, p) => a + p.saldo, 0);
   const proxima = futuras[0] || null;
+  // vendedor: venda líquida = recebido + a receber (à vista e parcelas do ato já contam como recebidas)
+  const vendaLiquida = todas.reduce((a, p) => a + p.valor, 0);
+  const recebidoTotal = todas.reduce((a, p) => a + p.pago, 0);
+  const aReceber = todas.reduce((a, p) => a + p.saldo, 0);
+  const qtdVendas = new Set(todas.map(p => p.idMovLote)).size;
   const cobranca = todas.filter(p => p.quemCobra === 'COBRANCA');
   const recebidoCobranca = cobranca.reduce((a, p) => a + p.pago, 0);
   const atrasadas = cobranca.filter(p => p.situacao === 'VENCIDA' || (p.situacao === 'PARCIAL' && !!p.vencimento && p.vencimento < hoje));
@@ -96,16 +103,21 @@ export default function ClienteParcelas({ lado }: { lado: Lado }) {
       if (estado(p, hoje) === 'atraso') v.atrasos++;
       mapa.set(p.idMovLote, v);
     }
-    return Array.from(mapa.values()).sort((a, b) =>
+    // venda de valor zero (defesa lançada sem a marcação) não é venda: não aparece
+    return Array.from(mapa.values()).filter(v => v.total > 0.009).sort((a, b) =>
       (b.atrasos ? 1 : 0) - (a.atrasos ? 1 : 0)
       || (a.proxima ? 0 : 1) - (b.proxima ? 0 : 1)
       || String(a.proxima?.vencimento || '').localeCompare(String(b.proxima?.vencimento || ''))
       || String(b.dataLeilao).localeCompare(String(a.dataLeilao)));
   }, [todas, ehVendedor, hoje]);
 
+  // quitada = nenhuma parcela com saldo (inclui à vista: a parcela do escritório já conta como paga para o vendedor)
+  const quitada = (v: Venda) => v.parcelas.every(p => p.saldo <= 0.009);
+  const qtdQuitadas = vendas.filter(quitada).length;
   const termo = busca.trim().toLowerCase();
   const visiveis = vendas.filter(v => {
-    if (filtro === 'ANDAMENTO' && !v.proxima && !v.atrasos) return false;
+    if (filtro === 'ANDAMENTO' && quitada(v)) return false;
+    if (filtro === 'QUITADAS' && !quitada(v)) return false;
     if (termo && ![v.animal, v.pessoa, v.leilao, v.lote].some(x => String(x || '').toLowerCase().includes(termo))) return false;
     return true;
   });
@@ -116,22 +128,42 @@ export default function ClienteParcelas({ lado }: { lado: Lado }) {
     [ehVendedor ? 'Recebido' : 'Pago']: p.pago, Situação: ROTULO[estado(p, hoje)],
   })), ehVendedor ? 'meus-recebimentos' : 'meus-pagamentos', ehVendedor ? 'Recebimentos' : 'Pagamentos');
 
-  const pdf = async () => {
+  // PDF por período de vencimento, com o que está em aberto, o que já entrou ou tudo
+  const pdf = async (o: OpcoesRelatorio) => {
+    const recebidoTxt = ehVendedor ? 'Recebido' : 'Pago';
+    const abertoTxt = ehVendedor ? 'A receber' : 'A pagar';
+    const lista = todas
+      .filter(p => p.vencimento && (!o.de || p.vencimento >= o.de) && (!o.ate || p.vencimento <= o.ate))
+      .filter(p => o.mostrar === 'TODAS' || (o.mostrar === 'ABERTAS' ? p.saldo > 0.009 : p.pago > 0.009));
+    if (!lista.length) { message.info('Nenhuma parcela nesse período'); return false; }
+    const soma = (k: 'valor' | 'pago' | 'saldo') => lista.reduce((a, p) => a + p[k], 0);
+    const periodo = o.de || o.ate ? `Vencimento ${o.de ? `de ${fmtData(o.de)}` : ''}${o.ate ? ` até ${fmtData(o.ate)}` : ''}` : 'Todos os vencimentos';
+    const oque = o.mostrar === 'ABERTAS' ? `parcelas ${ehVendedor ? 'a receber' : 'a pagar'}` : o.mostrar === 'PAGAS' ? `parcelas ${ehVendedor ? 'recebidas' : 'pagas'}` : 'todas as parcelas';
+    const todasCols = o.mostrar === 'TODAS';
     try {
       await baixarRelatorioFinanceiro({
-        titulo: ehVendedor ? 'Meus recebimentos' : 'Meus pagamentos', subtitulo: 'Parcelas a vencer',
+        titulo: ehVendedor ? 'Meus recebimentos' : 'Meus pagamentos', subtitulo: `${periodo} · ${oque}`,
         empresa: config.empresa, logoBase64: config.logoBase64,
         resumo: [
-          { label: ehVendedor ? 'A receber' : 'A pagar', valor: fmtValor(aVencer), detalhe: `${futuras.length} parcelas` },
-          { label: 'Próximo vencimento', valor: proxima ? fmtData(proxima.vencimento) : '—', detalhe: proxima ? fmtValor(proxima.saldo) : undefined },
+          { label: 'Parcelas', valor: String(lista.length), detalhe: `${new Set(lista.map(p => p.idMovLote)).size} venda(s)` },
+          { label: 'Valor das parcelas', valor: fmtValor(soma('valor')) },
+          { label: recebidoTxt, valor: fmtValor(soma('pago')) },
+          { label: abertoTxt, valor: fmtValor(soma('saldo')) },
         ],
-        colunas: [{ titulo: 'Vencimento', flex: 0.8 }, { titulo: 'Leilão', flex: 1.6 }, { titulo: 'Lote', flex: 0.4 }, { titulo: 'Animal', flex: 1.6 },
-          { titulo: ehVendedor ? 'Comprador' : 'Vendedor', flex: 1.8 }, { titulo: 'Parcela', flex: 0.6 }, { titulo: 'Valor', direita: true }],
-        linhas: futuras.map(p => ({ celulas: [fmtData(p.vencimento), p.leilao || '', p.lote || '', p.animal || '',
-          (ehVendedor ? p.comprador : p.vendedor) || '', p.ordxxx, fmtValor(p.saldo)] })),
-        total: ['', 'Total', '', '', '', '', fmtValor(aVencer)],
-      }, ehVendedor ? 'meus-recebimentos' : 'meus-pagamentos');
-    } catch { message.error('Não foi possível gerar o PDF'); }
+        colunas: [{ titulo: 'Vencimento', flex: 0.8 }, { titulo: 'Leilão', flex: 1.5 }, { titulo: 'Lote', flex: 0.4 }, { titulo: 'Animal', flex: 1.6 },
+          { titulo: ehVendedor ? 'Comprador' : 'Vendedor', flex: 1.8 }, { titulo: 'Parcela', flex: 0.6 },
+          ...(todasCols ? [{ titulo: 'Situação', flex: 0.9 }, { titulo: 'Valor', direita: true }, { titulo: recebidoTxt, direita: true }]
+            : [{ titulo: o.mostrar === 'PAGAS' ? recebidoTxt : 'Valor', direita: true }])],
+        linhas: lista.map(p => ({ celulas: [fmtData(p.vencimento), p.leilao || '', p.lote || '', p.animal || '',
+          (ehVendedor ? p.comprador : p.vendedor) || '', p.ordxxx,
+          ...(todasCols ? [ROTULO[estado(p, hoje)], fmtValor(p.valor), fmtValor(p.pago)]
+            : [fmtValor(o.mostrar === 'PAGAS' ? p.pago : p.saldo)])] })),
+        total: ['', 'Total', '', '', '', '', ...(todasCols ? ['', fmtValor(soma('valor')), fmtValor(soma('pago'))]
+          : [fmtValor(o.mostrar === 'PAGAS' ? soma('pago') : soma('saldo'))])],
+        rodapeNota: 'Intermediação de cobrança',
+      }, `${ehVendedor ? 'meus-recebimentos' : 'meus-pagamentos'}${o.de ? `-${o.de}` : ''}${o.ate ? `-a-${o.ate}` : ''}`);
+      return true;
+    } catch { message.error('Não foi possível gerar o PDF'); return false; }
   };
 
   if (!dados) {
@@ -148,6 +180,30 @@ export default function ClienteParcelas({ lado }: { lado: Lado }) {
 
   return (
     <>
+      {ehVendedor ? (
+        <section className="pc-destaques">
+          <div className="pc-card pc-destaque-principal">
+            <div className="pc-rotulo">Venda líquida</div>
+            <div className="pc-valor">{fmtValor(vendaLiquida)}</div>
+            <div className="pc-sub"><b>{qtdVendas}</b> venda{qtdVendas === 1 ? '' : 's'} na cobrança da leiloeira</div>
+          </div>
+          <div className="pc-card">
+            <div className="pc-rotulo">Recebido</div>
+            <div className="pc-valor medio">{fmtValor(recebidoTotal)}</div>
+            <div className="pc-sub">inclui à vista e parcelas do ato</div>
+          </div>
+          <div className="pc-card">
+            <div className="pc-rotulo">A receber</div>
+            <div className="pc-valor medio">{fmtValor(aReceber)}</div>
+            <div className="pc-sub">
+              {ultima ? <>até <b>{MES[Number(ultima.slice(5, 7)) - 1]}/{ultima.slice(0, 4)}</b>{' '}</> : null}
+              {atrasadas.length
+                ? <span className="pc-pilula vermelha">{atrasadas.length} em atraso · {fmtValor(valorAtraso)}</span>
+                : <span className="pc-pilula verde">em dia</span>}
+            </div>
+          </div>
+        </section>
+      ) : (
       <section className="pc-destaques">
         <div className="pc-card pc-destaque-principal">
           <div className="pc-rotulo">{ehVendedor ? 'Ainda vai receber' : 'Ainda vai pagar'}</div>
@@ -173,6 +229,7 @@ export default function ClienteParcelas({ lado }: { lado: Lado }) {
           </> : <div className="pc-sub">{ehVendedor ? 'Nenhum lote seu está na cobrança da leiloeira.' : 'Nenhuma compra sua está na cobrança da leiloeira.'}</div>}
         </div>
       </section>
+      )}
 
       {futuras.length > 0 && (
         <section className="pc-duas">
@@ -210,14 +267,17 @@ export default function ClienteParcelas({ lado }: { lado: Lado }) {
         {ehVendedor ? 'Suas vendas' : 'Suas compras'}
         <span>
           <button className="pc-acao" onClick={exportar}>Planilha</button>
-          <button className="pc-acao" onClick={pdf}>PDF</button>
+          <button className="pc-acao" onClick={() => setModalPdf(true)}>PDF</button>
         </span>
       </h3>
       <div className="pc-filtros">
         <input className="pc-busca" placeholder={`Buscar animal, ${ehVendedor ? 'comprador' : 'vendedor'} ou leilão`} value={busca}
           onChange={e => { setBusca(e.target.value); setLimite(12); }} />
-        {([['ANDAMENTO', 'Em andamento'], ['TODAS', 'Todas']] as const).map(([k, l]) => (
-          <button key={k} className={`pc-chip${filtro === k ? ' ativo' : ''}`} onClick={() => { setFiltro(k); setLimite(12); }}>{l}</button>
+        {([['ANDAMENTO', 'Em andamento', vendas.length - qtdQuitadas], ['QUITADAS', ehVendedor ? 'Quitados e à vista' : 'Quitadas', qtdQuitadas],
+          ['TODAS', 'Todas', vendas.length]] as const).map(([k, l, n]) => (
+          <button key={k} className={`pc-chip${filtro === k ? ' ativo' : ''}`} onClick={() => { setFiltro(k); setLimite(12); }}>
+            {k === 'QUITADAS' ? '✓ ' : ''}{l} <span style={{ opacity: 0.6 }}>{n}</span>
+          </button>
         ))}
       </div>
       <div className="pc-legenda">
@@ -252,7 +312,7 @@ export default function ClienteParcelas({ lado }: { lado: Lado }) {
                 <div className="pc-venda-rodape">
                   <div>{v.proxima
                     ? <>Próxima <b>{fmtData(v.proxima.vencimento)}</b> · {fmtValor(v.proxima.saldo)}</>
-                    : <>Sem parcelas a vencer</>}
+                    : quitada(v) ? <span className="pc-pilula verde">Quitado</span> : <>Sem parcelas a vencer</>}
                     {v.naCobranca && pagas > 0 ? <> · {pagas} paga{pagas > 1 ? 's' : ''}</> : null}
                   </div>
                   <div style={{ textAlign: 'right' }}>{v.falta > 0 ? <>faltam<br /><b>{fmtValor(v.falta)}</b></> : <>total<br /><b>{fmtValor(v.total)}</b></>}</div>
@@ -297,10 +357,55 @@ export default function ClienteParcelas({ lado }: { lado: Lado }) {
       {reneg && <ModalRenegociar http={portalApi} rota="/parcelas"
         parcela={{ id: reneg.id, ordxxx: reneg.ordxxx, lote: reneg.lote || '', comprador: reneg.comprador || '', valor: reneg.valor, vencimento: reneg.vencimento || '' }}
         onClose={ok => { setReneg(null); if (ok) carregar(); }} />}
+      {modalPdf && <ModalRelatorio ehVendedor={ehVendedor} onGerar={pdf} onClose={() => setModalPdf(false)} />}
       <Drawer open={!!hist} width={460} title={hist ? `Parcela ${hist.ordxxx} · lote ${hist.lote}` : ''} onClose={() => setHist(null)} destroyOnHidden>
         {hist && <HistoricoParcela id={hist.id} />}
       </Drawer>
     </>
+  );
+}
+
+interface OpcoesRelatorio { de: string | null; ate: string | null; mostrar: 'ABERTAS' | 'PAGAS' | 'TODAS' }
+
+const ATALHOS: { k: string; nome: string; faixa: () => [Dayjs | null, Dayjs | null] }[] = [
+  { k: 'mes', nome: 'Este mês', faixa: () => [dayjs().startOf('month'), dayjs().endOf('month')] },
+  { k: 'prox', nome: 'Próximo mês', faixa: () => [dayjs().add(1, 'month').startOf('month'), dayjs().add(1, 'month').endOf('month')] },
+  { k: '12m', nome: 'Próximos 12 meses', faixa: () => [dayjs().startOf('day'), dayjs().add(12, 'month').endOf('month')] },
+  { k: 'ano', nome: 'Este ano', faixa: () => [dayjs().startOf('year'), dayjs().endOf('year')] },
+  { k: 'tudo', nome: 'Tudo', faixa: () => [null, null] },
+];
+
+/** Escolha do período (vencimento) e de quais parcelas entram no PDF. */
+function ModalRelatorio({ ehVendedor, onGerar, onClose }: {
+  ehVendedor: boolean; onGerar: (o: OpcoesRelatorio) => Promise<boolean>; onClose: () => void;
+}) {
+  const [faixa, setFaixa] = useState<[Dayjs | null, Dayjs | null]>(ATALHOS[2].faixa());
+  const [atalho, setAtalho] = useState('12m');
+  const [mostrar, setMostrar] = useState<OpcoesRelatorio['mostrar']>('ABERTAS');
+  const [gerando, setGerando] = useState(false);
+  const gerar = async () => {
+    setGerando(true);
+    const ok = await onGerar({ de: faixa[0]?.format('YYYY-MM-DD') || null, ate: faixa[1]?.format('YYYY-MM-DD') || null, mostrar });
+    setGerando(false);
+    if (ok) onClose();
+  };
+  return (
+    <Modal open title="Relatório em PDF" onCancel={onClose} onOk={gerar} okText="Gerar PDF" cancelText="Cancelar" confirmLoading={gerando}>
+      <div className="pc-rotulo" style={{ marginTop: 8 }}>Vencimento</div>
+      <div className="pc-filtros" style={{ marginBottom: 8 }}>
+        {ATALHOS.map(a => (
+          <button key={a.k} className={`pc-chip${atalho === a.k ? ' ativo' : ''}`} onClick={() => { setAtalho(a.k); setFaixa(a.faixa()); }}>{a.nome}</button>
+        ))}
+      </div>
+      <DatePicker.RangePicker format="DD/MM/YYYY" value={faixa} allowEmpty={[true, true]} style={{ width: '100%' }}
+        placeholder={['Desde o início', 'Até o fim']} onChange={v => { setAtalho(''); setFaixa([v?.[0] || null, v?.[1] || null]); }} />
+      <div className="pc-rotulo" style={{ marginTop: 16 }}>Parcelas</div>
+      <div className="pc-filtros">
+        {([['ABERTAS', ehVendedor ? 'A receber' : 'A pagar'], ['PAGAS', ehVendedor ? 'Já recebidas' : 'Já pagas'], ['TODAS', 'Todas']] as const).map(([k, l]) => (
+          <button key={k} className={`pc-chip${mostrar === k ? ' ativo' : ''}`} onClick={() => setMostrar(k)}>{l}</button>
+        ))}
+      </div>
+    </Modal>
   );
 }
 

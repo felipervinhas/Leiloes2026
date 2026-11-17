@@ -100,8 +100,16 @@ const mapFechamento = (x: any) => ({
   qtdParcelas: x.QTD_PARCELAS, recebidoMacedo: Number(x.RECEBIDO_MACEDO), recebidoVendedor: Number(x.RECEBIDO_VENDEDOR),
   taxaRetida: Number(x.TAXA_RETIDA), taxaACobrar: Number(x.TAXA_A_COBRAR), saldo: Number(x.SALDO),
   situacao: x.SITUACAO, observacao: x.OBSERVACAO, dataFechamento: x.DATA_FECHAMENTO, dataCobranca: x.DATA_COBRANCA,
-  dataPagamento: x.DATA_PAGAMENTO, usuario: x.NOME_USUARIO,
+  dataPagamento: x.DATA_PAGAMENTO, usuario: x.NOME_USUARIO, ocultoPainel: x.OCULTO_PAINEL === 'S',
 });
+
+/** Mostra ou esconde o fechamento no painel do vendedor (o fechamento continua valendo nas contas). */
+export async function mudarOcultoPainel(id: number, oculto: boolean) {
+  await buscar(id);
+  const pool = await getPool();
+  await pool.request().input('id', sql.Int, id).input('o', sql.Char(1), oculto ? 'S' : 'N')
+    .query(`UPDATE COBR_FECHAMENTOS SET OCULTO_PAINEL = @o WHERE ID = @id`);
+}
 
 /** Tela do mês: por vendedor, o que já foi fechado na competência e o que ainda está pendente até o fim dela. */
 export async function competencia(comp: string, idVendedor?: number) {
@@ -139,7 +147,7 @@ const semParcelaInteira = (i: ItemFechamento) => ({
   ordxxx: i.parcela?.ordxxx, vencimento: i.parcela?.vencimento,
 });
 
-export async function fechar(comp: string, idVendedor: number, observacao: string | undefined, usuario: UsuarioCobranca) {
+export async function fechar(comp: string, idVendedor: number, observacao: string | undefined, usuario: UsuarioCobranca, ocultoPainel = false) {
   const itens = await baixasPendentes(fimDoMes(comp), idVendedor);
   if (!itens.length) throw new CobrancaError(400, 'Nenhum recebimento pendente para este vendedor até o fim do mês');
   const t = totalizar(itens);
@@ -156,8 +164,9 @@ export async function fechar(comp: string, idVendedor: number, observacao: strin
       .input('tr', sql.Decimal(18, 2), t.taxaRetida).input('tc', sql.Decimal(18, 2), t.taxaACobrar).input('s', sql.Decimal(18, 2), t.saldo)
       .input('obs', sql.VarChar(255), observacao?.slice(0, 255) || null)
       .input('uid', sql.Int, usuario.id ?? null).input('unome', sql.VarChar(100), usuario.nome ?? null)
-      .query(`INSERT INTO COBR_FECHAMENTOS (ID_VENDEDOR, COMPETENCIA, QTD_PARCELAS, RECEBIDO_MACEDO, RECEBIDO_VENDEDOR, TAXA_RETIDA, TAXA_A_COBRAR, SALDO, OBSERVACAO, ID_USUARIO, NOME_USUARIO)
-              OUTPUT INSERTED.ID VALUES (@v, @c, @q, @rm, @rv, @tr, @tc, @s, @obs, @uid, @unome)`);
+      .input('oc', sql.Char(1), ocultoPainel ? 'S' : 'N')
+      .query(`INSERT INTO COBR_FECHAMENTOS (ID_VENDEDOR, COMPETENCIA, QTD_PARCELAS, RECEBIDO_MACEDO, RECEBIDO_VENDEDOR, TAXA_RETIDA, TAXA_A_COBRAR, SALDO, OBSERVACAO, ID_USUARIO, NOME_USUARIO, OCULTO_PAINEL)
+              OUTPUT INSERTED.ID VALUES (@v, @c, @q, @rm, @rv, @tr, @tc, @s, @obs, @uid, @unome, @oc)`);
     const idF = r.recordset[0].ID;
     for (const i of itens) {
       await new sql.Request(tx)
@@ -208,11 +217,12 @@ export async function mudarSituacao(id: number, situacao: string) {
     WHERE ID = @id`);
 }
 
-export async function listar(f: { idVendedor?: number; situacao?: string; de?: string; ate?: string }) {
+export async function listar(f: { idVendedor?: number; situacao?: string; de?: string; ate?: string; soDoPainel?: boolean }) {
   await garantirTabelasCobranca();
   const pool = await getPool();
   const req = pool.request();
   const conds: string[] = [];
+  if (f.soDoPainel) conds.push(`F.OCULTO_PAINEL = 'N'`);
   if (f.idVendedor) { req.input('v', sql.Int, f.idVendedor); conds.push('F.ID_VENDEDOR = @v'); }
   if (f.situacao) { req.input('s', sql.VarChar(10), f.situacao); conds.push('F.SITUACAO = @s'); }
   if (f.de) { req.input('de', sql.Char(7), f.de); conds.push('F.COMPETENCIA >= @de'); }

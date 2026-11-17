@@ -188,7 +188,7 @@ export async function parcelasDoCliente(idCliente: number, lado: 'VENDEDOR' | 'C
                FROM CONC_BAIXAS B JOIN CONC_LANCAMENTOS LC ON LC.ID = B.ID_LANCAMENTO
                WHERE B.DESFEITA = 'N' AND B.TIPO_ALVO = 'PARCELA' GROUP BY B.ID_PARCELA) KB ON KB.ID_PARCELA = P.ID` : ''}
     WHERE ${lado === 'VENDEDOR' ? 'TRY_CAST(ML.CODVEN AS INT) = @c' : 'P.IDCLI = @c'}
-      ${lado === 'VENDEDOR' ? 'AND CL.ID_LOTE IS NOT NULL' : ''}
+      ${lado === 'VENDEDOR' ? `AND CL.ID_LOTE IS NOT NULL AND ISNULL(M.DEFESA, 'S') <> 'N'` /* defesa = não vendido */ : ''}
     ORDER BY P.DATVEN, P.ID`);
 
   const hoje = new Date().toISOString().slice(0, 10);
@@ -197,7 +197,10 @@ export async function parcelasDoCliente(idCliente: number, lado: 'VENDEDOR' | 'C
     const doEscritorio = !emCobranca && ehParcelaDaLeiloeira({ ...x, PAGO_PARA: null });
     const quemCobra: QuemCobra = emCobranca ? 'COBRANCA' : doEscritorio ? 'ESCRITORIO' : 'VENDEDOR';
     const valor = r2(Number(x.VLRPAR) || 0);
-    const pago = r2(Number(x.PAGO_COBR) + Number(x.PAGO_CONC));
+    // Para o vendedor, a parte do escritório (à vista e parcelas do ato, o "2 + 2") conta como
+    // recebida: é acertada com ele pelo escritório, fora da cobrança e sem taxa (pedido da
+    // Macedo em 2026-11-17, para o painel bater com o relatório de venda líquida/recebido/a receber).
+    const pago = lado === 'VENDEDOR' && doEscritorio ? valor : r2(Number(x.PAGO_COBR) + Number(x.PAGO_CONC));
     const saldo = r2(Math.max(0, valor - pago));
     const vencimento = iso(x.DATVEN);
     let situacao: ParcelaPortal['situacao'] = null;
@@ -237,8 +240,9 @@ export async function exigirParcelaDoCliente(idParcela: number, idCliente: numbe
 /** Fechamento do vendedor logado (nunca o de outro). */
 export async function exigirFechamentoDoCliente(idFechamento: number, idCliente: number) {
   const pool = await getPool();
-  const r = await pool.request().input('f', sql.Int, idFechamento).query(`SELECT ID_VENDEDOR FROM COBR_FECHAMENTOS WHERE ID = @f`);
-  if (r.recordset[0]?.ID_VENDEDOR !== idCliente) throw new CobrancaError(404, 'Fechamento não encontrado');
+  const r = await pool.request().input('f', sql.Int, idFechamento).query(`SELECT ID_VENDEDOR, OCULTO_PAINEL FROM COBR_FECHAMENTOS WHERE ID = @f`);
+  const f = r.recordset[0];
+  if (f?.ID_VENDEDOR !== idCliente || f.OCULTO_PAINEL === 'S') throw new CobrancaError(404, 'Fechamento não encontrado');
 }
 
 // ─── administração do acesso (área Cobrança) ─────────────────────────────────

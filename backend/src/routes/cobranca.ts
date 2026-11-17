@@ -42,5 +42,6 @@ router.post('/fechamentos', c.fechar);
 router.get('/fechamentos/:id', c.detalheFechamento);
 router.post('/fechamentos/:id/reabrir', c.reabrirFechamento);
 router.put('/fechamentos/:id/situacao', c.situacaoFechamento);
+router.put('/fechamentos/:id/painel', c.painelFechamento);
 
 export default router;

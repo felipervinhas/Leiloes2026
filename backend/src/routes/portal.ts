@@ -94,7 +94,7 @@ router.put('/parcelas/:id/renegociar', tratar(async (req, res) => {
 }));
 
 router.get('/fechamentos', tratar(async (req, res) => {
-  res.json(await fech.listar({ idVendedor: clienteDe(req).idCliente }));
+  res.json(await fech.listar({ idVendedor: clienteDe(req).idCliente, soDoPainel: true }));
 }));
 
 router.get('/fechamentos/:id', tratar(async (req, res) => {

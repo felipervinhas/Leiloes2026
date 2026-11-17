@@ -19,27 +19,31 @@ export default function ClienteTaxas() {
 
   if (!lista) return <div className="pc-card"><Skeleton active paragraph={{ rows: 4 }} /></div>;
 
-  const totalTaxa = lista.reduce((a, f) => a + f.taxaRetida + f.taxaACobrar, 0);
-  const totalRecebido = lista.reduce((a, f) => a + f.recebidoMacedo + f.recebidoVendedor, 0);
+  // só o que a leiloeira cobrou (pedido da Macedo em 2026-11-17): os valores recebidos ficam em "O que recebo"
+  const taxaDe = (f: any) => f.taxaRetida + f.taxaACobrar;
+  const totalTaxa = lista.reduce((a, f) => a + taxaDe(f), 0);
+  const taxaPaga = lista.filter(f => f.situacao === 'PAGO').reduce((a, f) => a + taxaDe(f), 0);
+  const taxaAberta = totalTaxa - taxaPaga;
 
   return (
     <>
       <section className="pc-destaques">
         <div className="pc-card pc-destaque-principal">
-          <div className="pc-rotulo">Recebido pela cobrança da leiloeira</div>
-          <div className="pc-valor">{fmtValor(totalRecebido)}</div>
+          <div className="pc-rotulo">Taxa cobrada pela leiloeira</div>
+          <div className="pc-valor">{fmtValor(totalTaxa)}</div>
           <div className="pc-sub">em <b>{lista.length}</b> {lista.length === 1 ? 'mês fechado' : 'meses fechados'}</div>
         </div>
         <div className="pc-card">
-          <div className="pc-rotulo">Taxa do serviço</div>
-          <div className="pc-valor medio">{fmtValor(totalTaxa)}</div>
-          <div className="pc-sub">sobre cada parcela recebida</div>
+          <div className="pc-rotulo">Já paga</div>
+          <div className="pc-valor medio">{fmtValor(taxaPaga)}</div>
+          <div className="pc-sub">{taxaAberta > 0.009
+            ? <span className="pc-pilula ouro">em aberto · {fmtValor(taxaAberta)}</span>
+            : <span className="pc-pilula verde">tudo em dia</span>}</div>
         </div>
         <div className="pc-card">
           <div className="pc-rotulo">Como funciona</div>
           <div className="pc-sub" style={{ marginTop: 0 }}>
-            Todo mês a leiloeira fecha as parcelas recebidas. Se o dinheiro caiu na conta dela, a taxa é descontada no repasse;
-            se caiu na sua, a taxa é cobrada de você.
+            Todo mês a leiloeira fecha as parcelas que recebeu na cobrança e calcula a taxa do serviço sobre elas.
           </div>
         </div>
       </section>
@@ -49,20 +53,15 @@ export default function ClienteTaxas() {
       ) : (
         <div className="pc-meses-taxa">
           {lista.map(f => {
-            const recebe = f.saldo > 0.009, paga = f.saldo < -0.009;
             return (
               <article key={f.id} className="pc-card">
                 <div className="pc-taxa-mes">
                   <span>{nomeMes(f.competencia)}</span>
                   <span className={`pc-pilula ${PILULA_SITUACAO[f.situacao] || 'cinza'}`}>{SITUACOES_FECHAMENTO[f.situacao]?.label}</span>
                 </div>
-                <div className="pc-taxa-linha"><span>Parcelas recebidas</span><b>{f.qtdParcelas}</b></div>
-                <div className="pc-taxa-linha"><span>Na conta da leiloeira</span><b>{fmtValor(f.recebidoMacedo)}</b></div>
-                <div className="pc-taxa-linha"><span>Na sua conta</span><b>{fmtValor(f.recebidoVendedor)}</b></div>
-                <div className="pc-taxa-linha"><span>Taxa</span><b>{fmtValor(f.taxaRetida + f.taxaACobrar)}</b></div>
-                <div className={`pc-taxa-acerto ${recebe ? 'recebe' : paga ? 'paga' : ''}`}>
-                  {recebe ? `Você recebe ${fmtValor(f.saldo)}` : paga ? `Você paga ${fmtValor(-f.saldo)}` : 'Sem acerto'}
-                </div>
+                <div className="pc-rotulo" style={{ marginTop: 4 }}>Taxa cobrada</div>
+                <div className="pc-valor medio">{fmtValor(taxaDe(f))}</div>
+                <div className="pc-sub">sobre {f.qtdParcelas} parcela{f.qtdParcelas === 1 ? '' : 's'} recebida{f.qtdParcelas === 1 ? '' : 's'}</div>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 10 }}>
                   <button className="pc-acao" onClick={() => setDetalhe(f)}>Ver parcelas</button>
                   <button className="pc-acao" onClick={() => pdfFechamento(f.id, config, portalApi, '/fechamentos')}>PDF</button>
