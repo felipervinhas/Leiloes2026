@@ -210,9 +210,7 @@ const s = StyleSheet.create({
   parcRowAlt: { backgroundColor: '#fafafa' },
   cGrupo: { flex: 1, flexDirection: 'row' },
   cGrupoSep: { borderLeftColor: CINZA, borderLeftWidth: 0.5, paddingLeft: 3 },
-  // Nº largo o bastante pra "01/1, 01/2, 01/3, 02/24" numa linha só; a data
-  // (10/11/2026 ≈ 30pt) ainda cabe com folga no que sobra do grupo (~180pt)
-  cNumP: { width: 70, paddingRight: 3 },
+  cNumP: { width: 28 },
   cDatP: { flex: 1 },
   cVlrP: { width: 56, textAlign: 'right' as const },
   tdP: { fontSize: 6.5, color: ESCURO },
@@ -284,10 +282,14 @@ function paginaFatura(
   // colunasVisiveis, mantém o comportamento atual (mostra tudo).
   const mostrarComissao = !colunasVisiveis || colunasVisiveis.includes('comissao');
 
-  // Agrupa as parcelas de todos os lotes por data de vencimento, somando os valores
-  // que caem no mesmo dia — sem isso, um comprador com vários lotes parcelados em
+  // Agrupa as parcelas de todos os lotes por data de vencimento + nº da parcela,
+  // somando os valores — sem isso, um comprador com vários lotes parcelados em
   // muitas vezes gera uma lista enorme (ex.: 6 lotes x 24 parcelas = 144 linhas).
-  const porData = new Map<string, { datven: string; vlrpar: number; temSinal: boolean; numeros: Set<string> }>();
+  // O nº entra na chave para cada linha ter um número só, como na fatura de
+  // comprador: na de vendedor caem na mesma data parcelas de condições diferentes
+  // (01/1, 01/3, 02/24...), e juntá-las numa célula só o cliente não aprovou
+  // (chamado Knorr) — viram linhas separadas com a mesma data.
+  const porData = new Map<string, { datven: string; numero: string; vlrpar: number; temSinal: boolean }>();
   for (const l of grupo.lotes) {
     // Condições sem parcelamento gerado (ex.: Acerto Direto) não passam pela
     // casa — o comprador acerta direto com o vendedor. Não entram aqui de
@@ -295,11 +297,11 @@ function paginaFatura(
     // data específica, quando na prática ela não tem nada a ver com esse
     // dinheiro (só a comissão, já lançada à parte).
     for (const p of l.parcelas) {
-      const key = p.datven || '—';
-      const atual = porData.get(key) || { datven: key, vlrpar: 0, temSinal: false, numeros: new Set<string>() };
+      const datven = p.datven || '—';
+      const numero = p.ordxxx?.trim() || '';
+      const key = `${datven}|${numero}`;
+      const atual = porData.get(key) || { datven, numero, vlrpar: 0, temSinal: false };
       atual.vlrpar += p.vlrpar || 0;
-      // lotes com condições diferentes podem ter números diferentes na mesma data
-      if (p.ordxxx?.trim()) atual.numeros.add(p.ordxxx.trim());
       if (p.pripar === 'S') atual.temSinal = true;
       porData.set(key, atual);
     }
@@ -307,16 +309,9 @@ function paginaFatura(
   const parcelasAgrupadas = Array.from(porData.values()).sort((a, b) => {
     const da = parseDataBr(a.datven);
     const db = parseDataBr(b.datven);
-    if (da && db) return da.getTime() - db.getTime();
-    return a.datven.localeCompare(b.datven);
+    const porDataCmp = da && db ? da.getTime() - db.getTime() : a.datven.localeCompare(b.datven);
+    return porDataCmp || a.numero.localeCompare(b.numero, undefined, { numeric: true });
   });
-
-  // Nº da parcela: quando caem na mesma data parcelas de condições diferentes
-  // (ex.: 01/1, 01/3 e 02/24 na fatura de vendedor), os números vão lado a
-  // lado separados por vírgula — empilhados um por linha estouravam a altura
-  // da linha (chamado Knorr; mostrar só "4 parc." o cliente não aprovou).
-  const numeroParcela = (p: typeof parcelasAgrupadas[0]) =>
-    Array.from(p.numeros).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).join(', ');
 
   const linhasParc: (typeof parcelasAgrupadas[0] | null)[][] = [];
   for (let i = 0; i < parcelasAgrupadas.length; i += 3) {
@@ -479,7 +474,7 @@ function paginaFatura(
                 <View key={ci} style={[s.cGrupo, ci > 0 ? s.cGrupoSep : {}]}>
                   {p ? (
                     <View style={{ flexDirection: 'row', flex: 1 }}>
-                      <View style={s.cNumP}><Text style={[p.temSinal ? s.tdPBold : s.tdP, p.numeros.size > 1 ? { fontSize: 6 } : {}]}>{numeroParcela(p)}</Text></View>
+                      <View style={s.cNumP}><Text style={p.temSinal ? s.tdPBold : s.tdP}>{p.numero}</Text></View>
                       <View style={s.cDatP}><Text style={p.temSinal ? s.tdPBold : s.tdP}>{p.datven || '—'}</Text></View>
                       <View style={s.cVlrP}><Text style={p.temSinal ? s.tdPBold : s.tdPRight}>{fmtR(p.vlrpar)}</Text></View>
                     </View>
