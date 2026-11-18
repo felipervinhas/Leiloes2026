@@ -5,6 +5,7 @@ import { PrinterOutlined, SettingOutlined } from '@ant-design/icons';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { fmtDataUTC } from '../utils/data';
 import { labelRP, CATEGORIAS_LOTE } from '../utils/lote';
+import { quebrarTexto } from './quebraTexto';
 
 type Orientacao = 'retrato' | 'paisagem';
 
@@ -210,8 +211,8 @@ function OrdemEntradaPDF({ lotes, titulo, empresa, logoBase64, orientacao = 'pai
         {lotes.map((l, i) => (
           <View key={l.id} style={[s.row, i % 2 === 1 ? s.rowAlt : {}]} wrap={false}>
             {opcoes.ordem && <View style={s.cOrdem}><Text style={s.tdOrdem}>{l.ordem || '—'}</Text></View>}
-            <View style={s.cLote}><Text style={s.tdNormal}>{l.lotexx}</Text></View>
-            {opcoes.rpTat && <View style={s.cRpTat}><Text style={s.tdNormal}>{l.rpxxx || '—'}</Text></View>}
+            <View style={s.cLote}><Text style={s.tdNormal}>{quebrarTexto(l.lotexx, 10)}</Text></View>
+            {opcoes.rpTat && <View style={s.cRpTat}><Text style={s.tdNormal}>{quebrarTexto(l.rpxxx, 12) || '—'}</Text></View>}
             <View style={s.cDes}><Text style={s.tdNormal}>{l.deslot || '—'}</Text></View>
             {opcoes.vendedor && <View style={s.cVend}><Text style={s.tdNormal}>{l.nomeVendedor || '—'}</Text></View>}
             {opcoes.raca && <View style={s.cRaca}><Text style={s.tdRaca}>{l.nomeRaca || '—'}</Text></View>}

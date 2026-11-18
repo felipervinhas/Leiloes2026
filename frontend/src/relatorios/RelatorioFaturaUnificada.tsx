@@ -2,6 +2,7 @@ import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/render
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { valorExtenso } from './promissoriaUtils';
 import { labelRP, labelSBB, CATEGORIAS_LOTE } from '../utils/lote';
+import { quebrarTexto } from './quebraTexto';
 
 export type ModoFaturaUnificada = 'par' | 'vendedor' | 'comprador';
 
@@ -187,7 +188,7 @@ const s = StyleSheet.create({
   td: { fontSize: 7 },
   tdBold: { fontSize: 7, fontFamily: 'Helvetica-Bold' },
 
-  cLote: { width: 28 },
+  cLote: { width: 38, paddingRight: 3 },
   cDesc: { flex: 1 },
   cParceiro: { width: 90 },
   cCond: { width: 82 },
@@ -209,7 +210,7 @@ const s = StyleSheet.create({
   parcRowAlt: { backgroundColor: '#fafafa' },
   cGrupo: { flex: 1, flexDirection: 'row' },
   cGrupoSep: { borderLeftColor: CINZA, borderLeftWidth: 0.5, paddingLeft: 3 },
-  cNumP: { width: 24 },
+  cNumP: { width: 28 },
   cDatP: { flex: 1 },
   cVlrP: { width: 56, textAlign: 'right' as const },
   tdP: { fontSize: 6.5, color: ESCURO },
@@ -284,7 +285,7 @@ function paginaFatura(
   // Agrupa as parcelas de todos os lotes por data de vencimento, somando os valores
   // que caem no mesmo dia — sem isso, um comprador com vários lotes parcelados em
   // muitas vezes gera uma lista enorme (ex.: 6 lotes x 24 parcelas = 144 linhas).
-  const porData = new Map<string, { datven: string; vlrpar: number; temSinal: boolean; numeros: Set<string> }>();
+  const porData = new Map<string, { datven: string; vlrpar: number; temSinal: boolean; numeros: Set<string>; qtd: number }>();
   for (const l of grupo.lotes) {
     // Condições sem parcelamento gerado (ex.: Acerto Direto) não passam pela
     // casa — o comprador acerta direto com o vendedor. Não entram aqui de
@@ -293,8 +294,9 @@ function paginaFatura(
     // dinheiro (só a comissão, já lançada à parte).
     for (const p of l.parcelas) {
       const key = p.datven || '—';
-      const atual = porData.get(key) || { datven: key, vlrpar: 0, temSinal: false, numeros: new Set<string>() };
+      const atual = porData.get(key) || { datven: key, vlrpar: 0, temSinal: false, numeros: new Set<string>(), qtd: 0 };
       atual.vlrpar += p.vlrpar || 0;
+      atual.qtd += 1;
       // lotes com condições diferentes podem ter números diferentes na mesma data
       if (p.ordxxx?.trim()) atual.numeros.add(p.ordxxx.trim());
       if (p.pripar === 'S') atual.temSinal = true;
@@ -307,6 +309,13 @@ function paginaFatura(
     if (da && db) return da.getTime() - db.getTime();
     return a.datven.localeCompare(b.datven);
   });
+
+  // Nº da parcela: com um número só (mesma condição em todos os lotes) mostra
+  // "02/24"; quando caem na mesma data parcelas de condições diferentes
+  // (ex.: 01/1, 01/3 e 02/24 na fatura de vendedor), empilhar os números
+  // estourava a linha — mostra só quantas parcelas foram somadas naquela data.
+  const numeroParcela = (p: typeof parcelasAgrupadas[0]) =>
+    p.numeros.size > 1 ? `${p.qtd} parc.` : (Array.from(p.numeros)[0] || '');
 
   const linhasParc: (typeof parcelasAgrupadas[0] | null)[][] = [];
   for (let i = 0; i < parcelasAgrupadas.length; i += 3) {
@@ -416,11 +425,11 @@ function paginaFatura(
           const sinal = primeira ? primeira.vlrpar : 0;
           return (
             <View key={l.idMc} style={i % 2 === 1 ? [s.tRow, s.tRowAlt] : s.tRow} wrap={false}>
-              <View style={s.cLote}><Text style={s.tdBold}>{l.lotexx || '—'}</Text></View>
+              <View style={s.cLote}><Text style={s.tdBold}>{quebrarTexto(l.lotexx, 9) || '—'}</Text></View>
               <View style={s.cDesc}>
                 <Text style={s.td}>{l.deslot || '—'}</Text>
                 <Text style={{ fontSize: 6, color: MEDIO }}>
-                  {[l.descricaoRaca, l.catego ? CATEGO[l.catego] || l.catego : null, l.sbbxxx ? `${labelSBB(l.especies)} ${l.sbbxxx}` : null, l.rpxxx ? `${labelRP(l.especies)} ${l.rpxxx}` : null]
+                  {[l.descricaoRaca, l.catego ? CATEGO[l.catego] || l.catego : null, l.sbbxxx ? `${labelSBB(l.especies)} ${l.sbbxxx}` : null, l.rpxxx ? `${labelRP(l.especies)} ${quebrarTexto(l.rpxxx, 40)}` : null]
                     .filter(Boolean).join(' · ')}
                 </Text>
               </View>
@@ -469,7 +478,7 @@ function paginaFatura(
                 <View key={ci} style={[s.cGrupo, ci > 0 ? s.cGrupoSep : {}]}>
                   {p ? (
                     <View style={{ flexDirection: 'row', flex: 1 }}>
-                      <View style={s.cNumP}><Text style={p.temSinal ? s.tdPBold : s.tdP}>{Array.from(p.numeros).sort().join('\n')}</Text></View>
+                      <View style={s.cNumP}><Text style={p.temSinal ? s.tdPBold : s.tdP}>{numeroParcela(p)}</Text></View>
                       <View style={s.cDatP}><Text style={p.temSinal ? s.tdPBold : s.tdP}>{p.datven || '—'}</Text></View>
                       <View style={s.cVlrP}><Text style={p.temSinal ? s.tdPBold : s.tdPRight}>{fmtR(p.vlrpar)}</Text></View>
                     </View>

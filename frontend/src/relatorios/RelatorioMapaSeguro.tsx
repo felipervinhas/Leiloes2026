@@ -4,6 +4,7 @@ import { Button, Radio, Space } from 'antd';
 import { PrinterOutlined } from '@ant-design/icons';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { labelRP, labelSBB } from '../utils/lote';
+import { quebrarTexto } from './quebraTexto';
 
 type Orientacao = 'retrato' | 'paisagem';
 
@@ -337,15 +338,15 @@ function MapaSeguroPDF({
         {vendas.map((v, i) => (
           <View key={v.id} style={[s.row, i % 2 === 1 ? s.rowAlt : {}]} wrap={false}>
             <View style={s.cData}><Text style={s.tdNormal}>{fmtData(v.datlan)}</Text></View>
-            <View style={s.cLote}><Text style={[s.tdBold, { color: ESCURO }]}>{v.lotexx || '—'}</Text></View>
+            <View style={s.cLote}><Text style={[s.tdBold, { color: ESCURO }]}>{quebrarTexto(v.lotexx, 9) || '—'}</Text></View>
             <View style={s.cDes}><Text style={s.tdNormal}>{v.deslot || '—'}</Text></View>
             <View style={s.cComp}><Text style={s.tdNormal}>{v.nomeComprador || '—'}</Text></View>
             <View style={s.cCpf}><Text style={s.tdNormal}>{v.cpfComprador || '—'}</Text></View>
             <View style={s.cVend}><Text style={s.tdNormal}>{v.nomeVendedor || '—'}</Text></View>
             <View style={s.cCpf}><Text style={s.tdNormal}>{v.cpfVendedor || '—'}</Text></View>
             <View style={s.cBoleto}><Text style={s.tdNormal}>{v.codnot || '—'}</Text></View>
-            <View style={s.cRp}><Text style={s.tdNormal}>{v.rpxxx || '—'}</Text></View>
-            <View style={s.cTat}><Text style={s.tdNormal}>{v.sbbxxx || '—'}</Text></View>
+            <View style={s.cRp}><Text style={s.tdNormal}>{quebrarTexto(v.rpxxx, 7) || '—'}</Text></View>
+            <View style={s.cTat}><Text style={s.tdNormal}>{quebrarTexto(v.sbbxxx, 7) || '—'}</Text></View>
             <View style={s.cValor}><Text style={s.tdBoldRight}>{fmtR(v.valorPagar)}</Text></View>
           </View>
         ))}
@@ -391,9 +392,9 @@ function MapaSeguroPDF({
             </View>
             {g.lotes.map((v, i) => (
               <View key={v.id} style={[s.row, i % 2 === 1 ? s.rowAlt : {}]} wrap={false}>
-                <View style={s.cLote2}><Text style={[s.tdBold, { color: ESCURO }]}>{v.lotexx || '—'}</Text></View>
+                <View style={s.cLote2}><Text style={[s.tdBold, { color: ESCURO }]}>{quebrarTexto(v.lotexx, 9) || '—'}</Text></View>
                 <View style={s.cDes2}><Text style={s.tdNormal}>{v.deslot || '—'}</Text></View>
-                <View style={s.cRp2}><Text style={s.tdNormal}>{v.rpxxx || '—'}</Text></View>
+                <View style={s.cRp2}><Text style={s.tdNormal}>{quebrarTexto(v.rpxxx, 7) || '—'}</Text></View>
                 {/* propriedade sem localidade preenchida: mostra a cidade dela em vez de "—" */}
                 <View style={s.cLocal}><Text style={s.tdNormal}>{v.localidade?.trim() || [v.cidadePropriedade, v.estadoPropriedade].filter(Boolean).join(' / ') || '—'}</Text></View>
                 <View style={s.cProp}><Text style={s.tdNormal}>{v.nomePropriedade || '—'}</Text></View>

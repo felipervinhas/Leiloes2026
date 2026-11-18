@@ -4,6 +4,7 @@ import { Button, Radio, Space } from 'antd';
 import { PrinterOutlined } from '@ant-design/icons';
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { labelRP } from '../utils/lote';
+import { quebrarTexto } from './quebraTexto';
 
 type Orientacao = 'retrato' | 'paisagem';
 
@@ -331,10 +332,10 @@ function ConsultaVendasPDF({
     celula: (x: VendaPDF) => React.ReactNode;
     soma?: (t: Soma) => string; rotulo?: boolean; laranja?: boolean;
   }> = {
-    lote:      { estilo: s.cLote, titulo: 'Lote', celula: x => <Text style={[s.tdBold, { color: ESCURO }]}>{x.lotexx || '—'}</Text> },
+    lote:      { estilo: s.cLote, titulo: 'Lote', celula: x => <Text style={[s.tdBold, { color: ESCURO }]}>{quebrarTexto(x.lotexx, 6) || '—'}</Text> },
     qtd:       { estilo: s.cQtd, titulo: 'Qtd', direita: true, celula: x => <Text style={s.tdNormalRight}>{fmtN(x.qtdxxx)}</Text>, soma: t => fmtN(t.qtd) },
     descricao: { estilo: s.cDes, titulo: 'Descrição', rotulo: true, celula: x => <Text style={s.tdNormal}>{x.deslot || '—'}</Text> },
-    tatuagem:  { estilo: s.cTat, titulo: labelTatuagem, celula: x => <Text style={s.tdSmall}>{x.rpxxx || '—'}</Text> },
+    tatuagem:  { estilo: s.cTat, titulo: labelTatuagem, celula: x => <Text style={s.tdSmall}>{quebrarTexto(x.rpxxx, 8) || '—'}</Text> },
     raca:      { estilo: s.cRaca, titulo: 'Raça / Espécie', celula: x => <Text style={s.tdSmall}>{[x.descricaoRaca, x.especies].filter(Boolean).join(' / ') || '—'}</Text> },
     valorPagar:{ estilo: s.cPagar, titulo: 'Vlr. a Pagar', direita: true, celula: x => <Text style={s.tdBoldRight}>{fmtR(x.valorPagar)}</Text>, soma: t => fmtR(t.pagar) },
     comprador: { estilo: s.cComp, titulo: 'Comprador', celula: x => <Text style={s.tdNormal}>{x.nomeComprador || '—'}</Text> },
