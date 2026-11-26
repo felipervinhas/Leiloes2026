@@ -20,6 +20,7 @@ import MediasLeilaoPDF from '../relatorios/RelatorioMediasLeilao';
 import RelatorioFaturaUnificada, { FaturaUnificadaGrupo } from '../relatorios/RelatorioFaturaUnificada';
 import MapaSeguroPDF from '../relatorios/RelatorioMapaSeguro';
 import RelatorioRelacaoCompradores, { RelacaoCompradoresPDF } from '../relatorios/RelatorioRelacaoCompradores';
+import { exportarMapaCompradoresExcel, exportarRelacaoCompradoresExcel } from '../relatorios/exportarExcel';
 import { useConfig } from '../context/ConfigContext';
 import { useBanco } from '../context/BancoContext';
 import { useAuth } from '../context/AuthContext';
@@ -363,6 +364,31 @@ export default function ConsultaVendas() {
     setDados([]); setConsultou(false);
     salvarFiltroPersistido(banco, 'consulta-vendas', {});
   };
+
+  // Mapa e Relação de Compradores saem em Excel com o conteúdo do próprio relatório; os demais
+  // tipos continuam exportando a grade da consulta em CSV.
+  const [exportando, setExportando] = useState(false);
+  const sufixoArquivo = () => (nomeLeilaoSel || 'consulta').replace(/[^\w\-]+/g, '_').slice(0, 50);
+  const exportar = async () => {
+    if (tipoRelatorio === 'seguroCompradores') {
+      exportarMapaCompradoresExcel(dadosImpressao, labelRP(dadosImpressao[0]?.especies), `mapa-compradores-${sufixoArquivo()}`);
+      return;
+    }
+    if (tipoRelatorio === 'relacaoCompradores') {
+      if (!leilaoSel) { message.warning('Selecione o Leilão antes de exportar a Relação de Compradores'); return; }
+      const idsMc = dados.map(d => d.idMovimentoComprador).filter((id): id is number => id != null);
+      if (!idsMc.length) { message.warning('Nenhum lote encontrado nos filtros atuais'); return; }
+      setExportando(true);
+      try {
+        const r = await api.post('/vendas/relacao-compradores', { ids: idsMc });
+        exportarRelacaoCompradoresExcel(r.data, `relacao-compradores-${sufixoArquivo()}`);
+      } catch { message.error('Erro ao exportar a relação de compradores'); }
+      finally { setExportando(false); }
+      return;
+    }
+    exportarCSV();
+  };
+  const exportaExcel = tipoRelatorio === 'seguroCompradores' || tipoRelatorio === 'relacaoCompradores';
 
   const exportarCSV = () => {
     if (!dados.length) return;
@@ -913,10 +939,11 @@ export default function ConsultaVendas() {
               )}
               <Button
                 icon={<FileExcelOutlined />}
-                onClick={exportarCSV}
-                disabled={!dados.length}
+                onClick={exportar}
+                loading={exportando}
+                disabled={!dados.length || (tipoRelatorio === 'relacaoCompradores' && !leilaoSel)}
               >
-                Exportar CSV
+                {exportaExcel ? 'Exportar Excel' : 'Exportar CSV'}
               </Button>
             </Space>
           </Row>
@@ -1052,6 +1079,10 @@ export default function ConsultaVendas() {
       >
         {relacaoCompradoresDados && (
           <>
+            <Button icon={<FileExcelOutlined />} block style={{ marginBottom: 12 }}
+              onClick={() => exportarRelacaoCompradoresExcel(relacaoCompradoresDados, `relacao-compradores-${sufixoArquivo()}`)}>
+              Baixar em Excel
+            </Button>
             <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
               {relacaoCompradoresDados.totalPessoas} comprador{relacaoCompradoresDados.totalPessoas !== 1 ? 'es' : ''} · {relacaoCompradoresDados.totalFazendas} fazenda{relacaoCompradoresDados.totalFazendas !== 1 ? 's' : ''} — {relacaoCompradoresDados.leilao}
             </Typography.Paragraph>

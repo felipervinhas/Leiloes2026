@@ -135,3 +135,90 @@ export function exportarLotesExcel(lotes: any[], condicoes: Record<number, strin
   const data = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(wb, `${nomeArquivo}-${data}.xlsx`);
 }
+
+/** Ajusta a largura das colunas ao maior conteúdo (limitada), para a planilha abrir legível. */
+function larguraAutomatica(linhas: Record<string, any>[]) {
+  const cabecalho = Object.keys(linhas[0] || {});
+  return cabecalho.map(k => ({
+    wch: Math.min(50, Math.max(k.length, ...linhas.map(l => String(l[k] ?? '').length)) + 2),
+  }));
+}
+
+/**
+ * Mapa de Compradores em planilha — mesmo conteúdo da página "Mapa de Compradores" do PDF:
+ * uma linha por lote, com os dados do comprador repetidos e o destino (localidade,
+ * propriedade, inscrição), ordenada por comprador e lote.
+ */
+export function exportarMapaCompradoresExcel(vendas: any[], rotuloRP: string, nomeArquivo = 'mapa-compradores') {
+  const telefones = (v: any) => Array.from(new Set(
+    [v.celularComprador, v.celular2Comprador, v.telcomComprador, v.telresComprador]
+      .map((t: any) => String(t || '').trim()).filter(Boolean),
+  )).join(' / ');
+  const linhas = [...vendas]
+    .sort((a, b) => String(a.nomeComprador || '').localeCompare(String(b.nomeComprador || ''))
+      || String(a.lotexx || '').localeCompare(String(b.lotexx || ''), 'pt-BR', { numeric: true }))
+    .map(v => ({
+      'Comprador': v.nomeComprador || '',
+      'CPF/CNPJ': v.cpfComprador || v.cnpjComprador || '',
+      'Telefones': telefones(v),
+      'Cidade (propriedade)': v.cidadePropriedade || '',
+      'UF': v.estadoPropriedade || '',
+      'Lote': v.lotexx || '',
+      'Descrição': v.deslot || '',
+      [rotuloRP]: v.rpxxx || '',
+      // propriedade sem localidade preenchida: mesma regra do PDF (cidade da propriedade)
+      'Localidade': String(v.localidade || '').trim() || [v.cidadePropriedade, v.estadoPropriedade].filter(Boolean).join(' / '),
+      'Propriedade': v.nomePropriedade || '',
+      'Inscrição': v.inscricao || '',
+      'Vendedor': v.nomeVendedor || '',
+    }));
+  if (!linhas.length) return;
+  const ws = XLSX.utils.json_to_sheet(linhas);
+  ws['!cols'] = larguraAutomatica(linhas);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Mapa de Compradores');
+  const data = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `${nomeArquivo}-${data}.xlsx`);
+}
+
+/**
+ * Relação de Compradores em planilha — uma linha por fazenda de cada comprador (o comprador
+ * sem propriedade cadastrada sai numa linha só), com endereço, telefones e e-mail.
+ */
+export function exportarRelacaoCompradoresExcel(dados: { leilao?: string; compradores: any[] }, nomeArquivo = 'relacao-compradores') {
+  const linhas: Record<string, any>[] = [];
+  for (const c of dados.compradores || []) {
+    const base = {
+      'Comprador': c.nomexx || '',
+      'CPF/CNPJ': c.cpfxxx || c.cnpjxx || '',
+      'Endereço': c.endere || '',
+      'Bairro': c.bairro || '',
+      'CEP': c.cepxxx || '',
+      'Cidade': c.nomeCidade || '',
+      'UF': c.nomeEstado || '',
+      'Celular': c.celu1 || '',
+      'Celular 2': c.celu2 || '',
+      'Tel. comercial': c.telcom || '',
+      'Tel. residencial': c.telres || '',
+      'E-mail': c.emailx || '',
+    };
+    const props = c.propriedades?.length ? c.propriedades : [null];
+    for (const p of props) {
+      linhas.push({
+        ...base,
+        'Propriedade': p?.nomePropriedade || '',
+        'Cidade da propriedade': p?.cidade || '',
+        'UF da propriedade': p?.estado || '',
+        'Inscrição': p?.inscricao || '',
+        'INCRA': p?.incra || '',
+      });
+    }
+  }
+  if (!linhas.length) return;
+  const ws = XLSX.utils.json_to_sheet(linhas);
+  ws['!cols'] = larguraAutomatica(linhas);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Relação de Compradores');
+  const data = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `${nomeArquivo}-${data}.xlsx`);
+}
