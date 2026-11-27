@@ -1135,7 +1135,9 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   const [form1]         = Form.useForm();
   const [lotesDisp, setLotesDisp] = useState<any[]>([]);
   const [loteDetalhes, setLoteDetalhes] = useState<any>(null);
-  const [ckCalcTotal, setCkCalcTotal]   = useState(false);
+  // Qual campo de valor o usuário digita; os outros são calculados a partir dele.
+  // 'kg' = valor por kg (lotes vendidos pelo preço do quilo — Knorr).
+  const [modoValor, setModoValor] = useState<'parcela' | 'total' | 'kg'>('parcela');
   const [leilaoInfo, setLeilaoInfo]     = useState<any>(null);
   const [loteSimpModal, setLoteSimpModal] = useState(false);
   const [formLoteSimp]  = Form.useForm();
@@ -1148,6 +1150,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
   const [mediasLoading, setMediasLoading] = useState(false);
   const [mediasPanelAberto, setMediasPanelAberto] = useState(true);
   const idLeilaoWatch = Form.useWatch('idLeilao', form0);
+  const qtdxxxWatch = Form.useWatch('qtdxxx', form1);
 
   // ── step 2 ──────────────────────────────────────────────────────────────
   const [form2]         = Form.useForm();
@@ -1223,6 +1226,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
           idLote: rl.data.idLote, qtdxxx: rl.data.qtdxxx,
           vlrpar: rl.data.vlrpar, vlrtot: rl.data.vlrtot, vlrdes: rl.data.vlrdes ?? 0,
           qtdparOverride: rl.data.qtdpar,
+          _vlrkg: (() => { const kg = kgDaVenda(rl.data, rl.data.qtdxxx); return kg > 0 && rl.data.vlrtot > 0 ? rl.data.vlrtot / kg : null; })(),
           // Comissão já persistida no lançamento original — não recalcular
           // pelo percentual atual do leilão, que pode ter mudado desde então.
           _comiss: rl.data.comiss ?? 0, _comissVend: rl.data.comissVendedor ?? 0,
@@ -1351,13 +1355,28 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
     const comiss = vlrtot * (comcom / 100);
     const comissVend = vlrtot * (comven / 100);
 
+    const kg = kgDaVenda(det, qtdSugerida);
     form1.setFieldsValue({
       idLote: id, qtdxxx: qtdSugerida, vlrpar, vlrtot, vlrdes: 0,
+      _vlrkg: kg > 0 && vlrtot > 0 ? vlrtot / kg : null,
       _comiss: comiss, _comissVend: comissVend,
     });
+    if (kg <= 0 && modoValor === 'kg') setModoValor('parcela');
   };
 
-  const recalcularValores = () => {
+  // Kg correspondentes à quantidade vendida. Peso total do lote (Knorr):
+  // proporcional à fração do lote vendida; peso por cabeça: qtd × peso.
+  const kgDaVenda = (det: any, qtd: number): number => {
+    const peso = Number(det?.pesoxx) || 0;
+    if (peso <= 0) return 0;
+    if (config.pesoLoteTotal === 'S') {
+      const qtdLote = Number(det?.qtdAnimais) || 0;
+      return qtdLote > 0 && qtd > 0 ? peso * qtd / qtdLote : peso;
+    }
+    return peso * (qtd || 1);
+  };
+
+  const recalcularValores = (modo: 'parcela' | 'total' | 'kg' = modoValor) => {
     if (!loteDetalhes) return;
     const vals  = form1.getFieldsValue();
     const qtd   = vals.qtdxxx || 1;
@@ -1367,16 +1386,25 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
 
     let vlrpar = vals.vlrpar || 0;
     let vlrtot = vals.vlrtot || 0;
+    let vlrkg  = vals._vlrkg || 0;
+    const kg   = kgDaVenda(loteDetalhes, qtd);
 
-    if (ckCalcTotal && vlrtot > 0) {
+    if (modo === 'kg' && kg > 0 && vlrkg > 0) {
+      vlrtot = vlrkg * kg;
       vlrpar = vlrtot / (qtdpar * qtd);
-    } else if (!ckCalcTotal && vlrpar > 0) {
+    } else if (modo === 'total' && vlrtot > 0) {
+      vlrpar = vlrtot / (qtdpar * qtd);
+    } else if (modo === 'parcela' && vlrpar > 0) {
       vlrtot = vlrpar * qtdpar * qtd;
     }
+    if (modo !== 'kg') vlrkg = kg > 0 && vlrtot > 0 ? vlrtot / kg : 0;
 
     const comiss     = vlrtot * (comcom / 100);
     const comissVend = vlrtot * (comven / 100);
-    form1.setFieldsValue({ vlrpar, vlrtot, vlrdes: vals.vlrdes || 0, _comiss: comiss, _comissVend: comissVend });
+    form1.setFieldsValue({
+      vlrpar, vlrtot, _vlrkg: vlrkg || null, vlrdes: vals.vlrdes || 0,
+      _comiss: comiss, _comissVend: comissVend,
+    });
   };
 
   const abrirLoteSimplificado = async () => {
@@ -1879,7 +1907,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
             </Card>
           )}
 
-          <Form form={form1} layout="vertical" onValuesChange={recalcularValores}>
+          <Form form={form1} layout="vertical" onValuesChange={() => recalcularValores()}>
             <Row gutter={16}>
               <Col xs={24} sm={24}>
                 <Form.Item name="idLote" label="Lote disponível"
@@ -1909,8 +1937,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
                     <Space>
                       <span>Valor por Parcela</span>
                       <Button
-                        size="small" type={!ckCalcTotal ? 'primary' : 'default'}
-                        onClick={() => { setCkCalcTotal(false); recalcularValores(); }}
+                        size="small" type={modoValor === 'parcela' ? 'primary' : 'default'}
+                        onClick={() => { setModoValor('parcela'); recalcularValores('parcela'); }}
                         style={{ fontSize: 11, height: 20, padding: '0 6px' }}
                       >
                         Usar
@@ -1922,7 +1950,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
                     min={0} step={100} style={{ width: '100%' }}
                     formatter={v => v != null ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
                     parser={v => Number(String(v ?? '').replace('R$ ', '').replace(/\./g, '').replace(',', '.')) || 0}
-                    disabled={ckCalcTotal}
+                    disabled={modoValor !== 'parcela'}
                   />
                 </Form.Item>
               </Col>
@@ -1934,8 +1962,8 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
                     <Space>
                       <span>Valor Total</span>
                       <Button
-                        size="small" type={ckCalcTotal ? 'primary' : 'default'}
-                        onClick={() => { setCkCalcTotal(true); recalcularValores(); }}
+                        size="small" type={modoValor === 'total' ? 'primary' : 'default'}
+                        onClick={() => { setModoValor('total'); recalcularValores('total'); }}
                         style={{ fontSize: 11, height: 20, padding: '0 6px' }}
                       >
                         Usar
@@ -1947,10 +1975,43 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
                     min={0} step={100} style={{ width: '100%' }}
                     formatter={v => v != null ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
                     parser={v => Number(String(v ?? '').replace('R$ ', '').replace(/\./g, '').replace(',', '.')) || 0}
-                    disabled={!ckCalcTotal}
+                    disabled={modoValor !== 'total'}
                   />
                 </Form.Item>
               </Col>
+
+              {(() => {
+                // Valor por kg: só aparece quando o lote tem peso cadastrado.
+                const kg = kgDaVenda(loteDetalhes, Number(qtdxxxWatch) || 0);
+                if (kg <= 0) return null;
+                return (
+                  <Col xs={24} sm={12} md={4}>
+                    <Form.Item
+                      name="_vlrkg"
+                      label={
+                        <Space>
+                          <span>Valor por Kg</span>
+                          <Button
+                            size="small" type={modoValor === 'kg' ? 'primary' : 'default'}
+                            onClick={() => { setModoValor('kg'); recalcularValores('kg'); }}
+                            style={{ fontSize: 11, height: 20, padding: '0 6px' }}
+                          >
+                            Usar
+                          </Button>
+                        </Space>
+                      }
+                      extra={`${kg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg`}
+                    >
+                      <InputNumber<number>
+                        min={0} step={0.5} style={{ width: '100%' }}
+                        formatter={v => v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
+                        parser={v => Number(String(v ?? '').replace('R$ ', '').replace(/\./g, '').replace(',', '.')) || 0}
+                        disabled={modoValor !== 'kg'}
+                      />
+                    </Form.Item>
+                  </Col>
+                );
+              })()}
 
               <Col xs={24} sm={12} md={4}>
                 <Form.Item name="vlrdes" label="Desconto (R$)">
