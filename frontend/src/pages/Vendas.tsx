@@ -1118,6 +1118,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
 }) {
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false;
+  const config = useConfig();
 
   const [step, setStep]     = useState(0);
   const [movId, setMovId]   = useState<number | undefined>(editId);
@@ -2062,7 +2063,7 @@ function Wizard({ editId, leilaoInicial, onConcluir, onCancelar }: {
                   <Form.Item name="sbbxxx" label={labelSBB(racas.find(r => r.value === racaxxLoteSimp)?.especies)}><Input /></Form.Item>
                 </Col>
                 <Col span={8}>
-                  <Form.Item name="pesoxx" label="Peso"><InputNumber style={{ width: '100%' }} /></Form.Item>
+                  <Form.Item name="pesoxx" label={config.pesoLoteTotal === 'S' ? 'Peso total do lote (kg)' : 'Peso por cabeça (kg)'}><InputNumber style={{ width: '100%' }} /></Form.Item>
                 </Col>
               </Row>
             </Form>

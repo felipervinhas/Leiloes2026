@@ -3,6 +3,7 @@ import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { valorExtenso } from './promissoriaUtils';
 import { labelRP, labelSBB, CATEGORIAS_LOTE } from '../utils/lote';
 import { quebrarTexto } from './quebraTexto';
+import { linhaPeso } from './pesoLote';
 
 export type ModoFaturaUnificada = 'par' | 'vendedor' | 'comprador';
 
@@ -17,6 +18,9 @@ export interface FaturaUnificadaLote {
   rpxxx?: string;
   sbbxxx?: string;
   pesoxx?: number;
+  /** Kg da parte do comprador e regra do banco (true = peso total do lote) */
+  pesoKg?: number;
+  pesoLoteTotal?: boolean;
   catego?: string;
   descricaoRaca?: string;
   especies?: string;
@@ -436,6 +440,10 @@ function paginaFatura(
                   {[l.descricaoRaca, l.catego ? CATEGO[l.catego] || l.catego : null, l.sbbxxx ? `${labelSBB(l.especies)} ${l.sbbxxx}` : null, l.rpxxx ? `${labelRP(l.especies)} ${quebrarTexto(l.rpxxx, 40)}` : null]
                     .filter(Boolean).join(' · ')}
                 </Text>
+                {/* lote vendido pelo kg (bancos com peso total do lote): kg e R$/kg da parte */}
+                {l.pesoLoteTotal && linhaPeso(l.pesoxx, true, l.valorOriginal, l.pesoKg) ? (
+                  <Text style={{ fontSize: 6, color: MEDIO }}>{linhaPeso(l.pesoxx, true, l.valorOriginal, l.pesoKg)}</Text>
+                ) : null}
               </View>
               {tituloColunaParceiro ? <View style={s.cParceiro}><Text style={s.td}>{l.nomeContraparte || '—'}</Text></View> : null}
               <View style={s.cCond}>

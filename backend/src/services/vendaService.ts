@@ -1,4 +1,5 @@
 import { getPool, sql } from '../config/database';
+import { pesoLoteEhTotal, kgDaParte } from '../utils/pesoLote';
 import { getBanco } from '../config/bancoContext';
 import { garantirColunaAvalistaObrigatorio } from './leilaoService';
 import { ehParcelaDaLeiloeira, existeTabela, SQL_COLUNAS_GRUPOS } from './conciliacao/devidoService';
@@ -1270,6 +1271,8 @@ export async function dadosFatura(idMov: number) {
       rpxxx:         l.RPXXX,
       sbbxxx:        l.SBBXXX,
       pesoxx:        l.PESOXX,
+      /** true = PESOXX é o peso total do lote (Knorr); false = por cabeça */
+      pesoLoteTotal: await pesoLoteEhTotal(),
       catego:        l.CATEGO,
       descricaoRaca: l.DESCRICAORACA,
       especies:      l.ESPECIES,
@@ -1347,6 +1350,10 @@ export interface FaturaUnificadaLote {
   rpxxx?: string;
   sbbxxx?: string;
   pesoxx?: number;
+  /** Kg da parte do comprador, pela regra do banco */
+  pesoKg?: number;
+  /** true = PESOXX é o peso total do lote (Knorr); false = por cabeça */
+  pesoLoteTotal?: boolean;
   catego?: string;
   descricaoRaca?: string;
   especies?: string;
@@ -1423,8 +1430,9 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
   const req = pool.request();
   const placeholders = ids.map((id, i) => { req.input(`id${i}`, sql.Int, id); return `@id${i}`; });
 
+  const pesoTotal = await pesoLoteEhTotal();
   const rMc = await req.query(`
-    SELECT MC.ID, MC.IDMOV, MC.IDMOVLOTE, MC.IDCLI, MC.VALORORIGINAL, MC.VALORPAGAR,
+    SELECT MC.ID, MC.IDMOV, MC.IDMOVLOTE, MC.IDCLI, MC.PERCEN, MC.VALORORIGINAL, MC.VALORPAGAR,
            MC.VALORDESCONTO, MC.VALORCOMISSAO, MC.COMISSAO, MC.FORMA_PAGAMENTO, MC.IDCONDPAGTO,
            MC.VALORCOMISSAOVENDEDOR, MC.COMISSAOVENDEDOR,
            MC.TIPO_DESCONTO_FIDELIDADE, MC.DESCONTO_FIDELIDADE, MC.VALOR_DESCONTO_FIDELIDADE,
@@ -1555,6 +1563,7 @@ export async function dadosFaturaUnificada(ids: number[], modo: ModoFaturaUnific
       idMc: r.ID, idMov: r.IDMOV, idMovLote: r.IDMOVLOTE, codnot: r.CODNOT,
       datlan: r.DATLAN ? new Date(r.DATLAN).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—',
       lotexx: r.LOTEXX, deslot: r.DESLOT, rpxxx: r.RPXXX, sbbxxx: r.SBBXXX, pesoxx: r.PESOXX,
+      pesoKg: kgDaParte(r.PESOXX, Number(r.QTDXXX || 0) * ((r.PERCEN ?? 100) / 100), r.PERCEN, pesoTotal), pesoLoteTotal: pesoTotal,
       catego: r.CATEGO, descricaoRaca: r.DESCRICAORACA, especies: r.ESPECIES, qtdxxx: r.QTDXXX,
       valorOriginal, valorPagar,
       valorDesconto: r.VALORDESCONTO || 0, valorDescontoFidelidade: r.VALOR_DESCONTO_FIDELIDADE || 0,

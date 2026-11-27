@@ -97,6 +97,7 @@ const COMPARADORES: Record<string, (a: any, b: any) => number> = {
   nomeVendedor:           (a, b) => cmpTexto(a.nomeVendedor, b.nomeVendedor),
   nomeComprador:          (a, b) => cmpTexto(a.nomeComprador, b.nomeComprador),
   qtdxxx:                 (a, b) => cmpNumero(a.qtdxxx, b.qtdxxx),
+  pesoKg:                 (a, b) => cmpNumero(a.pesoKg, b.pesoKg),
   valorUnidade:           (a, b) => cmpNumero(a.valorUnidade, b.valorUnidade),
   valorPagar:             (a, b) => cmpNumero(a.valorPagar, b.valorPagar),
   valorComissao:          (a, b) => cmpNumero(a.valorComissao, b.valorComissao),
@@ -173,7 +174,7 @@ export default function ConsultaVendas() {
 
   const { rz: rzCV } = useColumnWidths('consulta_vendas', {
     lotexx: 70, leilao: 160, datlei: 100, deslot: 180, descricaoRaca: 120, especies: 90, rpxxx: 90, sbbxxx: 90,
-    nomeVendedor: 160, nomeComprador: 160, qtdxxx: 70, valorUnidade: 110, valorPagar: 120,
+    nomeVendedor: 160, nomeComprador: 160, qtdxxx: 70, pesoKg: 90, valorUnidade: 110, valorPagar: 120,
     valorComissao: 110, valorDesconto: 110, valorDescontoFidelidade: 130, valorLiquido: 120, desfin: 130,
     parcelaInicial: 110, primeiroVencimentoData: 110, datlan: 120, defesa: 100,
   });
@@ -435,14 +436,11 @@ export default function ConsultaVendas() {
     const totalDescontoFidelidade = lista.reduce((a, d) => a + (d.valorDescontoFidelidade || 0), 0);
     const totalQtd        = lista.reduce((a, d) => a + (d.qtdxxx         || 0), 0);
     const mediaGeral      = totalQtd > 0 ? totalValor / totalQtd : 0;
-    // Média por kg (mesma conta do Delphi): PESOXX é por cabeça, peso do lote =
-    // qtd × peso (ou só o peso se qtd = 0); valor ÷ peso. Lotes sem peso ficam de
-    // fora do numerador e do denominador, pra não puxar a média pra baixo.
-    const pesoDoLote = (d: any) => {
-      const peso = Number(d.pesoxx || 0);
-      const qtd = Number(d.qtdxxx || 0);
-      return peso > 0 ? (qtd > 0 ? qtd * peso : peso) : 0;
-    };
+    // Média por kg: valor ÷ kg. O kg de cada linha (pesoKg) já vem do backend pela
+    // regra do banco — Knorr digita o peso TOTAL do lote, os demais o peso por cabeça
+    // (Configuracoes.PESO_LOTE_TOTAL). Lotes sem peso ficam de fora do numerador e do
+    // denominador, pra não puxar a média pra baixo.
+    const pesoDoLote = (d: any) => Number(d.pesoKg || 0);
     const comPeso = lista.filter(d => pesoDoLote(d) > 0 && (d.valorPagar || 0) > 0);
     const pesoTotalKg = comPeso.reduce((a, d) => a + pesoDoLote(d), 0);
     const mediaKgGeral = pesoTotalKg > 0 ? comPeso.reduce((a, d) => a + (d.valorPagar || 0), 0) / pesoTotalKg : 0;
@@ -463,13 +461,13 @@ export default function ConsultaVendas() {
         return map.set(key, atual);
       }, new Map<string, MediaCategoria>()).values()
     ).sort((a, b) => a.categoria.localeCompare(b.categoria));
-    return { totalLotes, totalValor, totalComissao, totalComissaoVendedor, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediaKgGeral, mediasCategoria };
+    return { totalLotes, totalValor, totalComissao, totalComissaoVendedor, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediaKgGeral, pesoTotalKg, mediasCategoria };
   }
 
   // Pisteiro só aparece como opção do PDF no banco que tem pisteiro cadastrado
   const colunasPdfDisponiveis = COLUNAS_CONSULTA_VENDAS.filter(c => c.key !== 'pisteiro' || pisteiros.length > 0);
 
-  const { totalLotes, totalValor, totalComissao, totalComissaoVendedor, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediaKgGeral, mediasCategoria } = calcularTotais(dados);
+  const { totalLotes, totalValor, totalComissao, totalComissaoVendedor, totalLiquido, totalDesconto, totalDescontoFidelidade, totalQtd, mediaGeral, mediaKgGeral, pesoTotalKg, mediasCategoria } = calcularTotais(dados);
 
   // Reordena os dados igual ao que o usuário escolheu clicando no cabeçalho da
   // tabela (sortField/sortOrder, capturado no onChange do Table), pra impressão
@@ -576,6 +574,9 @@ export default function ConsultaVendas() {
     { title: 'Qtd', dataIndex: 'qtdxxx', ...rzCV('qtdxxx'), align: 'right' as const,
       render: (v: number) => v ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '—',
       sorter: COMPARADORES.qtdxxx },
+    ...(pesoTotalKg > 0 ? [{ title: 'Kg', dataIndex: 'pesoKg', ...rzCV('pesoKg'), align: 'right' as const,
+      render: (v: number) => v ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) : '—',
+      sorter: COMPARADORES.pesoKg }] : []),
     { title: 'Vlr. a Pagar', dataIndex: 'valorPagar', ...rzCV('valorPagar'), align: 'right' as const,
       render: (v: number) => <Text strong>{fmt(v)}</Text>,
       sorter: COMPARADORES.valorPagar },
@@ -765,6 +766,7 @@ export default function ConsultaVendas() {
             { title: 'Desc. Fidelidade', value: totalDescontoFidelidade, suffix: 'R$', color: '#ff4d4f' },
             { title: 'Valor Líquido',   value: totalLiquido,  suffix: 'R$', color: '#52c41a' },
             { title: 'Média/Cabeça',    value: mediaGeral,    suffix: 'R$', color: '#722ed1' },
+            ...(mediaKgGeral > 0 ? [{ title: 'Total Kg', value: pesoTotalKg, suffix: 'kg', color: undefined }] : []),
             ...(mediaKgGeral > 0 ? [{ title: 'Média/Kg', value: mediaKgGeral, suffix: 'R$', color: '#722ed1' }] : []),
           ].map(({ title, value, suffix, color }) => (
             <Col xs={12} sm={8} md={6} lg={3} key={title}>
@@ -773,7 +775,9 @@ export default function ConsultaVendas() {
                 <div style={{ fontSize: 15, fontWeight: 700, color: color || undefined }}>
                   {suffix === 'R$'
                     ? `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                    : value.toLocaleString('pt-BR')}
+                    : suffix === 'kg'
+                      ? `${value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg`
+                      : value.toLocaleString('pt-BR')}
                 </div>
               </Card>
             </Col>
@@ -818,6 +822,12 @@ export default function ConsultaVendas() {
                       R$ {cat.media.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </Text>
                   </div>
+                  {cat.pesoKg > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                      <Text style={{ fontSize: 11, color: '#8c8c8c' }}>Total Kg</Text>
+                      <Text strong style={{ fontSize: 12 }}>{cat.pesoKg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg</Text>
+                    </div>
+                  )}
                   {cat.mediaKg > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                       <Text style={{ fontSize: 11, color: '#8c8c8c' }}>Média/Kg</Text>

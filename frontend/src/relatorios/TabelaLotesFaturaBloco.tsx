@@ -2,6 +2,7 @@ import { View, Text, StyleSheet } from '@react-pdf/renderer';
 import { ColunaTabela } from './tipoLayout';
 import { FaturaUnificadaLote } from './RelatorioFaturaUnificada';
 import { fmtFidelidade } from './RelatorioFaturaCompra';
+import { linhaPeso } from './pesoLote';
 
 interface Props {
   lotes: FaturaUnificadaLote[];
@@ -19,6 +20,11 @@ function valorColuna(lote: FaturaUnificadaLote, key: string): string {
   if (key === 'sinal') {
     const primeira = lote.parcelas.find(p => p.pripar === 'S');
     return fmtR(primeira ? primeira.vlrpar : lote.valorPagar);
+  }
+  // lote vendido pelo kg (bancos com peso total do lote): kg e R$/kg embaixo da descrição
+  if (key === 'deslot' && lote.pesoLoteTotal) {
+    const peso = linhaPeso(lote.pesoxx, true, lote.valorOriginal, lote.pesoKg);
+    return [lote.deslot || '—', peso].filter(Boolean).join('\n');
   }
   if (key === 'fidelidade') return fmtFidelidade(lote.tipoDescontoFidelidade, lote.descontoFidelidade) || '—';
   if (key === 'valorOriginal' || key === 'valorPagar' || key === 'valorComissaoVendedor') return fmtR((lote as any)[key]);

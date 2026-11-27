@@ -2,6 +2,7 @@ import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/render
 import logotipoLocal from '../assets/LogotipoMacedoLeiloes.png';
 import { fmtDocumento } from '../utils/documento';
 import { labelRP, labelSBB, CATEGORIAS_LOTE } from '../utils/lote';
+import { linhaPeso } from './pesoLote';
 
 export interface Avalista {
   nome: string;
@@ -27,6 +28,8 @@ export interface FaturaData {
     rpxxx?: string;
     sbbxxx?: string;
     pesoxx?: number;
+    /** true = PESOXX é o peso total do lote (Knorr); false = por cabeça */
+    pesoLoteTotal?: boolean;
     catego?: string;
     descricaoRaca?: string;
     especies?: string;
@@ -366,7 +369,7 @@ function SecaoLote({ lote }: { lote: NonNullable<FaturaData['lote']> }) {
       {lote.rpxxx   ? <Text style={s.loteInfo}>{labelRP(lote.especies)}: {lote.rpxxx}</Text> : null}
       {lote.sbbxxx  ? <Text style={s.loteInfo}>{labelSBB(lote.especies)}: {lote.sbbxxx}</Text> : null}
       {lote.catego  ? <Text style={s.loteInfo}>Sexo: {CATEGO[lote.catego] || lote.catego}</Text> : null}
-      {lote.pesoxx  ? <Text style={s.loteInfo}>Peso: {lote.pesoxx} kg</Text> : null}
+      {linhaPeso(lote.pesoxx, lote.pesoLoteTotal, lote.vlrtot) ? <Text style={s.loteInfo}>{linhaPeso(lote.pesoxx, lote.pesoLoteTotal, lote.vlrtot)}</Text> : null}
       <Text style={s.loteInfo}>
         Qtd: {lote.qtdxxx != null ? Number(lote.qtdxxx).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '—'} cabeças
       </Text>

@@ -7,6 +7,7 @@ import { FaturaData, fmtFidelidade } from './RelatorioFaturaCompra';
 import { montarContextoPromissoria } from './promissoriaContext';
 import TabelaParcelasBloco from './TabelaParcelasBloco';
 import { valorExtenso, fmtR, fmtData, CATEGO } from './promissoriaUtils';
+import { linhaPeso } from './pesoLote';
 
 interface Props {
   dados: FaturaData;
@@ -265,7 +266,7 @@ function PromissoriaPDF({ dados, empresa, logoBase64 }: Props) {
                   {dados.lote.catego  ? <Text style={s.loteInfo}>Sexo: {CATEGO[dados.lote.catego] || dados.lote.catego}</Text> : null}
                   {dados.lote.rpxxx   ? <Text style={s.loteInfo}>{labelRP(dados.lote.especies)}: {dados.lote.rpxxx}</Text> : null}
                   {dados.lote.sbbxxx  ? <Text style={s.loteInfo}>{labelSBB(dados.lote.especies)}: {dados.lote.sbbxxx}</Text> : null}
-                  {dados.lote.pesoxx  ? <Text style={s.loteInfo}>Peso: {dados.lote.pesoxx} kg</Text> : null}
+                  {linhaPeso(dados.lote.pesoxx, dados.lote.pesoLoteTotal, dados.lote.vlrtot) ? <Text style={s.loteInfo}>{linhaPeso(dados.lote.pesoxx, dados.lote.pesoLoteTotal, dados.lote.vlrtot)}</Text> : null}
                   {dados.lote.qtdxxx  ? (
                     <Text style={s.loteInfo}>
                       Qtd: {Number(dados.lote.qtdxxx).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} cabeças

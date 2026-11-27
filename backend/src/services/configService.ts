@@ -15,6 +15,8 @@ export interface Configuracoes {
   porta: number;
   mostrarCotacoes: string;
   controleClientes: string;
+  /** 'S' = o Peso do lote é o total do lote; senão é por cabeça (ver utils/pesoLote) */
+  pesoLoteTotal: string;
 }
 
 function delphiColorToCss(cor: string): string {
@@ -58,6 +60,7 @@ export async function buscarConfiguracoes(): Promise<Configuracoes | null> {
     porta: c.PORTA || 0,
     mostrarCotacoes: c.MOSTRAR_COTACOES || 'N',
     controleClientes: c.CONTROLE_CLIENTES || 'N',
+    pesoLoteTotal: c.PESO_LOTE_TOTAL === 'S' ? 'S' : 'N',
   };
 }
 

@@ -16,6 +16,9 @@ const MEDIO  = '#555';
 const CINZA  = '#bbb';
 const CLARO  = '#f0f0f0';
 
+const fmtKg = (v?: number | null) =>
+  v ? `${Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg` : '—';
+
 const fmtR = (v?: number | null) =>
   v != null && v !== 0
     ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -157,6 +160,11 @@ function MediasLeilaoPDF({ titulo, empresa, filtrosDesc, logoBase64, totais, dat
             <>
               <View style={s.resumoSep} />
               <View style={s.resumoItem}>
+                <Text style={s.resumoLabel}>Total Kg</Text>
+                <Text style={[s.resumoValor, { color: '#722ed1' }]}>{fmtKg(totais.pesoTotalKg)}</Text>
+              </View>
+              <View style={s.resumoSep} />
+              <View style={s.resumoItem}>
                 <Text style={s.resumoLabel}>Média Geral / Kg</Text>
                 <Text style={[s.resumoValor, { color: '#722ed1' }]}>{fmtR(totais.mediaKgGeral)}</Text>
               </View>
@@ -170,6 +178,7 @@ function MediasLeilaoPDF({ titulo, empresa, filtrosDesc, logoBase64, totais, dat
             <View style={s.cQtd}><Text style={s.thRight}>Qtd.</Text></View>
             <View style={s.cValor}><Text style={s.thRight}>Total</Text></View>
             <View style={s.cMedia}><Text style={s.thRight}>Média / Cabeça</Text></View>
+            {comKg ? <View style={s.cQtd}><Text style={s.thRight}>Kg</Text></View> : null}
             {comKg ? <View style={s.cMedia}><Text style={s.thRight}>Média / Kg</Text></View> : null}
           </View>
           {medias.length === 0 ? (
@@ -182,6 +191,7 @@ function MediasLeilaoPDF({ titulo, empresa, filtrosDesc, logoBase64, totais, dat
               <View style={s.cQtd}><Text style={s.tdRight}>{fmtN(cat.qtd)}</Text></View>
               <View style={s.cValor}><Text style={s.tdRight}>{fmtR(cat.valor)}</Text></View>
               <View style={s.cMedia}><Text style={s.tdMedia}>{fmtR(cat.media)}</Text></View>
+              {comKg ? <View style={s.cQtd}><Text style={s.tdRight}>{fmtKg(cat.pesoKg)}</Text></View> : null}
               {comKg ? <View style={s.cMedia}><Text style={s.tdMedia}>{fmtR(cat.mediaKg)}</Text></View> : null}
             </View>
           ))}
@@ -191,6 +201,7 @@ function MediasLeilaoPDF({ titulo, empresa, filtrosDesc, logoBase64, totais, dat
               <View style={s.cQtd}><Text style={s.tdTotVal}>{fmtN(totais.totalQtd)}</Text></View>
               <View style={s.cValor}><Text style={s.tdTotVal}>{fmtR(totais.totalValor)}</Text></View>
               <View style={s.cMedia}><Text style={s.tdTotVal}>{fmtR(totais.mediaGeral)}</Text></View>
+              {comKg ? <View style={s.cQtd}><Text style={s.tdTotVal}>{fmtKg(totais.pesoTotalKg)}</Text></View> : null}
               {comKg ? <View style={s.cMedia}><Text style={s.tdTotVal}>{fmtR(totais.mediaKgGeral)}</Text></View> : null}
             </View>
           )}

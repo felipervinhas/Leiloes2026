@@ -21,6 +21,8 @@ export interface VendaPDF {
   nomeVendedor?: string;
   nomeComprador?: string;
   qtdxxx?: number;
+  /** Kg da parte do comprador, já pela regra do banco (peso total ou por cabeça) */
+  pesoKg?: number;
   valorUnidade?: number;
   valorPagar?: number;
   valorComissao?: number;
@@ -46,6 +48,8 @@ export interface TotaisVendas {
   mediaGeral: number;
   /** Valor ÷ peso (kg) — só dos lotes com peso cadastrado; 0 quando nenhum tem peso */
   mediaKgGeral?: number;
+  /** Soma dos kg dos lotes com peso */
+  pesoTotalKg?: number;
   mediasCategoria?: {
     key: string;
     categoria: string;
@@ -53,6 +57,7 @@ export interface TotaisVendas {
     valor: number;
     media: number;
     mediaKg?: number;
+    pesoKg?: number;
   }[];
 }
 
@@ -73,6 +78,7 @@ interface Props {
 export const COLUNAS_CONSULTA_VENDAS = [
   { key: 'lote', label: 'Lote' },
   { key: 'qtd', label: 'Qtd' },
+  { key: 'kg', label: 'Kg' },
   { key: 'descricao', label: 'Descrição' },
   { key: 'tatuagem', label: 'Tatuagem / RP' },
   { key: 'raca', label: 'Raça / Espécie' },
@@ -101,6 +107,11 @@ const fmtR = (v?: number | null) =>
 const fmtN = (v?: number | null) =>
   v != null && v !== 0
     ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+    : '—';
+
+const fmtKg = (v?: number | null) =>
+  v != null && v !== 0
+    ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
     : '—';
 
 const fmtData = (v?: string) => {
@@ -221,6 +232,8 @@ const s = StyleSheet.create({
   cComp:     { width: '18%' },
   cPist:     { width: '10%' },
   cQtd:      { width: '3.2%' },
+  // "35.123" cabe; a Descrição (flex) cede o espaço quando a coluna aparece
+  cKg:       { width: '5%' },
   cPagar:    { width: '9%' },
   cComissao: { width: '8%' },
   cLiquido:  { width: '9%' },
@@ -326,7 +339,7 @@ function ConsultaVendasPDF({
   const labelTatuagem = labelRP(vendas[0]?.especies);
 
   // Uma definição por coluna: cabeçalho, célula, subtotal e total saem sempre na mesma ordem
-  type Soma = { qtd: number; pagar: number; comissao: number; comissaoVendedor: number; liquido: number };
+  type Soma = { qtd: number; kg: number; pagar: number; comissao: number; comissaoVendedor: number; liquido: number };
   const COLS: Record<string, {
     estilo: any; titulo: string; direita?: boolean;
     celula: (x: VendaPDF) => React.ReactNode;
@@ -334,6 +347,7 @@ function ConsultaVendasPDF({
   }> = {
     lote:      { estilo: s.cLote, titulo: 'Lote', celula: x => <Text style={[s.tdBold, { color: ESCURO }]}>{quebrarTexto(x.lotexx, 6) || '—'}</Text> },
     qtd:       { estilo: s.cQtd, titulo: 'Qtd', direita: true, celula: x => <Text style={s.tdNormalRight}>{fmtN(x.qtdxxx)}</Text>, soma: t => fmtN(t.qtd) },
+    kg:        { estilo: s.cKg, titulo: 'Kg', direita: true, celula: x => <Text style={s.tdNormalRight}>{fmtKg(x.pesoKg)}</Text>, soma: t => fmtKg(t.kg) },
     descricao: { estilo: s.cDes, titulo: 'Descrição', rotulo: true, celula: x => <Text style={s.tdNormal}>{x.deslot || '—'}</Text> },
     tatuagem:  { estilo: s.cTat, titulo: labelTatuagem, celula: x => <Text style={s.tdSmall}>{quebrarTexto(x.rpxxx, 8) || '—'}</Text> },
     raca:      { estilo: s.cRaca, titulo: 'Raça / Espécie', celula: x => <Text style={s.tdSmall}>{[x.descricaoRaca, x.especies].filter(Boolean).join(' / ') || '—'}</Text> },
@@ -345,11 +359,12 @@ function ConsultaVendasPDF({
     comissaoVendedor: { estilo: s.cComissao, titulo: 'Com. Vendedor', direita: true, laranja: true, celula: x => <Text style={[s.tdNormalRight, { color: ESCURO }]}>{fmtR(x.valorComissaoVendedor)}</Text>, soma: t => fmtR(t.comissaoVendedor) },
     liquido:   { estilo: s.cLiquido, titulo: 'Vlr. Líquido', direita: true, celula: x => <Text style={[s.tdBoldRight, { color: '#000' }]}>{fmtR(x.valorLiquido)}</Text>, soma: t => fmtR(t.liquido) },
   };
-  const colunas = COLUNAS_CONSULTA_VENDAS.map(c => c.key).filter(k => COLS[k] && v(k));
+  const comKg = (totais.pesoTotalKg || 0) > 0;
+  const colunas = COLUNAS_CONSULTA_VENDAS.map(c => c.key).filter(k => COLS[k] && v(k) && (k !== 'kg' || comKg));
   // o rótulo "Subtotal"/"TOTAIS" vai na Descrição; sem ela, na primeira coluna sem valor
   const colRotulo = colunas.find(k => COLS[k].rotulo) ?? colunas.find(k => !COLS[k].soma);
   const totaisGerais: Soma = {
-    qtd: totais.totalQtd, pagar: totais.totalValor, comissao: totais.totalComissao,
+    qtd: totais.totalQtd, kg: totais.pesoTotalKg || 0, pagar: totais.totalValor, comissao: totais.totalComissao,
     comissaoVendedor: totais.totalComissaoVendedor ?? 0, liquido: totais.totalLiquido,
   };
 
@@ -482,6 +497,11 @@ function ConsultaVendasPDF({
             <>
               <View style={s.resumoSep} />
               <View style={s.resumoItem}>
+                <Text style={s.resumoLabel}>Total Kg</Text>
+                <Text style={[s.resumoValor, { color: ESCURO }]}>{fmtKg(totais.pesoTotalKg)}</Text>
+              </View>
+              <View style={s.resumoSep} />
+              <View style={s.resumoItem}>
                 <Text style={s.resumoLabel}>Média/Kg</Text>
                 <Text style={[s.resumoValor, { color: ESCURO }]}>{fmtR(totais.mediaKgGeral)}</Text>
               </View>
@@ -498,6 +518,7 @@ function ConsultaVendasPDF({
               <Text style={[s.mediaQtd, { fontFamily: 'Helvetica-Bold' }]}>Qtd.</Text>
               <Text style={[s.mediaValor, { fontFamily: 'Helvetica-Bold' }]}>Total</Text>
               <Text style={s.mediaMedia}>Média/Cab.</Text>
+              {totais.mediaKgGeral ? <Text style={s.mediaMedia}>Kg</Text> : null}
               {totais.mediaKgGeral ? <Text style={s.mediaMedia}>Média/Kg</Text> : null}
             </View>
             {totais.mediasCategoria.map(cat => (
@@ -506,6 +527,7 @@ function ConsultaVendasPDF({
                 <Text style={s.mediaQtd}>{fmtN(cat.qtd)}</Text>
                 <Text style={s.mediaValor}>{fmtR(cat.valor)}</Text>
                 <Text style={s.mediaMedia}>{fmtR(cat.media)}</Text>
+                {totais.mediaKgGeral ? <Text style={s.mediaMedia}>{fmtKg(cat.pesoKg)}</Text> : null}
                 {totais.mediaKgGeral ? <Text style={s.mediaMedia}>{fmtR(cat.mediaKg)}</Text> : null}
               </View>
             ))}
@@ -525,11 +547,12 @@ function ConsultaVendasPDF({
           ? grupos.map(g => {
               const sub = g.vendas.reduce((a, x) => ({
                 qtd: a.qtd + (x.qtdxxx || 0),
+                kg: a.kg + (x.pesoKg || 0),
                 pagar: a.pagar + (x.valorPagar || 0),
                 comissao: a.comissao + (x.valorComissao || 0),
                 comissaoVendedor: a.comissaoVendedor + (x.valorComissaoVendedor || 0),
                 liquido: a.liquido + (x.valorLiquido || 0),
-              }), { qtd: 0, pagar: 0, comissao: 0, comissaoVendedor: 0, liquido: 0 });
+              }), { qtd: 0, kg: 0, pagar: 0, comissao: 0, comissaoVendedor: 0, liquido: 0 });
               return (
                 <View key={g.chave}>
                   {/* minPresenceAhead: não deixa a faixa do leilão sozinha no pé da página */}

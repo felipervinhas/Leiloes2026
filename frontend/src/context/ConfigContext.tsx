@@ -29,6 +29,8 @@ export interface Configuracoes {
   corLetraBottom: string;
   /** Logotipo em data URI (base64), pronto para embutir em PDFs (@react-pdf/renderer). */
   logoBase64: string | null;
+  /** 'S' = o Peso do lote é o total do lote (Knorr); senão é por cabeça */
+  pesoLoteTotal?: string;
   /** Busca de novo configurações e logotipo (ex.: depois de trocar o logo). */
   recarregar?: () => void;
 }

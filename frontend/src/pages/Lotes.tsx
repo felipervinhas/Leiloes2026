@@ -16,6 +16,7 @@ import FichaRegistroModal, { abrirPesquisaRegistro, ASSOCIACOES, Associacao } fr
 import { labelRP, labelSBB, isEquino, isBovino, isOvino, CATEGORIAS_LOTE } from '../utils/lote';
 import { lerFiltroPersistido, salvarFiltroPersistido } from '../utils/filtroPersistido';
 import { useBanco } from '../context/BancoContext';
+import { useConfig } from '../context/ConfigContext';
 import { useAuth } from '../context/AuthContext';
 import {
   CamposCobrancaLote, CAMPOS_COBRANCA, aplicarPadraoDoVendedor, carregarCobrancaDoLote, cobrancaDisponivel, salvarCobrancaDoLote,
@@ -34,6 +35,7 @@ export default function Lotes() {
   const isMobile = screens.md === false;
   const { rz: rzLot } = useColumnWidths('lotes', { lotexx: 70, deslot: 300, nomeVendedor: 160 });
   const { banco } = useBanco();
+  const config = useConfig();
   const { usuario } = useAuth();
   // Macedo: usuário interno não publica lote no site (como no Delphi); a coluna Tipo só aparece lá
   const usaSecao = !!usuario?.tipoSecao;
@@ -333,7 +335,7 @@ export default function Lotes() {
             </Col>
             <Col xs={12} md={6}><Form.Item name="rpxxx" label={labelRP(especiesLote)}><Input /></Form.Item></Col>
             <Col xs={12} md={6}><Form.Item name="sbbxxx" label={labelSBB(especiesLote)}><Input /></Form.Item></Col>
-            <Col xs={12} md={6}><Form.Item name="pesoxx" label="Peso"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="pesoxx" label={config.pesoLoteTotal === 'S' ? 'Peso total do lote (kg)' : 'Peso por cabeça (kg)'}><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
             {isBovino(especiesLote) && (
               <Col xs={12} md={6}>
                 <Form.Item name="perimetroEscrotal" label="Perímetro Escrotal (cm)"

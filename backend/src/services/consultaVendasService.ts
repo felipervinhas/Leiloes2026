@@ -1,5 +1,6 @@
 import { getPool, sql } from '../config/database';
 import { garantirColunaMovCompPisteiro, buscarParcelasPorMovLote } from './vendaService';
+import { pesoLoteEhTotal, kgDaParte } from '../utils/pesoLote';
 
 export interface FiltrosConsulta {
   idLeilao?: number;
@@ -39,6 +40,7 @@ const BASE_SQL = `
     LO.RPXXX,
     LO.SBBXXX,
     ISNULL(LO.PESOXX, 0) AS PESOXX,
+    V.PERCEN AS PERCEN_PARTE,
     LO.CODVEN,
     R.ID   AS IDCATEGORIA,
     R.DESCRICAO,
@@ -147,6 +149,7 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
   // IDMOVLOTE juntava as parcelas de todos os compradores numa lista só,
   // duplicando vencimentos no relatório (chamado #61).
   const parcelasPorMovLote = await buscarParcelasPorMovLote(idMovLotes);
+  const pesoTotal = await pesoLoteEhTotal();
 
   return r.recordset.map((row: any) => {
     const parcelas = parcelasPorMovLote[`${row.ID_MOVLOTE}_${row.IDCLI}`] || [];
@@ -164,6 +167,8 @@ export async function consultarVendas(filtros: FiltrosConsulta) {
     rpxxx:                 row.RPXXX,
     sbbxxx:                row.SBBXXX,
     pesoxx:                row.PESOXX,
+    /** Kg da parte deste comprador, já pela regra do banco (peso total ou por cabeça) */
+    pesoKg:                kgDaParte(row.PESOXX, row.QTDXXX, row.PERCEN_PARTE, pesoTotal),
     idCategoria:           row.IDCATEGORIA,
     descricaoRaca:         row.DESCRICAO,
     especies:              row.ESPECIES,
@@ -277,17 +282,22 @@ export async function lotesPorLeilao(idLeilao: number) {
  * leilão — a tela marca/desmarca categorias e refaz os totais sem nova consulta. Mesma conta
  * do mapa de médias da Consulta de Vendas: quantidade = animais da parte de cada comprador,
  * valor = valor original, média = valor ÷ quantidade; média por kg só com os lotes que têm
- * peso (peso do lote = qtd × peso por cabeça, ou só o peso se qtd = 0).
+ * peso (kg pela regra do banco — Configuracoes.PESO_LOTE_TOTAL, ver utils/pesoLote).
  */
 export async function mediasPorCategoria(f: { de: string; ate: string; defesa?: 'S' | 'N' }) {
   const pool = await getPool();
   const req = pool.request().input('de', sql.Date, f.de).input('ate', sql.Date, f.ate);
   const conds = ['L.DATLEI >= @de', 'L.DATLEI < DATEADD(DAY, 1, @ate)'];
   if (f.defesa) { req.input('defesa', sql.Char, f.defesa); conds.push('V.DEFESA = @defesa'); }
+  // kg da parte: peso total do lote × percentual (Knorr) ou animais × peso por cabeça
+  const kgSql = (await pesoLoteEhTotal())
+    ? 'PESO * (PERCEN / 100.0)'
+    : 'CASE WHEN QTD > 0 THEN QTD * PESO ELSE PESO END';
   const r = await req.query(`
     WITH B AS (
       SELECT R.ID AS IDR, R.DESCRICAO, R.ESPECIES, V.IDLEILAO, L.LEILAO, L.DATLEI, V.IDLOTE,
              ISNULL(V.QTDXXX, 0) * (ISNULL(V.PERCEN, 100) / 100.0) AS QTD,
+             ISNULL(NULLIF(V.PERCEN, 0), 100) AS PERCEN,
              ISNULL(V.VALORORIGINAL, 0) AS VALOR,
              ISNULL(LO.PESOXX, 0) AS PESO
       FROM VWVendas V
@@ -298,7 +308,7 @@ export async function mediasPorCategoria(f: { de: string; ate: string; defesa?: 
     )
     SELECT IDR, DESCRICAO, ESPECIES, IDLEILAO, LEILAO, DATLEI,
            SUM(QTD) AS QTD, SUM(VALOR) AS VALOR, COUNT(DISTINCT IDLOTE) AS LOTES,
-           SUM(CASE WHEN PESO > 0 AND VALOR > 0 THEN CASE WHEN QTD > 0 THEN QTD * PESO ELSE PESO END ELSE 0 END) AS PESO_KG,
+           SUM(CASE WHEN PESO > 0 AND VALOR > 0 THEN ${kgSql} ELSE 0 END) AS PESO_KG,
            SUM(CASE WHEN PESO > 0 AND VALOR > 0 THEN VALOR ELSE 0 END) AS VALOR_COM_PESO
     FROM B
     GROUP BY IDR, DESCRICAO, ESPECIES, IDLEILAO, LEILAO, DATLEI
